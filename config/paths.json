@@ -1,0 +1,382 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Single source of truth for EHR evidence app destinations. Everything lives under G:\\Industry Dataset: the private workspace root is authoritative for protected data, outputs, logs and verification; approved runtime/cache categories use the separate runtime root. Edit this file to move destinations inside those roots; the setup script and the verifier both read it.",
+  "policy": {
+    "required_root_prefix": "G:\\Industry Dataset\\",
+    "process_local_only": true,
+    "marker_file_name": "_ehr-destination-marker.txt",
+    "preflight": "Every configured directory and file path is resolved against its fixed root and checked before any directory is created. Existing ancestors are inspected without following links.",
+    "runtime_root_policy": "Only directory keys fixed in the storage policy module (RUNTIME_DIRECTORY_KEYS) may set \"root\": \"runtime\"; their paths are relative to runtime_root. Every other key, including protected data, outputs, logs, verification and ClearML configuration, stays relative to workspace_root. Any other destination is refused."
+  },
+  "source_repository": "G:\\Industry Dataset\\ehr-evidence-app",
+  "workspace_root": "G:\\Industry Dataset\\ehr-evidence-workspace",
+  "runtime_root": "G:\\Industry Dataset\\ehr-evidence-runtime",
+  "directories": {
+    "workspace_root": {
+      "path": ".",
+      "purpose": "Private workspace root (authoritative).",
+      "create": true
+    },
+    "runtime_root": {
+      "path": ".",
+      "root": "runtime",
+      "purpose": "Runtime root for approved runtime/cache categories. Created once, with restrictive ACLs, by the runtime storage preflight (--create-root).",
+      "create": true
+    },
+    "prepared_data": {
+      "path": "protected-data\\prepared",
+      "purpose": "Application prepared evidence derived from source data.",
+      "create": true
+    },
+    "outputs": {
+      "path": "outputs",
+      "purpose": "Generated responses, evaluation and audit artefacts.",
+      "create": true
+    },
+    "logs": {
+      "path": "outputs\\logs",
+      "purpose": "Application run logs.",
+      "create": true
+    },
+    "verification": {
+      "path": "outputs\\verification",
+      "purpose": "Destination verification reports.",
+      "create": true
+    },
+    "test_scratch": {
+      "path": "test-scratch",
+      "purpose": "Scratch for synthetic tests that exercise workspace-only destination rules. Tests create and remove only their own subdirectories; pytest's own basetemp is on the runtime root.",
+      "create": true
+    },
+    "temp": {
+      "path": "temp",
+      "root": "runtime",
+      "purpose": "Process temporary files (TEMP/TMP/TMPDIR).",
+      "create": true
+    },
+    "pytest_temp": {
+      "path": "temp\\pytest",
+      "root": "runtime",
+      "purpose": "pytest basetemp. Contents are removed by each pytest run.",
+      "create": true
+    },
+    "pytest_cache": {
+      "path": "cache\\pytest",
+      "root": "runtime",
+      "purpose": "pytest cache_dir, kept out of the source tree.",
+      "create": true
+    },
+    "hf_home": {
+      "path": "cache\\huggingface",
+      "root": "runtime",
+      "purpose": "Hugging Face home (HF_HOME).",
+      "create": true
+    },
+    "hf_hub": {
+      "path": "cache\\huggingface\\hub",
+      "root": "runtime",
+      "purpose": "Hugging Face hub download cache.",
+      "create": true
+    },
+    "hf_assets": {
+      "path": "cache\\huggingface\\assets",
+      "root": "runtime",
+      "purpose": "Hugging Face assets cache.",
+      "create": true
+    },
+    "hf_datasets": {
+      "path": "cache\\huggingface\\datasets",
+      "root": "runtime",
+      "purpose": "Hugging Face datasets cache.",
+      "create": true
+    },
+    "torch_home": {
+      "path": "cache\\torch",
+      "root": "runtime",
+      "purpose": "Torch hub/checkpoint cache (TORCH_HOME).",
+      "create": true
+    },
+    "pip_cache": {
+      "path": "cache\\pip",
+      "root": "runtime",
+      "purpose": "pip wheel/http cache.",
+      "create": true
+    },
+    "uv_cache": {
+      "path": "cache\\uv",
+      "root": "runtime",
+      "purpose": "uv package cache.",
+      "create": true
+    },
+    "xdg_cache": {
+      "path": "cache\\xdg",
+      "root": "runtime",
+      "purpose": "XDG_CACHE_HOME for tools that follow the XDG layout.",
+      "create": true
+    },
+    "pycache": {
+      "path": "cache\\pycache",
+      "root": "runtime",
+      "purpose": "Python bytecode cache prefix (PYTHONPYCACHEPREFIX).",
+      "create": true
+    },
+    "conda_pkgs": {
+      "path": "cache\\conda-pkgs",
+      "root": "runtime",
+      "purpose": "conda package cache for downstream environments.",
+      "create": true
+    },
+    "conda_envs": {
+      "path": "environments\\conda",
+      "root": "runtime",
+      "purpose": "Location for new downstream conda environments.",
+      "create": true
+    },
+    "uv_project_env": {
+      "path": "environments\\uv\\ehr-evidence-app",
+      "root": "runtime",
+      "purpose": "UV_PROJECT_ENVIRONMENT target. Not pre-created so uv can create the virtual environment itself.",
+      "create": false
+    },
+    "venvs": {
+      "path": "environments\\venvs",
+      "root": "runtime",
+      "purpose": "Convention location for manually created virtual environments. No environment variable; use an explicit path when creating one.",
+      "create": true
+    },
+    "models": {
+      "path": "models",
+      "root": "runtime",
+      "purpose": "Downloaded or exported model assets.",
+      "create": true
+    },
+    "clearml_local": {
+      "path": "clearml",
+      "purpose": "Local ClearML storage and the ClearML configuration-file destination.",
+      "create": true
+    },
+    "clearml_cache": {
+      "path": "cache\\clearml",
+      "root": "runtime",
+      "purpose": "ClearML cache directory (CLEARML_CACHE_DIR). ClearML documents offline session data beneath its cache directory; that behaviour is not exercised here.",
+      "create": true
+    }
+  },
+  "environment": [
+    {
+      "name": "EHR_WORKSPACE_ROOT",
+      "directory": "workspace_root",
+      "evidence": "probe",
+      "purpose": "Authoritative workspace root for protected data, outputs, logs and verification records."
+    },
+    {
+      "name": "EHR_RUNTIME_ROOT",
+      "directory": "runtime_root",
+      "evidence": "probe",
+      "purpose": "Runtime root for environments, temp and caches."
+    },
+    {
+      "name": "EHR_PREPARED_DATA_DIR",
+      "directory": "prepared_data",
+      "evidence": "probe",
+      "purpose": "Application prepared-data destination."
+    },
+    {
+      "name": "EHR_OUTPUTS_DIR",
+      "directory": "outputs",
+      "evidence": "probe",
+      "purpose": "Application output destination."
+    },
+    {
+      "name": "EHR_LOGS_DIR",
+      "directory": "logs",
+      "evidence": "probe",
+      "purpose": "Application log destination."
+    },
+    {
+      "name": "EHR_MODELS_DIR",
+      "directory": "models",
+      "evidence": "probe",
+      "purpose": "Model asset destination."
+    },
+    {
+      "name": "EHR_CLEARML_DIR",
+      "directory": "clearml_local",
+      "evidence": "probe",
+      "purpose": "Local ClearML storage destination."
+    },
+    {
+      "name": "TEMP",
+      "directory": "temp",
+      "evidence": "probe",
+      "purpose": "Windows temporary directory."
+    },
+    {
+      "name": "TMP",
+      "directory": "temp",
+      "evidence": "probe",
+      "purpose": "Windows temporary directory."
+    },
+    {
+      "name": "TMPDIR",
+      "directory": "temp",
+      "evidence": "probe",
+      "purpose": "POSIX-style temporary directory honoured by Python tempfile."
+    },
+    {
+      "name": "PYTHONPYCACHEPREFIX",
+      "directory": "pycache",
+      "evidence": "probe",
+      "purpose": "Keeps .pyc files out of the source tree. Must be set before the interpreter starts."
+    },
+    {
+      "name": "HF_HOME",
+      "directory": "hf_home",
+      "evidence": "declaration",
+      "purpose": "Hugging Face home directory."
+    },
+    {
+      "name": "HF_HUB_CACHE",
+      "directory": "hf_hub",
+      "evidence": "declaration",
+      "purpose": "Hugging Face hub cache."
+    },
+    {
+      "name": "HF_ASSETS_CACHE",
+      "directory": "hf_assets",
+      "evidence": "declaration",
+      "purpose": "Hugging Face assets cache."
+    },
+    {
+      "name": "HF_DATASETS_CACHE",
+      "directory": "hf_datasets",
+      "evidence": "declaration",
+      "purpose": "Hugging Face datasets cache."
+    },
+    {
+      "name": "TORCH_HOME",
+      "directory": "torch_home",
+      "evidence": "declaration",
+      "purpose": "Torch hub/checkpoint cache."
+    },
+    {
+      "name": "PIP_CACHE_DIR",
+      "directory": "pip_cache",
+      "evidence": "declaration",
+      "purpose": "pip cache."
+    },
+    {
+      "name": "UV_CACHE_DIR",
+      "directory": "uv_cache",
+      "evidence": "declaration",
+      "purpose": "uv cache."
+    },
+    {
+      "name": "UV_PROJECT_ENVIRONMENT",
+      "directory": "uv_project_env",
+      "evidence": "declaration",
+      "purpose": "Target virtual environment for uv in this project."
+    },
+    {
+      "name": "XDG_CACHE_HOME",
+      "directory": "xdg_cache",
+      "evidence": "declaration",
+      "purpose": "Cache root for XDG-aware tools."
+    },
+    {
+      "name": "CONDA_PKGS_DIRS",
+      "directory": "conda_pkgs",
+      "evidence": "declaration",
+      "purpose": "conda package cache."
+    },
+    {
+      "name": "CONDA_ENVS_DIRS",
+      "directory": "conda_envs",
+      "evidence": "declaration",
+      "purpose": "conda environment location for new downstream environments."
+    },
+    {
+      "name": "PYTEST_ADDOPTS",
+      "template": "--basetemp=\"${dir_posix:pytest_temp}\" -o \"cache_dir=${dir_posix:pytest_cache}\"",
+      "evidence": "declaration",
+      "purpose": "Routes pytest temporary directories and cache to the runtime root without requiring pytest to be installed. Forward slashes avoid shlex escaping issues in paths containing spaces."
+    },
+    {
+      "name": "PYTEST_DEBUG_TEMPROOT",
+      "directory": "pytest_temp",
+      "evidence": "declaration",
+      "purpose": "pytest temporary root fallback."
+    },
+    {
+      "name": "CLEARML_CACHE_DIR",
+      "directory": "clearml_cache",
+      "evidence": "declaration",
+      "purpose": "ClearML cache and local offline storage root."
+    },
+    {
+      "name": "CLEARML_CONFIG_FILE",
+      "file": {
+        "directory": "clearml_local",
+        "name": "clearml.conf"
+      },
+      "evidence": "declaration",
+      "purpose": "ClearML configuration-file destination. The file is deliberately not created here; writing an unvalidated configuration would risk an invalid format."
+    },
+    {
+      "name": "CLEARML_OFFLINE_MODE",
+      "literal": "1",
+      "evidence": "declaration",
+      "purpose": "Keeps ClearML offline by default; hosted runs opt in explicitly."
+    }
+  ],
+  "not_exercised": [
+    "huggingface_hub / transformers / datasets",
+    "torch",
+    "pip",
+    "uv",
+    "conda",
+    "pytest",
+    "clearml"
+  ],
+  "source_service_exception": {
+    "service": "PostgreSQL",
+    "location": "Existing installation and database-managed storage on C:",
+    "access": "Read-only source access to the existing local database.",
+    "notes": "Destination setup does not read, connect to, move or reconfigure the service or its data directory."
+  },
+  "locations_outside_this_configuration": {
+    "note": "Locations this configuration does not route. Categories: approved-exception (permitted by the data-handling policy), pre-existing (already present and observed, untouched here), unverified-possible-write (a tool may write there; not observed or confirmed).",
+    "entries": [
+      {
+        "item": "PostgreSQL service and database-managed storage",
+        "path": "C: (service-managed)",
+        "category": "approved-exception",
+        "detail": "Read-only source-service exception. Not read, connected to or reconfigured by destination setup."
+      },
+      {
+        "item": "Python interpreter and Anaconda base installation",
+        "path": "C:\\Users\\<account>\\anaconda3, including envs\\omopgnn\\python.exe",
+        "category": "approved-exception",
+        "detail": "Running an existing installed interpreter from C: is permitted. CONDA_PKGS_DIRS and CONDA_ENVS_DIRS are configured for new packages and environments; the base installation stays in place."
+      },
+      {
+        "item": "conda user configuration and environment state",
+        "path": "%USERPROFILE%\\.condarc, %USERPROFILE%\\.conda",
+        "category": "unverified-possible-write",
+        "detail": "conda was not run, so its actual write locations are unverified. conda does support redirection of its configuration file through CONDARC, and further directories can be set within that file; neither was configured or exercised here."
+      },
+      {
+        "item": "Git configuration and identity",
+        "path": "%USERPROFILE%\\.gitconfig",
+        "category": "pre-existing",
+        "detail": "Untouched by."
+      },
+      {
+        "item": "PowerShell profile and Windows shell state",
+        "path": "%USERPROFILE%\\Documents\\PowerShell, %APPDATA%, console history",
+        "category": "unverified-possible-write",
+        "detail": "Tool-managed. Not configured, observed or measured."
+      }
+    ]
+  }
+}

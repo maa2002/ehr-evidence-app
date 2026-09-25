@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "step": "2",
+  "purpose": "Canonical logical path map from upstream roles to files in the inherited E-TRANS GNN tree, for later downstream components. Paths only: content identity and provenance belong to the Step 1 inherited baseline named in identity_authority. Read by ehr_evidence_app.environment.app, which keeps the upstream tree off the application import path.",
+  "upstream_root": "G:\\Industry Dataset\\standardized-omop-gnn-7B82",
+  "canonical_run": "diag_kg",
+  "identity_authority": {
+    "step": "1",
+    "configuration": "config\\inherited_baseline.json",
+    "capture_tool": "ehr_evidence_app.gnn.baseline",
+    "documentation": "docs\\INHERITED_BASELINE.md",
+    "note": "Expected sizes and content hashes are held only by the Step 1 configuration and its protected baseline record in the private workspace. This map holds no hashes and no verification results."
+  },
+  "references": [
+    {
+      "role": "documentation",
+      "relative_path": "GNN_Replication_Documentation.md",
+      "description": "Upstream project documentation."
+    },
+    {
+      "role": "canonical_checkpoint",
+      "relative_path": "data\\runs\\diag_kg\\checkpoints\\best_model.pt",
+      "description": "Canonical diag_kg model checkpoint."
+    },
+    {
+      "role": "canonical_metrics",
+      "relative_path": "data\\runs\\diag_kg\\results\\metrics.json",
+      "description": "Canonical diag_kg reported metrics."
+    },
+    {
+      "role": "canonical_explanations",
+      "relative_path": "data\\runs\\diag_kg\\explanations.json",
+      "description": "Canonical diag_kg gradient-attribution explanations."
+    },
+    {
+      "role": "patient_graphs",
+      "relative_path": "data\\processed\\patient_graphs.pt",
+      "description": "Processed patient graphs (patient-bearing; protected)."
+    },
+    {
+      "role": "concept_vocab",
+      "relative_path": "data\\processed\\concept_vocab.json",
+      "description": "Concept vocabulary."
+    },
+    {
+      "role": "label_vocab",
+      "relative_path": "data\\processed\\label_vocab.json",
+      "description": "Diagnosis label vocabulary."
+    },
+    {
+      "role": "source_explain_patient",
+      "relative_path": "src\\gnn\\explain_patient.py",
+      "description": "Inspected upstream source: patient explanation."
+    },
+    {
+      "role": "source_train",
+      "relative_path": "src\\gnn\\train.py",
+      "description": "Inspected upstream source: training."
+    },
+    {
+      "role": "source_model",
+      "relative_path": "src\\gnn\\model.py",
+      "description": "Inspected upstream source: model definition."
+    },
+    {
+      "role": "source_build_patient_graphs",
+      "relative_path": "src\\preprocess\\build_patient_graphs.py",
+      "description": "Inspected upstream source: patient graph construction."
+    }
+  ],
+  "notes": [
+    "upstream_root may change only through a reviewed configuration edit; the verifier enforces the location policy for any value.",
+    "Upstream files are referenced in place. The verifier inspects their metadata only and never opens, hashes, imports or executes them."
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Phase 3 closure: typed per-case admission of the development pilot into evidence-object construction, the label-evidence layers, the driver tags, the claim policy and the map of superseded flags. Read by ehr_evidence_app.gnn.admission, which refuses to run unless these values equal the ones it implements.",
+  "closure_version": "phase3-closure-v1",
+  "admission_scope": "evidence_object_construction",
+  "prediction_definition": "argmax of the inherited bridge's single-graph diagnosis logits (one graph per forward pass)",
+  "held_out_definition": "outside the upstream training partition only; the label vocabulary and the feature normalisation statistics were computed over all patients",
+  "label_layers": {
+    "A": "rule: output position i, training target i and label_vocab[i] share one axis in the pinned graph builder, trainer, model and bridge",
+    "B": "decode: concept_id equals label_vocab[label_index] in the published output record",
+    "C": "run binding: the checkpoint's saved pos_weight reproduces exactly from the current labels in the current label order under the replayed split, and a reversed label order does not"
+  },
+  "driver_tags": {
+    "attachment": [
+      "target_only",
+      "target_and_earlier",
+      "earlier_only",
+      "not_attached",
+      "not_a_patient_node"
+    ],
+    "score_class": [
+      "positive",
+      "zero"
+    ],
+    "attachment_rule": "visits whose visit-to-concept edges reach the driver's concept node in the raw (unpreprocessed) patient graph; the target is the final visit",
+    "target_outcome_rule": "a condition driver attached only to the target visit is a target-visit diagnosis and is excluded",
+    "narration_rule": "positive score, a patient node, and not a target-visit diagnosis"
+  },
+  "claim_policy": {
+    "allowed": [
+      "selected_label_as_one_output_of_multilabel_prediction",
+      "raw_logit_and_uncalibrated_score",
+      "positive_drivers_as_unsigned_local_sensitivity",
+      "driver_visit_tag_to_restrict_or_disclose",
+      "upstream_partition_with_held_out_definition",
+      "recorded_history_within_verified_scope"
+    ],
+    "prohibited": [
+      "selected_label_as_only_diagnosis",
+      "score_as_clinical_risk",
+      "reported_auroc_for_single_graph_predictions",
+      "causal_directional_or_percentage_attribution",
+      "target_attached_driver_as_history",
+      "prospective_or_pre_target_only_prediction",
+      "attribution_tied_to_date_visit_or_recurrence",
+      "zero_score_target_diagnosis_use",
+      "event_level_dated_frequency_or_progression_claims"
+    ]
+  },
+  "supersedes": [
+    {
+      "flag": "label_index_correspondence",
+      "records": ["step-20-pilot10-v1", "step-21-pilot10-v1"],
+      "recorded": "not_established",
+      "current": "established",
+      "evidence": ["label_layers", "binding_summary"]
+    },
+    {
+      "flag": "wrapper.executed.bytes_available, wrapper.executed.retrievable",
+      "records": ["step-21-pilot10-v1"],
+      "recorded": "false",
+      "current": "recovered byte-exact",
+      "evidence": ["wrapper_recovery", "wrapper_executed"]
+    },
+    {
+      "flag": "upstream_split_membership",
+      "records": ["step-20-pilot10-v1", "step-21-pilot10-v1", "step-22-pilot10-v2"],
+      "recorded": "unknown / unavailable",
+      "current": "verified by run binding",
+      "evidence": ["binding_summary", "binding_cases"]
+    },
+    {
+      "flag": "phase4_eligible",
+      "records": ["step-17-pilot10-v1", "step-19-preprocessing-parity-final", "step-20-pilot10-v1", "step-21-pilot10-v1", "step-22-pilot10-v2"],
+      "recorded": "false (untyped)",
+      "current": "typed per-case admission",
+      "evidence": []
+    },
+    {
+      "flag": "unseen_patient_status",
+      "records": ["step-21-pilot10-v1", "step-22-pilot10-v2"],
+      "recorded": "not_inferred",
+      "current": "upstream partition known; held out defined by held_out_definition",
+      "evidence": ["binding_cases"]
+    },
+    {
+      "flag": "source_event_linkage",
+      "records": ["step-20-pilot10-v1", "step-21-pilot10-v1"],
+      "recorded": "absent",
+      "current": "absent; restricts event-level claims and does not block cases",
+      "evidence": []
+    },
+    {
+      "flag": "pre_target_only_input",
+      "records": ["step-20-pilot10-v1", "step-21-pilot10-v1"],
+      "recorded": "false",
+      "current": "unchanged",
+      "evidence": []
+    },
+    {
+      "flag": "history_only_claim_allowed",
+      "records": ["step-20-pilot10-v1", "step-21-pilot10-v1"],
+      "recorded": "false",
+      "current": "unchanged",
+      "evidence": []
+    }
+  ]
+}

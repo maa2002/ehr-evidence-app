@@ -1,0 +1,204 @@
+# Protected and generated assets must remain outside source control.
+#
+# Defence in depth: the private workspace is a sibling of this
+# repository, these patterns keep generated and sensitive files out of Git
+# candidates, and the publication audit re-checks candidates, the staged
+# index and history. A leading "/" anchors a pattern to the repository
+# root; other patterns apply at any depth. Names that are unambiguously
+# generated or private are ignored at any depth; data, models and similar
+# names only at the root, so source and test packages such as tests/data
+# stay trackable (their weight and data files are still excluded by
+# extension). Source, docs, configuration, tests and synthetic fixtures
+# (for example tests/fixtures/synthetic_*.json) stay trackable.
+
+# -- Protected, source, patient, case, evaluation, audit and output data ----
+protected-data/
+/protected-data/
+protected_data/
+patient-data/
+patient_data/
+patient-graphs/
+patient_graphs/
+source-exports/
+source_exports/
+cases/
+evaluation/
+evaluations/
+audit/
+audits/
+outputs/
+/outputs/
+output/
+results/
+runs/
+logs/
+/data/
+/graphs/
+/exports/
+/extracts/
+/patients/
+/private/
+/secrets/
+
+# -- Graphs, checkpoints, weights, model artefacts and serialised data -------
+/models/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.bin
+*.gguf
+*.ggml
+*.model
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.hdf5
+*.arrow
+*.feather
+*.parquet
+*.orc
+*.avro
+*.db
+*.db-journal
+*.sqlite*
+*.duckdb
+*.mdb
+*.lmdb
+*.csv
+*.tsv
+*.xls
+*.xlsx
+*.sas7bdat
+*.dta
+*.sav
+*.rds
+*.rdata
+*.dcm
+
+# -- Generated logs, response/trace files, archives, temporary/partial files -
+*.log
+*.jsonl
+*.ndjson
+*.zip
+*.tar
+*.gz
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.tmp
+*.temp
+*.partial
+*.part
+*.crdownload
+*.bak
+*.swp
+*.swo
+*~
+~$*
+/temp/
+/tmp/
+
+# -- Python, package, test and tool caches; build artefacts; notebooks -------
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.ipynb_checkpoints/
+*.egg-info/
+.eggs/
+/build/
+/dist/
+cache/
+/cache/
+caches/
+.cache/
+
+# -- Environments, local package/model caches and local trackers -------------
+environments/
+/environments/
+/env/
+/envs/
+.venv/
+venv/
+.conda/
+node_modules/
+site-packages/
+.huggingface/
+mlruns/
+wandb/
+lightning_logs/
+clearml/
+/clearml/
+.clearml/
+
+# -- Secrets and credentials (.env.example stays trackable) ------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.kdbx
+*.ppk
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.token
+token.*
+tokens.*
+*.secret
+*.secrets
+secret.*
+secrets.*
+credentials
+credentials.*
+*.credentials
+service-account*.json
+.pgpass
+pgpass.conf
+pg_service.conf
+.pg_service.conf
+clearml.conf
+.netrc
+_netrc
+.pypirc
+.npmrc
+.ssh/
+.gnupg/
+.aws/
+.azure/
+gcloud/
+.kube/
+.docker/
+
+# -- Local tool, editor and OS state -----------------------------------------
+# Hidden tool-state directories at the root stay local; .github/ is shared.
+/.*/
+!/.github/
+.idea/
+.vscode/
+.vs/
+.DS_Store
+Thumbs.db
+desktop.ini

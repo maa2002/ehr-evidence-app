@@ -1,0 +1,4 @@
+# Keep text files LF in the repository and in every working tree. Some
+# configuration files are pinned by byte-level SHA-256, so checkouts must
+# not convert line endings.
+* text=auto eol=lf

@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "step": "15",
+  "record_type": "checkpoint_compatibility_probe",
+  "purpose": "Pinned result of the operator's local state-dict shape probe of the canonical diag_kg checkpoint. Read by ehr_evidence_app.gnn.assets, which never deserialises the checkpoint; it only checks that this record names the pinned checkpoint identity and that the label vocabulary length equals the recorded head widths.",
+  "canonical_run": "diag_kg",
+  "checkpoint_role": "canonical_checkpoint",
+  "checkpoint_sha256": "5785E247D9A41D1D1534474D9771265EA0918767607C44B5DB9EA364D5326FE1",
+  "checkpoint_size_bytes": 19523207,
+  "output_heads": {
+    "graph_head": 275,
+    "seq_head": 275
+  },
+  "label_count": 275,
+  "label_order_status": "dimensional_compatibility_only",
+  "limitations": [
+    "Only the output widths of graph_head and seq_head are recorded. Equal widths show dimensional compatibility with the 275-entry label vocabulary; they do not establish that checkpoint output index i corresponds to label vocabulary entry i.",
+    "The shape probe ran locally under operator control. The validator does not repeat it and does not load, unpickle or execute the checkpoint."
+  ]
+}

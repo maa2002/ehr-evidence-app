@@ -1,0 +1,95 @@
+{
+  "schema_version": "1.0",
+  "step": "10",
+  "purpose": "Publishable ClearML connection declaration read by ehr_evidence_app.tracking.connection. It records the user-authorised hosted endpoints, workspace and project, and names the process-local environment variable that points the SDK at the existing untracked configuration file. It holds no local path, account, key or configuration content.",
+  "notes": [
+    "Only this repository's config directory may supply this file.",
+    "This declaration satisfies the Step 9 authorization gate (user_approved_step_10_configuration) for connection checks only; config/clearml_policy.json still governs which payload categories may ever reach the tracker.",
+    "The configuration file stays at its existing untracked location and is named only through CLEARML_CONFIG_FILE in the probe process; its path is never recorded here.",
+    "No general tracking, lineage record, hyperparameter upload or model artefact upload is enabled by this declaration."
+  ],
+  "tracker": {
+    "name": "clearml",
+    "package": "clearml",
+    "locked_version": "2.1.12"
+  },
+  "authorization": {
+    "status": "user_authorized",
+    "mode": "hosted_metadata_only",
+    "remote_payloads": "metadata_only",
+    "offline_fallback": false
+  },
+  "endpoints": {
+    "web_server": "https://app.clear.ml",
+    "api_server": "https://api.clear.ml",
+    "files_server": "https://files.clear.ml"
+  },
+  "workspace": "Abdullah  Aamir's workspace",
+  "project": "ehr-evidence-app",
+  "configuration_file": {
+    "environment_variable": "CLEARML_CONFIG_FILE",
+    "scope": "process_local",
+    "path_recorded": false,
+    "contents_read_by_checker": false,
+    "inside_repository_permitted": false,
+    "override_variables_permitted": false
+  },
+  "payload_policy": {
+    "policy_file": "config/clearml_policy.json",
+    "remote_payloads": "metadata_only",
+    "protected_records": "local_w_only"
+  },
+  "synthetic_task": {
+    "task_name": "SYNTHETIC step-10 connection check",
+    "task_type": "testing",
+    "tags": ["synthetic", "step-10", "connection-check", "metadata-only"],
+    "comment": "SYNTHETIC Step 10 connection check. Metadata only; no patient, protected, prompt, response, attribution, model or data content.",
+    "max_tasks_per_run": 1,
+    "archive_after_creation": true,
+    "task_init_used": false,
+    "auto_connect_frameworks": false,
+    "auto_connect_arg_parser": false,
+    "auto_connect_streams": false,
+    "auto_resource_monitoring": false,
+    "detect_repository": false,
+    "capture_packages": false,
+    "capture_environment": false,
+    "upload_artifacts": false
+  },
+  "model_artefacts": {
+    "status": "not_enabled",
+    "upload_in_step_10": false,
+    "enablement_gate": "separate_step_10_11_policy_amendment",
+    "hyperparameters": "later_explicit_allowlist_only",
+    "requirements": [
+      "policy_amendment",
+      "dedicated_staging_path",
+      "artefact_manifest",
+      "privacy_review",
+      "explicit_enablement_gate"
+    ],
+    "manifest_fields": [
+      "logical_name",
+      "type",
+      "size_bytes",
+      "sha256",
+      "provenance",
+      "non_patient_non_secret_confirmation"
+    ],
+    "always_excluded": [
+      "data_files",
+      "samples",
+      "labels",
+      "prompts",
+      "patient_level_records",
+      "optimizer_state",
+      "cached_batches",
+      "tokenizer_inputs",
+      "debug_dumps",
+      "traces",
+      "arbitrary_training_directories",
+      "automatic_environment_capture",
+      "automatic_source_capture"
+    ]
+  }
+}

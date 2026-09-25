@@ -1,0 +1,137 @@
+{
+  "schema_version": "1.0",
+  "step": "9",
+  "purpose": "Publishable ClearML tracker and storage policy read by ehr_evidence_app.tracking.policy. It selects ClearML, records that remote tracking is not authorised, separates non-patient tracker metadata from protected case artefacts and names the lineage fields later steps must record. It holds no endpoint, workspace, project, account, credential or patient content.",
+  "notes": [
+    "Only this repository's config directory may supply this file.",
+    "Remote tracking stays not_authorized and offline_only until a later user-approved Step 10 configuration supplies the server, workspace, project and credentials.",
+    "Lineage fields are defined here only; no runtime, lineage or evaluation record exists because of this policy."
+  ],
+  "tracker": {
+    "name": "clearml",
+    "package": "clearml",
+    "locked_version": "2.1.12",
+    "selection_basis": "present_in_approved_application_lock",
+    "package_installed_implies_remote_enabled": false
+  },
+  "remote_tracking": {
+    "status": "not_authorized",
+    "mode": "offline_only",
+    "api_server": null,
+    "web_server": null,
+    "files_server": null,
+    "workspace": null,
+    "project": null,
+    "account": null,
+    "authorization_gate": "user_approved_step_10_configuration",
+    "service_contacted_in_step_9": false
+  },
+  "credential_handling": {
+    "source": "environment_variables_or_untracked_local_file",
+    "configured_in_step_9": false,
+    "values_in_policy": false,
+    "values_in_git": false,
+    "values_in_logs": false,
+    "values_in_tracker_payloads": false
+  },
+  "categories": {
+    "permitted_tracker_payloads": [
+      "non_patient_run_metadata",
+      "version_identifiers",
+      "code_fingerprints",
+      "configuration_fingerprints",
+      "evidence_schema_fingerprints",
+      "asset_fingerprints",
+      "aggregate_evaluation_metrics",
+      "aggregate_validation_metrics",
+      "aggregate_operational_metrics",
+      "protected_w_references",
+      "protected_w_checksums"
+    ],
+    "forbidden_tracker_payloads": [
+      "patient_records",
+      "patient_identifiers",
+      "raw_clinical_content",
+      "derived_clinical_content",
+      "prompts",
+      "llm_responses",
+      "attribution_text",
+      "case_level_outputs",
+      "credentials",
+      "tokens",
+      "model_files",
+      "data_files"
+    ]
+  },
+  "destinations": {
+    "tracker_metadata": {
+      "categories": "permitted_tracker_payloads",
+      "local_directory_key": "clearml_cache",
+      "root": "runtime",
+      "patient_bearing": false,
+      "remote_upload": "not_authorized",
+      "lineage_authority": false
+    },
+    "protected_case_artefacts": {
+      "categories": "forbidden_tracker_payloads",
+      "root_path": "G:\\Industry Dataset\\ehr-evidence-workspace",
+      "patient_bearing": true,
+      "sent_to_tracker": false,
+      "tracker_representation": "protected_w_references_and_checksums_only",
+      "lineage_authority": true
+    },
+    "runtime_cache": {
+      "root_path": "G:\\Industry Dataset\\ehr-evidence-runtime",
+      "use": "disposable_runtime_and_cache_only",
+      "protected_data_permitted": false,
+      "local_server_volumes_permitted": false
+    }
+  },
+  "local_server": {
+    "status": "not_deployed",
+    "volume_root_required": "G:\\Industry Dataset\\ehr-evidence-workspace",
+    "separate_verification_required": true
+  },
+  "lineage_fields": [
+    {
+      "name": "code_revision",
+      "tracked_as": "version_identifier",
+      "status": "defined_not_recorded"
+    },
+    {
+      "name": "case_set_version",
+      "tracked_as": "version_identifier",
+      "status": "defined_not_recorded"
+    },
+    {
+      "name": "llm_configuration",
+      "tracked_as": "fingerprint",
+      "status": "defined_not_recorded"
+    },
+    {
+      "name": "prompt_version",
+      "tracked_as": "version_identifier",
+      "status": "defined_not_recorded"
+    },
+    {
+      "name": "evidence_schema_version",
+      "tracked_as": "version_identifier",
+      "status": "defined_not_recorded"
+    },
+    {
+      "name": "validation_configuration",
+      "tracked_as": "fingerprint",
+      "status": "defined_not_recorded"
+    },
+    {
+      "name": "evaluation_outputs",
+      "tracked_as": "aggregate_and_protected_reference",
+      "status": "defined_not_recorded"
+    }
+  ],
+  "step_10": {
+    "sdk_configuration": "deferred_to_step_10",
+    "remote_authorization": "requires_user_approval",
+    "tracking_calls": "deferred_to_later_steps"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "step21-model-provenance",
+  "schema_version": "1.0",
+  "step": "21",
+  "output_version": "step-21-pilot10-v1",
+  "output_name": "provenance.json",
+  "records": 10,
+  "fingerprint": {
+    "algorithm": "sha256",
+    "canonical_json": {
+      "sort_keys": true,
+      "separators": [",", ":"],
+      "ensure_ascii": true,
+      "allow_nan": false
+    },
+    "excluded_top_level_keys": ["preparation"],
+    "version_prefix": "step21-prep-",
+    "version_hex_chars": 16
+  },
+  "required_flags": {
+    "phase4_eligible": false,
+    "history_only_claim_allowed": false,
+    "source_event_linkage": "absent",
+    "upstream_split_membership": "unknown",
+    "unseen_patient_status": "not_inferred",
+    "label_index_correspondence": "not_established",
+    "pre_target_only_input": false,
+    "history_attribution_assigned": false,
+    "inherited_values_copied": false,
+    "step20_outputs_modified": false
+  },
+  "notes": [
+    "The sidecar is patient-bearing: it holds protected patient and visit identifiers and stays in protected workspace storage.",
+    "Derived metadata only; inherited predicted_diagnosis and drivers values are never copied or changed."
+  ]
+}

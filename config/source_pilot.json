@@ -1,0 +1,175 @@
+{
+  "schema_version": "1.0",
+  "step": "0.3.2",
+  "purpose": "Selection rule, extraction scope, read-only source policy and validation expectations for the bounded development-only OMOP source pilot.",
+  "purpose_note": "Development-only engineering pilot used to supplement the filtered legacy exports with native event identifiers and verified selected-person coverage. It is NOT a final evaluation cohort and NOT a clinical quality target. The extracted files are raw protected preparation, not approved runtime evidence and not an explanation input-history policy.",
+  "policy": {
+    "required_destination_root": "G:\\Industry Dataset\\ehr-evidence-workspace",
+    "required_database": "mimiciv_omop",
+    "allowed_hosts": ["127.0.0.1", "::1", "localhost"],
+    "source_access": "read-only",
+    "path_components": "The version label and every file name written by this tool must each be a single safe path component: no absolute path, drive, separator, '..' or '.git'.",
+    "credentials": "PGHOST, PGPORT, PGDATABASE, PGUSER and PGPASSWORD are read from the process environment only. No credential file is opened, no credential value is printed, logged, passed as an argument or stored in any manifest. PGPASSFILE, PGSERVICE and PGSERVICEFILE are removed from the psql environment.",
+    "server_side_writes": "None. No DDL, no DML, no server-side COPY TO file, no raw database file access. Every extract is written client-side by psql \\copy into the protected version directory in the workspace."
+  },
+  "psql_executable": "C:\\Program Files\\PostgreSQL\\18\\bin\\psql.exe",
+  "destination_root": "G:\\Industry Dataset\\ehr-evidence-workspace\\protected-data\\source-pilot",
+  "version_label": "pilot-10-v1",
+  "cases": 10,
+  "cases_min": 1,
+  "cases_max": 100,
+  "schema": "omopcdm",
+  "visit_concept_ids": [9201, 9203, 262],
+  "min_qualifying_visits": 2,
+  "statement_timeout_ms": 120000,
+  "lock_timeout_ms": 30000,
+  "idle_in_transaction_timeout_ms": 300000,
+  "connect_timeout_seconds": 10,
+  "subprocess_timeout_seconds": 600,
+  "chunk_bytes": 8388608,
+  "manifest_name": "manifest.json",
+  "sql_name": "pilot_extract.sql",
+  "counts_file": "source_counts.csv",
+  "metadata_file": "transaction_metadata.csv",
+  "stdout_log_name": "psql_stdout.log",
+  "stderr_log_name": "psql_stderr.log",
+  "verification_report_name": "verification-report.json",
+  "tables": {
+    "person": {
+      "file": "persons.csv",
+      "source_table": "person",
+      "primary_key": "person_id",
+      "person_column": "person_id",
+      "identity_column": "subject_id",
+      "defines_cohort": true,
+      "order_by": ["person_id"],
+      "concept_columns": [],
+      "columns": [
+        ["person_id", "person_id"],
+        ["person_source_value", "subject_id"]
+      ]
+    },
+    "visit_occurrence": {
+      "file": "visits.csv",
+      "source_table": "visit_occurrence",
+      "primary_key": "visit_occurrence_id",
+      "person_column": "person_id",
+      "defines_visits": true,
+      "order_by": ["person_id", "visit_occurrence_id"],
+      "concept_columns": ["visit_concept_id"],
+      "columns": [
+        ["visit_occurrence_id", "visit_occurrence_id"],
+        ["person_id", "person_id"],
+        ["visit_concept_id", "visit_concept_id"],
+        ["visit_start_date", "visit_start_date"],
+        ["visit_start_datetime", "visit_start_datetime"],
+        ["visit_end_date", "visit_end_date"],
+        ["visit_end_datetime", "visit_end_datetime"],
+        ["visit_source_value", "visit_source_value"]
+      ]
+    },
+    "condition_occurrence": {
+      "file": "conditions.csv",
+      "source_table": "condition_occurrence",
+      "primary_key": "condition_occurrence_id",
+      "person_column": "person_id",
+      "visit_column": "visit_occurrence_id",
+      "order_by": ["person_id", "condition_occurrence_id"],
+      "concept_columns": [
+        "condition_concept_id",
+        "condition_source_concept_id"
+      ],
+      "columns": [
+        ["condition_occurrence_id", "condition_occurrence_id"],
+        ["person_id", "person_id"],
+        ["visit_occurrence_id", "visit_occurrence_id"],
+        ["condition_concept_id", "condition_concept_id"],
+        ["condition_start_date", "condition_start_date"],
+        ["condition_start_datetime", "condition_start_datetime"],
+        ["condition_end_date", "condition_end_date"],
+        ["condition_end_datetime", "condition_end_datetime"],
+        ["condition_source_value", "condition_source_value"],
+        ["condition_source_concept_id", "condition_source_concept_id"]
+      ]
+    },
+    "procedure_occurrence": {
+      "file": "procedures.csv",
+      "source_table": "procedure_occurrence",
+      "primary_key": "procedure_occurrence_id",
+      "person_column": "person_id",
+      "visit_column": "visit_occurrence_id",
+      "order_by": ["person_id", "procedure_occurrence_id"],
+      "concept_columns": [
+        "procedure_concept_id",
+        "procedure_source_concept_id"
+      ],
+      "columns": [
+        ["procedure_occurrence_id", "procedure_occurrence_id"],
+        ["person_id", "person_id"],
+        ["visit_occurrence_id", "visit_occurrence_id"],
+        ["procedure_concept_id", "procedure_concept_id"],
+        ["procedure_date", "procedure_date"],
+        ["procedure_datetime", "procedure_datetime"],
+        ["procedure_end_date", "procedure_end_date"],
+        ["procedure_end_datetime", "procedure_end_datetime"],
+        ["procedure_source_value", "procedure_source_value"],
+        ["procedure_source_concept_id", "procedure_source_concept_id"]
+      ]
+    },
+    "drug_exposure": {
+      "file": "drugs.csv",
+      "source_table": "drug_exposure",
+      "primary_key": "drug_exposure_id",
+      "person_column": "person_id",
+      "visit_column": "visit_occurrence_id",
+      "order_by": ["person_id", "drug_exposure_id"],
+      "concept_columns": ["drug_concept_id", "drug_source_concept_id"],
+      "columns": [
+        ["drug_exposure_id", "drug_exposure_id"],
+        ["person_id", "person_id"],
+        ["visit_occurrence_id", "visit_occurrence_id"],
+        ["drug_concept_id", "drug_concept_id"],
+        ["drug_exposure_start_date", "drug_exposure_start_date"],
+        ["drug_exposure_start_datetime", "drug_exposure_start_datetime"],
+        ["drug_exposure_end_date", "drug_exposure_end_date"],
+        ["drug_exposure_end_datetime", "drug_exposure_end_datetime"],
+        ["drug_source_value", "drug_source_value"],
+        ["drug_source_concept_id", "drug_source_concept_id"]
+      ]
+    }
+  },
+  "concept_table": {
+    "file": "concepts.csv",
+    "source_table": "concept",
+    "primary_key": "concept_id",
+    "label_column": "concept_name",
+    "columns": [
+      ["concept_id", "concept_id"],
+      ["concept_name", "concept_name"],
+      ["domain_id", "domain_id"],
+      ["vocabulary_id", "vocabulary_id"],
+      ["concept_class_id", "concept_class_id"],
+      ["standard_concept", "standard_concept"],
+      ["concept_code", "concept_code"]
+    ]
+  },
+  "scope": {
+    "selection": "The first N person_id values, ordered numerically, among persons having at least two distinct visit_occurrence rows whose visit_concept_id is 9201, 9203 or 262. N defaults to 10 and is bounded 1..100.",
+    "extraction": "For exactly those selected person_id values: every row of person, visit_occurrence, condition_occurrence, procedure_occurrence and drug_exposure. No visit-type filter, no date filter and no nonzero-concept filter is applied to the extracted rows; only the cohort selection itself uses the visit concept list.",
+    "preservation": "Null visit_occurrence_id links and repeated events are preserved exactly as the source returns them. Nothing is de-duplicated and nothing is dropped for a missing concept label.",
+    "concept_metadata": "Referenced visit/event standard and source concept ids are collected separately and left-joined to omopcdm.concept, so concept metadata can never multiply or drop event rows."
+  },
+  "coverage": {
+    "statement": "Coverage may be called complete ONLY within the queried OMOP tables (person, visit_occurrence, condition_occurrence, procedure_occurrence, drug_exposure) for the selected person_id values at this one transaction snapshot.",
+    "prohibition": "This is not a statement of clinical absence and not a statement of global EHR completeness. Other OMOP domains, other source systems and anything outside this snapshot are simply not queried.",
+    "source_dataset_version": "The identity and version of the source dataset loaded into this database are NOT independently verified by this step. Only the observed database name, schema, server version, isolation level, read-only settings and exported snapshot identifier are recorded."
+  },
+  "limitations": [
+    "Development-only pilot. The selected persons are an engineering sample, not a final evaluation cohort and not a clinical quality target.",
+    "The source dataset identity and version are not independently verified; only observed server and transaction metadata are recorded.",
+    "Referenced concept ids with no row in omopcdm.concept keep an empty concept_name and empty metadata columns. Missing labels are recorded as a limitation and are never fabricated, and the events that reference them are never deleted.",
+    "Events with a null visit_occurrence_id are preserved and counted. A null link means the source row has no visit link, not that the event is invalid.",
+    "Row counts are verified against independent count queries over unjoined source tables in the same transaction. That establishes internal consistency of this snapshot, not the correctness of the underlying ETL.",
+    "These files are raw protected preparation. They are not approved runtime evidence and they do not define any explanation input-history policy."
+  ]
+}

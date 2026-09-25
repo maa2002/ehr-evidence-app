@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0",
+  "step": "1",
+  "purpose": "Identity of the inherited upstream GNN baseline: the fixed upstream files, their expected sizes and SHA-256 values, the expected documentation metadata and the canonical run's expected reported values. Read by ehr_evidence_app.gnn.baseline; nothing upstream is executed.",
+  "upstream_root": "G:\\Industry Dataset\\standardized-omop-gnn-7B82",
+  "output_root": "G:\\Industry Dataset\\ehr-evidence-workspace\\outputs\\baselines",
+  "canonical_run": "diag_kg",
+  "documentation": {
+    "expected_title": "GNN Replication \u2014 Project Documentation",
+    "expected_last_updated": "2026-09-22"
+  },
+  "metrics": {
+    "expected_best_epoch": 42,
+    "reported_test_values": {
+      "macro_auroc": 0.9062469508269994,
+      "macro_auprc": 0.31301594151588924
+    },
+    "note": "reported_test_values labels are descriptive, not metrics.json key names; each value must appear among the top-level numeric entries of the reported test object."
+  },
+  "assets": [
+    {
+      "role": "documentation",
+      "relative_path": "GNN_Replication_Documentation.md",
+      "expected_size_bytes": 14277,
+      "expected_sha256": "C825B55A6F5A5A48C4F99B6511CBF88306C5CA54D9253450DD76D07D29042E26"
+    },
+    {
+      "role": "source_explain_patient",
+      "relative_path": "src\\gnn\\explain_patient.py",
+      "expected_size_bytes": 8582,
+      "expected_sha256": "1799F536C69D2312A4277F867F7836D7CD56DDC54A448F24924597199A3B87D9"
+    },
+    {
+      "role": "source_train",
+      "relative_path": "src\\gnn\\train.py",
+      "expected_size_bytes": 30887,
+      "expected_sha256": "EB412E5BEFF75371D30DE509AD7D8605F727BF9E25815D15D07CDAEBEBDEA6DF"
+    },
+    {
+      "role": "source_model",
+      "relative_path": "src\\gnn\\model.py",
+      "expected_size_bytes": 22789,
+      "expected_sha256": "558E1B83CCF7667896A8736B4916E2CD230A9878D83BB9DC7F806A7ACF75CFC6"
+    },
+    {
+      "role": "source_build_patient_graphs",
+      "relative_path": "src\\preprocess\\build_patient_graphs.py",
+      "expected_size_bytes": 17827,
+      "expected_sha256": "175AAF7335B72C41ECC262D88203E8000323FE60451C92E419EFFD47111D1F70"
+    },
+    {
+      "role": "canonical_checkpoint",
+      "relative_path": "data\\runs\\diag_kg\\checkpoints\\best_model.pt",
+      "expected_size_bytes": 19523207,
+      "expected_sha256": "5785E247D9A41D1D1534474D9771265EA0918767607C44B5DB9EA364D5326FE1"
+    },
+    {
+      "role": "canonical_metrics",
+      "relative_path": "data\\runs\\diag_kg\\results\\metrics.json",
+      "expected_size_bytes": 7752,
+      "expected_sha256": "C4382CA881BBC728DBC94236C262E66001C0E97E7BCB6E1FCBE6A0D4166B7A9D"
+    },
+    {
+      "role": "canonical_explanations",
+      "relative_path": "data\\runs\\diag_kg\\explanations.json",
+      "expected_size_bytes": 11665,
+      "expected_sha256": "1D28152A4491860E0AA4BD12B0E24A6EEC960CAE1E1DDE24A5FDEDBBB13C41A7"
+    },
+    {
+      "role": "patient_graphs",
+      "relative_path": "data\\processed\\patient_graphs.pt",
+      "expected_size_bytes": 756482261,
+      "expected_sha256": "A650F130E08DCFA472CD50985DFCF9D140772AEBCA40AC0F9B62E8103049DE8C"
+    },
+    {
+      "role": "concept_vocab",
+      "relative_path": "data\\processed\\concept_vocab.json",
+      "expected_size_bytes": 449469,
+      "expected_sha256": "4AC38FC78A194ABFD731CC38F178A83BB1C3C67782AA2734576FA41DBCC67A4E"
+    },
+    {
+      "role": "label_vocab",
+      "relative_path": "data\\processed\\label_vocab.json",
+      "expected_size_bytes": 2832,
+      "expected_sha256": "32C1E2DFE9FC89363F56D0B9A84EDF828173EC1286DBC597CDB8FF10E1993A57"
+    }
+  ],
+  "limitations": [
+    "The upstream directory has no .git metadata, so no revision or working-tree state can be recorded and the tree is not claimed to be clean. The SHA-256 content hashes of the listed files are the reproducible baseline surrogate.",
+    "Only the listed files are identified. Other upstream files are not part of this baseline.",
+    "All metric values are those reported by the inherited run's metrics.json. The downstream project did not train, evaluate, run inference or compute attributions to obtain them.",
+    "The checkpoint, patient graphs, explanations and vocabularies are identified by filesystem metadata and SHA-256 only. They are not loaded, deserialised or validated as model or data objects.",
+    "diag_kg is identified as the OMOP + KG run only because its metrics.json reports data_source=omop and no_kg=false. Nothing further about graph construction or KG content is inferred.",
+    "Checks are made at one moment. A change between a check and a read is detected only as a size or modification-time change while a file is hashed."
+  ]
+}

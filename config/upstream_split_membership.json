@@ -1,0 +1,74 @@
+{
+  "schema": "step22-upstream-split-membership",
+  "schema_version": "1.1",
+  "step": "22",
+  "output_version": "step-22-pilot10-v2",
+  "output_name": "split-membership.json",
+  "statuses": ["verified", "unknown", "unavailable"],
+  "partitions": ["train", "validation", "test"],
+  "count_statuses": ["computed", "unknown", "unavailable"],
+  "required_saved_arguments": {
+    "task": "str",
+    "data_source": "str",
+    "no_kg": "bool",
+    "graphs_path": "str",
+    "seed": "int",
+    "val_frac": "float",
+    "test_frac": "float"
+  },
+  "saved_argument_sources": ["checkpoint.args", "metrics.args"],
+  "expected_run": {
+    "task": "diagnosis",
+    "data_source": "omop",
+    "no_kg": false
+  },
+  "graphs_path_rule": {
+    "accepted_form": "exact_absolute_canonical_path_under_pinned_upstream_root",
+    "reference": "data\\processed\\patient_graphs.pt",
+    "separators_normalised": true,
+    "case_insensitive": true,
+    "relative_path_status": "unavailable_without_run_recorded_working_directory"
+  },
+  "rng_provenance": {
+    "schema": "canonical-run-rng-provenance",
+    "attribution": "original_canonical_run_artifact",
+    "bit_generator": "PCG64"
+  },
+  "run_graph_binding": {
+    "schema": "canonical-run-graph-binding",
+    "attributions": ["original_canonical_run_artifact", "approved_immutable_run_manifest"]
+  },
+  "checkpoint_loading": {
+    "weights_only": true,
+    "map_location": "cpu",
+    "fallback": null
+  },
+  "fingerprint": {
+    "algorithm": "sha256",
+    "canonical_json": {
+      "sort_keys": true,
+      "separators": [",", ":"],
+      "ensure_ascii": true,
+      "allow_nan": false
+    },
+    "excluded_top_level_keys": ["preparation"],
+    "version_prefix": "step22-prep-",
+    "version_hex_chars": 16
+  },
+  "required_flags": {
+    "phase4_eligible": false,
+    "upstream_training_exposure": "not_inferred",
+    "unseen_patient_status": "not_inferred",
+    "downstream_partition_used": false,
+    "defaults_substituted": false,
+    "inherited_values_copied": false,
+    "step21_modified": false
+  },
+  "notes": [
+    "The sidecar is patient-bearing: it holds protected patient indices linked to Step 21 records and stays in protected workspace storage.",
+    "Parser defaults, documentation, published counts, index ranges and downstream partitions are never evidence of upstream membership.",
+    "Without a run-attributed random-generator identity and a run-attributed graph-byte binding every case is unavailable with a null partition.",
+    "A canonical saved graphs_path and the downstream Step 17/19/21 graph chain are not evidence of the graph bytes training read.",
+    "Expected configuration counts are for the pinned Step 19 collection, not historically verified partition counts, and never set a case partition."
+  ]
+}

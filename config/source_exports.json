@@ -1,0 +1,99 @@
+{
+  "schema_version": "1.0",
+  "step": "0.3.1",
+  "purpose": "Selection, integrity rules and audit expectations for staging the existing core OMOP CSV exports into the protected workspace.",
+  "policy": {
+    "required_destination_root": "G:\\Industry Dataset\\ehr-evidence-workspace",
+    "path_components": "The version label, every selected file name and the manifest file name must each be a single safe path component: no absolute path, drive, separator, '..' or '.git'.",
+    "source_read_access": "read-only",
+    "source_scan": "Only the five named files are opened or stat'ed. The source directory is never listed and other exports are deliberately excluded."
+  },
+  "source_dir": "C:\\omop_export",
+  "destination_root": "G:\\Industry Dataset\\ehr-evidence-workspace\\protected-data\\source-exports",
+  "version_label": "legacy-export-20260901-v1",
+  "manifest_name": "manifest.json",
+  "chunk_bytes": 8388608,
+  "expected_total_bytes_approximate": 3440000000,
+  "tables": {
+    "clinical_visits": {
+      "file": "clinical_visits.csv",
+      "required_headers": [
+        "subject_id",
+        "person_id",
+        "hadm_id",
+        "hadm_source_id",
+        "admittime",
+        "dischtime",
+        "visit_start_datetime",
+        "visit_end_datetime",
+        "visit_concept_id",
+        "visit_index"
+      ],
+      "required_identity_fields": ["subject_id", "person_id", "hadm_id"]
+    },
+    "clinical_conditions": {
+      "file": "clinical_conditions.csv",
+      "required_headers": [
+        "subject_id",
+        "person_id",
+        "hadm_id",
+        "condition_start_date",
+        "condition_concept_id",
+        "condition_name"
+      ],
+      "required_identity_fields": ["subject_id", "person_id", "hadm_id"]
+    },
+    "clinical_procedures": {
+      "file": "clinical_procedures.csv",
+      "required_headers": [
+        "subject_id",
+        "person_id",
+        "hadm_id",
+        "procedure_date",
+        "procedure_concept_id",
+        "procedure_name"
+      ],
+      "required_identity_fields": ["subject_id", "person_id", "hadm_id"]
+    },
+    "clinical_drugs": {
+      "file": "clinical_drugs.csv",
+      "required_headers": [
+        "subject_id",
+        "person_id",
+        "hadm_id",
+        "drug_exposure_start_date",
+        "drug_exposure_end_date",
+        "drug_concept_id",
+        "drug_name"
+      ],
+      "required_identity_fields": ["subject_id", "person_id", "hadm_id"]
+    },
+    "kg_concepts": {
+      "file": "kg_concepts.csv",
+      "required_headers": [
+        "concept_id",
+        "concept_name",
+        "domain_id",
+        "vocabulary_id"
+      ],
+      "required_identity_fields": ["concept_id"]
+    }
+  },
+  "export_sql_reference": {
+    "path": "G:\\Industry Dataset\\standardized-omop-gnn-7B82\\OHDSI_MIMIC\\export\\01_export_clinical_events.sql",
+    "sha256": "CDA329BC2863D8E27309F7C959C257DE925975727D7A38042CD5D9329E90ACFD",
+    "note": "Read-only reference, neither executed nor modified in this step. The semantics below are findings from reading that source code. The original execution provenance of the existing CSV files is not established: there is no evidence tying these files to a specific run of this SQL."
+  },
+  "known_export_semantics": [
+    "Cohort restriction: the SQL selects people with at least two visits whose visit_concept_id is 9201, 9203 or 262, and exports only those visits and the events linked to them. Anything outside that cohort and those visits is absent by construction.",
+    "clinical_visits.hadm_id is the OMOP visit_occurrence_id, not a MIMIC hadm_id. hadm_source_id carries visit_source_value.",
+    "The next-visit join used to derive readmission fields can duplicate visit rows. Repeated rows are therefore expected and are preserved unchanged by staging.",
+    "Derived fields visit_index, mortality and readmission must not be treated as authoritative source coverage or as prediction boundaries. They are products of the export query.",
+    "Native primary keys for condition, procedure and drug events (condition_occurrence_id, procedure_occurrence_id, drug_exposure_id) are absent from these CSVs, so individual events cannot be traced back to source rows from this archive alone."
+  ],
+  "completeness": {
+    "status": "unverified",
+    "note": "File integrity verification establishes only that the staged bytes match the bytes read from the existing export. It does not establish that the export is a complete or faithful view of the source database.",
+    "prohibition": "This archive alone must not be used to support complete-negative QA claims (for example 'the patient has no record of X'). Step 0.3.2 performs bounded read-only source extraction with native identifiers and coverage checks."
+  }
+}

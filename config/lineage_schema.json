@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "step": "14",
+  "node_types": ["inherited_input", "evidence_preparation", "generation_configuration", "evaluation_output", "application_version"],
+  "required_order": ["inherited_input", "evidence_preparation", "generation_configuration", "evaluation_output", "application_version"],
+  "statuses": ["defined", "prepared", "completed", "failed", "abstained"],
+  "reference_required_node_types": ["inherited_input", "evidence_preparation", "generation_configuration", "evaluation_output"],
+  "protected_root": "G:\\Industry Dataset\\ehr-evidence-workspace",
+  "required_fields": ["record_id", "chain_id", "node_type", "version", "status", "predecessors"],
+  "notes": ["References and checksums only; patient-bearing content remains protected."]
+}
