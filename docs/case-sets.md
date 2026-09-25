@@ -41,6 +41,17 @@ index, so anyone can repeat the draw. Cases that later fail admission are
 reported with their reasons, never replaced, so the sample is not shaped by
 the pipeline's own outcomes.
 
+## Drawn case sets
+
+| Case set | Partition size | Eligible | Excluded (pilot) | Selected | Visit nodes (min / median / max / total) |
+| --- | --- | --- | --- | --- | --- |
+| `dev-30-v1` | 10,016 | 10,016 | 0 | 30 | 2 / 3 / 14 / 124 |
+| `eval-100-v1` | 15,024 | 15,022 | 2 | 100 | 2 / 3 / 29 / 437 |
+
+Every partition replay matched the run-binding digests. The two excluded
+evaluation-partition cases are exactly the pilot's two test-partition
+cases. The selection records are pinned in `casesets.registry`.
+
 ## Stages
 
 Each stage publishes one new protected record per case set and never

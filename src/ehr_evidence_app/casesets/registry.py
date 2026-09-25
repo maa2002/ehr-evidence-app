@@ -83,8 +83,14 @@ CONFIG = {
 # (size in bytes, SHA-256) of each published stage record, pinned after
 # its run; None until then.
 PINS = {
-    "dev-30-v1": {"selection": None},
-    "eval-100-v1": {"selection": None},
+    "dev-30-v1": {
+        "selection": (6696, "593899ea2fe1a479aed7720ddcc5fa5a"
+                            "87d2c61c677b015b985a72dac0b0f3fd"),
+    },
+    "eval-100-v1": {
+        "selection": (17696, "f8d385dc3b2c69b1d024fc55e9f2e0ca"
+                             "a2505aea00a53b3754f820b00632ad36"),
+    },
 }
 
 

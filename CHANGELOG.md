@@ -17,6 +17,7 @@ change interfaces.
   partitions, verified against the run-binding record.
 - `sources.pilot --case-set`: extraction of exactly the subjects of a
   pinned case-set selection.
+- Drawn and pinned selections for `dev-30-v1` and `eval-100-v1`.
 
 ## [0.4.0] - 2026-09-26
 
