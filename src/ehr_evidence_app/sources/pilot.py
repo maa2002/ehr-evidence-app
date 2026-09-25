@@ -35,9 +35,17 @@ source policy in the configuration, the connection settings (PGHOSTADDR,
 service and conninfo redirects are refused) and the psql path. psql runs
 from an allow-listed environment whose PGOPTIONS is always the forced one.
 
+A case set of ehr_evidence_app.casesets.registry is extracted the same way,
+with one difference: the cohort is exactly the subjects of the case set's
+pinned selection record (matched on the person table's identity source
+value), and the version is written under the case-set snapshot root with the
+case-set label. The manifest records the selection record's digest and the
+case set's own purpose statement.
+
 Usage:
     python -m ehr_evidence_app.sources.pilot [--version-label LABEL] [--cases N]
     python -m ehr_evidence_app.sources.pilot --verify-only [--version-label L]
+    python -m ehr_evidence_app.sources.pilot --case-set LABEL [--verify-only]
 """
 
 from __future__ import annotations
@@ -52,6 +60,7 @@ import re
 import subprocess
 import sys
 
+from ehr_evidence_app.casesets import registry
 from ehr_evidence_app.storage import policy as guard
 
 VERSION = "0.3.2"
@@ -293,8 +302,37 @@ def qualified(config, table):
     return "%s.%s" % (config["schema"], table)
 
 
-def cohort_cte(config, cases):
-    """Return the deterministic cohort CTE shared by every statement."""
+def identity_source_column(config):
+    """Return the person-table source column behind the identity column."""
+    spec = config["tables"]["person"]
+    for source, out in spec["columns"]:
+        if out == spec["identity_column"]:
+            return source
+    raise ValueError("the person table has no identity source column")
+
+
+def cohort_cte(config, cases, subjects=None):
+    """Return the cohort CTE shared by every statement.
+
+    Without subjects this is the deterministic development-pilot rule. With
+    subjects (a case-set selection) the cohort is exactly the persons whose
+    identity source value is one of the subject identifiers; each must be a
+    strict positive integer and is rendered as quoted decimal text, so no
+    other text can reach the SQL.
+    """
+    if subjects is not None:
+        if (not isinstance(subjects, tuple) or not subjects
+                or len(subjects) != cases
+                or len(set(subjects)) != len(subjects)
+                or not all(type(value) is int and value > 0
+                           for value in subjects)):
+            raise ValueError("the explicit cohort is invalid")
+        values = ", ".join("'%d'" % value for value in subjects)
+        return ("WITH cohort AS (SELECT p.person_id FROM %s p WHERE "
+                "p.%s IN (%s))"
+                % (qualified(config, config["tables"]["person"][
+                    "source_table"]), identity_source_column(config),
+                   values))
     concepts = ", ".join(str(int(v)) for v in config["visit_concept_ids"])
     return ("WITH cohort AS (SELECT v.person_id FROM %s v WHERE "
             "v.visit_concept_id IN (%s) GROUP BY v.person_id HAVING "
@@ -309,7 +347,7 @@ def person_filter(spec):
     return "t.%s IN (SELECT person_id FROM cohort)" % spec["person_column"]
 
 
-def table_query(config, spec, cases):
+def table_query(config, spec, cases, subjects=None):
     """Return the extraction query for one source table.
 
     The cohort is applied as a semi-join predicate, never as a join, so the
@@ -319,7 +357,7 @@ def table_query(config, spec, cases):
                         for source, out in spec["columns"])
     order = ", ".join("t.%s" % column for column in spec["order_by"])
     return ("%s SELECT %s FROM %s t WHERE %s ORDER BY %s"
-            % (cohort_cte(config, cases), columns,
+            % (cohort_cte(config, cases, subjects), columns,
                qualified(config, spec["source_table"]), person_filter(spec),
                order))
 
@@ -337,7 +375,7 @@ def referenced_cte(config):
     return "referenced AS (%s)" % " UNION ".join(branches)
 
 
-def concept_query(config, cases):
+def concept_query(config, cases, subjects=None):
     """Return the referenced-concept metadata query.
 
     A LEFT JOIN on the concept primary key keeps every referenced id exactly
@@ -350,11 +388,11 @@ def concept_query(config, cases):
                 for source, out in spec["columns"][1:]]
     return ("%s, %s SELECT %s FROM referenced r LEFT JOIN %s c ON "
             "c.concept_id = r.concept_id ORDER BY r.concept_id"
-            % (cohort_cte(config, cases), referenced_cte(config),
+            % (cohort_cte(config, cases, subjects), referenced_cte(config),
                ", ".join(columns), qualified(config, spec["source_table"])))
 
 
-def counts_query(config, cases):
+def counts_query(config, cases, subjects=None):
     """Return the independent row counts over unjoined source tables."""
     parts = ["(SELECT count(*) FROM cohort) AS %s" % COHORT_KEY]
     for name, spec in config["tables"].items():
@@ -362,7 +400,7 @@ def counts_query(config, cases):
                      % (qualified(config, spec["source_table"]),
                         person_filter(spec), name))
     parts.append("(SELECT count(*) FROM referenced) AS %s" % CONCEPT_KEY)
-    return ("%s, %s SELECT %s" % (cohort_cte(config, cases),
+    return ("%s, %s SELECT %s" % (cohort_cte(config, cases, subjects),
                                   referenced_cte(config), ", ".join(parts)))
 
 
@@ -410,7 +448,7 @@ def copy_targets(config, version_dir, suffix):
     return targets
 
 
-def build_sql(config, cases, targets):
+def build_sql(config, cases, targets, subjects=None):
     """Assemble the single read-only transaction executed by psql.
 
     Statement order matters: the metadata select runs first, so the recorded
@@ -433,13 +471,13 @@ def build_sql(config, cases, targets):
         "SET LOCAL idle_in_transaction_session_timeout = %d;" % int(
             config["idle_in_transaction_timeout_ms"]),
         copy_line(metadata_query(), targets[config["metadata_file"]]),
-        copy_line(counts_query(config, cases),
+        copy_line(counts_query(config, cases, subjects),
                   targets[config["counts_file"]]),
     ]
     for name, spec in config["tables"].items():
-        lines.append(copy_line(table_query(config, spec, cases),
+        lines.append(copy_line(table_query(config, spec, cases, subjects),
                                targets[name]))
-    lines.append(copy_line(concept_query(config, cases),
+    lines.append(copy_line(concept_query(config, cases, subjects),
                            targets[CONCEPT_KEY]))
     lines.append("COMMIT;")
     return "\n".join(lines) + "\n"
@@ -738,15 +776,49 @@ def promote(version_dir, config, suffix):
                    os.path.join(version_dir, name))
 
 
-def build_meta(config, config_path, version_dir, label, cases, psql_path):
+def case_set_selection(case_set, cases):
+    """Return the manifest selection block of a case-set extraction."""
+    value = case_set["spec"]
+    return {
+        "cases_requested": cases,
+        "rule": ("exactly the %d subjects of case-set selection %s, matched "
+                 "on the person table's identity source value"
+                 % (cases, case_set["label"])),
+        "case_set": {"label": case_set["label"],
+                     "purpose": value["purpose"],
+                     "partition": value["partition"],
+                     "selection_record": case_set["selection_record"]},
+        "purpose": value["statement"]}
+
+
+def build_meta(config, config_path, version_dir, label, cases, psql_path,
+               case_set=None):
     """Assemble the provenance block recorded in every manifest.
 
     No credential value is included: the recorded connection facts are the
     validated loopback host, the port, the required database name and the
-    psql path.
+    psql path. A case-set extraction records its selection record and
+    replaces the pilot's selection text and purpose limitation with the
+    case set's own.
     """
     chunk = int(config["chunk_bytes"])
     script = os.path.abspath(__file__)
+    selection = {
+        "cases_requested": cases,
+        "visit_concept_ids": config["visit_concept_ids"],
+        "min_qualifying_visits": config["min_qualifying_visits"],
+        "rule": ("the first %d person_id values, ordered numerically, "
+                 "among persons with at least %d distinct visits whose "
+                 "visit_concept_id is in %s"
+                 % (cases, config["min_qualifying_visits"],
+                    config["visit_concept_ids"])),
+        "purpose": config["purpose_note"]}
+    scope = config["scope"]
+    limitations = config["limitations"]
+    if case_set is not None:
+        selection = case_set_selection(case_set, cases)
+        scope = dict(scope, selection=selection["rule"])
+        limitations = [selection["purpose"]] + list(limitations[1:])
     return {
         "version_label": label,
         "version_directory": version_dir,
@@ -754,16 +826,7 @@ def build_meta(config, config_path, version_dir, label, cases, psql_path):
                               "sha256": sha256_file(script, chunk)},
         "configuration": {"path": os.path.abspath(config_path),
                           "sha256": sha256_file(config_path, chunk)},
-        "selection": {
-            "cases_requested": cases,
-            "visit_concept_ids": config["visit_concept_ids"],
-            "min_qualifying_visits": config["min_qualifying_visits"],
-            "rule": ("the first %d person_id values, ordered numerically, "
-                     "among persons with at least %d distinct visits whose "
-                     "visit_concept_id is in %s"
-                     % (cases, config["min_qualifying_visits"],
-                        config["visit_concept_ids"])),
-            "purpose": config["purpose_note"]},
+        "selection": selection,
         "connection": {
             "host": os.environ.get("PGHOST", ""),
             "port": os.environ.get("PGPORT", ""),
@@ -775,9 +838,9 @@ def build_meta(config, config_path, version_dir, label, cases, psql_path):
             "loopback_only": True,
             "psql_executable": psql_path,
             "credentials": config["policy"]["credentials"]},
-        "scope": config["scope"],
+        "scope": scope,
         "coverage": config["coverage"],
-        "limitations": config["limitations"]}
+        "limitations": limitations}
 
 
 def build_manifest(meta, run_state, status, extras=None):
@@ -841,14 +904,17 @@ def report(records, summary, manifest, manifest_path, problems=()):
 # Commands
 # --------------------------------------------------------------------------
 
-def extract(config, args, version_dir, label, cases, psql_path):
+def extract(config, args, version_dir, label, cases, psql_path,
+            case_set=None):
     """Run the bounded extraction into a new version directory.
 
     The version directory is created only after containment checks pass, an
     explicitly incomplete manifest is written before psql starts, and the
     extracts are promoted from their partial names only once psql has finished
-    and local validation has succeeded.
+    and local validation has succeeded. A case-set extraction selects exactly
+    the subjects of its verified selection record.
     """
+    subjects = case_set["subjects"] if case_set else None
     if os.path.exists(version_dir):
         print("FAILED: the version directory already exists; extraction "
               "never overwrites a version. Choose a new --version-label or "
@@ -862,7 +928,7 @@ def extract(config, args, version_dir, label, cases, psql_path):
     os.makedirs(version_dir)
     manifest_path = os.path.join(version_dir, config["manifest_name"])
     meta = build_meta(config, args.config, version_dir, label, cases,
-                      psql_path)
+                      psql_path, case_set)
     write_json(manifest_path, build_manifest(
         meta, "initial", "incomplete",
         {"note": "extraction has not started; nothing in this directory is "
@@ -871,7 +937,7 @@ def extract(config, args, version_dir, label, cases, psql_path):
     sql_path = os.path.join(version_dir, config["sql_name"])
     targets = copy_targets(config, version_dir, PARTIAL)
     with open(sql_path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(build_sql(config, cases, targets))
+        handle.write(build_sql(config, cases, targets, subjects))
     meta["generated_sql"] = {
         "path": sql_path,
         "sha256": sha256_file(sql_path, int(config["chunk_bytes"]))}
@@ -980,13 +1046,15 @@ def integrity_problems(recorded, config, version_dir, config_sha):
     return problems, changed
 
 
-def verify_only(config, args, version_dir, label, cases):
+def verify_only(config, args, version_dir, label, cases, case_set=None):
     """Re-validate a completed snapshot locally without any database access.
 
     Success requires a valid completed manifest whose hash/size records match
     every file on disk and whose configuration SHA256 matches the current
-    configuration, plus a passing re-validation of the files. The manifest is
-    never rewritten; a separate verification report is written beside it.
+    configuration, plus a passing re-validation of the files. A case-set
+    snapshot must also record the currently pinned selection record. The
+    manifest is never rewritten; a separate verification report is written
+    beside it.
     """
     manifest_path = os.path.join(version_dir, config["manifest_name"])
     if not os.path.isdir(version_dir):
@@ -1001,6 +1069,13 @@ def verify_only(config, args, version_dir, label, cases):
         sha256_file(args.config, int(config["chunk_bytes"])))
     selection = recorded.get("selection") if isinstance(
         recorded, dict) else None
+    if case_set is not None:
+        recorded_set = (selection or {}).get("case_set") or {}
+        if (recorded_set.get("label") != case_set["label"]
+                or (recorded_set.get("selection_record") or {}).get("sha256")
+                != case_set["selection_record"]["sha256"]):
+            problems.append("manifest does not record the pinned case-set "
+                            "selection")
     if args.cases is None and isinstance(selection, dict):
         recorded_cases = selection.get("cases_requested")
         if cases_problem(config, recorded_cases) is None:
@@ -1044,7 +1119,23 @@ def build_parser():
                         help="seconds allowed for the whole psql run")
     parser.add_argument("--verify-only", action="store_true",
                         help="re-validate an existing snapshot locally")
+    parser.add_argument("--case-set",
+                        help="extract exactly the subjects of this "
+                             "case set's pinned selection record")
     return parser
+
+
+def case_set_cohort(label, entry=None):
+    """Return the case-set block for an extraction of one case set.
+
+    The committed registry must mirror the code, and the selection record
+    is read through its pin; its subjects are returned in ascending order.
+    """
+    registry.load_config()
+    value = registry.spec(label)
+    cases, reference = registry.read_selection(label, entry)
+    return {"label": label, "spec": value, "selection_record": reference,
+            "subjects": tuple(sorted(case[3] for case in cases))}
 
 
 def run(args):
@@ -1054,10 +1145,27 @@ def run(args):
     either mode writes anything or attempts a connection.
     """
     config = load_config(args.config)
-    cases = config["cases"] if args.cases is None else args.cases
+    case_set = None
+    if args.case_set is not None:
+        if args.cases is not None or args.version_label not in (
+                None, args.case_set):
+            print("FAILED: --case-set fixes the case count and the version "
+                  "label")
+            return 1
+        try:
+            case_set = case_set_cohort(args.case_set)
+        except registry.RegistryError as error:
+            print("FAILED: case-set selection: %s" % error)
+            return 1
+        cases = len(case_set["subjects"])
+        label = args.case_set
+        default_root = registry.SNAPSHOT_ROOT
+    else:
+        cases = config["cases"] if args.cases is None else args.cases
+        label = args.version_label or config["version_label"]
+        default_root = config["destination_root"]
     if args.subprocess_timeout is None:
         args.subprocess_timeout = int(config["subprocess_timeout_seconds"])
-    label = args.version_label or config["version_label"]
     psql_path = args.psql or config["psql_executable"]
 
     problem = (config_problem(config) or source_config_problem(config)
@@ -1073,7 +1181,7 @@ def run(args):
         print("FAILED: the subprocess timeout must be a positive number of "
               "seconds")
         return 1
-    raw_root = args.dest_root or config["destination_root"]
+    raw_root = args.dest_root or default_root
     problem = guard.path_problem(raw_root)
     if problem:
         print("FAILED: destination root: %s" % problem)
@@ -1087,8 +1195,9 @@ def run(args):
         return 1
 
     if args.verify_only:
-        return verify_only(config, args, version_dir, label, cases)
-    return extract(config, args, version_dir, label, cases, psql_path)
+        return verify_only(config, args, version_dir, label, cases, case_set)
+    return extract(config, args, version_dir, label, cases, psql_path,
+                   case_set)
 
 
 def main(argv=None):

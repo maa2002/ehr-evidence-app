@@ -157,7 +157,12 @@ $env:PGPASSWORD = "<password>"   # process environment only
 ```
 
 Options: `--version-label`, `--cases`, `--dest-root`, `--config`, `--psql`,
-`--subprocess-timeout`, `--verify-only`.
+`--subprocess-timeout`, `--verify-only`, `--case-set`.
+
+With `--case-set <label>` the same extraction selects exactly the subjects
+of that case set's pinned selection record instead of the first *N*
+qualifying persons, and writes to `protected-data\source-casesets\<label>`;
+see [case-sets.md](case-sets.md).
 
 **Coverage.** Within the five queried tables, for the selected persons, at
 the recorded snapshot, absence is observable because no filter beyond the
@@ -185,8 +190,8 @@ validated connection variables and the forced options. An inherited
 
 ## Limitations
 
-- The pilot is 10 persons; evaluation needs a larger, separately versioned
-  case set.
+- The pilot is 10 persons; evaluation uses the larger, separately versioned
+  case sets of [case-sets.md](case-sets.md).
 - Referenced concepts missing from `concept` keep empty names; labels are
   never fabricated.
 - Row-count agreement shows internal consistency of a snapshot, not ETL

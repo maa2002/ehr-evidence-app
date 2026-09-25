@@ -77,6 +77,7 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `sources` | Staging of the legacy OMOP exports; bounded read-only extraction from the OMOP database | `exports`, `pilot` |
 | `gnn` | Inherited GNN baseline, asset validation, identity mapping, preprocessing parity, offline outputs, provenance, split membership, run binding, Phase 3 closure, driver-to-event linkage | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission`, `linkage` |
 | `evidence` | Request and response contracts, evidence records, snapshot and case readers, readable names, scoped retrieval, claim policy, QA and explanation bundles | `vocabulary`, `contracts`, `schema`, `readers`, `concepts`, `retrieval`, `policy`, `bundles` |
+| `casesets` | Case-set registry and seeded case-set selection | `registry`, `selection` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
@@ -102,6 +103,7 @@ fixed roots and allowlists live in code.
 | `phase3_closure.json` | `gnn.admission` | Closure policy: admission scope, label layers, driver tags, claim policy, superseded flags |
 | `evidence_policy.json` | `evidence.policy`, `evidence.bundles` | Evidence claim policy extending the closure policy for linked events |
 | `execution_limits.json` | `evidence.contracts`, `evidence.bundles` | Request and bundle execution limits, within fixed ceilings |
+| `case_sets.json` | `casesets.registry`, `casesets.selection`, `sources.pilot` | Case-set purposes, partitions, sizes, seeds, eligibility and draw rule |
 | `clearml_policy.json` | `tracking.policy` | Tracker payload and storage policy |
 | `clearml_connection.json` | `tracking.connection` | Hosted ClearML declaration |
 | `lineage_schema.json` | `tracking.lineage` | Lineage chain schema |
@@ -165,6 +167,8 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | Phase 3 closure | `gnn.admission` | `protected-data\model-provenance\phase3-closure-v1` |
 | 28 | `gnn.linkage` | `protected-data\evidence\event-linkage-pilot10-v1` |
 | 29, 30 | `evidence.bundles` | `protected-data\evidence-bundles\pilot10-v1` |
+| 30.1 | `casesets.selection` | `protected-data\case-sets\<case set>` |
+| 30.1 | `sources.pilot --case-set` | `protected-data\source-casesets\<case set>` |
 
 Work items 16 (bridge output contract) and 18 (target and history policy)
 are specifications; they are described in

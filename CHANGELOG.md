@@ -5,6 +5,19 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
+## [Unreleased]
+
+### Added
+
+- `casesets.registry`: the case-set registry (`config/case_sets.json`) with
+  the development set `dev-30-v1` (upstream validation partition) and the
+  evaluation set `eval-100-v1` (upstream test partition), fixed before any
+  draw ([case sets](docs/case-sets.md)).
+- `casesets.selection`: seeded case-set selection from the upstream
+  partitions, verified against the run-binding record.
+- `sources.pilot --case-set`: extraction of exactly the subjects of a
+  pinned case-set selection.
+
 ## [0.4.0] - 2026-09-26
 
 Record evidence for the development pilot (Phase 4, work items 23 to 30),
@@ -97,5 +110,6 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/maa2002/ehr-evidence-app/tree/v0.3.0

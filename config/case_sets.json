@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Case-set registry: the purpose, upstream partition, size, draw seed and eligibility of every case set, fixed before anything is drawn. Read by ehr_evidence_app.casesets.registry, which refuses to run unless these values equal the ones it implements.",
+  "draw_rule": "Eligible cases are ranked by the SHA-256 of the text '<label>:<seed>:<patient_index>' and the first <size> are taken; case numbers follow ascending patient_index. Cases that later fail admission are reported, never replaced.",
+  "eligibility": [
+    "the graph lies in the named upstream partition, by the split replay verified against the run-binding record",
+    "the graph carries y_diagnosis (the bridge filter)",
+    "the graph has a readable subject_id and at least min_visit_nodes visit nodes, each with a readable visit identifier",
+    "the case does not belong to an excluded case set"
+  ],
+  "case_sets": {
+    "dev-30-v1": {
+      "purpose": "development",
+      "partition": "validation",
+      "size": 30,
+      "seed": 20260926,
+      "min_visit_nodes": 2,
+      "excluded_case_sets": [
+        "pilot-10-v1"
+      ],
+      "statement": "Development case set: an engineering sample for building and tuning the application. It is not an evaluation cohort and not a clinical quality target."
+    },
+    "eval-100-v1": {
+      "purpose": "evaluation",
+      "partition": "test",
+      "size": 100,
+      "seed": 20260927,
+      "min_visit_nodes": 2,
+      "excluded_case_sets": [
+        "pilot-10-v1"
+      ],
+      "statement": "Evaluation case set: drawn once from the upstream test partition and held for the final evaluation; never used for development or tuning. It is not a clinical quality target."
+    }
+  }
+}

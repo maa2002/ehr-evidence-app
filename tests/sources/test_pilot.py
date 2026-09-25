@@ -9,6 +9,7 @@ directories are created only under the configured workspace test temp directory.
 
 import copy
 import csv
+import hashlib
 import io
 import json
 import os
@@ -17,10 +18,12 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest import mock
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 
+from ehr_evidence_app.casesets import registry  # noqa: E402
 from ehr_evidence_app.storage import policy as guard  # noqa: E402
 from ehr_evidence_app.sources import pilot as pilot  # noqa: E402
 
@@ -1054,6 +1057,123 @@ class PilotTestCase(unittest.TestCase):
                                ("psql.exe", "absolute")):
             code, output = self.run_cli(extra=["--psql", path])
             self.assert_refused_before_anything(code, output, expected)
+
+    # -- case-set cohorts --------------------------------------------------
+
+    CASE_SET = "synthetic-2-v1"
+    CASE_SPEC = {"purpose": "evaluation", "partition": "test", "size": 2,
+                 "seed": 3, "min_visit_nodes": 2, "excluded_case_sets": [],
+                 "statement": "Synthetic case set statement."}
+
+    def register_case_set(self, cases=None):
+        """Register an invented case set and pin its selection record."""
+        path = os.path.join(self.work, "synthetic-selection.json")
+        document = {"schema": registry.SELECTION_SCHEMA,
+                    "case_set": self.CASE_SET, "spec": self.CASE_SPEC,
+                    "cases": cases or [
+                        {"case_number": 1, "patient_index": 3,
+                         "graph_position": 3, "subject_id": 11},
+                        {"case_number": 2, "patient_index": 5,
+                         "graph_position": 6, "subject_id": 12}]}
+        with open(path, "wb") as handle:
+            handle.write(json.dumps(document).encode("utf-8"))
+        with open(path, "rb") as handle:
+            data = handle.read()
+        pin = (len(data), hashlib.sha256(data).hexdigest())
+        for patcher in (
+                mock.patch.dict(registry.CASE_SETS,
+                                {self.CASE_SET: self.CASE_SPEC}),
+                mock.patch.dict(registry.PINS,
+                                {self.CASE_SET: {"selection": pin}}),
+                mock.patch.object(registry, "load_config", lambda: None),
+                mock.patch.object(registry, "stage_path",
+                                  lambda label, stage: path)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        return path, pin
+
+    def test_case_set_cohort_is_explicit_and_safe(self):
+        """An explicit cohort names each subject once; nothing else passes."""
+        cohort = pilot.cohort_cte(self.config, 2, (11, 12))
+        self.assertEqual(cohort, "WITH cohort AS (SELECT p.person_id FROM "
+                                 "omopcdm.person p WHERE "
+                                 "p.person_source_value IN ('11', '12'))")
+        targets = pilot.copy_targets(self.config, self.version_dir,
+                                     pilot.PARTIAL)
+        sql = pilot.build_sql(self.config, 2, targets, (11, 12))
+        self.assertNotIn("LIMIT", sql)
+        copies = [line for line in sql.splitlines()
+                  if line.startswith("\\copy ")]
+        for line in copies[1:]:
+            self.assertIn(cohort, line)
+        for subjects, cases in (((11, 12), 3), ((11, 11), 2), ((0, 12), 2),
+                                ((True, 12), 2), (("11", 12), 2),
+                                ([11, 12], 2), ((), 0)):
+            with self.assertRaises(ValueError):
+                pilot.cohort_cte(self.config, cases, subjects)
+
+    def test_case_set_extraction_records_its_selection(self):
+        """A case-set run extracts its subjects and records the selection."""
+        path, pin = self.register_case_set()
+        self.install_psql_stub()
+        self.version_dir = os.path.join(self.dest, self.CASE_SET)
+        code, output = self.run_cli(label=self.CASE_SET, cases=None,
+                                    extra=["--case-set", self.CASE_SET])
+        self.assertEqual(code, 0, output)
+        self.assert_no_identifiers(output)
+        manifest, _ = self.manifest()
+        selection = manifest["selection"]
+        self.assertEqual(selection["cases_requested"], 2)
+        self.assertEqual(selection["case_set"]["selection_record"],
+                         {"path": path, "size_bytes": pin[0],
+                          "sha256": pin[1]})
+        self.assertEqual(selection["purpose"], self.CASE_SPEC["statement"])
+        self.assertEqual(manifest["limitations"][0],
+                         self.CASE_SPEC["statement"])
+        self.assertIn(self.CASE_SET, manifest["scope"]["selection"])
+        with open(os.path.join(self.version_dir, self.config["sql_name"]),
+                  "r", encoding="utf-8") as handle:
+            self.assertIn("p.person_source_value IN ('11', '12')",
+                          handle.read())
+        code, output = self.run_cli(label=self.CASE_SET, cases=None,
+                                    extra=["--case-set", self.CASE_SET,
+                                           "--verify-only"])
+        self.assertEqual(code, 0, output)
+        self.edit_manifest(self.version_dir, lambda loaded: loaded[
+            "selection"]["case_set"]["selection_record"].update(
+                sha256="0" * 64))
+        code, output = self.run_cli(label=self.CASE_SET, cases=None,
+                                    extra=["--case-set", self.CASE_SET,
+                                           "--verify-only"])
+        self.assertEqual(code, 1, output)
+        self.assertIn("pinned case-set selection", output)
+
+    def test_case_set_selection_must_match_its_pin(self):
+        """A changed or unregistered selection stops before any write."""
+        path, _ = self.register_case_set()
+        self.install_psql_stub()
+        with open(path, "ab") as handle:
+            handle.write(b" ")
+        code, output = self.run_cli(label=self.CASE_SET, cases=None,
+                                    extra=["--case-set", self.CASE_SET])
+        self.assertEqual(code, 1)
+        self.assertIn("stage_hash_mismatch:selection", output)
+        self.assertEqual(self.calls, [])
+        self.assertFalse(os.path.exists(os.path.join(self.dest,
+                                                     self.CASE_SET)))
+        code, output = self.run_cli(label="other-2-v1", cases=None,
+                                    extra=["--case-set", "other-2-v1"])
+        self.assertEqual(code, 1)
+        self.assertIn("case_set_unknown", output)
+
+    def test_case_set_fixes_count_and_label(self):
+        """--case-set refuses an explicit case count or another label."""
+        self.register_case_set()
+        for label, cases in ((self.CASE_SET, 2), ("other-label", None)):
+            code, output = self.run_cli(label=label, cases=cases,
+                                        extra=["--case-set", self.CASE_SET])
+            self.assertEqual(code, 1)
+            self.assertIn("fixes the case count", output)
 
 
 if __name__ == "__main__":

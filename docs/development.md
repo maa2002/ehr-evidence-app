@@ -47,6 +47,8 @@ work is always explicit:
   fixtures unless given `--operator-real`;
 - `evidence.contracts` checks the committed limits and schemas, and
   regenerates the schemas only with `--write-schemas`;
+- `casesets.selection` runs invented fixtures unless given `--operator-real`
+  together with `--case-set`;
 - `gnn.mapping` is operator-only and takes no arguments;
 - `gnn.baseline` needs `--output`, `gnn.assets` writes only with `--write`,
   and `sources.exports` needs `--version-label`;

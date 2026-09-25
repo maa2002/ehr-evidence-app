@@ -271,7 +271,8 @@ class PathPolicyTests(ScratchTestCase):
                         "--dest-root", "--version-label"},
             "pilot": {"-h", "--help", "--config", "--dest-root",
                       "--version-label", "--cases", "--psql",
-                      "--subprocess-timeout", "--verify-only"},
+                      "--subprocess-timeout", "--verify-only",
+                      "--case-set"},
             "verify": {"-h", "--help", "--config", "--no-report"},
         }
         for name, parser in (("staging", staging.build_parser()),

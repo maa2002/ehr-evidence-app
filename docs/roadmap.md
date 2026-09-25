@@ -34,7 +34,8 @@ described in [evidence.md](evidence.md) and decided in
 - 29 Build versioned QA bundles (done for the development pilot)
 - 30 Build explanation bundles (done for the development pilot)
 - 30.1 Generalise case preparation to separately versioned development and
-  evaluation case sets; the set sizes are fixed before extraction
+  evaluation case sets (in progress: registry, seeded selection and
+  case-set extraction done; see [case-sets.md](case-sets.md))
 
 ## Phase 5. Natural-language QA
 
