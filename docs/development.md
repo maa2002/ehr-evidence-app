@@ -42,8 +42,11 @@ Never install anything into the GNN environment.
 Modules run as `python -m ehr_evidence_app.<package>.<module>`. Real-data
 work is always explicit:
 
-- `gnn.parity`, `gnn.outputs`, `gnn.provenance`, `gnn.split`, `gnn.binding`
-  and `gnn.admission` run invented fixtures unless given `--operator-real`;
+- `gnn.parity`, `gnn.outputs`, `gnn.provenance`, `gnn.split`, `gnn.binding`,
+  `gnn.admission`, `gnn.linkage` and `evidence.bundles` run invented
+  fixtures unless given `--operator-real`;
+- `evidence.contracts` checks the committed limits and schemas, and
+  regenerates the schemas only with `--write-schemas`;
 - `gnn.mapping` is operator-only and takes no arguments;
 - `gnn.baseline` needs `--output`, `gnn.assets` writes only with `--write`,
   and `sources.exports` needs `--version-label`;

@@ -52,7 +52,7 @@ and visit identities and stored as protected, versioned records. Later layers
 consume those records; they never recompute or alter a prediction or an
 attribution.
 
-## Implementation status (0.3.0)
+## Implementation status
 
 | Layer | Status |
 | --- | --- |
@@ -60,7 +60,8 @@ attribution.
 | Source preparation: staged exports, bounded read-only pilot | implemented |
 | Experiment tracking and lineage foundations | implemented |
 | Inherited GNN integration | implemented and closed for the 10-person development pilot |
-| Evidence objects, question interpretation, LLM generation, validation | planned |
+| Evidence contracts, records, event linkage and bundles | implemented for the development pilot; case-set generalisation planned |
+| Question interpretation, LLM generation, validation | planned |
 | API, interface and evaluation | planned |
 
 See [roadmap.md](roadmap.md) for the planned work.
@@ -74,7 +75,8 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | --- | --- | --- |
 | `storage` | Fixed storage roots, destination and path checks, process-local destination setup, runtime-volume preflight | `policy`, `destinations`, `runtime` |
 | `sources` | Staging of the legacy OMOP exports; bounded read-only extraction from the OMOP database | `exports`, `pilot` |
-| `gnn` | Inherited GNN baseline, asset validation, identity mapping, preprocessing parity, offline outputs, provenance, split membership, run binding, Phase 3 closure | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission` |
+| `gnn` | Inherited GNN baseline, asset validation, identity mapping, preprocessing parity, offline outputs, provenance, split membership, run binding, Phase 3 closure, driver-to-event linkage | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission`, `linkage` |
+| `evidence` | Request and response contracts, evidence records, snapshot and case readers, readable names, scoped retrieval, claim policy, QA and explanation bundles | `vocabulary`, `contracts`, `schema`, `readers`, `concepts`, `retrieval`, `policy`, `bundles` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
@@ -98,6 +100,8 @@ fixed roots and allowlists live in code.
 | `model_provenance.json` | `gnn.provenance` | Provenance sidecar schema and fixed flags |
 | `upstream_split_membership.json` | `gnn.split` | Split sidecar schema, argument allowlist and flags |
 | `phase3_closure.json` | `gnn.admission` | Closure policy: admission scope, label layers, driver tags, claim policy, superseded flags |
+| `evidence_policy.json` | `evidence.policy`, `evidence.bundles` | Evidence claim policy extending the closure policy for linked events |
+| `execution_limits.json` | `evidence.contracts`, `evidence.bundles` | Request and bundle execution limits, within fixed ceilings |
 | `clearml_policy.json` | `tracking.policy` | Tracker payload and storage policy |
 | `clearml_connection.json` | `tracking.connection` | Hosted ClearML declaration |
 | `lineage_schema.json` | `tracking.lineage` | Lineage chain schema |
@@ -159,7 +163,11 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | 22 | `gnn.split` | `protected-data\model-provenance\step-22-pilot10-v2` |
 | Phase 3 closure | `gnn.binding` | `protected-data\verification\inherited-run-binding-v1` |
 | Phase 3 closure | `gnn.admission` | `protected-data\model-provenance\phase3-closure-v1` |
+| 28 | `gnn.linkage` | `protected-data\evidence\event-linkage-pilot10-v1` |
+| 29, 30 | `evidence.bundles` | `protected-data\evidence-bundles\pilot10-v1` |
 
 Work items 16 (bridge output contract) and 18 (target and history policy)
 are specifications; they are described in
-[inherited-gnn.md](inherited-gnn.md).
+[inherited-gnn.md](inherited-gnn.md). Work items 23 to 27 are code and
+contracts without a protected artefact of their own; they are described in
+[evidence.md](evidence.md).

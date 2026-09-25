@@ -13,25 +13,28 @@ A work item may be split into sub-items such as 0.3.1 and 0.3.2.
 | 1. Repository and environments | 1 to 8 | Inherited baseline record; repository structure and content exclusions; GNN environment capture; application environment |
 | 2. Experiment tracking | 9 to 14 | Tracker policy; ClearML connection checks; controlled metadata tracking; inherited input registration; lineage schema |
 | 3. GNN integration | 15 to 22 | Asset validation; bridge output contract; identity mapping; target and history policy; preprocessing parity; offline outputs; provenance; split membership |
+| 4. Record evidence (development pilot) | 23 to 30 | Request, response and evidence contracts; snapshot and case readers; readable names; scoped retrieval; driver-to-event linkage and evidence claim policy; QA and explanation bundles |
 
 Phase 3 is closed by a run-binding verification and a typed case-admission
 record; see [decisions/0002-phase-3-closure.md](decisions/0002-phase-3-closure.md).
-Evidence from Phase 3 enters Phase 4 only through that record.
+Evidence from Phase 3 enters Phase 4 only through that record. Phase 4 is
+described in [evidence.md](evidence.md) and decided in
+[ADR 0004](decisions/0004-evidence-contracts.md) and
+[ADR 0005](decisions/0005-event-linkage-and-claim-policy.md).
 
 ## Phase 4. Record evidence
 
-- 23 Define configuration and response contracts
-- 24 Define shared evidence contracts
-- 25 Implement condition and visit readers
-- 26 Implement readable mappings
-- 27 Implement scoped retrieval
-- 28 Attach attribution to recorded concepts (visit tags only; attribution is
-  never assigned to an event, a date or a visit)
-- 29 Build versioned QA bundles
-- 30 Build explanation bundles
-
-A parameterised case-preparation pipeline builds bundles for the
-development pilot first and for the evaluation case set later.
+- 23 Define configuration and response contracts (done)
+- 24 Define shared evidence contracts (done)
+- 25 Implement condition and visit readers (done)
+- 26 Implement readable mappings (done)
+- 27 Implement scoped retrieval (done)
+- 28 Link attributions to recorded events (done; attribution stays
+  concept-level and is never assigned to an event, a date or a visit)
+- 29 Build versioned QA bundles (done for the development pilot)
+- 30 Build explanation bundles (done for the development pilot)
+- 30.1 Generalise case preparation to separately versioned development and
+  evaluation case sets; the set sizes are fixed before extraction
 
 ## Phase 5. Natural-language QA
 

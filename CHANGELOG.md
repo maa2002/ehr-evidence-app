@@ -9,6 +9,20 @@ change interfaces.
 
 ### Added
 
+- `evidence`: Phase 4 record evidence for the development pilot.
+  Request, response and execution-limit contracts with committed JSON
+  Schemas (`docs/schemas`, `config/execution_limits.json`); evidence
+  records and bundle types with bundle-local references; pinned readers for
+  the source snapshot and the closure record's cases; readable names with a
+  stated source; scoped retrieval with explicit coverage; QA and explanation
+  bundle sets (`evidence-bundles\pilot10-v1`)
+  ([ADR 0004](docs/decisions/0004-evidence-contracts.md)).
+- `gnn.linkage`: driver-to-event linkage record
+  (`event-linkage-pilot10-v1`); every graph edge and driver of the pilot
+  verifies.
+- `evidence.policy`: the evidence claim policy (`evidence-policy-v1`,
+  `config/evidence_policy.json`), which allows statements citing linked
+  events ([ADR 0005](docs/decisions/0005-event-linkage-and-claim-policy.md)).
 - Continuous integration on a Windows runner: compile, release-metadata
   check, test suite, synthetic module modes, publication audit and a
   clean-tree check (`.github/workflows/ci.yml`).

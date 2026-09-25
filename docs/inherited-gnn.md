@@ -169,7 +169,9 @@ The mapping is `protected-data\identity-mappings\step-17-pilot10-v1\mapping.json
 - **Event linkage.** The identity mapping links persons and visits, not
   events. Missing event linkage blocks the claims that need it (dated,
   per-visit, frequency and progression statements about events); it does not
-  block a case.
+  block a case. For the development pilot, the Phase 4 linkage record ties
+  every driver's graph edges to recorded events, and such claims must cite
+  those events (see [evidence.md](evidence.md#event-linkage)).
 
 ## Preprocessing parity
 

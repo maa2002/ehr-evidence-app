@@ -23,11 +23,14 @@ non-causal model sensitivities.
 
 ## Status
 
-Version 0.3.0. The storage and data-handling controls, source preparation,
+The storage and data-handling controls, source preparation,
 experiment-tracking foundations and the integration of the inherited GNN are
-complete and closed for a 10-person development pilot. Evidence objects,
-language-model generation, validation, the API and interface, and the
-evaluation are planned; see the [roadmap](docs/roadmap.md).
+complete and closed for a 10-person development pilot, and its evidence
+bundles (request and response contracts, scoped condition evidence, and
+prediction evidence linked to recorded events) are built. Question
+interpretation, language-model generation, validation, the API and
+interface, and the evaluation are planned; see the
+[roadmap](docs/roadmap.md) and the [changelog](CHANGELOG.md).
 
 ## Architecture
 
@@ -49,7 +52,8 @@ Code is one package, `src/ehr_evidence_app`:
 | --- | --- |
 | `storage` | Fixed storage roots, path checks, destination set-up, volume preflight |
 | `sources` | Legacy OMOP export staging; bounded read-only extraction |
-| `gnn` | Inherited model identity, validation, identity mapping, parity, outputs, provenance, run binding, Phase 3 closure |
+| `gnn` | Inherited model identity, validation, identity mapping, parity, outputs, provenance, run binding, Phase 3 closure, event linkage |
+| `evidence` | Request and response contracts, evidence records, scoped retrieval, claim policy, QA and explanation bundles |
 | `tracking` | Tracker policy, ClearML connection checks, controlled tracking, lineage |
 | `environment` | Application and GNN environment verification |
 | `quality` | Publication audit of repository content and history; release checks |
@@ -101,6 +105,7 @@ See [docs/data-handling.md](docs/data-handling.md).
 | [Source data](docs/source-data.md) | OMOP source, staged exports, bounded pilot extraction |
 | [Inherited GNN](docs/inherited-gnn.md) | Model, bridge contract, identity mapping, target and history, parity, limitations |
 | [Model outputs](docs/model-outputs.md) | Published records, superseded flags, Phase 4 admission, claim policy |
+| [Record evidence](docs/evidence.md) | Contracts, evidence records, scopes and coverage, event linkage, bundles, evidence claim policy |
 | [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, lineage |
 | [Environments](docs/environments.md) | Application and GNN environments |
 | [Development](docs/development.md) | Set-up, tests, quality gates, CI, conventions, releases |

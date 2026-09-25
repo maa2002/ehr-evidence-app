@@ -21,6 +21,8 @@ All paths are under `G:\Industry Dataset\ehr-evidence-workspace\protected-data`.
 | Split membership | `model-provenance\step-22-pilot10-v2` | `gnn.split` | published, immutable; result superseded |
 | Run binding | `verification\inherited-run-binding-v1` | `gnn.binding` | published, immutable |
 | Phase 3 closure | `model-provenance\phase3-closure-v1` | `gnn.admission` | published, immutable; current authority for Phase 4 |
+| Driver-to-event linkage | `evidence\event-linkage-pilot10-v1` | `gnn.linkage` | published, immutable ([evidence.md](evidence.md#event-linkage)) |
+| Evidence bundles | `evidence-bundles\pilot10-v1` | `evidence.bundles` | published, immutable ([evidence.md](evidence.md#published-records)) |
 
 Published records are never edited. A correction is a new version or a new
 record that references the old one.
@@ -130,7 +132,7 @@ supersedes this result: membership is 8 training, 0 validation, 2 test.
 | Executed wrapper `bytes_available`, `retrievable` | `false` | recovered byte-exact |
 | `upstream_split_membership` | `unknown` / `unavailable` | 8 training, 0 validation, 2 test |
 | `phase4_eligible` | `false` for every record | replaced by typed per-case admission in the closure record |
-| `source_event_linkage` | `absent` | still absent; restricts claims, does not block cases |
+| `source_event_linkage` | `absent` | linked by `event-linkage-pilot10-v1`: every graph edge and driver verified |
 | `pre_target_only_input` | `false` | unchanged: target-visit inputs remain |
 | `history_only_claim_allowed` | `false` | unchanged |
 | `unseen_patient_status` | `not_inferred` | partition known; "held out" must be defined per claim |
@@ -198,3 +200,7 @@ Published record: `protected-data\model-provenance\phase3-closure-v1`, with
 | Recorded history, stated within its verified scope | Tying an attribution to a date, a visit or a recurrence |
 | | Any use of the zero-score target diagnoses |
 | | Dated, per-visit, frequency or progression claims about events (no event linkage) |
+
+This is the policy as published in the closure record. Phase 4 extends it,
+as a separate versioned policy, for events the linkage record ties to a
+driver: see [evidence.md](evidence.md#claim-policy).
