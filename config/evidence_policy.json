@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Claim policy for evidence bundles. Extends the claim policy of the Phase 3 closure record with statements that cite events the driver-to-event linkage record ties to graph edges. Read by ehr_evidence_app.evidence.policy, which refuses to run unless these values equal the ones it implements.",
+  "policy_version": "evidence-policy-v1",
+  "base": {
+    "record": "phase3-closure-v1",
+    "claim_policy": "claim_policy of the closure record"
+  },
+  "linkage_record": "event-linkage-pilot10-v1",
+  "claim_policy": {
+    "allowed": [
+      "selected_label_as_one_output_of_multilabel_prediction",
+      "raw_logit_and_uncalibrated_score",
+      "positive_drivers_as_unsigned_local_sensitivity",
+      "driver_visit_tag_to_restrict_or_disclose",
+      "upstream_partition_with_held_out_definition",
+      "recorded_history_within_verified_scope",
+      "linked_event_history_for_driver_concepts",
+      "repeated_recordings_of_driver_concepts"
+    ],
+    "prohibited": [
+      "selected_label_as_only_diagnosis",
+      "score_as_clinical_risk",
+      "reported_auroc_for_single_graph_predictions",
+      "causal_directional_or_percentage_attribution",
+      "target_attached_driver_as_history",
+      "prospective_or_pre_target_only_prediction",
+      "attribution_tied_to_date_visit_or_recurrence",
+      "zero_score_target_diagnosis_use",
+      "event_claims_without_cited_linked_events"
+    ]
+  },
+  "conditions": [
+    "History statements about a driver's concept cite linked events in pre-target visits only.",
+    "A score is never assigned to, divided across or tied to an event, a date or a visit.",
+    "Final-admission drug and procedure records are described only as final-admission context, never as history.",
+    "Final-admission diagnoses never enter an explanation."
+  ]
+}

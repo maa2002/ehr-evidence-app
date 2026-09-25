@@ -1,0 +1,633 @@
+{
+  "$defs": {
+    "CaseRef": {
+      "additionalProperties": false,
+      "description": "One case of one case set, numbered from 1 in the closure record.",
+      "properties": {
+        "case_number": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Case Number",
+          "type": "integer"
+        },
+        "case_set": {
+          "pattern": "^[a-z0-9][a-z0-9.-]{0,63}$",
+          "title": "Case Set",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_set",
+        "case_number"
+      ],
+      "title": "CaseRef",
+      "type": "object"
+    },
+    "Concept": {
+      "additionalProperties": false,
+      "description": "An OMOP concept as recorded, with an explicit name status.",
+      "properties": {
+        "concept_id": {
+          "minimum": 0,
+          "title": "Concept Id",
+          "type": "integer"
+        },
+        "domain_id": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Domain Id"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "name_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "source_snapshot",
+                "legacy_concept_map"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name Source"
+        },
+        "name_status": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unmapped"
+          ],
+          "title": "Name Status",
+          "type": "string"
+        },
+        "source_code": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Code"
+        },
+        "vocabulary_id": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vocabulary Id"
+        }
+      },
+      "required": [
+        "concept_id",
+        "name_status"
+      ],
+      "title": "Concept",
+      "type": "object"
+    },
+    "Coverage": {
+      "additionalProperties": false,
+      "description": "What the retrieval covered for the requested scope.",
+      "properties": {
+        "domains": {
+          "items": {
+            "enum": [
+              "condition",
+              "procedure",
+              "drug"
+            ],
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "title": "Domains",
+          "type": "array"
+        },
+        "events_in_scope": {
+          "minimum": 0,
+          "title": "Events In Scope",
+          "type": "integer"
+        },
+        "events_outside_case_visits": {
+          "minimum": 0,
+          "title": "Events Outside Case Visits",
+          "type": "integer"
+        },
+        "excluded_final_admission_events": {
+          "minimum": 0,
+          "title": "Excluded Final Admission Events",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "default": [],
+          "items": {
+            "enum": [
+              "attribution_altered",
+              "backend_failed",
+              "batch_sensitive_prediction",
+              "case_not_admitted",
+              "claim_unsupported",
+              "concept_ambiguous",
+              "coverage_incomplete",
+              "date_unsupported",
+              "evidence_inconsistent",
+              "evidence_insufficient",
+              "explanation_ineligible",
+              "history_inconsistent",
+              "identity_inconsistent",
+              "limit_exceeded",
+              "no_positive_attribution",
+              "prediction_altered",
+              "prediction_link_invalid",
+              "prohibited_wording",
+              "reference_unresolved",
+              "resource_exhausted",
+              "retrieval_failed",
+              "scope_ambiguous",
+              "scope_invalid",
+              "scope_violated",
+              "structure_invalid",
+              "target_attached_drivers_present",
+              "target_outcome_entries_excluded",
+              "task_ambiguous",
+              "task_unsupported",
+              "timeout",
+              "unmapped_records_in_scope",
+              "validator_failed",
+              "visit_ambiguous"
+            ],
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "ref": {
+          "const": "C1",
+          "default": "C1",
+          "title": "Ref",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/ScopeRef"
+        },
+        "source_snapshot": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "title": "Source Snapshot",
+          "type": "string"
+        },
+        "statement": {
+          "const": "Complete within the OMOP person, visit_occurrence, condition_occurrence, procedure_occurrence and drug_exposure tables for the case's person at the recorded source snapshot; not a statement of clinical absence.",
+          "default": "Complete within the OMOP person, visit_occurrence, condition_occurrence, procedure_occurrence and drug_exposure tables for the case's person at the recorded source snapshot; not a statement of clinical absence.",
+          "title": "Statement",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "complete_empty",
+            "unavailable",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "unmapped_events_in_scope": {
+          "minimum": 0,
+          "title": "Unmapped Events In Scope",
+          "type": "integer"
+        },
+        "visits_in_scope": {
+          "minimum": 0,
+          "title": "Visits In Scope",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "scope",
+        "status",
+        "domains",
+        "source_snapshot",
+        "visits_in_scope",
+        "events_in_scope",
+        "unmapped_events_in_scope",
+        "excluded_final_admission_events",
+        "events_outside_case_visits"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
+    "DigestRef": {
+      "additionalProperties": false,
+      "description": "A versioned input identified by name and SHA-256.",
+      "properties": {
+        "name": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "sha256"
+      ],
+      "title": "DigestRef",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "description": "One recorded clinical event, kept separate even when repeated.",
+      "properties": {
+        "concept": {
+          "$ref": "#/$defs/Concept"
+        },
+        "domain": {
+          "enum": [
+            "condition",
+            "procedure",
+            "drug"
+          ],
+          "title": "Domain",
+          "type": "string"
+        },
+        "end_date": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Date"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Datetime"
+        },
+        "native_id": {
+          "minimum": 1,
+          "title": "Native Id",
+          "type": "integer"
+        },
+        "ref": {
+          "pattern": "^E[1-9][0-9]{0,5}$",
+          "title": "Ref",
+          "type": "string"
+        },
+        "source_table": {
+          "enum": [
+            "condition_occurrence",
+            "procedure_occurrence",
+            "drug_exposure"
+          ],
+          "title": "Source Table",
+          "type": "string"
+        },
+        "start_date": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Date"
+        },
+        "start_datetime": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Datetime"
+        },
+        "visit_ref": {
+          "pattern": "^V[1-9][0-9]{0,5}$",
+          "title": "Visit Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "domain",
+        "source_table",
+        "native_id",
+        "visit_ref",
+        "concept"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Versions of every input a bundle was built from.",
+      "properties": {
+        "builder": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Builder",
+          "type": "string"
+        },
+        "closure_record": {
+          "$ref": "#/$defs/DigestRef"
+        },
+        "concept_table": {
+          "$ref": "#/$defs/DigestRef"
+        },
+        "evidence_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DigestRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "identity_mapping": {
+          "$ref": "#/$defs/DigestRef"
+        },
+        "legacy_concept_map": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DigestRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "linkage_record": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DigestRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "model_outputs": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DigestRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_snapshot": {
+          "$ref": "#/$defs/DigestRef"
+        }
+      },
+      "required": [
+        "source_snapshot",
+        "identity_mapping",
+        "closure_record",
+        "concept_table",
+        "builder"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "ScopeRef": {
+      "additionalProperties": false,
+      "description": "An explicit record scope; only a selected visit names its visit.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "pre_target_history",
+            "selected_visit",
+            "case_visits"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "visit_number": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visit Number"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ScopeRef",
+      "type": "object"
+    },
+    "Visit": {
+      "additionalProperties": false,
+      "description": "One case visit with its graph position and role.",
+      "properties": {
+        "end_date": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Date"
+        },
+        "position": {
+          "minimum": 0,
+          "title": "Position",
+          "type": "integer"
+        },
+        "ref": {
+          "pattern": "^V[1-9][0-9]{0,5}$",
+          "title": "Ref",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "pre_target",
+            "final_admission"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "start_date": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Date"
+        },
+        "visit_concept_id": {
+          "minimum": 0,
+          "title": "Visit Concept Id",
+          "type": "integer"
+        },
+        "visit_number": {
+          "minimum": 1,
+          "title": "Visit Number",
+          "type": "integer"
+        },
+        "visit_occurrence_id": {
+          "minimum": 1,
+          "title": "Visit Occurrence Id",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ref",
+        "visit_occurrence_id",
+        "position",
+        "visit_number",
+        "role",
+        "visit_concept_id"
+      ],
+      "title": "Visit",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Evidence for one QA request scope: condition events and coverage.",
+  "properties": {
+    "bundle_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "case": {
+      "$ref": "#/$defs/CaseRef"
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "events": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Event"
+      },
+      "title": "Events",
+      "type": "array"
+    },
+    "kind": {
+      "const": "qa",
+      "default": "qa",
+      "title": "Kind",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/ScopeRef"
+    },
+    "visits": {
+      "items": {
+        "$ref": "#/$defs/Visit"
+      },
+      "minItems": 1,
+      "title": "Visits",
+      "type": "array"
+    }
+  },
+  "required": [
+    "bundle_id",
+    "case",
+    "scope",
+    "visits",
+    "coverage",
+    "provenance"
+  ],
+  "title": "QABundle",
+  "type": "object"
+}

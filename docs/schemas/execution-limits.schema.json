@@ -1,0 +1,88 @@
+{
+  "$defs": {
+    "ExecutionLimits": {
+      "additionalProperties": false,
+      "description": "Bounded execution limits; a request outside them ends explicitly.",
+      "properties": {
+        "max_bundle_bytes": {
+          "maximum": 8388608,
+          "minimum": 1024,
+          "title": "Max Bundle Bytes",
+          "type": "integer"
+        },
+        "max_concurrent_requests": {
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Max Concurrent Requests",
+          "type": "integer"
+        },
+        "max_evidence_items": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Max Evidence Items",
+          "type": "integer"
+        },
+        "max_generation_attempts": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Max Generation Attempts",
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "maximum": 4096,
+          "minimum": 1,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        },
+        "max_question_chars": {
+          "maximum": 2000,
+          "minimum": 1,
+          "title": "Max Question Chars",
+          "type": "integer"
+        },
+        "max_request_seconds": {
+          "maximum": 600,
+          "minimum": 1,
+          "title": "Max Request Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_question_chars",
+        "max_output_tokens",
+        "max_concurrent_requests",
+        "max_request_seconds",
+        "max_generation_attempts",
+        "max_evidence_items",
+        "max_bundle_bytes"
+      ],
+      "title": "ExecutionLimits",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The committed execution-limits configuration file.",
+  "properties": {
+    "limits": {
+      "$ref": "#/$defs/ExecutionLimits"
+    },
+    "purpose": {
+      "maxLength": 600,
+      "minLength": 1,
+      "title": "Purpose",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "purpose",
+    "limits"
+  ],
+  "title": "LimitsFile",
+  "type": "object"
+}

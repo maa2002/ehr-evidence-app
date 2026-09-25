@@ -71,6 +71,9 @@ jobs:
             "ehr_evidence_app.gnn.split",
             "ehr_evidence_app.gnn.binding",
             "ehr_evidence_app.gnn.admission",
+            "ehr_evidence_app.gnn.linkage",
+            "ehr_evidence_app.evidence.contracts",
+            "ehr_evidence_app.evidence.bundles",
             "ehr_evidence_app.tracking.lineage",
             "ehr_evidence_app.tracking.policy",
             "ehr_evidence_app.tracking.connection"
