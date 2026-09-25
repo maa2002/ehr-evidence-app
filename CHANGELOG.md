@@ -5,6 +5,24 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
+## [Unreleased]
+
+### Added
+
+- Continuous integration on a Windows runner: compile, release-metadata
+  check, test suite, synthetic module modes, publication audit and a
+  clean-tree check (`.github/workflows/ci.yml`).
+- Release workflow: reruns the checks at a version tag and publishes a
+  GitHub release from the changelog entry (`.github/workflows/release.yml`).
+- `quality.release`: checks that the tag, the package version and the
+  newest changelog entry agree, and extracts the release notes.
+- Dependabot updates for the pinned workflow actions.
+
+### Changed
+
+- Environment tests skip, instead of creating directories, when the
+  project storage layout is absent.
+
 ## [0.3.0] - 2026-09-26
 
 First tagged release: the data-handling foundation, the integration of the
@@ -60,4 +78,5 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/maa2002/ehr-evidence-app/tree/v0.3.0

@@ -125,7 +125,9 @@ class ScratchTestCase(unittest.TestCase):
     def setUp(self):
         """Create scratch, a placeholder environment and patched roots."""
         base = configured_test_temp()
-        os.makedirs(base, exist_ok=True)
+        if not os.path.isdir(base):
+            self.skipTest("configured test scratch is missing; run "
+                          "scripts/setup-destinations.ps1 first")
         self.scratch = tempfile.mkdtemp(prefix="gnn-env-", dir=base)
         self.addCleanup(shutil.rmtree, self.scratch, True)
         self.env_root = os.path.join(self.scratch, INTERPRETER_DIR)

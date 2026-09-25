@@ -77,7 +77,7 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `gnn` | Inherited GNN baseline, asset validation, identity mapping, preprocessing parity, offline outputs, provenance, split membership, run binding, Phase 3 closure | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
-| `quality` | Publication audit of repository content and Git history | `publication` |
+| `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
 
 Tests mirror the package layout under `tests/`; see
 [development.md](development.md) for conventions.

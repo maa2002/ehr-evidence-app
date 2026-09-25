@@ -87,6 +87,25 @@ When dependencies change, also run `& $AppPython -m ehr_evidence_app.environment
 The publication audit scans the working tree, the index and all history; it
 must pass before anything is pushed.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main`, on pull requests
+and on demand, on a Windows runner with Python 3.12.8 and the hashed lock:
+
+1. compile `src` and `tests` with warnings as errors;
+2. check release metadata (`ehr_evidence_app.quality.release`);
+3. run the test suite, printing every skip reason;
+4. run each module's synthetic default mode;
+5. run the publication audit over the full history;
+6. confirm that the checks created or changed no file.
+
+The runner has no project storage layout, so tests that need the workspace
+or runtime scratch directories skip with a stated reason. CI therefore covers
+the portable part of the suite; the full suite runs locally after set-up and
+remains the gate for commits. CI never reads protected data, contacts a
+tracker or uses repository secrets. Actions are pinned by commit SHA and kept
+current by Dependabot (`.github/dependabot.yml`).
+
 ## Conventions
 
 **Modules.** Standard library first; heavy dependencies (NumPy, PyTorch)
@@ -127,8 +146,20 @@ setup script stays ASCII.
   configuration.
 - Keep `main` releasable: all quality gates pass on every commit.
 - Versions follow semantic versioning (0.y.z while interfaces are still
-  changing). A release updates `version` in `pyproject.toml`,
-  `__version__` in `src/ehr_evidence_app/__init__.py` and
-  [CHANGELOG.md](../CHANGELOG.md), then adds an annotated tag `vX.Y.Z`.
+  changing). Record changes under `Unreleased` in
+  [CHANGELOG.md](../CHANGELOG.md) as they land.
+- To release, rename the `Unreleased` section to `[X.Y.Z] - YYYY-MM-DD` and
+  add its link reference, set `version` in `pyproject.toml` and
+  `__version__` in `src/ehr_evidence_app/__init__.py`, and check the result:
+
+  ```powershell
+  & $AppPython -m ehr_evidence_app.quality.release --tag vX.Y.Z
+  ```
+
+  Then commit, add an annotated tag `vX.Y.Z` and push the commit and the tag.
+  `.github/workflows/release.yml` reruns every CI check at the tag, confirms
+  that the tag, both versions and the newest changelog entry agree, and
+  publishes a GitHub release whose notes are that entry. It can also be run
+  by hand for an existing tag.
 - Protected data, generated outputs and secrets never enter Git; see
   [data-handling.md](data-handling.md#repository-content-controls).

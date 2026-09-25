@@ -52,7 +52,7 @@ Code is one package, `src/ehr_evidence_app`:
 | `gnn` | Inherited model identity, validation, identity mapping, parity, outputs, provenance, run binding, Phase 3 closure |
 | `tracking` | Tracker policy, ClearML connection checks, controlled tracking, lineage |
 | `environment` | Application and GNN environment verification |
-| `quality` | Publication audit of repository content and history |
+| `quality` | Publication audit of repository content and history; release checks |
 
 See [docs/architecture.md](docs/architecture.md).
 
@@ -103,7 +103,7 @@ See [docs/data-handling.md](docs/data-handling.md).
 | [Model outputs](docs/model-outputs.md) | Published records, superseded flags, Phase 4 admission, claim policy |
 | [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, lineage |
 | [Environments](docs/environments.md) | Application and GNN environments |
-| [Development](docs/development.md) | Set-up, tests, quality gates, conventions, releases |
+| [Development](docs/development.md) | Set-up, tests, quality gates, CI, conventions, releases |
 | [Roadmap](docs/roadmap.md) | Phases and work items |
 | [Decisions](docs/decisions/) | Architecture decision records |
 | [Changelog](CHANGELOG.md) | Release history |

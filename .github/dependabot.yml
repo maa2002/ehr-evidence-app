@@ -1,0 +1,13 @@
+# Keep the pinned workflow actions current. Python dependencies are locked
+# with hashes in requirements/app.lock.txt and are updated by regenerating
+# the lock (see docs/environments.md).
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

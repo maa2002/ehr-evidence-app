@@ -80,7 +80,9 @@ class ScratchTestCase(unittest.TestCase):
     def setUp(self):
         """Create a fresh scratch directory for one test."""
         base = configured_test_temp()
-        os.makedirs(base, exist_ok=True)
+        if not os.path.isdir(base):
+            self.skipTest("configured runtime test temp is missing; run "
+                          "scripts/setup-destinations.ps1 first")
         self.scratch = tempfile.mkdtemp(prefix="app-env-", dir=base)
 
     def tearDown(self):

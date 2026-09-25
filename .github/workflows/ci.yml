@@ -1,0 +1,95 @@
+# Continuous integration: tests and quality gates on Windows.
+#
+# The runner has no project storage layout (G:\Industry Dataset), so tests
+# that need the workspace or runtime scratch directories skip with a stated
+# reason; the full suite runs locally after scripts/setup-destinations.ps1.
+# Nothing here reads protected data, contacts a tracker or uses secrets.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to check out (defaults to the triggering ref)
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Tests and quality gates
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: ${{ github.workspace }}\src
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python 3.12.8
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12.8"
+          cache: pip
+          cache-dependency-path: requirements/app.lock.txt
+
+      - name: Install the locked dependencies
+        run: python -m pip install --require-hashes --no-deps -r requirements/app.lock.txt
+
+      - name: Compile sources and tests
+        run: python -W error -m compileall -q src tests
+
+      - name: Check release metadata
+        run: python -m ehr_evidence_app.quality.release
+
+      - name: Run the test suite
+        run: python -m pytest -q -rs
+
+      - name: Run the synthetic default modes
+        run: |
+          $modules = @(
+            "ehr_evidence_app.gnn.parity",
+            "ehr_evidence_app.gnn.outputs",
+            "ehr_evidence_app.gnn.provenance",
+            "ehr_evidence_app.gnn.split",
+            "ehr_evidence_app.gnn.binding",
+            "ehr_evidence_app.gnn.admission",
+            "ehr_evidence_app.tracking.lineage",
+            "ehr_evidence_app.tracking.policy",
+            "ehr_evidence_app.tracking.connection"
+          )
+          foreach ($module in $modules) {
+            Write-Output "::group::$module"
+            python -m $module
+            $code = $LASTEXITCODE
+            Write-Output "::endgroup::"
+            if ($code -ne 0) { throw "$module exited with code $code" }
+          }
+
+      - name: Audit publishable content
+        run: python -m ehr_evidence_app.quality.publication
+
+      - name: Confirm the working tree is unchanged
+        run: |
+          $changes = git status --porcelain
+          if ($changes) {
+            $changes
+            throw "the checks created or changed files that are not ignored"
+          }
