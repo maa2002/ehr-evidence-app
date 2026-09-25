@@ -66,8 +66,8 @@ STEP = "3"
 REPO_ROOT = guard.REPO_ROOT
 CONFIG_DIR = os.path.join(REPO_ROOT, "config")
 POLICY_NAME = "publishable_policy.json"
-POLICY_ANCHOR = guard.POLICY_ANCHOR
 PRIVATE_ROOT = guard.PRIVATE_ROOT
+RUNTIME_ROOT = guard.RUNTIME_ROOT
 MAX_POLICY_BYTES = 256 * 1024
 HARD_MAX_CANDIDATE_BYTES = 1024 * 1024
 MAX_DECLARATION_WINDOW = 2048
@@ -373,23 +373,28 @@ def bounded_token(words):
 # --------------------------------------------------------------------------
 
 def fixed_policy_problem():
-    """Return why the roots fixed in this module are unsafe, else None."""
+    """Return why the roots fixed in this module are unsafe, else None.
+
+    The audit only ever inspects the repository that contains it, so the
+    checkout may live anywhere (the project location or a CI runner) as long
+    as it is a plain local path that overlaps neither the private workspace
+    nor the runtime root.
+    """
     if os.name != "nt":
         return "the audit supports Windows only"
     if sys.version_info < (3, 8):
         return ("Python 3.8 or later is required to inspect junctions "
                 "without following them")
-    for label, path in (("policy anchor", POLICY_ANCHOR),
-                        ("repository root", REPO_ROOT),
+    for label, path in (("repository root", REPO_ROOT),
                         ("configuration directory", CONFIG_DIR)):
         problem = guard.path_problem(path)
         if problem:
             return "%s: %s" % (label, problem)
-    if not guard.is_within(REPO_ROOT, POLICY_ANCHOR, strict=True):
-        return "the repository is not inside %s" % POLICY_ANCHOR
-    if (guard.is_within(REPO_ROOT, PRIVATE_ROOT)
-            or guard.is_within(PRIVATE_ROOT, REPO_ROOT)):
-        return "the repository and the private workspace overlap"
+    for label, root in (("private workspace", PRIVATE_ROOT),
+                        ("runtime root", RUNTIME_ROOT)):
+        if guard.is_within(REPO_ROOT, root) or guard.is_within(root,
+                                                               REPO_ROOT):
+            return "the repository and the %s overlap" % label
     if ntpath.normcase(CONFIG_DIR) != ntpath.normcase(REPO_ROOT + "\\config"):
         return "the configuration directory is not the repository config"
     return None

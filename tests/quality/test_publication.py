@@ -752,6 +752,28 @@ class RealRepositoryTestCase(unittest.TestCase):
                       "envs\\omopgnn\\python.exe",
                       [entry["path"] for entry in entries])
 
+    def test_audit_runs_from_any_checkout_outside_private_roots(self):
+        """Any plain checkout location passes unless it overlaps a root."""
+        self.assertIsNone(audit.fixed_policy_problem())
+        cases = (
+            ("D:\\a\\ehr-evidence-app\\ehr-evidence-app", None),
+            ("C:\\builds\\ehr-evidence-app", None),
+            (audit.PRIVATE_ROOT + "\\checkout",
+             "the repository and the private workspace overlap"),
+            (audit.RUNTIME_ROOT + "\\checkout",
+             "the repository and the runtime root overlap"),
+        )
+        for root, expected in cases:
+            with self.subTest(root=root):
+                with mock.patch.object(audit, "REPO_ROOT", root), \
+                        mock.patch.object(audit, "CONFIG_DIR",
+                                          root + "\\config"):
+                    self.assertEqual(audit.fixed_policy_problem(), expected)
+        with mock.patch.object(audit, "CONFIG_DIR", "C:\\elsewhere\\config"):
+            self.assertEqual(audit.fixed_policy_problem(),
+                             "the configuration directory is not the "
+                             "repository config")
+
     def test_real_gitignore_passes_every_probe(self):
         """The real .gitignore satisfies every probe via real git."""
         try:

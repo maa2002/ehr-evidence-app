@@ -172,7 +172,10 @@ Three layers keep protected and generated content out of Git:
    ignore rules, the candidate files, the staged index and every object
    reachable from any ref or reflog against `config/publishable_policy.json`.
 
-The audit is read-only. It runs Git without a shell, with an explicit
+The audit is read-only and inspects only the repository that contains it.
+It runs from any checkout, including a CI runner, as long as the checkout
+overlaps neither the private workspace nor the runtime root. It runs Git
+without a shell, with an explicit
 `--git-dir` and `--work-tree`, replacement objects disabled and every
 inherited `GIT_*` variable removed. It refuses shallow or grafted history.
 Every publishable file and history object must be UTF-8 text within 1 MiB

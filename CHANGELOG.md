@@ -22,6 +22,8 @@ change interfaces.
 
 - Environment tests skip, instead of creating directories, when the
   project storage layout is absent.
+- The publication audit runs from any checkout that overlaps neither the
+  private workspace nor the runtime root, so CI can run it.
 
 ## [0.3.0] - 2026-09-26
 
