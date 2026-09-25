@@ -25,8 +25,17 @@ from ehr_evidence_app.tracking import registration as register  # noqa: E402
 from ehr_evidence_app.tracking import connection as checker  # noqa: E402
 from ehr_evidence_app.tracking import controlled as tracking  # noqa: E402
 
-SCRATCH = os.path.abspath(os.path.join(REPO, "..", "ehr-evidence-workspace",
-                                       "test-scratch"))
+
+def configured_test_temp():
+    """Return the configured workspace test scratch directory."""
+    with open(os.path.join(REPO, "config", "paths.json"), "r",
+              encoding="utf-8") as handle:
+        paths = json.load(handle)
+    relative = paths["directories"]["test_scratch"]["path"]
+    return os.path.normpath(os.path.join(paths["workspace_root"], relative))
+
+
+SCRATCH = configured_test_temp()
 REAL_APPROVED_SHA256 = register.APPROVED_BASELINE_SHA256
 PROJECT_ID = "b2" * 16
 TASK_ID = "d3" * 16
@@ -145,6 +154,9 @@ class ScratchCase(unittest.TestCase):
 
     def setUp(self):
         """Create a per-test scratch directory under the workspace."""
+        if not os.path.isdir(SCRATCH):
+            self.skipTest("configured test scratch is missing; run "
+                          "scripts/setup-destinations.ps1 first")
         self._directory = tempfile.TemporaryDirectory(dir=SCRATCH)
         self.directory = self._directory.name
         self.addCleanup(self._directory.cleanup)

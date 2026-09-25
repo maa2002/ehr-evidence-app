@@ -141,8 +141,14 @@ class RepositoryConfigurationTestCase(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "Windows path policy")
     def test_fixed_roots_pass_the_policy(self):
-        """The real fixed roots satisfy the fixed-root policy."""
-        self.assertIsNone(capture.fixed_policy_problem())
+        """The fixed roots pass; a checkout outside the anchor is refused."""
+        problem = capture.fixed_policy_problem()
+        if guard.is_within(REPO_ROOT, guard.POLICY_ANCHOR, strict=True):
+            self.assertIsNone(problem)
+        else:
+            # For example a CI checkout: capture must not run from there.
+            self.assertEqual(problem, "the configuration directory is not "
+                             "inside %s" % guard.POLICY_ANCHOR)
 
 
 @unittest.skipUnless(os.name == "nt", "the capture tool supports Windows only")
