@@ -27,9 +27,15 @@ CONFIG_PATH = os.path.join(REPO_ROOT, "config", "case_sets.json")
 PROTECTED_ROOT = guard.PRIVATE_ROOT + "\\protected-data"
 SELECTION_ROOT = PROTECTED_ROOT + "\\case-sets"
 SNAPSHOT_ROOT = PROTECTED_ROOT + "\\source-casesets"
+PREPARED_ROOT = PROTECTED_ROOT + "\\case-preparation"
+LINKAGE_ROOT = PROTECTED_ROOT + "\\evidence"
+BUNDLES_ROOT = PROTECTED_ROOT + "\\evidence-bundles"
+STAGES = ("selection", "snapshot_manifest", "prepared_mapping",
+          "prepared_outputs", "prepared_closure", "linkage")
 SELECTION_NAME = "selection.json"
 SUMMARY_NAME = "summary.json"
 SELECTION_SCHEMA = "case-set-selection"
+CLOSURE_SCHEMA = "case-set-closure"
 LABEL = re.compile(r"^[a-z][a-z0-9]*-[1-9][0-9]*-v[1-9][0-9]*$")
 PARTITIONS = ("train", "validation", "test")
 
@@ -86,10 +92,20 @@ PINS = {
     "dev-30-v1": {
         "selection": (6696, "593899ea2fe1a479aed7720ddcc5fa5a"
                             "87d2c61c677b015b985a72dac0b0f3fd"),
+        "snapshot_manifest": None,
+        "prepared_mapping": None,
+        "prepared_outputs": None,
+        "prepared_closure": None,
+        "linkage": None,
     },
     "eval-100-v1": {
         "selection": (17696, "f8d385dc3b2c69b1d024fc55e9f2e0ca"
                              "a2505aea00a53b3754f820b00632ad36"),
+        "snapshot_manifest": None,
+        "prepared_mapping": None,
+        "prepared_outputs": None,
+        "prepared_closure": None,
+        "linkage": None,
     },
 }
 
@@ -117,9 +133,32 @@ def snapshot_dir(label):
     return SNAPSHOT_ROOT + "\\" + label
 
 
+def prepared_dir(label):
+    """Return the protected directory of a case set's preparation record."""
+    spec(label)
+    return PREPARED_ROOT + "\\" + label
+
+
+def linkage_dir(label):
+    """Return the protected directory of a case set's linkage record."""
+    spec(label)
+    return LINKAGE_ROOT + "\\event-linkage-" + label
+
+
+def bundles_dir(label):
+    """Return the protected directory of a case set's bundle set."""
+    spec(label)
+    return BUNDLES_ROOT + "\\" + label
+
+
 def stage_path(label, stage):
     """Return the path of one stage record of a case set."""
-    paths = {"selection": selection_dir(label) + "\\" + SELECTION_NAME}
+    paths = {"selection": selection_dir(label) + "\\" + SELECTION_NAME,
+             "snapshot_manifest": snapshot_dir(label) + "\\manifest.json",
+             "prepared_mapping": prepared_dir(label) + "\\mapping.json",
+             "prepared_outputs": prepared_dir(label) + "\\outputs.json",
+             "prepared_closure": prepared_dir(label) + "\\closure.json",
+             "linkage": linkage_dir(label) + "\\linkage.json"}
     if stage not in paths:
         raise RegistryError("stage_unknown")
     return paths[stage]

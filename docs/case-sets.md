@@ -62,9 +62,9 @@ in the registry, and the next stage reads the record only through that pin.
 | --- | --- | --- | --- |
 | Selection | `casesets.selection` | GNN environment, CPU | `case-sets\<label>` |
 | Source extraction | `sources.pilot --case-set` | application environment, database credentials | `source-casesets\<label>` |
-| Preparation: identity mapping, model outputs, case facts, admission | planned | GNN environment, CUDA | planned |
-| Event linkage | `gnn.linkage` | GNN environment, CPU | planned |
-| Evidence bundles | `evidence.bundles` | application environment | planned |
+| Preparation: identity mapping, model outputs, case facts, admission | `casesets.prepare` | GNN environment, CUDA | `case-preparation\<label>` |
+| Event linkage | `gnn.linkage --case-set` | GNN environment, CPU | `evidence\event-linkage-<label>` |
+| Evidence bundles | `evidence.bundles --case-set` | application environment | `evidence-bundles\<label>` |
 
 The selection reads the pinned graph collection on the CPU for subjects,
 diagnosis-label presence and visit identifiers only; no model is loaded.
@@ -78,6 +78,28 @@ pinned selection record, matched on the person table's identity source
 value. Its manifest records the selection record's digest and the case
 set's own purpose statement, and `--verify-only` also checks that the
 snapshot records the currently pinned selection.
+
+The preparation does, in one run, what Phase 3 did for the pilot across
+several steps. It loads the graphs, the preprocessed collection and the
+model once and runs the pinned bridge in the same isolation as
+`gnn.outputs`. For every case:
+
+- the identity mapping follows the Step 17 rules, and each mapped case must
+  be exactly the drawn case;
+- the bridge record is regenerated, while the canonical three-record prefix
+  must agree with the immutable canonical sample in the same run;
+- the single-graph prediction is recomputed and must reproduce the
+  published label, and its stability in batches of 64 and 128 is measured
+  as in the run binding;
+- label evidence, driver tags from the raw graph and typed admission follow
+  the Phase 3 closure rules, and the replayed partition must be the case
+  set's own.
+
+It publishes the mapping, the bridge records, the case facts, the
+agreement report and a closure record in the closure case schema, so the
+evidence readers, the linkage and the bundle builder read a case set
+exactly as they read the pilot. Cases that fail admission stay in the
+record with typed reasons and are never replaced.
 
 ## Commands
 
@@ -95,4 +117,13 @@ The extraction needs database credentials in the process environment
 & $AppPython -m ehr_evidence_app.sources.pilot --case-set dev-30-v1
 & $AppPython -m ehr_evidence_app.sources.pilot --case-set eval-100-v1
 & $AppPython -m ehr_evidence_app.sources.pilot --case-set dev-30-v1 --verify-only
+```
+
+The remaining stages need no credentials; each reads the previous stage's
+pinned record:
+
+```powershell
+& $GnnPython -m ehr_evidence_app.casesets.prepare --operator-real --case-set dev-30-v1
+& $GnnPython -m ehr_evidence_app.gnn.linkage --operator-real --case-set dev-30-v1
+& $AppPython -m ehr_evidence_app.evidence.bundles --operator-real --case-set dev-30-v1
 ```

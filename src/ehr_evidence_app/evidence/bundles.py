@@ -24,9 +24,13 @@ bundle set is published once, as a new versioned directory:
   manifest.json  bundle identifiers, digests and sizes (case numbers only);
   summary.json   aggregate counts only.
 
+A registered case set is built the same way from its own pinned records
+(--case-set), into its own versioned directory.
+
 Usage:
     python -m ehr_evidence_app.evidence.bundles
     python -m ehr_evidence_app.evidence.bundles --operator-real
+    python -m ehr_evidence_app.evidence.bundles --operator-real --case-set L
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ import sys
 from pydantic import ValidationError
 
 import ehr_evidence_app
+from ehr_evidence_app.casesets import registry
 from ehr_evidence_app.evidence import concepts as names
 from ehr_evidence_app.evidence import contracts, policy, readers, retrieval
 from ehr_evidence_app.evidence import schema
@@ -73,14 +78,37 @@ class BundleError(Exception):
     """A fail-closed precondition failure carrying a finding code only."""
 
 
-def real_plan():
-    """Return the pinned inputs and the fixed protected output."""
+def real_plan(case_set=None):
+    """Return the pinned inputs and the fixed protected output.
+
+    Without a case set this is the development pilot; with one, every
+    input is the case set's pinned stage record.
+    """
+    if case_set is not None:
+        return {
+            "readers": readers.real_plan(case_set),
+            "outputs": registry.pinned(case_set, "prepared_outputs"),
+            "linkage": registry.pinned(case_set, "linkage"),
+            "policy_path": policy.CONFIG_PATH,
+            "version": case_set,
+            "names": {"identity_mapping": case_set + "-mapping",
+                      "closure_record": case_set + "-closure",
+                      "model_outputs": case_set + "-outputs",
+                      "linkage_record": "event-linkage-" + case_set},
+            "output_dir": registry.bundles_dir(case_set),
+            "protected_root": PROTECTED_ROOT,
+        }
     return {
         "readers": readers.real_plan(),
         "outputs": dict(amp.real_plan()["inputs"]["step20_outputs"]),
         "linkage": {"path": linkage.OUTPUT_DIR + "\\" + linkage.LINKAGE_NAME,
                     "size_bytes": LINKAGE_SIZE, "sha256": LINKAGE_SHA256},
         "policy_path": policy.CONFIG_PATH,
+        "version": OUTPUT_VERSION,
+        "names": {"identity_mapping": ntpath.basename(mapping.OUTPUT_DIR),
+                  "closure_record": admission.OUTPUT_VERSION,
+                  "model_outputs": pmo.OUTPUT_VERSION,
+                  "linkage_record": linkage.OUTPUT_VERSION},
         "output_dir": OUTPUT_DIR,
         "protected_root": PROTECTED_ROOT,
     }
@@ -426,7 +454,8 @@ def build_set(snapshot, case_set, outputs, linkage_document, legacy,
     return qa, explanations, summarise(qa, explanations, agreement)
 
 
-def manifest_document(qa, explanations, provenance, counts):
+def manifest_document(qa, explanations, provenance, counts,
+                      version=OUTPUT_VERSION):
     """Return the manifest of a bundle set (no native identifiers)."""
     files = []
     for kind, bundles in zip(KINDS, (qa, explanations)):
@@ -440,7 +469,7 @@ def manifest_document(qa, explanations, provenance, counts):
                 "size_bytes": len(data),
                 "sha256": hashlib.sha256(data).hexdigest()})
     return {"schema": SCHEMA, "schema_version": SCHEMA_VERSION,
-            "version": OUTPUT_VERSION, "builder": BUILDER,
+            "version": version, "builder": BUILDER,
             "patient_bearing": False,
             "case_set": qa[0].case.case_set if qa else None,
             "provenance": provenance.model_dump(mode="json"),
@@ -450,7 +479,8 @@ def manifest_document(qa, explanations, provenance, counts):
 def summary_document(manifest):
     """Return the aggregate summary of a manifest."""
     return {"schema": SUMMARY_SCHEMA, "schema_version": SCHEMA_VERSION,
-            "version": OUTPUT_VERSION, "counts": manifest["counts"],
+            "version": manifest["version"],
+            "counts": manifest["counts"],
             "manifest_sha256": hashlib.sha256(encode(manifest)).hexdigest()}
 
 
@@ -531,22 +561,23 @@ def real_provenance(plan, snapshot, case_set, legacy_sha, policy_config,
                     policy_sha):
     """Return the provenance record of the real bundle set."""
     ref = schema.DigestRef
+    labels = plan["names"]
     legacy_path = plan["readers"]["legacy_concepts"]["path"]
     return schema.Provenance(
         source_snapshot=ref(name=snapshot.label,
                             sha256=snapshot.manifest_sha256),
-        identity_mapping=ref(name=ntpath.basename(mapping.OUTPUT_DIR),
+        identity_mapping=ref(name=labels["identity_mapping"],
                              sha256=case_set.mapping_sha256),
-        closure_record=ref(name=admission.OUTPUT_VERSION,
+        closure_record=ref(name=labels["closure_record"],
                            sha256=case_set.closure_sha256),
         concept_table=ref(name=snapshot.label + "-concepts",
                           sha256=snapshot.concepts_sha256),
         legacy_concept_map=ref(
             name=ntpath.basename(ntpath.dirname(legacy_path))
             + "-kg-concepts", sha256=legacy_sha),
-        model_outputs=ref(name=pmo.OUTPUT_VERSION,
+        model_outputs=ref(name=labels["model_outputs"],
                           sha256=plan["outputs"]["sha256"].lower()),
-        linkage_record=ref(name=linkage.OUTPUT_VERSION,
+        linkage_record=ref(name=labels["linkage_record"],
                            sha256=plan["linkage"]["sha256"].lower()),
         evidence_policy=ref(name=policy_config["policy_version"],
                             sha256=policy_sha),
@@ -584,7 +615,8 @@ def run_real(plan=None):
     qa, explanations, counts = build_set(
         snapshot, case_set, outputs, mapping.parse_json(linkage_bytes),
         legacy, provenance, limits)
-    manifest = manifest_document(qa, explanations, provenance, counts)
+    manifest = manifest_document(qa, explanations, provenance, counts,
+                                 plan["version"])
     summary = summary_document(manifest)
     digests = publish(plan, set_files(qa, explanations, manifest, summary),
                       held)
@@ -700,10 +732,20 @@ def main(argv=None):
     parser.add_argument("--operator-real", action="store_true",
                         help="build the real bundle set; writes one new "
                              "protected directory")
+    parser.add_argument("--case-set",
+                        help="build a registered case set instead of the "
+                             "development pilot (with --operator-real)")
     args = parser.parse_args(argv)
+    if args.case_set is not None and not args.operator_real:
+        print("FAILED: --case-set needs --operator-real")
+        return 2
     try:
         if args.operator_real:
-            summary, digests = run_real()
+            try:
+                plan = real_plan(args.case_set)
+            except registry.RegistryError as error:
+                raise BundleError(str(error)) from None
+            summary, digests = run_real(plan)
             report(summary["counts"], digests)
         else:
             _, _, counts = run_synthetic()

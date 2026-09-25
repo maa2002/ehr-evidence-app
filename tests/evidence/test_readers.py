@@ -239,35 +239,47 @@ class CaseTests(unittest.TestCase):
     def test_closure_case(self):
         """A closure entry becomes a Case bound to its mapping record."""
         record = mapping_record()
-        case = readers.closure_case(closure_item(record), {4: record})
+        records = readers.index_records([record])
+        case = readers.closure_case(closure_item(record), records)
         self.assertEqual((case.case_number, case.person_id, case.visit_ids,
                           case.admitted, case.batch_sensitive,
                           case.restrictions, case.label_correspondence),
                          (1, 77, (801, 802), True, True,
                           ("batch_sensitive_prediction",), "established"))
+
+    def test_quarantined_case_keeps_no_visits(self):
+        """A quarantined case binds by digest alone and keeps no visits."""
+        record = dict(mapping_record(), patient_index=None,
+                      graph_position=None,
+                      visit_nodes=[{"node_position": 0,
+                                    "visit_occurrence_id": None}])
         quarantined = readers.closure_case(closure_item(
             record, admission={"status": admission.QUARANTINED,
-                               "restrictions": []}), {4: record})
-        self.assertFalse(quarantined.admitted)
+                               "restrictions": []}),
+            readers.index_records([mapping_record(), record]))
+        self.assertEqual((quarantined.admitted, quarantined.visit_ids),
+                         (False, ()))
 
     def test_closure_case_mismatches(self):
         """Another mapping record, restriction or partition is refused."""
         record = mapping_record()
-        other = dict(record, person_id=78)
-        for item, records, code in (
-                (closure_item(record), {4: other},
-                 "closure_mapping_mismatch"),
+        records = readers.index_records([record])
+        other = readers.index_records([dict(record, person_id=78)])
+        for item, index, code in (
+                (closure_item(record), other, "closure_mapping_mismatch"),
                 (closure_item(record), {}, "closure_mapping_mismatch"),
-                (closure_item(record, graph_position=6), {4: record},
+                (closure_item(record, graph_position=6), records,
+                 "closure_mapping_mismatch"),
+                (closure_item(record, patient_index=5), records,
                  "closure_mapping_mismatch"),
                 (closure_item(record, admission={
                     "status": admission.ADMITTED,
-                    "restrictions": ["unknown"]}), {4: record},
+                    "restrictions": ["unknown"]}), records,
                  "closure_restriction_unknown"),
                 (closure_item(record, upstream_partition="holdout"),
-                 {4: record}, "closure_partition_invalid")):
+                 records, "closure_partition_invalid")):
             with self.assertRaisesRegex(readers.ReaderError, code):
-                readers.closure_case(item, records)
+                readers.closure_case(item, index)
 
 
 class PlanTests(unittest.TestCase):

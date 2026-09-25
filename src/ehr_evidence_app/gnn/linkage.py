@@ -31,9 +31,13 @@ Outputs (one new protected directory, never overwritten):
   linkage.json  patient-bearing: native visit and event identifiers;
   summary.json  aggregate counts and statuses only.
 
+A registered case set is linked the same way from its own pinned records
+(--case-set), into its own versioned directory.
+
 Usage:
     python -m ehr_evidence_app.gnn.linkage
     python -m ehr_evidence_app.gnn.linkage --operator-real
+    python -m ehr_evidence_app.gnn.linkage --operator-real --case-set L
 """
 
 from __future__ import annotations
@@ -46,6 +50,7 @@ import hashlib
 import os
 import sys
 
+from ehr_evidence_app.casesets import registry
 from ehr_evidence_app.evidence import readers
 from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.gnn import binding
@@ -74,17 +79,28 @@ class LinkageError(Exception):
     """A fail-closed precondition failure carrying a finding code only."""
 
 
-def real_plan():
-    """Return the pinned inputs and the fixed protected output."""
+def real_plan(case_set=None):
+    """Return the pinned inputs and the fixed protected output.
+
+    Without a case set this is the development pilot; with one, the
+    outputs, snapshot and closure are the case set's pinned records.
+    """
     assets = pmo.real_plan()["assets"]
-    return {
+    plan = {
         "graph": dict(assets["graph"]),
         "concept_vocab": dict(assets["concept_vocab"]),
         "outputs": dict(amp.real_plan()["inputs"]["step20_outputs"]),
         "readers": readers.real_plan(),
+        "version": OUTPUT_VERSION,
         "output_dir": OUTPUT_DIR,
         "protected_root": PROTECTED_ROOT,
     }
+    if case_set is not None:
+        plan.update(outputs=registry.pinned(case_set, "prepared_outputs"),
+                    readers=readers.real_plan(case_set),
+                    version="event-linkage-" + case_set,
+                    output_dir=registry.linkage_dir(case_set))
+    return plan
 
 
 # --------------------------------------------------------------------------
@@ -236,8 +252,9 @@ def overall_status(counts):
 def build_record(plan, entries, input_refs):
     """Return (linkage record, summary) for the case entries."""
     counts = aggregate(entries)
+    version = plan.get("version", OUTPUT_VERSION)
     body = {"schema": SCHEMA, "schema_version": SCHEMA_VERSION,
-            "version": OUTPUT_VERSION, "status": overall_status(counts),
+            "version": version, "status": overall_status(counts),
             "patient_bearing": True, "case_set": plan["readers"]["label"],
             "rule": LINK_RULE, "inputs": input_refs, "cases": entries,
             "counts": counts}
@@ -246,7 +263,7 @@ def build_record(plan, entries, input_refs):
         "fingerprint_sha256": value,
         "version": VERSION_PREFIX + value[:16]})
     summary = {"schema": SUMMARY_SCHEMA, "schema_version": SCHEMA_VERSION,
-               "version": OUTPUT_VERSION, "status": record["status"],
+               "version": version, "status": record["status"],
                "counts": counts, "preparation": record["preparation"],
                "linkage_file": {"name": LINKAGE_NAME,
                                 "sha256": hashlib.sha256(
@@ -495,10 +512,20 @@ def main(argv=None):
     parser.add_argument("--operator-real", action="store_true",
                         help="link the real admitted cases (GNN "
                              "interpreter); writes one new protected record")
+    parser.add_argument("--case-set",
+                        help="link a registered case set instead of the "
+                             "development pilot (with --operator-real)")
     args = parser.parse_args(argv)
+    if args.case_set is not None and not args.operator_real:
+        print("FAILED: --case-set needs --operator-real")
+        return 2
     try:
         if args.operator_real:
-            summary, digests = run_real()
+            try:
+                plan = real_plan(args.case_set)
+            except registry.RegistryError as error:
+                raise LinkageError(str(error)) from None
+            summary, digests = run_real(plan)
             report(summary, digests)
         else:
             summary, partial = run_synthetic()

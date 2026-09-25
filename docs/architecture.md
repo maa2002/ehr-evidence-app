@@ -77,7 +77,7 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `sources` | Staging of the legacy OMOP exports; bounded read-only extraction from the OMOP database | `exports`, `pilot` |
 | `gnn` | Inherited GNN baseline, asset validation, identity mapping, preprocessing parity, offline outputs, provenance, split membership, run binding, Phase 3 closure, driver-to-event linkage | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission`, `linkage` |
 | `evidence` | Request and response contracts, evidence records, snapshot and case readers, readable names, scoped retrieval, claim policy, QA and explanation bundles | `vocabulary`, `contracts`, `schema`, `readers`, `concepts`, `retrieval`, `policy`, `bundles` |
-| `casesets` | Case-set registry and seeded case-set selection | `registry`, `selection` |
+| `casesets` | Case-set registry, seeded case-set selection, case-set preparation | `registry`, `selection`, `prepare` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
@@ -169,6 +169,9 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | 29, 30 | `evidence.bundles` | `protected-data\evidence-bundles\pilot10-v1` |
 | 30.1 | `casesets.selection` | `protected-data\case-sets\<case set>` |
 | 30.1 | `sources.pilot --case-set` | `protected-data\source-casesets\<case set>` |
+| 30.1 | `casesets.prepare` | `protected-data\case-preparation\<case set>` |
+| 30.1 | `gnn.linkage --case-set` | `protected-data\evidence\event-linkage-<case set>` |
+| 30.1 | `evidence.bundles --case-set` | `protected-data\evidence-bundles\<case set>` |
 
 Work items 16 (bridge output contract) and 18 (target and history policy)
 are specifications; they are described in

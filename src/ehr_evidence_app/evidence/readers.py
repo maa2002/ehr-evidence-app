@@ -21,6 +21,7 @@ import io
 import json
 import re
 
+from ehr_evidence_app.casesets import registry
 from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.gnn import admission
 from ehr_evidence_app.gnn import mapping as idmap
@@ -160,8 +161,21 @@ class CaseSet:
     cases: tuple
 
 
-def real_plan():
-    """Return the pinned snapshot, closure and identity-mapping inputs."""
+def real_plan(case_set=None):
+    """Return the pinned snapshot, closure and identity-mapping inputs.
+
+    Without a case set this is the development pilot; with one, every
+    input is the case set's pinned stage record.
+    """
+    if case_set is not None:
+        return {
+            "label": case_set,
+            "snapshot_dir": registry.snapshot_dir(case_set),
+            "manifest": registry.pinned(case_set, "snapshot_manifest"),
+            "legacy_concepts": dict(pmo.real_plan()["assets"]["kg_concepts"]),
+            "closure": registry.pinned(case_set, "prepared_closure"),
+            "mapping": registry.pinned(case_set, "prepared_mapping"),
+        }
     return {
         "label": PILOT_LABEL,
         "snapshot_dir": PILOT_DIR,
@@ -420,15 +434,28 @@ def visit_ids(record):
     return ids
 
 
+def index_records(records):
+    """Return mapping records by the digest the closure binds them with."""
+    return {amp.digest(record): record for record in records or []
+            if isinstance(record, dict)}
+
+
 def closure_case(item, records):
-    """Return one Case after checking it against the identity mapping."""
-    record = records.get(item.get("patient_index"))
-    if record is None or amp.digest(record) != item.get(
-            "mapping_record_sha256"):
-        raise ReaderError("closure_mapping_mismatch")
-    if record.get("graph_position") != item.get("graph_position"):
-        raise ReaderError("closure_mapping_mismatch")
+    """Return one Case after checking it against the identity mapping.
+
+    Every case is bound to its mapping record by digest. Only an admitted
+    case must also resolve to its graph position and verified visits; a
+    quarantined case keeps no visits and is never retrieved.
+    """
     admission_block = item.get("admission") or {}
+    admitted = admission_block.get("status") == admission.ADMITTED
+    record = records.get(item.get("mapping_record_sha256"))
+    if record is None:
+        raise ReaderError("closure_mapping_mismatch")
+    if admitted and (record.get("patient_index") != item.get("patient_index")
+                     or record.get("graph_position")
+                     != item.get("graph_position")):
+        raise ReaderError("closure_mapping_mismatch")
     prediction = item.get("prediction") or {}
     label = item.get("label_evidence") or {}
     restrictions = tuple(admission_block.get("restrictions") or ())
@@ -442,8 +469,8 @@ def closure_case(item, records):
         graph_position=item["graph_position"],
         person_id=record["person_id"],
         subject_id=record["subject_id"],
-        visit_ids=visit_ids(record),
-        admitted=admission_block.get("status") == admission.ADMITTED,
+        visit_ids=visit_ids(record) if admitted else (),
+        admitted=admitted,
         explanation_eligible=item.get("explanation_eligible") is True,
         restrictions=restrictions,
         upstream_partition=item["upstream_partition"],
@@ -468,17 +495,18 @@ def read_cases(plan=None):
     except idmap.MappingError as error:
         raise ReaderError("input_identity:%s" % error) from None
     if (not isinstance(closure, dict)
-            or closure.get("schema") != admission.SCHEMA
-            or closure.get("status") != "closed"):
+            or closure.get("schema") not in (admission.SCHEMA,
+                                             registry.CLOSURE_SCHEMA)
+            or closure.get("status") != "closed"
+            or (closure["schema"] == registry.CLOSURE_SCHEMA
+                and closure.get("case_set") != plan["label"])):
         raise ReaderError("closure_unexpected")
     body = {key: value for key, value in closure.items()
             if key != "preparation"}
     if (closure.get("preparation") or {}).get(
             "fingerprint_sha256") != amp.digest(body):
         raise ReaderError("closure_fingerprint_mismatch")
-    records = {record.get("patient_index"): record
-               for record in mapping_document.get("records") or []
-               if isinstance(record, dict)}
+    records = index_records(mapping_document.get("records"))
     items = closure.get("cases") or []
     if [item.get("case_position") for item in items] != list(
             range(len(items))):

@@ -462,6 +462,11 @@ class ScratchPipelineTests(unittest.TestCase):
         self.bundle_plan = {
             "readers": reader_plan, "outputs": outputs_entry,
             "linkage": None, "policy_path": policy.CONFIG_PATH,
+            "version": "synthetic-set-v1",
+            "names": {"identity_mapping": "synthetic-mapping",
+                      "closure_record": "synthetic-closure",
+                      "model_outputs": "synthetic-outputs",
+                      "linkage_record": "synthetic-linkage"},
             "output_dir": os.path.join(protected, "evidence-bundles", "set"),
             "protected_root": protected}
 
@@ -503,6 +508,9 @@ class ScratchPipelineTests(unittest.TestCase):
                          policy.load()[1])
         self.assertEqual(provenance["legacy_concept_map"]["name"],
                          "inputs-kg-concepts")
+        self.assertEqual((manifest["version"],
+                          provenance["closure_record"]["name"]),
+                         ("synthetic-set-v1", "synthetic-closure"))
         with self.assertRaisesRegex(bundles.BundleError, "output_exists"):
             bundles.run_real(self.bundle_plan)
         with self.assertRaisesRegex(linkage.LinkageError, "output_exists"):

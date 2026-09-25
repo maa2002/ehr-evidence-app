@@ -18,6 +18,16 @@ change interfaces.
 - `sources.pilot --case-set`: extraction of exactly the subjects of a
   pinned case-set selection.
 - Drawn and pinned selections for `dev-30-v1` and `eval-100-v1`.
+- `casesets.prepare`: one run per case set for the identity mapping, the
+  bridge outputs with the canonical-prefix check, single-graph and batch
+  facts, and typed admission, published in the closure case schema.
+- `gnn.linkage --case-set` and `evidence.bundles --case-set`: linkage and
+  bundles for a registered case set from its pinned records.
+
+### Changed
+
+- The evidence readers accept case-set closure records, bind every case to
+  its mapping record by digest, and keep no visits for quarantined cases.
 
 ## [0.4.0] - 2026-09-26
 
