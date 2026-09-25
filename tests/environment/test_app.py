@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from unittest import mock
 
@@ -438,8 +439,10 @@ class ApplicationPackageTests(unittest.TestCase):
              os.path.join(REPO_ROOT, "src")] + list(check.FORBIDDEN_MODULES),
             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, timeout=120, check=False)
+        with open(os.path.join(REPO_ROOT, "pyproject.toml"), "rb") as handle:
+            version = tomllib.load(handle)["project"]["version"]
         self.assertEqual(completed.returncode, 0)
-        self.assertEqual(json.loads(completed.stdout), ["0.3.0", []])
+        self.assertEqual(json.loads(completed.stdout), [version, []])
 
 
 class RunTests(unittest.TestCase):

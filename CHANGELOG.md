@@ -5,7 +5,10 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
-## [Unreleased]
+## [0.4.0] - 2026-09-26
+
+Record evidence for the development pilot (Phase 4, work items 23 to 30),
+with continuous integration and a release workflow.
 
 ### Added
 
@@ -94,5 +97,5 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.3.0...HEAD
+[0.4.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/maa2002/ehr-evidence-app/tree/v0.3.0
