@@ -5,7 +5,13 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
-## [Unreleased]
+## [0.7.0] - 2026-09-26
+
+Wording tests and rules version 2 (Phase 5, work items 34.2 to
+34.4): clean partitions of MIMIC-IV-Ext-Instr and the held-out
+wording test, the written wording test, and rules version 2 with
+spelling suggestions, measured on a written set worded after the
+rules were fixed.
 
 ### Added
 
@@ -217,7 +223,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.6.0...HEAD
+[0.7.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.3.0...v0.4.0
