@@ -16,9 +16,9 @@ session set-up in [development.md](development.md#session-set-up).
 | --- | --- | --- | --- |
 | 35 | `validation.evidence` | Checks before generation | done |
 | 36 | `validation.candidate`, `validation.structure` | The candidate contract; structure and reference checks | done |
-| 37 | `validation.support` | Support of every QA claim by its cited records | planned |
+| 37 | `validation.support` | Support of every QA statement by its cited records | done |
 | 38 | `validation.explanation` | Template explanation; prediction and attribution preservation | planned |
-| 39 | `validation.language` | Wording rules for every outcome; dates and recurrence | planned |
+| 39 | `validation.language` | Wording rules for every outcome; dates and recurrence | wording rules done; dates and recurrence of explanations with item 38 |
 | 40 | `validation.gate` | The release gate | planned |
 | 40.1 | `validation.mutations` | Mutation suite: every error class applied to correct responses | planned |
 
@@ -95,14 +95,63 @@ the bundle bound to that request:
 
 The checks extend the citation check of `evidence.schema` to candidates.
 They say nothing about whether the cited records support what a statement
-says; that is work item 37.
+says; that is the next check.
+
+## Support
+
+`validation.support` decides whether the cited records support what each
+statement of an answer says. Any failure is `claim_unsupported`.
+
+| Statement | Supported when |
+| --- | --- |
+| A list item | It names the condition of one of the records it cites; every record it cites is of that condition (the same standard concept, or the same source code for a record without one); its count and visits are those of the cited records |
+| A list | It names every condition of the scope once and cites every record of the scope once; its summary counts the scope's conditions and records; its note on records without a standard concept counts them |
+| An empty list | Coverage is complete and empty |
+| A presence item | Every record it cites matches the resolved condition by the match kind it states, found with the resolver's own matching; its count and visits are those of the cited records |
+| A presence answer | It cites every matching record of the scope, and its summary counts them |
+| Not recorded | Coverage is complete and no record of the scope matches the condition; its note on records without a standard concept counts them |
+| Any answer | It discloses `unmapped_records_in_scope` exactly when the scope holds records without a standard concept |
+
+Refusals and clarifying questions state no recorded facts and have nothing
+to support.
+
+## Wording
+
+`validation.language` reads the wording of every statement of every
+released outcome: answers, refusals and clarifying questions. It reads
+only the writer's words: each slot is replaced by a neutral token first,
+so a condition named "Pneumonia caused by a virus" never trips a rule.
+Rules version `wording-rules-v1`:
+
+| Rule | Examples | Reason code |
+| --- | --- | --- |
+| Causal or directional attribution | "caused", "led to", "due to", "raised the risk", "risk factor" | `prohibited_wording` |
+| Percentage contribution | "40%", "percent", "a share of" | `prohibited_wording` |
+| Exclusivity | "the only diagnosis", "solely", "nothing else" | `prohibited_wording` |
+| Clinical status, severity or course | "the patient has" as a fact, "severe", "resolved", "worsening" | `prohibited_wording` |
+| Advice | "should", "recommend", "start therapy" | `prohibited_wording` |
+| Certainty | "definitely", "proves", "confirms" | `prohibited_wording` |
+| Diagnosis | "diagnosed with", "consistent with", "likely has" | `prohibited_wording` |
+| Dates, recurrence and frequency | a date, a month, "again", "recurs", "often", "every visit" | `date_unsupported` |
+
+A negation shortly before a causal or diagnostic word lets it pass, so
+"attribution does not mean causation" and "this application does not
+diagnose" are allowed. QA answers state no dates or recurrence at all;
+explanations will be allowed them only with the linked events the
+evidence claim policy allows (work item 38). Every template wording and
+approved notice passes the rules, and a test keeps it so.
+
+The rules are patterns: a sentence that says something prohibited in
+words no pattern knows is not caught. A gap found later becomes a new
+rules version, measured again.
 
 ## QA responses
 
 Every QA response with text is written as a candidate by `qa.templates`,
-checked, and rendered from the candidate (`qa.answer`, rules
-`qa-answer-v5`). A candidate that fails a check is withheld: the response is
-a validation rejection with the check's reason codes and no text. Responses
+checked for structure and references, support and wording, and rendered
+from the candidate (`qa.answer`, rules `qa-answer-v5`). A candidate that
+fails a check is withheld: the response is a validation rejection with
+the check's reason codes and no text. Responses
 without text (operational errors and case rejections) have no candidate.
 The development suite gives the same results with the answers written this
 way (see [qa.md](qa.md#development-suite)).
@@ -115,4 +164,6 @@ The default modes check invented candidates and bundles:
 & $AppPython -m ehr_evidence_app.validation.candidate
 & $AppPython -m ehr_evidence_app.validation.structure
 & $AppPython -m ehr_evidence_app.validation.evidence
+& $AppPython -m ehr_evidence_app.validation.support
+& $AppPython -m ehr_evidence_app.validation.language
 ```

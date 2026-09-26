@@ -9,24 +9,27 @@ change interfaces.
 
 ### Added
 
-- `validation` package (Phase 6, work items 35 and 36;
+- `validation` package (Phase 6, work items 35 to 37 and 39;
   [ADR 0011](docs/decisions/0011-validation-design.md)): the candidate
   contract, in which a response is a list of statements with typed
   slots for its facts and approved notices, rendered into the released
   text and claims; checks before generation (`validation.evidence`);
-  structure and reference checks (`validation.structure`). The
+  structure and reference checks (`validation.structure`); support of
+  every QA statement by its cited records (`validation.support`, work
+  item 37); versioned wording rules for every outcome
+  (`validation.language`, `wording-rules-v1`, work item 39). The
   candidate's JSON Schema is committed with the other contracts.
 - `qa.templates`: the QA answers, refusals and clarifying questions
   written as candidates.
 
 ### Changed
 
-- QA responses with text are rendered from checked candidates
-  (`qa-answer-v5`); a candidate that fails a check is withheld as a
-  validation rejection, and a bundle that does not fit its request is
-  rejected before any text. Every statement is one line, every
-  statement that cites records is also a claim with the same text, and
-  scopes read naturally ("within visit 2").
+- QA responses with text are rendered from candidates checked for
+  structure, support and wording (`qa-answer-v5`); a candidate that
+  fails a check is withheld as a validation rejection, and a bundle that
+  does not fit its request is rejected before any text. Every statement
+  is one line, every statement that cites records is also a claim with
+  the same text, and scopes read naturally ("within visit 2").
 
 ## [0.7.1] - 2026-09-26
 
