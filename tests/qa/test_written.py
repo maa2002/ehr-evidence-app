@@ -53,6 +53,15 @@ class ParsingTests(unittest.TestCase):
             "scope_invalid": 1, "question_missing": 1, "intent_invalid": 1,
             "concept_invalid": 1})
 
+    def test_optional_family_column(self):
+        """A last family column labels rows for grouped results."""
+        rows, problems = parse(
+            ("q1", "synthetic-1-v1", "1", "all", "Any?", "clarify", "",
+             "vague"),
+            header=written.COLUMNS + (written.FAMILY,))
+        self.assertEqual((rows[0].intent, rows[0].family, problems),
+                         ("clarify", "vague", {}))
+
     def test_file_level_faults(self):
         """Wrong columns and other case sets stop the whole file."""
         with self.assertRaisesRegex(written.WrittenError,
@@ -77,7 +86,8 @@ class ScoringTests(unittest.TestCase):
         self.assertFalse(written.related(vocab, (1002,), 1001))
 
     def test_synthetic_run(self):
-        """Lists, presence checks and refusals are scored as expected."""
+        """Lists, presence checks, refusals and clarifications are scored
+        as expected."""
         document = written.run_synthetic()
         for key, value in written.SYNTHETIC_EXPECTED.items():
             self.assertEqual(document[key], value, key)

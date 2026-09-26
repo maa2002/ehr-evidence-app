@@ -1,12 +1,13 @@
 """Written wording test (work item 34.3).
 
-About forty questions written in their own words by someone who has not
-read the interpretation rules, about development cases. Each row names
-the case, the active scope, the question, what the writer meant (a list,
-a presence check of one condition, or a request the application should
-refuse) and, for a presence check, the OMOP concept meant. The file is
-pinned by its SHA-256 when scored, and it is scored with the rules as they
-are; the rules are not changed to fit it.
+Questions worded by a writer who has not read the interpretation rules,
+about development cases. Each row names the case, the active scope, the
+question, what the writer meant (a list, a presence check of one
+condition, a request the application should refuse, or a question it
+should answer with a clarifying question) and, for a presence check, the
+OMOP concept meant. The file is pinned by its SHA-256 when scored, and it
+is scored with the rules as they are; the rules are not changed to fit
+it.
 
 Scoring runs every question through the whole pipeline (qa.answer) with
 the case set's pinned bundles, and compares with the development suite's
@@ -17,7 +18,10 @@ oracle (qa.suite), which reads the source snapshot and the vocabulary:
   check whose resolved concept is the concept meant, an ancestor or a
   descendant of it; it is exact when the answer also returns exactly the
   records of the concept meant (matches by ICD description aside);
-* refuse: the response is a clarification or an abstention.
+* refuse: the response is a clarification or an abstention;
+* clarify: the response is a clarification (a question naming another
+  scope or a visit the case lacks, two requests at once, or one too vague
+  to act on).
 
 To help the writer choose conditions, an overview of each case's recorded
 conditions by scope can be written to the protected workspace; it is
@@ -49,7 +53,9 @@ QUESTIONS_NAME = "questions.csv"
 OVERVIEW_NAME = "case-overview-%s.csv"
 COLUMNS = ("id", "case_set", "case", "scope", "question", "intent",
            "concept")
-INTENTS = ("list", "presence", "refuse")
+# An optional last column: a free label that groups the results.
+FAMILY = "family"
+INTENTS = ("list", "presence", "refuse", "clarify")
 EVIDENTIAL = ("answer", "not_recorded")
 REFUSED = ("clarification", "abstention")
 MAX_QUESTIONS = 500
@@ -70,6 +76,7 @@ class Row:
     question: str
     intent: str
     concept: int | None
+    family: str = ""
 
 
 def scope_ref(text):
@@ -105,8 +112,9 @@ def parse_questions(data, allowed):
     try:
         text = data.decode("utf-8-sig")
         reader = csv.DictReader(io.StringIO(text, newline=""))
-        if tuple(name.strip().lower() for name in reader.fieldnames or ()) \
-                != COLUMNS:
+        header = tuple(name.strip().lower()
+                       for name in reader.fieldnames or ())
+        if header not in (COLUMNS, COLUMNS + (FAMILY,)):
             raise WrittenError("questions_columns_unexpected")
         raw = [{key.strip().lower(): (value or "").strip()
                 for key, value in line.items() if key}
@@ -138,7 +146,8 @@ def parse_questions(data, allowed):
             continue
         rows.append(Row(line["id"], line["case_set"], int(line["case"]),
                         scope, line["question"], line["intent"],
-                        int(concept) if concept.isdigit() else None))
+                        int(concept) if concept.isdigit() else None,
+                        line.get(FAMILY, "")))
     return rows, problems
 
 
@@ -170,6 +179,10 @@ def score_row(row, oracle, cache, vocab, limits, request_id, unmapped):
     if row.intent == "refuse":
         return ("correct" if response.outcome in REFUSED
                 else "answered"), outcome
+    if row.intent == "clarify":
+        return ("correct" if response.outcome == "clarification"
+                else "abstained" if response.outcome == "abstention"
+                else "answered"), outcome
     if response.outcome not in EVIDENTIAL:
         return "not_understood", outcome
     bundle = cache.qa_bundle(row.case_number, row.scope)[0]
@@ -192,6 +205,7 @@ def score(rows, problems, inputs, vocab, limits, digests):
     """Score parsed rows; inputs maps each case set to (oracle, cache)."""
     verdicts = {intent: collections.Counter() for intent in INTENTS}
     outcomes = {intent: collections.Counter() for intent in INTENTS}
+    families = collections.defaultdict(collections.Counter)
     invalid = collections.Counter(problems)
     for index, row in enumerate(rows, 1):
         oracle, cache = inputs[row.case_set]
@@ -206,6 +220,8 @@ def score(rows, problems, inputs, vocab, limits, digests):
             continue
         verdicts[row.intent][verdict] += 1
         outcomes[row.intent][outcome] += 1
+        if row.family:
+            families["%s/%s" % (row.intent, row.family)][verdict] += 1
     document = {
         "test": TEST_VERSION,
         "rules": {"interpretation": interpret.RULES_VERSION,
@@ -218,7 +234,9 @@ def score(rows, problems, inputs, vocab, limits, digests):
         "verdicts": {intent: dict(sorted(found.items()))
                      for intent, found in verdicts.items() if found},
         "outcomes": {intent: dict(sorted(found.items()))
-                     for intent, found in outcomes.items() if found}}
+                     for intent, found in outcomes.items() if found},
+        "families": {family: dict(sorted(found.items()))
+                     for family, found in sorted(families.items())}}
     document["summary_sha256"] = hashlib.sha256(json.dumps(
         document, sort_keys=True, separators=(",", ":")).encode(
             "utf-8")).hexdigest()
@@ -366,14 +384,18 @@ SYNTHETIC_QUESTIONS = (
      "What dose of aspirin should she get?", "refuse", ""),
     ("q7", "synthetic-1-v1", "9", "all", "Is synthetic concept 1001 "
                                          "recorded?", "presence", "1001"),
+    ("q8", "synthetic-1-v1", "1", "history", "Is synthetic concept 1002 "
+                                             "recorded in the final "
+                                             "admission?", "clarify", ""),
 )
 SYNTHETIC_EXPECTED = {
-    "questions_scored": 6,
+    "questions_scored": 7,
     "rows_left_out": {"case_not_admitted": 1},
     "verdicts": {"list": {"correct": 1},
                  "presence": {"exact": 2, "not_understood": 1,
                               "understood": 1},
-                 "refuse": {"correct": 1}}}
+                 "refuse": {"correct": 1},
+                 "clarify": {"correct": 1}}}
 
 
 def run_synthetic():
@@ -409,6 +431,11 @@ def report(document):
                                         for item in found.items())))
         for outcome, count in document["outcomes"][intent].items():
             print(line % ("  " + outcome, count))
+    if document["families"]:
+        print("families")
+    for family, found in document["families"].items():
+        print(line % ("  " + family, ", ".join("%s %d" % item
+                                               for item in found.items())))
     for key, value in document["rules"].items():
         print(line % ("rules " + key, value))
     for key, value in document["inputs"].items():
