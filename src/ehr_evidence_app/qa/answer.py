@@ -21,14 +21,22 @@ One question about the active case and scope becomes exactly one response:
    not recorded within the scope, which is never a statement of clinical
    absence. Ambiguous, unknown and too broad terms get a clarification.
 
-Every response with text is first written as a candidate by the templates
-(qa.templates): its facts are slots, and its refusals and clarifying
-questions are approved notices. The candidate leaves through the release
-gate (validation.gate), which checks its structure and references, the
+Every response with text is written as a candidate: its facts are
+slots, and its refusals and clarifying questions are approved notices
+(qa.templates). The candidate leaves through the release gate
+(validation.gate), which checks its structure and references, the
 support of its statements by their cited records and its wording, and
-renders the released text and claims from it. A candidate that fails is
-withheld as a validation rejection. Phase 7 may reword the templates
-behind the same gate.
+renders the released text and claims from it; a presence answer is also
+checked against the condition asked about. A candidate that fails is
+withheld as a validation rejection.
+
+An answer from evidence (a list, or a presence check with its "not
+recorded") is written by the language model when a writer is given
+(generation.adapter): the model writes the complete candidate from the
+complete bundle, and the template candidate is released instead only when
+the model's is not (a recorded fallback). Refusals and clarifying
+questions are settled before any evidence is read and stay the
+templates' notices.
 """
 
 from __future__ import annotations
@@ -41,6 +49,7 @@ import os
 
 from ehr_evidence_app.casesets import registry
 from ehr_evidence_app.evidence import bundles, contracts, schema
+from ehr_evidence_app.generation import adapter, shape
 from ehr_evidence_app.gnn import mapping
 from ehr_evidence_app.qa import interpret as interpreter
 from ehr_evidence_app.qa import resolve, templates
@@ -159,8 +168,9 @@ def load_bundle_set(plan):
 
 @dataclasses.dataclass(frozen=True)
 class Result:
-    """A response with the facts the development suite scores, and the
-    candidate it was rendered from."""
+    """A response with the facts the development suite scores, the
+    candidate it was rendered from and, for an answer from evidence, who
+    wrote it (generation.adapter.Written)."""
 
     response: contracts.Response
     request: contracts.Request | None = None
@@ -169,6 +179,7 @@ class Result:
     groups: tuple = ()
     resolution: resolve.Resolution | None = None
     candidate: candidates.Candidate | None = None
+    written: adapter.Written | None = None
 
 
 def respond(request_id, case, scope, outcome, reasons=(), task=None):
@@ -279,8 +290,10 @@ def record_matches(bundle, resolution, vocab):
 
 
 def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
-           request_id, limits):
-    """Return the Result for one question about the active case and scope."""
+           request_id, limits, writer=None):
+    """Return the Result for one question about the active case and scope;
+    writer (a generation.adapter.Writer) writes the answers from evidence,
+    and without one the templates do, each a "no_model" fallback."""
     case = contracts.CaseRef(case_set=case_set, case_number=case_number)
     if len(question or "") > limits.max_question_chars:
         return Result(respond(request_id, case, active_scope,
@@ -327,15 +340,34 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
         task=interpretation.task, case=case, scope=scope,
         question=question)
 
-    def bound(candidate, cited=False, condition=None, **fields):
-        """Return the Result of a candidate for the bound request; a
-        presence answer is checked against the condition asked about."""
+    def bound(candidate, **fields):
+        """Return the Result of a notice for the bound request, which
+        cites no evidence."""
         return Result(gate.release(candidate, request_id, case, scope,
-                                   bundle if cited else None,
-                                   digest if cited else None, vocab,
-                                   condition=condition),
+                                   vocab=vocab),
                       request=request, bundle_sha256=digest,
                       candidate=candidate, **fields)
+
+    def written(template, resolution=None, **fields):
+        """Return the Result of an answer from evidence: the writer's
+        candidate, or the template's in its place. A presence answer is
+        checked against the condition asked about."""
+        condition = (templates.resolved_name(resolution) if resolution
+                     else None)
+
+        def release(candidate):
+            """Release a candidate for this request through the gate."""
+            return gate.release(candidate, request_id, case, scope, bundle,
+                                digest, vocab, condition=condition)
+
+        asked = (shape.asked(resolution, bundle, vocab)
+                 if resolution and writer is not None else None)
+        outcome = adapter.write(writer, shape.Context(request, bundle, digest,
+                                                      asked),
+                                template, release)
+        return Result(outcome.response, request=request,
+                      bundle_sha256=digest, candidate=outcome.candidate,
+                      written=outcome, resolution=resolution, **fields)
 
     stop = evidence.qa_stop(request, bundle)
     if stop is not None and stop.outcome == "abstention":
@@ -351,7 +383,7 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
     if interpretation.task == "condition_list":
         candidate, groups = templates.list_candidate(request_id, case, scope,
                                                      bundle, bundle_ref)
-        return bound(candidate, cited=True, groups=groups)
+        return written(candidate, groups=groups)
     resolution = resolve_phrase(interpretation, vocab)
     if interpretation.guard and resolution.status == "unknown":
         return bound(out_of_scope(request_id, case, scope,
@@ -364,8 +396,6 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
     matches = record_matches(bundle, resolution, vocab)
     candidate = templates.presence_candidate(request_id, case, scope, bundle,
                                              bundle_ref, resolution, matches)
-    return bound(candidate, cited=True,
-                 condition=templates.resolved_name(resolution),
-                 resolution=resolution,
-                 matched=tuple(sorted((event.domain, event.native_id)
-                                      for event, _ in matches)))
+    return written(candidate, resolution,
+                   matched=tuple(sorted((event.domain, event.native_id)
+                                        for event, _ in matches)))

@@ -34,6 +34,12 @@
           "title": "Max Output Tokens",
           "type": "integer"
         },
+        "max_prompt_tokens": {
+          "maximum": 131072,
+          "minimum": 1,
+          "title": "Max Prompt Tokens",
+          "type": "integer"
+        },
         "max_question_chars": {
           "maximum": 2000,
           "minimum": 1,
@@ -49,6 +55,7 @@
       },
       "required": [
         "max_question_chars",
+        "max_prompt_tokens",
         "max_output_tokens",
         "max_concurrent_requests",
         "max_request_seconds",

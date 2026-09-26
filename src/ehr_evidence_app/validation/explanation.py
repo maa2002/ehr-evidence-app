@@ -1,7 +1,10 @@
 """Template explanations and their preservation checks (work item 38).
 
-The template explanation (ADR 0011, decision 5) is built from an
-explanation bundle alone, without a model:
+In Phase 7 the language model writes the explanation when a writer is
+given (explain_written, generation.adapter), and the template explanation
+is released in its place when the model's is not. The template
+explanation (ADR 0011, decision 5) is built from an explanation bundle
+alone, without a model:
 
 * the selected label, as one output of the model's multi-label prediction,
   with its uncalibrated score and logit (citing P1);
@@ -48,6 +51,7 @@ import sys
 
 from ehr_evidence_app.casesets import registry
 from ehr_evidence_app.evidence import bundles, contracts, readers, schema
+from ehr_evidence_app.generation import adapter, shape
 from ehr_evidence_app.gnn import mapping
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import evidence, gate
@@ -226,12 +230,27 @@ def release(candidate, request, bundle=None, bundle_sha256=None):
                         request.scope, bundle, bundle_sha256)
 
 
-def explain(request, bundle, bundle_sha256):
+def explain(request, bundle, bundle_sha256, writer=None):
     """Return (Response, candidate or None) for an explanation request and
-    its verified explanation bundle."""
+    its verified explanation bundle; explain_written() also says who
+    wrote it."""
+    written = explain_written(request, bundle, bundle_sha256, writer)
+    return written.response, written.candidate
+
+
+def explain_written(request, bundle, bundle_sha256, writer=None):
+    """Return the generation.adapter.Written of an explanation request.
+
+    A request the checks before generation stop is rejected, or abstains
+    with its notice. An eligible explanation is written by the language
+    model when a writer (a generation.adapter.Writer) is given, and by the
+    template in its place when the model's candidate is not released or
+    there is no writer (a recorded fallback).
+    """
     stop = evidence.explanation_stop(request, bundle)
     if stop is not None and stop.outcome != "abstention":
-        return rejected(request, stop.reasons, stop.outcome), None
+        return adapter.Written(rejected(request, stop.reasons, stop.outcome),
+                               None, "template")
     if stop is not None:
         candidate = candidates.Candidate(
             schema_version=candidates.CANDIDATE_VERSION,
@@ -239,9 +258,12 @@ def explain(request, bundle, bundle_sha256):
             case=request.case, scope=request.scope, outcome="abstention",
             reason_codes=stop.reasons, statements=(candidates.notice(
                 ABSTENTIONS[stop.reasons[0]]),))
-        return release(candidate, request), candidate
-    candidate = template(request, bundle, bundle_sha256)
-    return release(candidate, request, bundle, bundle_sha256), candidate
+        return adapter.Written(release(candidate, request), candidate,
+                               "template")
+    drafted = template(request, bundle, bundle_sha256)
+    return adapter.write(
+        writer, shape.Context(request, bundle, bundle_sha256), drafted,
+        lambda candidate: release(candidate, request, bundle, bundle_sha256))
 
 
 # --------------------------------------------------------------------------

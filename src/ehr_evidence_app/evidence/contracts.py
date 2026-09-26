@@ -15,8 +15,8 @@ distinct are enforced structurally here, before any language model exists:
 * Every non-answer outcome states at least one reason code from its own
   closed list; evidence-based outcomes reference their evidence bundle.
 
-Execution limits (input size, output length, concurrency, duration,
-attempts, evidence size) are fixed ceilings in code; config/
+Execution limits (input size, prompt and output length, concurrency,
+duration, attempts, evidence size) are fixed ceilings in code; config/
 execution_limits.json may lower them but never raise them.
 
 JSON Schemas for the contracts are committed under docs/schemas and must
@@ -62,6 +62,7 @@ QuestionText = Annotated[str, StringConstraints(min_length=1,
 # Fixed ceilings; configuration may lower a limit, never raise it.
 LIMIT_CEILINGS = {
     "max_question_chars": 2000,
+    "max_prompt_tokens": 131072,
     "max_output_tokens": 4096,
     "max_concurrent_requests": 8,
     "max_request_seconds": 600,
@@ -86,6 +87,8 @@ class ExecutionLimits(Frozen):
 
     max_question_chars: int = Field(ge=1, le=LIMIT_CEILINGS[
         "max_question_chars"])
+    max_prompt_tokens: int = Field(ge=1, le=LIMIT_CEILINGS[
+        "max_prompt_tokens"])
     max_output_tokens: int = Field(ge=1, le=LIMIT_CEILINGS[
         "max_output_tokens"])
     max_concurrent_requests: int = Field(ge=1, le=LIMIT_CEILINGS[

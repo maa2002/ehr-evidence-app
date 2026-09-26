@@ -18,10 +18,10 @@ from ehr_evidence_app.evidence import vocabulary as vocab
 CASE = {"case_set": "synthetic-3-v1", "case_number": 2}
 HISTORY = {"kind": "pre_target_history"}
 DIGEST = "5" * 64
-LIMITS = {"max_question_chars": 500, "max_output_tokens": 768,
-          "max_concurrent_requests": 1, "max_request_seconds": 120,
-          "max_generation_attempts": 1, "max_evidence_items": 2000,
-          "max_bundle_bytes": 1048576}
+LIMITS = {"max_question_chars": 500, "max_prompt_tokens": 16384,
+          "max_output_tokens": 768, "max_concurrent_requests": 1,
+          "max_request_seconds": 120, "max_generation_attempts": 1,
+          "max_evidence_items": 2000, "max_bundle_bytes": 1048576}
 
 
 def document(base, changes):

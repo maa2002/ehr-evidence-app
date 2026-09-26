@@ -638,10 +638,10 @@ def run_real(plan=None):
 # Synthetic default mode (invented fixtures only)
 # --------------------------------------------------------------------------
 
-SYNTHETIC_LIMITS = dict(max_question_chars=500, max_output_tokens=768,
-                        max_concurrent_requests=1, max_request_seconds=120,
-                        max_generation_attempts=1, max_evidence_items=2000,
-                        max_bundle_bytes=1048576)
+SYNTHETIC_LIMITS = dict(max_question_chars=500, max_prompt_tokens=16384,
+                        max_output_tokens=768, max_concurrent_requests=1,
+                        max_request_seconds=120, max_generation_attempts=1,
+                        max_evidence_items=2000, max_bundle_bytes=1048576)
 
 
 def synthetic_inputs():
