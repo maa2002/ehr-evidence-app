@@ -12,8 +12,9 @@ condition vocabulary's tables:
   condition record belongs to a scope when its visit does.
 * list: every record of the scope, one group per standard concept (per
   source code for a record without one); an empty scope is not recorded.
-* presence of a concept, asked by its name, a synonym or the name of a
-  broader concept: a record with a standard concept matches when that
+* presence of a concept, asked by its name (also in a negative form such
+  as "is there no record of X"), a synonym or the name of a broader
+  concept: a record with a standard concept matches when that
   concept is the asked one or descends from it. A record without a
   standard concept may match by its ICD description; that rule has no
   independent reference, so such matches are counted apart, not scored.
@@ -21,7 +22,10 @@ condition vocabulary's tables:
   the code or starts with it.
 * the fixed outcome of every other family: another scope or a missing
   visit named in the question, unsupported, explanation and other-patient
-  requests, and invented, too broad or ambiguous terms.
+  requests, invented, too broad or ambiguous terms, and the fail-safes:
+  a visit or time named in unrecognised words, a list limited to a
+  number of conditions, exclusions and filters, words the rules cannot
+  account for, and two conditions asked at once.
 
 Evidential responses must also disclose records without a standard
 concept and cite exactly the records they report. The questions come from
@@ -52,12 +56,14 @@ from ehr_evidence_app.evidence.concepts import NAME_LIMIT
 from ehr_evidence_app.qa import answer, interpret, resolve
 from ehr_evidence_app.qa import vocabulary as build
 
-SUITE_VERSION = "qa-development-suite-v2"
+SUITE_VERSION = "qa-development-suite-v3"
 FAMILIES = ("list", "presence_name", "presence_synonym", "presence_ancestor",
             "presence_code", "presence_absent", "scope_same", "scope_other",
             "visit_missing", "unsupported", "explanation", "other_patient",
             "unknown_term", "too_broad", "ambiguous_term", "ranking",
-            "two_requests", "misspelling")
+            "two_requests", "misspelling", "presence_negated",
+            "scope_unrecognised", "count_list", "qualified",
+            "unexplained", "two_conditions")
 PRESENCE = ("Is {c} recorded?", "Does the patient have {c}?",
             "Any history of {c}?", "Was {c} documented?",
             "Has the patient been diagnosed with {c}?",
@@ -89,6 +95,34 @@ TWO_REQUESTS = ("List all recorded conditions. Is {c} recorded?",
                 "What conditions are documented; does the patient have "
                 "{c}?")
 MISSPELT = ("Is {c} recorded?", "Does the patient have {c}?")
+NEGATED = ("Is there no record of {c}?", "Is {c} not recorded?",
+           "Does the patient not have {c}?",
+           "Has the patient never had {c}?", "Was {c} never documented?")
+# The fail-safes. List wordings hold no condition name, whose own words
+# could trip another fail-safe first.
+UNRECOGNISED_SCOPES = ("Was {c} coded in the admission before the last one?",
+                       "Is {c} documented for the inpatient period?",
+                       "Was {c} recorded during the hospital course?",
+                       "Does the patient have {c} now?",
+                       "Which diagnoses were coded at discharge?",
+                       "What are the current diagnoses?")
+COUNTED_LISTS = ("List three recorded conditions.",
+                 "Give me a few of the diagnoses.",
+                 "What are 5 of the patient's conditions?",
+                 "Show two of her diagnoses.")
+QUALIFIED = ("List the conditions except the chronic ones.",
+             "What diagnoses other than the cardiac ones are recorded?",
+             "Which conditions are not recorded?",
+             "List only the chronic conditions.",
+             "Is {c} recorded, excluding the final admission?")
+UNEXPLAINED = ("List the patient's cardiac conditions.",
+               "Which diagnoses are chronic?",
+               "Is {c} recorded in his family history?",
+               "Is {c} recorded as a complication?")
+TWO_CONDITIONS = ("Is {c} recorded? Is {d} recorded?",
+                  "Does the patient have {c}? Does the patient have {d}?",
+                  "Check whether {c} is recorded. Check whether {d} is "
+                  "recorded.")
 NUMBER_WORDS = ("one", "two", "three", "four", "five", "six", "seven",
                 "eight", "nine", "ten")
 INVENTED = ("florbnitis", "quazzle syndrome", "vextral fever",
@@ -347,8 +381,15 @@ def choose(options, *key):
     return ordered(options, *key)[0]
 
 
+THIS_VISIT = ("during this admission", "in this hospital stay")
+
+
 def scope_phrases(scope, visit_count):
-    """Return phrases that name a scope for a case."""
+    """Return phrases that name a scope for a case.
+
+    "This admission" names the selected visit when a visit is selected,
+    and the final admission otherwise.
+    """
     if scope.kind == "pre_target_history":
         return ("before the final admission", "in previous admissions",
                 "prior to the last admission",
@@ -359,13 +400,13 @@ def scope_phrases(scope, visit_count):
                 "throughout his hospital stays")
     number = scope.visit_number
     phrases = ["in visit %d" % number, "during admission %d" % number,
-               "during hospital stay %d" % number]
+               "during hospital stay %d" % number, *THIS_VISIT]
     if number <= len(ORDINALS):
         phrases += ["in the %s admission" % ORDINALS[number - 1],
                     "in admission %s" % NUMBER_WORDS[number - 1]]
     if number == visit_count:
         phrases += ["in the final admission", "during the last admission",
-                    "during this admission", "in the present admission"]
+                    "in the present admission"]
     return tuple(phrases)
 
 
@@ -433,7 +474,7 @@ class ScopeProbes:
         found += [self.asked("presence_name", concept, self.name(concept))
                   for concept in self.named[:LIMITS["presence_name"]]]
         return (found + self.synonyms() + self.broader() + self.codes()
-                + self.absent() + self.scoped())
+                + self.absent() + self.negated() + self.scoped())
 
     def synonyms(self):
         """Return presence probes that name a concept by a synonym."""
@@ -490,6 +531,16 @@ class ScopeProbes:
                                         self.name(concept)))
         return found
 
+    def negated(self):
+        """Return a presence probe asked in a negative form."""
+        if not self.named:
+            return []
+        concept = choose(self.named, *self.key, "negated")
+        template = choose(NEGATED, *self.key, "negated", concept)
+        return [self.presence("presence_negated",
+                              template.format(c=self.name(concept)),
+                              concept)]
+
     def scoped(self):
         """Return one question naming this scope and one naming another."""
         count = len(self.case.visit_ids)
@@ -505,7 +556,9 @@ class ScopeProbes:
             same = self.listing("scope_same", template.format(s=phrase))
         others = [(slug(scope), phrase) for scope in self.scopes
                   if scope != self.scope
-                  for phrase in scope_phrases(scope, count)]
+                  for phrase in scope_phrases(scope, count)
+                  if phrase not in THIS_VISIT
+                  or self.scope.kind != "selected_visit"]
         _, phrase = choose(others, *self.key, "other")
         if self.named and choose(("presence", "list"), *self.key,
                                  "other-task") == "presence":
@@ -564,6 +617,23 @@ def case_probes(oracle, case, pools, skipped):
     probes.append(fixed(
         "two_requests", choose(TWO_REQUESTS, *key, "two").format(c=name),
         "clarification", "task_ambiguous"))
+    probes.append(fixed(
+        "scope_unrecognised", choose(UNRECOGNISED_SCOPES, *key,
+                                     "unrecognised").format(c=name),
+        "clarification", "scope_ambiguous"))
+    probes.append(fixed("count_list", choose(COUNTED_LISTS, *key, "count"),
+                        "abstention", "task_unsupported"))
+    for family, templates in (("qualified", QUALIFIED),
+                              ("unexplained", UNEXPLAINED)):
+        probes.append(fixed(family, choose(templates, *key, family).format(
+            c=name), "clarification", "task_ambiguous"))
+    if len(names) > 1:
+        probes.append(fixed(
+            "two_conditions", choose(TWO_CONDITIONS, *key, "two-conditions")
+            .format(c=name, d=oracle.vocab.rows[names[1]].name),
+            "clarification", "task_ambiguous"))
+    else:
+        skipped["two_conditions:none"] += 1
     misspelt = misspelling(oracle, names)
     if misspelt:
         concept, phrase = misspelt

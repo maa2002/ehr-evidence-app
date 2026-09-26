@@ -275,6 +275,99 @@ class OutOfScopeTests(unittest.TestCase):
                          ("clarify", "case_ambiguous"))
 
 
+class FailSafeTests(unittest.TestCase):
+    """Every word of an answered question is accounted for (rules v3)."""
+
+    def check(self, cases, status, reason, category):
+        """Assert that each question ends with the same fail-safe."""
+        for question in cases:
+            result = interpret.interpret(question)
+            self.assertEqual(
+                (result.status, result.reason, result.category),
+                (status, reason, category), question)
+
+    def test_unrecognised_visits_and_times(self):
+        """Admissions, stays and times outside a scope phrase."""
+        self.check((
+            "Was heart failure coded in the admission before the last one?",
+            "Is heart failure documented for the inpatient period?",
+            "Was heart failure recorded during the hospital course?",
+            "Is heart failure recorded in the ICU?",
+            "Which diagnoses were coded at discharge?",
+            "What are his current diagnoses?",
+            "Was heart failure recorded then?",
+            "Does the patient have heart failure now?",
+            "Was sepsis recorded at that time?"),
+            "clarify", "scope_ambiguous", "scope_unrecognised")
+
+    def test_exclusions_and_filters(self):
+        """Exclusions in any question; negations in a list."""
+        self.check((
+            "List the conditions except diabetes.",
+            "What diagnoses other than diabetes are recorded?",
+            "Which conditions are not recorded?",
+            "List only the chronic conditions.",
+            "Which diagnoses does she not have?",
+            "Is heart failure recorded, excluding the final admission?"),
+            "clarify", "task_ambiguous", "qualified")
+
+    def test_unexplained_words(self):
+        """Words outside the frames and the condition phrase."""
+        self.check((
+            "List the patient's cardiac conditions.",
+            "Which diagnoses are chronic?",
+            "Is heart failure recorded in his family history?",
+            "Is diabetes recorded as a complication of pregnancy?",
+            "Diabetes is recorded and hypertension is recorded."),
+            "clarify", "task_ambiguous", "unexplained")
+
+    def test_two_conditions(self):
+        """Two presence checks in one message."""
+        self.check((
+            "Is heart failure recorded? Is diabetes recorded?",
+            "Does the patient have asthma? Does the patient have COPD?"),
+            "clarify", "task_ambiguous", "two_conditions")
+
+    def test_counted_lists_are_refused(self):
+        """A list limited to a number of conditions is a ranking."""
+        self.check((
+            "List three conditions.", "Give me a few of the diagnoses.",
+            "What are 5 of the patient's conditions?",
+            "Show two of her diagnoses."),
+            "abstain", "task_unsupported", "ranking")
+
+    def test_negative_and_harmless_wordings_stay_tasks(self):
+        """Negative forms check the condition; known words are kept."""
+        for question in (
+                "Is there no record of heart failure?",
+                "Is heart failure not recorded?",
+                "Does the patient not have heart failure?",
+                "Has the patient never had heart failure?",
+                "Was heart failure never documented?",
+                "Does the patient have heart failure or not?",
+                "Check whether or not heart failure is recorded.",
+                "Was the patient ever diagnosed with heart failure?",
+                "Is heart failure recorded in this patient's chart?",
+                "Was heart failure recorded at any time?"):
+            result = interpret.interpret(question)
+            self.assertEqual((result.task, result.term),
+                             ("condition_presence", "heart failure"),
+                             question)
+        for question in ("Which diagnoses were coded for this case so far?",
+                         "Could you please list her diagnoses?"):
+            self.assertEqual(interpret.interpret(question).task,
+                             "condition_list", question)
+
+    def test_peel(self):
+        """The words removed from the phrase's ends are returned."""
+        self.assertEqual(
+            interpret.peel("a history of heart failure recorded now"),
+            (("a history of heart failure recorded now",
+              "history of heart failure recorded now",
+              "heart failure recorded now", "heart failure recorded",
+              "heart failure"), "a history of now recorded"))
+
+
 class ScopeMentionTests(unittest.TestCase):
     """Scope phrases are found and removed from the condition phrase."""
 
@@ -325,8 +418,27 @@ class ScopeMentionTests(unittest.TestCase):
                 ("Is sepsis recorded in admission two?", "selected_visit", 2,
                  False),
                 ("Was sepsis coded in ICU stay 3?", "selected_visit", 3,
-                 False)):
-            self.check(question, kind, number, last)
+                 False),
+                ("Was sepsis coded during the patient's stays?",
+                 "case_visits", None, False),
+                ("Was sepsis coded across every admission?", "case_visits",
+                 None, False),
+                ("Which diagnoses were recorded at the time of the final "
+                 "admission?", "selected_visit", None, True),
+                ("Is sepsis recorded during the course of her most recent "
+                 "admission?", "selected_visit", None, True)):
+            result = self.check(question, kind, number, last)
+            self.assertEqual(result.status, "task", question)
+
+    def test_this_admission(self):
+        """'This admission' is marked; 'the current admission' is not."""
+        for question, this in (
+                ("Is sepsis recorded during this admission?", True),
+                ("Was sepsis coded in this hospital stay?", True),
+                ("Is sepsis recorded in the current admission?", False)):
+            mention = interpret.interpret(question).mentions[0]
+            self.assertEqual((mention.last, mention.this), (True, this),
+                             question)
 
     def test_no_scope_words(self):
         """'Ever' and 'at any time' are not scope phrases."""
@@ -354,6 +466,23 @@ class BindingTests(unittest.TestCase):
             binding = self.bind(question, active)
             self.assertEqual((binding.status, binding.scope),
                              ("bound", active), question)
+
+    def test_this_admission_is_the_selected_visit(self):
+        """With a visit selected, 'this admission' is that visit;
+        otherwise it is the final admission."""
+        question = "Is sepsis recorded during this admission?"
+        for active in (visit(1), visit(3)):
+            binding = self.bind(question, active)
+            self.assertEqual((binding.status, binding.scope),
+                             ("bound", active))
+        for active in (HISTORY, ALL):
+            binding = self.bind(question, active)
+            self.assertEqual((binding.status, binding.requested),
+                             ("clarify", visit(3)))
+        binding = self.bind("Is sepsis recorded in the current "
+                            "admission?", visit(1))
+        self.assertEqual((binding.status, binding.requested),
+                         ("clarify", visit(3)))
 
     def test_other_scopes_are_asked_about(self):
         """Another scope, two scopes or a missing visit clarify."""

@@ -3,7 +3,8 @@
 One question about the active case and scope becomes exactly one response:
 
 1. interpretation (qa.interpret) ends unsupported, unclear or other-patient
-   questions with an abstention or clarification;
+   questions, and questions holding words it cannot account for, with an
+   abstention or clarification;
 2. scope binding (qa.scope) keeps the active scope, or asks before any
    change;
 3. the case's QA bundle for that scope is read from the pinned bundle set
@@ -40,7 +41,7 @@ from ehr_evidence_app.qa import interpret as interpreter
 from ehr_evidence_app.qa import resolve
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "qa-answer-v2"
+RULES_VERSION = "qa-answer-v3"
 PILOT = "pilot-10-v1"
 MAX_REFS = 50
 CLAIM_LIMIT = 200
@@ -70,6 +71,8 @@ UNSUPPORTED_TEXT = {
 }
 SUPPORTED = ("It can list the conditions recorded within the selected scope, "
              "or check whether a named condition is recorded there.")
+ASK = ("Ask for the list of conditions recorded within the selected scope, "
+       "or whether one named condition is recorded there.")
 # Out-of-scope rules that end in a clarification rather than an abstention.
 UNSUPPORTED_CATEGORIES = ("explanation", "other_patient")
 
@@ -388,6 +391,22 @@ def clarification_text(interpretation, resolution=None, vocab=None,
                               "unknown": "concept_unknown",
                               "too_broad": "concept_too_broad"}.get(
         resolution.status)) or interpretation.reason
+    if interpretation.category == "scope_unrecognised":
+        return ("The question names a visit, stay or time in words that "
+                "are not recognised as a scope, so it is not answered. %s"
+                % ("The selected scope is %s; change it with the scope "
+                   "selector to ask about another part of the record."
+                   % scope_words(active) if active is not None else
+                   "Choose the part of the record with the scope "
+                   "selector."))
+    if interpretation.category == "qualified":
+        return ("Exclusions and filters such as \"except\", \"only\" or "
+                "\"not\" are not applied to answers. " + ASK)
+    if interpretation.category == "unexplained":
+        return ("Some words of the question could not be interpreted, so "
+                "it is not answered. " + ASK)
+    if interpretation.category == "two_conditions":
+        return "Ask about one condition at a time."
     if reason == "concept_ambiguous":
         names = [vocab.rows[concept].name for concept in resolution.concepts]
         return ("\"%s\" can mean several conditions: %s. Which one do you "
@@ -421,7 +440,7 @@ def clarification_text(interpretation, resolution=None, vocab=None,
                 "explanation workflow, for a selected prediction.")
     if interpretation.category == "two_tasks":
         return "Ask one question at a time: a list, or one condition."
-    return "The question was not understood. " + SUPPORTED
+    return "The question was not understood. " + ASK
 
 
 def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
@@ -443,7 +462,8 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
     if interpretation.status == "clarify":
         return Result(respond(request_id, case, active_scope,
                               "clarification",
-                              text=clarification_text(interpretation),
+                              text=clarification_text(
+                                  interpretation, active=active_scope),
                               reasons=(interpretation.reason,)))
     visit_count = bundle_set.visit_count(case_number)
     if not visit_count:

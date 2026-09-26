@@ -5,6 +5,26 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
+## [Unreleased]
+
+### Added
+
+- Development suite version 3 with a family for each fail-safe and for
+  negative wordings: 1,892 of 1,892 on `dev-30-v1`, 784 of 784 on the
+  pilot; the vocabulary sweep still returns the asked concept for all
+  788,221 questions.
+
+### Changed
+
+- Rules version 3: layered fail-safes, so that every word of an
+  answered question is accounted for. A visit, stay or time named in
+  words that are not a scope phrase, an exclusion or filter, a word
+  outside the question frames and the condition phrase, or two
+  presence checks in one message now get a clarification, and a list
+  limited to a number of conditions is refused like a ranking. "This
+  admission" names the selected visit when a visit is selected.
+  Negative wordings ("is there no record of X") check X.
+
 ## [0.7.0] - 2026-09-26
 
 Wording tests and rules version 2 (Phase 5, work items 34.2 to
@@ -223,6 +243,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.0...HEAD
 [0.7.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.4.0...v0.5.0

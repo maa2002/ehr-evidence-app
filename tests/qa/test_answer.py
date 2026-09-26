@@ -176,6 +176,42 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(result.resolution.concepts[0], 1001)
         self.assertIn("Did you mean", result.response.text)
 
+    def test_fail_safes(self):
+        """Each fail-safe ends with its own clarification text."""
+        for question, outcome, reason, words in (
+                ("Was synthetic concept 1002 recorded during the hospital "
+                 "course?", "clarification", "scope_ambiguous",
+                 "The selected scope is pre-target history"),
+                ("List the conditions except the chronic ones.",
+                 "clarification", "task_ambiguous", "\"except\""),
+                ("List the patient's cardiac conditions.",
+                 "clarification", "task_ambiguous",
+                 "could not be interpreted"),
+                ("Is synthetic concept 1001 recorded? Is synthetic "
+                 "concept 1002 recorded?", "clarification",
+                 "task_ambiguous", "one condition at a time"),
+                ("List three recorded conditions.", "abstention",
+                 "task_unsupported", "not ranked")):
+            response = ask(question).response
+            self.assertEqual((response.outcome, response.reason_codes,
+                              response.claims, response.bundle),
+                             (outcome, (reason,), (), None), question)
+            self.assertIn(words, response.text, question)
+
+    def test_negative_forms_and_this_admission(self):
+        """A negative question checks the condition; 'this admission'
+        is the selected visit."""
+        question = "Is there no record of synthetic concept 1002?"
+        self.assertEqual(ask(question, ALL).response.outcome, "answer")
+        self.assertEqual(ask(question).response.outcome, "not_recorded")
+        question = "Is synthetic concept 1002 recorded during this admission?"
+        for active, outcome in ((visit(3), "answer"),
+                                (visit(1), "not_recorded"),
+                                (HISTORY, "clarification")):
+            response = ask(question, active).response
+            self.assertEqual((response.outcome, response.scope),
+                             (outcome, active), active)
+
     def test_limits_and_unknown_cases(self):
         """Over-long questions and cases without bundles end early."""
         response = ask("x" * (LIMITS.max_question_chars + 1)).response

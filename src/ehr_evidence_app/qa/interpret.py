@@ -25,6 +25,25 @@ then:
 3. a question with both tasks, in one sentence or in two, or with
    neither, gets a clarification.
 
+Every word of a task question must be understood, or the question is
+not answered (version 3). Before a list or presence check is released,
+these fail-safes turn a possible misreading into a clarification:
+
+* a mention of admissions, visits, stays, the hospital or the ICU, or of
+  a time ("now", "currently", "at that time"), that is not a
+  recognised scope phrase asks which part of the record is meant;
+* exclusions and filters ("except", "only", "other than"), and in a
+  list request also negations, ask for a plain request;
+* any other word that is not part of a question frame, the condition
+  phrase or a scope phrase, and is not a known harmless word, asks for
+  the question again;
+* two presence checks in one message ask for one condition at a time.
+
+The question words removed from the ends of the condition phrase (see
+below) are checked for scope words, exclusions and negations too.
+A list limited to a number of conditions is refused, as rankings are.
+Negative forms of a presence check ("is there no record of X") check X.
+
 The condition phrase comes with its candidates, longest first: the phrase
 as asked, then with one question word at a time removed from its start
 ("a", "the", "history of", "ICD code") or its end ("recorded", "in the
@@ -42,7 +61,7 @@ import unicodedata
 
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "question-interpretation-v2"
+RULES_VERSION = "question-interpretation-v3"
 CONTRACTIONS = {"what's": "what is", "isn't": "is not", "wasn't": "was not",
                 "doesn't": "does not", "didn't": "did not",
                 "hasn't": "has not", "haven't": "have not",
@@ -57,8 +76,8 @@ CONDITIONS = (r"(?:conditions|diagnoses|diagnosis|problems|diseases|"
               r"medical conditions|health problems|health conditions)")
 RECORDED = (r"(?:recorded|documented|coded|noted|listed|present|mentioned|"
             r"captured|reported|on record|on file|in the record|in the "
-            r"records|in the chart|in (?:his|her|their|the patient) "
-            r"(?:record|records|chart|history)|diagnosed|included|"
+            r"records|in the chart|in (?:his|her|their|the patient|this "
+            r"patient) (?:record|records|chart|history)|diagnosed|included|"
             r"among (?:them|those)|on (?:the|that|this|his|her|their) "
             r"(?:problem )?list|in (?:the|that|this) list)")
 
@@ -113,7 +132,9 @@ UNSUPPORTED = (
     ("abstain", "task_unsupported", "ranking", re.compile(
         r"\b(?:first|1st|top|primary|principal|main|leading|predominant|"
         r"most (?:important|significant|serious|severe|relevant)|"
-        r"biggest)\b")),
+        r"biggest|(?:[0-9]+|one|two|three|four|five|six|seven|eight|nine|"
+        r"ten|a few|a couple of|several) (?:[a-z]+ ){0,3}%s)\b"
+        % CONDITIONS)),
 )
 # Data words that are part of a condition name ("drug abuse", "adverse drug
 # reaction", "allergy to medication") do not make a question about other
@@ -129,8 +150,8 @@ DATA_CONDITIONS = re.compile(
 
 WRAPPER = re.compile(
     r"^(?:can you |could you |please |would you )?(?:check|find out|tell me|"
-    r"confirm|verify|see|determine|show me|let me know) (?:if|whether) "
-    r"(?P<rest>.+)$")
+    r"confirm|verify|see|determine|show me|let me know) (?:if|whether)"
+    r"(?: or not)? (?P<rest>.+)$")
 FILTERED_LIST = re.compile(
     r"^(?:which|what) (?:types of |kinds of |forms of )?(?P<term>.+?) "
     r"%s (?:are|were|have been|has been|is|was) (?:recorded|documented|"
@@ -141,24 +162,27 @@ LIST_WORDS = frozenset(("", "medical", "health", "all", "other", "existing",
 PRESENCE = (
     re.compile(
         r"^%s (?:has|had|have|got|gets) (?:ever |previously |already |"
-        r"also )?(?:had |been diagnosed with |a history of |any history of |"
-        r"a diagnosis of )?(?P<term>.+)$" % SUBJECT),
+        r"also |never |not )?(?:had |been diagnosed with |a history of |"
+        r"any history of |a diagnosis of )?(?P<term>.+)$" % SUBJECT),
     re.compile(
         r"^(?!(?:what|which|how|who|when|where|why|list|show|give|tell)\b)"
         r"(?P<term>.+?) (?:is|was|are|were|has been|have been|had been) "
-        r"(?:ever |previously |also |already )?%s\b.*$" % RECORDED),
+        r"(?:ever |previously |also |already |not |never )?%s\b.*$"
+        % RECORDED),
     re.compile(
-        r"^(?:is|was|are|were) there (?:any |a |an )?(?:record|records|"
+        r"^(?:is|was|are|were) there (?:any |a |an |no )?(?:record|records|"
         r"history|diagnosis|diagnoses|mention|evidence|documentation|sign|"
         r"signs|indication|code|codes) (?:of|for) (?P<term>.+)$"),
     re.compile(
         r"^(?:does|did|has|have|do) %s (?:ever |previously |already |also |"
-        r"actually )?(?:(?:have|had|has|got|get)(?: (?:a |any )?(?:history|"
-        r"diagnosis|record) of)?|suffer from|suffered from|suffers from|"
+        r"actually |never |not )?(?:(?:have|had|has|got|get)(?: (?:a |any )?"
+        r"(?:history|diagnosis|record) of)?|suffer from|suffered from|"
+        r"suffers from|"
         r"been diagnosed with|diagnosed with|carry a diagnosis of) "
         r"(?P<term>.+)$" % SUBJECT),
     re.compile(
-        r"^(?:is|are) %s (?:known to have |diagnosed with |a known )"
+        r"^(?:is|are|was|were) %s (?:ever |previously |already |also |"
+        r"never |not )?(?:known to have |diagnosed with |a known )"
         r"(?P<term>.+)$" % SUBJECT),
     # The phrase runs to the last reporting word, so a name that contains
     # one ("Abnormal heart beat noted before labor") stays whole.
@@ -178,9 +202,9 @@ LIST = (
                r"(?<!this )(?<!that )\b(?:list|enumerate|summari[sz]e|"
                r"itemi[sz]e)\b"),
     re.compile(
-        r"\b(?:what|which) (?:are |were |is |was )?(?:all )?(?:the |his |"
-        r"her |their )?(?:recorded |documented |coded |known |past |"
-        r"previous |prior |existing |current )?%s\b" % CONDITIONS),
+        r"\b(?:what|which) (?:are |were |is |was )?(?:all |all of )?"
+        r"(?:the |his |her |their )?(?:recorded |documented |coded |known |"
+        r"past |previous |prior |existing |current )?%s\b" % CONDITIONS),
     re.compile(
         r"\b%s (?:are |were |have been |has been )?(?:recorded|documented|"
         r"coded|listed|noted|on file|in the record)\b" % CONDITIONS),
@@ -204,8 +228,8 @@ LIST = (
 LIST_PHRASE = re.compile(r"(?:%s|medical history|past medical history)"
                          % CONDITIONS)
 LEADING = re.compile(
-    r"^(?:a|an|the|any|some|there|known|previous|prior|past|recorded|"
-    r"hx of|pmh of|past history of|past medical history of|"
+    r"^(?:a|an|the|any|some|there|not|no|never|known|previous|prior|past|"
+    r"recorded|hx of|pmh of|past history of|past medical history of|"
     r"medical history of|"
     r"patient|patients|this patient|his|her|their|its|"
     r"documented|diagnosed|confirmed|history of|diagnosis of|diagnoses of|"
@@ -218,9 +242,9 @@ TRAILING = re.compile(
     r"diagnosed|reported|captured|before|previously|ever|been|at any point|"
     r"at any time|in the past|at all|also|too|either|on record|on file|"
     r"in the record|in the records|in the chart|in (?:his|her|their|the "
-    r"patient) (?:record|records|chart|history)|in the history|history|"
-    r"then|now|here|please|in|during|at|for|on|within|from|of|by|to|and|"
-    r"or|nor)$")
+    r"patient|this patient) (?:record|records|chart|history)|in the "
+    r"history|history|then|now|here|please|in|during|at|for|on|within|"
+    r"from|of|by|to|and|or|nor|not|never)$")
 QUESTION_START = re.compile(
     r"^(?:what|which|who|whom|whose|when|where|why|how|tell|show|give|"
     r"explain|describe|is|are|was|were|does|did|do|can|could|would|"
@@ -231,6 +255,47 @@ CLAUSES = re.compile(
     r"\b(?:and|also|then|plus|as well as|along with|in addition|"
     r"additionally|including whether|including if)\b")
 MAX_BARE_WORDS = 6
+# Fail-safes (version 3). A part of the record, or a time, named in words
+# that are not a recognised scope phrase:
+RECORD_PART = re.compile(
+    r"\b(?:admission|admissions|admitted|admit|readmission|readmissions|"
+    r"readmitted|visit|visits|stay|stays|encounter|encounters|"
+    r"hospitali[sz]ations?|hospital|hospitals|inpatient|inpatients|icu|"
+    r"ward|wards|discharge|discharged|(?:this|that|the (?:first|second|"
+    r"third|last|previous|current|final|next|latest|earlier|prior|"
+    r"other)) one|now|currently|current|presently|at present|then|"
+    r"still|moment|(?:this|that|the|same) time|(?:this|that) point)\b")
+# Exclusions and filters, in any task question ...
+EXCLUSIONS = re.compile(
+    r"\b(?:except|excluding|exclude|excludes|other than|besides|"
+    r"apart from|only|unless|instead|rather than)\b")
+# ... and negations, in a list request.
+NEGATIONS = re.compile(r"\b(?:not|no|never|none|without|neither|nor)\b")
+# Words a task question may hold outside its condition phrase and scope
+# phrases: question frames, reporting words and harmless fillers.
+EXPLAINED = frozenset("""
+a an the any some all every each of for in on at to with by from as and
+or nor also too either is was are were be been being am has have had
+having does do did done there here this that these those it its one s
+patient patients pt person case subject he she they him her them his
+their i me my we us our you your what which who whom whose how many much
+whether if please kindly can could would will may might shall should
+must let tell show give list lists see check find out confirm verify
+determine look up pull display enumerate summarise summarize summary
+itemise itemize overview name identify provide retrieve report know ever
+previously already yet so far anywhere somewhere anytime before during
+within across throughout over point time least once recorded documented
+coded noted charted listed present mentioned captured reported diagnosed
+billed included flagged entered logged appear appears appeared exist
+exists existed record records chart charts file files history hx pmh
+medical past known prior previous confirmed code codes icd diagnostic cm
+diagnosis diagnoses condition conditions problem problems disease
+diseases illness illnesses disorder disorders comorbidity comorbidities
+health evidence sign signs indication indications mention mentions
+documentation among suffer suffers suffered suffering got get gets carry
+carries actually not no never full complete entire right correct true ok
+okay yes hi hello hey thanks thank quick question just well
+""".split())
 # A condition named only by a pronoun refers to earlier conversation, which
 # questions never rely on.
 PRONOUNS = frozenset(("it", "this", "that", "these", "those", "them", "one",
@@ -277,21 +342,30 @@ def normalize(question):
     return " ".join(text.split())
 
 
-def candidates(phrase):
-    """Return a condition phrase's candidates, longest first.
+def peel(phrase):
+    """Return a condition phrase's candidates, longest first, and the
+    question words removed from its ends.
 
     Question words are removed one at a time, from the start while any is
     there, then from the end.
     """
-    found = []
+    found, removed = [], []
     phrase = " ".join(phrase.split())
     while phrase and phrase not in found:
         found.append(phrase)
         shorter = LEADING.sub("", phrase, count=1)
         if shorter == phrase:
             shorter = TRAILING.sub("", phrase, count=1)
+            removed.append(phrase[len(shorter):])
+        else:
+            removed.append(phrase[:len(phrase) - len(shorter)])
         phrase = shorter.strip()
-    return tuple(found)
+    return tuple(found), " ".join(" ".join(removed).split())
+
+
+def candidates(phrase):
+    """Return a condition phrase's candidates, longest first."""
+    return peel(phrase)[0]
 
 
 def clean_term(phrase):
@@ -339,8 +413,9 @@ def is_bare(text):
 
 
 def two_tasks(question):
-    """Return True when a question asks for a list and a presence check:
-    one sentence each, or two clauses of one sentence.
+    """Return "two_tasks" when a question asks for a list and a presence
+    check, one sentence each or two clauses of one sentence;
+    "two_conditions" when two sentences are presence checks; else None.
 
     Whole sentences are compared first, so a condition name holding "and"
     still reads as one presence check.
@@ -354,14 +429,36 @@ def two_tasks(question):
     if any(is_list(first) and presence_span(second)
            for first in sentences for second in sentences
            if first is not second):
-        return True
+        return "two_tasks"
+    if sum(1 for sentence in sentences if presence_span(sentence)) > 1:
+        return "two_conditions"
     for text in sentences:
         clauses = [re.sub(r"^(?:whether|if) ", "", part.strip())
                    for part in CLAUSES.split(text) if part.strip()]
         if (len(clauses) > 1 and any(is_list(part) for part in clauses)
                 and any(presence_span(part) for part in clauses)):
-            return True
-    return False
+            return "two_tasks"
+    return None
+
+
+def unsafe(outside, peeled, listing):
+    """Return the category of the first fail-safe that a question trips,
+    or None.
+
+    outside is the question without its condition phrase and scope
+    phrases; peeled holds the question words removed from the ends of
+    the condition phrase, which are known words but may still name a
+    time, an exclusion or a negation.
+    """
+    words = "%s %s" % (outside, peeled)
+    if RECORD_PART.search(words):
+        return "scope_unrecognised"
+    plain = words.replace("whether or not", " ")
+    if EXCLUSIONS.search(plain) or (listing and NEGATIONS.search(plain)):
+        return "qualified"
+    if any(word not in EXPLAINED for word in outside.split()):
+        return "unexplained"
+    return None
 
 
 def interpret(question):
@@ -381,15 +478,15 @@ def interpret(question):
     rest = body if span is None else body[:span[0]] + " " + body[span[1]:]
     # Two requests at once come first: a condition name in one of them may
     # hold words of the out-of-scope rules.
-    if two_tasks(question):
+    both = two_tasks(question)
+    if both:
         return Interpretation("clarify", reason="task_ambiguous",
-                              category="two_tasks", mentions=found,
-                              text=text)
+                              category=both, mentions=found, text=text)
     guard = guard_of(rest)
     if guard is not None:
         return Interpretation(guard[0], reason=guard[1], category=guard[2],
                               mentions=found, text=text)
-    terms = candidates(body[span[0]:span[1]]) if span else ()
+    terms, peeled = peel(body[span[0]:span[1]]) if span else ((), "")
     term = terms[-1] if terms else None
     listing = is_list(rest) and not filtered
     if term is not None and LIST_PHRASE.fullmatch(term):
@@ -398,6 +495,13 @@ def interpret(question):
         return Interpretation("clarify", reason="task_ambiguous",
                               category="two_tasks", mentions=found,
                               text=text)
+    if listing or span is not None:
+        tripped = unsafe(rest, peeled, listing)
+        if tripped:
+            return Interpretation(
+                "clarify", reason="scope_ambiguous"
+                if tripped == "scope_unrecognised" else "task_ambiguous",
+                category=tripped, mentions=found, text=text)
     if listing:
         return Interpretation("task", task="condition_list", mentions=found,
                               text=text)

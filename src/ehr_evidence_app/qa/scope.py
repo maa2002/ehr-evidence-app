@@ -17,16 +17,21 @@ Recognised phrases (after interpretation's normalisation):
   "pre-target history";
 * one visit: "the first / second ... admission", "admission 2",
   "admission two", "visit number 3", "the final (last, latest, most
-  recent, current, present) admission", "this admission";
+  recent, current, present) admission"; "this admission" names the
+  selected visit when a visit is selected, and the final admission
+  otherwise;
 * all case visits: "in any (all, every) of the admissions", "any
   admission", "across (throughout, over) her admissions", "the entire
   (whole, complete) record".
 
 An admission may also be called a visit, stay, encounter or
-hospitalisation, with "hospital", "inpatient" or "ICU" before it.
+hospitalisation, with "hospital", "inpatient" or "ICU" before it, and
+a phrase may start with "at the time of" or "during the course of".
 
 Words such as "ever" or "at any time" are not scope phrases: the answer
-states its scope, so the reader sees which records it covers.
+states its scope, so the reader sees which records it covers. Other
+mentions of admissions, stays or times are not guessed at: the
+interpretation asks which part of the record is meant (qa.interpret).
 """
 
 from __future__ import annotations
@@ -43,8 +48,11 @@ VISITS = (r"(?:%s(?:admissions|visits|stays|encounters)|"
           r"hospitali[sz]ations)" % KIND)
 LAST = (r"(?:final|last|latest|most recent|current|present|ongoing|"
         r"target|index|this)")
-OWNER = r"(?:the |this |his |her |their |that )?"
-IN = r"(?:(?:in|during|at|for|on|within|from|of|throughout) )?"
+OWNER = (r"(?:the |this |his |her |their |that |the patient |"
+         r"this patient )?")
+IN = (r"(?:(?:in|during|at|for|on|within|from|of|throughout|across|over|"
+      r"at the time of|during the course of|over the course of|"
+      r"in the course of) )?")
 ORDINALS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
             "sixth": 6, "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10,
             "1st": 1, "2nd": 2, "3rd": 3, "4th": 4, "5th": 5, "6th": 6,
@@ -79,19 +87,21 @@ PATTERNS = (
     ("selected_visit", re.compile(
         r"\b%s%s%s (?:number |no |# ?)?(?P<number>[0-9]{1,3}|%s)\b"
         % (IN, OWNER, VISIT, "|".join(NUMBERS)))),
-    ("selected_visit_last", re.compile(r"\b%s%s%s %s\b" % (IN, OWNER, LAST,
-                                                         VISIT))),
+    ("selected_visit_last", re.compile(r"\b%s%s(?P<last>%s) %s\b" % (
+        IN, OWNER, LAST, VISIT))),
 )
 
 
 @dataclasses.dataclass(frozen=True)
 class Mention:
-    """One scope phrase found in a question."""
+    """One scope phrase found in a question; this marks "this
+    admission"."""
 
     kind: str
     visit_number: int | None
     last: bool
     span: tuple
+    this: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -121,7 +131,7 @@ def mentions(text):
                 kind="selected_visit" if kind.startswith("selected")
                 else kind,
                 visit_number=number, last=kind == "selected_visit_last",
-                span=match.span()))
+                span=match.span(), this=groups.get("last") == "this"))
         working = pattern.sub(lambda match: " " * len(match.group(0)),
                               working)
     return tuple(sorted(found, key=lambda item: item.span))
@@ -135,10 +145,16 @@ def remove(text, found):
     return " ".join(text.split())
 
 
-def requested_scope(mention, visit_count):
-    """Return the ScopeRef a mention names for a case, or None."""
+def requested_scope(mention, visit_count, active=None):
+    """Return the ScopeRef a mention names for a case, or None.
+
+    "This admission" names the active visit when a visit is selected.
+    """
     if mention.kind != "selected_visit":
         return contracts.ScopeRef(kind=mention.kind)
+    if mention.this and active is not None and (
+            active.kind == "selected_visit"):
+        return active
     number = visit_count if mention.last else mention.visit_number
     if number is None or not 1 <= number <= visit_count:
         return None
@@ -151,7 +167,7 @@ def bind(found, active, visit_count):
         return Binding("bound", scope=active)
     scopes = []
     for mention in found:
-        scope = requested_scope(mention, visit_count)
+        scope = requested_scope(mention, visit_count, active)
         if scope is None:
             return Binding("clarify", reason="visit_ambiguous")
         if scope not in scopes:
