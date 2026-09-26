@@ -78,6 +78,8 @@ jobs:
             "ehr_evidence_app.casesets.prepare",
             "ehr_evidence_app.qa.vocabulary",
             "ehr_evidence_app.qa.suite",
+            "ehr_evidence_app.qa.heldout",
+            "ehr_evidence_app.qa.written",
             "ehr_evidence_app.tracking.lineage",
             "ehr_evidence_app.tracking.policy",
             "ehr_evidence_app.tracking.connection"
