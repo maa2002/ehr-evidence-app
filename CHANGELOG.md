@@ -5,7 +5,13 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
-## [Unreleased]
+## [0.7.1] - 2026-09-26
+
+Fail-safes in the QA rules (Phase 5, work item 34.5): rules version 4
+answers a question only when every word of it is accounted for, and
+reads more ways of naming the selected scope. Measured on a new
+written set, it keeps 2 wrong answers of 226 where version 2 gives 9
+on the same questions.
 
 ### Added
 
@@ -253,7 +259,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.0...HEAD
+[0.7.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.4.0...v0.5.0
