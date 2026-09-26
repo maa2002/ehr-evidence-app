@@ -72,12 +72,18 @@ Described in [qa.md](qa.md) and decided in
 
 ## Phase 6. Validation
 
-- 35 Check evidence before generation
-- 36 Check structure and references
+Described in [validation.md](validation.md) and decided in
+[ADR 0011](decisions/0011-validation-design.md).
+
+- 35 Check evidence before generation (done: `validation.evidence`)
+- 36 Check structure and references (done: the candidate contract and
+  `validation.structure`; QA responses are rendered from checked
+  candidates)
 - 37 Check QA support
 - 38 Check prediction and attribution preservation
 - 39 Check history and language
 - 40 Compose the release gate
+- 40.1 Test the checks with a mutation suite
 
 ## Phase 7. LLM and operations
 

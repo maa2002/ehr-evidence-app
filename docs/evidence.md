@@ -91,8 +91,9 @@ Invariants enforced by the record types:
 A response is bound to one bundle by identifier and digest, and that bundle
 to one case and scope; `schema.citation_problems` reports a response that
 names another bundle, case or scope (`scope_violated`) or cites a reference
-the bundle lacks (`reference_unresolved`). Whether a cited record supports
-its claim is checked in Phase 6.
+the bundle lacks (`reference_unresolved`). Phase 6 extends the check to
+the candidates responses are rendered from, and checks whether a cited
+record supports its claim (see [validation.md](validation.md)).
 
 ## Names
 

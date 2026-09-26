@@ -79,7 +79,8 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `gnn` | Inherited GNN baseline, asset validation, identity mapping, preprocessing parity, offline outputs, provenance, split membership, run binding, Phase 3 closure, driver-to-event linkage | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission`, `linkage` |
 | `evidence` | Request and response contracts, evidence records, snapshot and case readers, readable names, scoped retrieval, claim policy, QA and explanation bundles | `vocabulary`, `contracts`, `schema`, `readers`, `concepts`, `retrieval`, `policy`, `bundles` |
 | `casesets` | Case-set registry, seeded case-set selection, case-set preparation | `registry`, `selection`, `prepare` |
-| `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, scoped answers, development suite, held-out and written wording tests | `vocabulary`, `resolve`, `interpret`, `scope`, `answer`, `suite`, `heldout`, `written` |
+| `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, template candidates, scoped answers, development suite, held-out and written wording tests | `vocabulary`, `resolve`, `interpret`, `scope`, `templates`, `answer`, `suite`, `heldout`, `written` |
+| `validation` | Candidate contract, checks before generation, structure and reference checks | `candidate`, `evidence`, `structure` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
@@ -184,4 +185,6 @@ are specifications; they are described in
 [inherited-gnn.md](inherited-gnn.md). Work items 23 to 27 are code and
 contracts without a protected artefact of their own; they are described in
 [evidence.md](evidence.md). The other Phase 5 work items (31 to 34.1) have
-no protected artefact; they are described in [qa.md](qa.md).
+no protected artefact; they are described in [qa.md](qa.md). Phase 6 work
+items have none either; they are described in
+[validation.md](validation.md).

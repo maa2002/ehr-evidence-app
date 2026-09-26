@@ -28,6 +28,7 @@ examples assume the session set-up in
 | 32.1 | `qa.vocabulary` | Condition vocabulary built from the pinned Athena release |
 | 33 | `qa.scope` | Scope phrases and binding to the active scope |
 | 34 | `qa.answer` | List and presence answers from a verified QA bundle |
+| 36 | `qa.templates` | Answers, refusals and clarifying questions written as candidates |
 | 34.1 | `qa.suite` | Development question suite with an independent oracle; vocabulary sweep |
 | 34.2 | `qa.heldout` | Partitions of MIMIC-IV-Ext-Instr; held-out wording test |
 | 34.3 | `qa.written` | Written wording test: template, case overview, scoring by intent and family |
@@ -46,10 +47,13 @@ Every question ends in exactly one response:
 5. The case's QA bundle for the scope is read from the pinned bundle set
    and verified against its manifest. A changed bundle stops the request;
    a scope without a bundle is rejected (`scope_invalid`).
-6. Coverage that is not complete gives an abstention
-   (`coverage_incomplete`).
-7. The list or the presence answer is built, and its claims are checked
-   against the bundle with the citation rules before release.
+6. The bundle is checked before any text is written: one that does not
+   fit the request is rejected, and coverage that is not complete gives
+   an abstention (`coverage_incomplete`).
+7. The list or the presence answer is written as a candidate, checked
+   and rendered; a candidate that fails a check is a validation
+   rejection. Refusals and clarifying questions are written and checked
+   the same way.
 
 | Outcome | When | Reason codes |
 | --- | --- | --- |
@@ -57,7 +61,8 @@ Every question ends in exactly one response:
 | `not_recorded` | A list of an empty scope; a presence check with complete coverage and no match | as for `answer` |
 | `clarification` | The question is unclear or needs a choice the user has to make | `task_ambiguous`, `concept_unknown`, `concept_ambiguous`, `concept_too_broad`, `scope_ambiguous`, `visit_ambiguous`, `case_ambiguous`, `prediction_selection_needed` |
 | `abstention` | The request is outside the supported tasks, or coverage is incomplete | `task_unsupported`, `coverage_incomplete` |
-| `case_rejection` | The case or scope has no bundle | `case_not_admitted`, `scope_invalid` |
+| `case_rejection` | The case or scope has no bundle, or its bundle does not fit the request | `case_not_admitted`, `scope_invalid`, `identity_inconsistent`, `history_inconsistent`, `evidence_inconsistent` |
+| `validation_rejection` | A candidate fails a check | `structure_invalid`, `reference_unresolved`, `scope_violated` |
 | `operational_error` | A limit is exceeded | `limit_exceeded` |
 
 A `not_recorded` answer always says that the condition is not recorded
@@ -206,7 +211,13 @@ A record matches a resolved phrase, and the answer states how:
 
 ## Answers
 
-Answer text comes from fixed templates.
+Answers are written as candidates by fixed templates (`qa.templates`):
+every fact is a slot filled from the bundle, the resolution or the
+interpretation, and every refusal and clarifying question is an
+approved notice. The candidate is checked and the released text and
+claims are rendered from it, one statement per line; a candidate that
+fails a check is withheld as a validation rejection (see
+[validation.md](validation.md)).
 
 - **List.** Every distinct condition of the scope, with its number of
   records and its visits; records without a standard concept are listed by
@@ -284,6 +295,12 @@ of the suite's seven presence wordings, and reads no patient data. Of
 112,693 standard conditions, 87 share their name with another concept and
 3 are too broad; for the other 112,603, all 788,221 questions resolve to
 the concept asked about, with each rule version.
+
+With the answers written as candidates (`qa-answer-v5`), suite version 4
+still gives 1,892 of 1,892 on `dev-30-v1` and 784 of 784 on the pilot
+(summary SHA-256
+`71582efeb765ca1202a5351c4cb619128c5b00d9baffeea82f834995ad398a4a` and
+`178614e2c8eb056dc291f4749c58f1f222138667b9773d960a3f7f2545ced925`).
 
 These results show that interpretation, scope binding, resolution,
 matching, coverage and citations agree with an independent computation on

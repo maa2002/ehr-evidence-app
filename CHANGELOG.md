@@ -5,6 +5,29 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
+## [Unreleased]
+
+### Added
+
+- `validation` package (Phase 6, work items 35 and 36;
+  [ADR 0011](docs/decisions/0011-validation-design.md)): the candidate
+  contract, in which a response is a list of statements with typed
+  slots for its facts and approved notices, rendered into the released
+  text and claims; checks before generation (`validation.evidence`);
+  structure and reference checks (`validation.structure`). The
+  candidate's JSON Schema is committed with the other contracts.
+- `qa.templates`: the QA answers, refusals and clarifying questions
+  written as candidates.
+
+### Changed
+
+- QA responses with text are rendered from checked candidates
+  (`qa-answer-v5`); a candidate that fails a check is withheld as a
+  validation rejection, and a bundle that does not fit its request is
+  rejected before any text. Every statement is one line, every
+  statement that cites records is also a claim with the same text, and
+  scopes read naturally ("within visit 2").
+
 ## [0.7.1] - 2026-09-26
 
 Fail-safes in the QA rules (Phase 5, work item 34.5): rules version 4
@@ -259,6 +282,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.1...HEAD
 [0.7.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.5.0...v0.6.0
