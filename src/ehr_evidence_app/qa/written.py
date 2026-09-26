@@ -51,7 +51,7 @@ PROTECTED_ROOT = guard.PRIVATE_ROOT + "\\protected-data"
 QUESTION_SETS = PROTECTED_ROOT + "\\question-sets"
 # Each set is written once and scored once; a later rule version is
 # measured on a new set.
-SETS = ("written-v1", "written-v2")
+SETS = ("written-v1", "written-v2", "written-v3")
 WRITTEN_DIR = QUESTION_SETS + "\\" + SETS[0]
 QUESTIONS_NAME = "questions.csv"
 OVERVIEW_NAME = "case-overview-%s.csv"
