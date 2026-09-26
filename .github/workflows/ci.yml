@@ -83,6 +83,8 @@ jobs:
             "ehr_evidence_app.validation.candidate",
             "ehr_evidence_app.validation.structure",
             "ehr_evidence_app.validation.evidence",
+            "ehr_evidence_app.validation.support",
+            "ehr_evidence_app.validation.language",
             "ehr_evidence_app.tracking.lineage",
             "ehr_evidence_app.tracking.policy",
             "ehr_evidence_app.tracking.connection"

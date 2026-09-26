@@ -23,10 +23,12 @@ One question about the active case and scope becomes exactly one response:
 
 Every response with text is first written as a candidate by the templates
 (qa.templates): its facts are slots, and its refusals and clarifying
-questions are approved notices. The candidate is checked
-(validation.structure) and the released text and claims are rendered from
-it; a candidate that fails is withheld as a validation rejection. Phase 7
-may reword the templates behind the same checks.
+questions are approved notices. The candidate is checked for structure
+and references (validation.structure), for the support of its statements
+by their cited records (validation.support) and against the wording rules
+(validation.language); the released text and claims are rendered from it.
+A candidate that fails is withheld as a validation rejection. Phase 7 may
+reword the templates behind the same checks.
 """
 
 from __future__ import annotations
@@ -44,7 +46,8 @@ from ehr_evidence_app.qa import interpret as interpreter
 from ehr_evidence_app.qa import resolve, templates
 from ehr_evidence_app.qa import scope as scopes
 from ehr_evidence_app.validation import candidate as candidates
-from ehr_evidence_app.validation import evidence, structure
+from ehr_evidence_app.validation import evidence, language, structure, \
+    support
 
 RULES_VERSION = "qa-answer-v5"
 PILOT = "pilot-10-v1"
@@ -188,11 +191,15 @@ def namer(vocab):
 def release(candidate, request_id, case, scope, vocab=None, bundle=None,
             bundle_sha256=None):
     """Return the Response of a candidate for the request (request_id,
-    case, scope): rendered from it when it passes the structure, reference
-    and citation checks, withheld as a validation rejection otherwise."""
+    case, scope): rendered from it when it passes the structure,
+    reference, support, wording and citation checks, withheld as a
+    validation rejection otherwise."""
     concept_name = namer(vocab)
     problems = structure.check(candidate, request_id, case, scope, bundle,
                                bundle_sha256, concept_name)
+    if not problems:
+        problems = tuple(sorted(set(support.check(candidate, bundle, vocab)
+                                    + language.check(candidate))))
     if not problems:
         response = candidates.response(candidate, bundle, concept_name)
         if bundle is not None:

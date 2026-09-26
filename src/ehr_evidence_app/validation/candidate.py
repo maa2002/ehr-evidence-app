@@ -127,9 +127,9 @@ UNSUPPORTED = {
     "other_data": "Only recorded conditions (diagnoses) can be queried here; "
                   "medications, procedures, results and notes cannot.",
     "time_or_count": "Questions about dates, times, the order of events or "
-                     "how often something was recorded are outside what "
-                     "this application answers; the visits are chosen with "
-                     "the scope selector.",
+                     "the number of times something was recorded are "
+                     "outside what this application answers; the visits "
+                     "are chosen with the scope selector.",
     "ranking": "Questions about which condition is first, main or most "
                "important are outside what this application answers: the "
                "recorded conditions are not ranked.",
@@ -333,6 +333,18 @@ def event_label(event):
         code = "%s %s" % (source.vocabulary_id, source.code)
         return "%s, %s" % (code, source.name) if source.name else code
     return "code %s" % (event.concept.source_code or "unknown")
+
+
+def record_group(event):
+    """Return the key of the condition a record is of: its standard
+    concept, or its source code when it has none. A list names each such
+    condition once."""
+    if event.concept.concept_id:
+        return ("concept", event.concept.concept_id)
+    source = event.source_concept
+    if source is not None:
+        return ("source", source.vocabulary_id, source.code)
+    return ("value", event.concept.source_code or "")
 
 
 def counted(name, number):

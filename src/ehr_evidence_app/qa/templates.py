@@ -78,16 +78,6 @@ def term_slot(term):
     return term if len(term) <= MAX_TERM else term[:MAX_TERM - 3] + "..."
 
 
-def group_key(event):
-    """Return the key that groups repeated records of one condition."""
-    if event.concept.concept_id:
-        return ("concept", event.concept.concept_id)
-    source = event.source_concept
-    if source is not None:
-        return ("source", source.vocabulary_id, source.code)
-    return ("value", event.concept.source_code or "")
-
-
 def visit_numbers(bundle, events):
     """Return the sorted visit numbers of a group of events."""
     numbers = {visit.ref: visit.visit_number for visit in bundle.visits}
@@ -110,7 +100,7 @@ def list_candidate(request_id, case, scope, bundle, bundle_ref):
             reasons=disclosure(bundle), bundle=bundle_ref), ()
     groups = collections.OrderedDict()
     for event in bundle.events:
-        groups.setdefault(group_key(event), []).append(event)
+        groups.setdefault(candidates.record_group(event), []).append(event)
     statements = [statement("list_summary", len(groups), groups=len(groups),
                             scope=scope, records=len(bundle.events))]
     for events in groups.values():
@@ -154,7 +144,8 @@ def presence_candidate(request_id, case, scope, bundle, bundle_ref,
                          reasons=disclosure(bundle), bundle=bundle_ref)
     groups = collections.OrderedDict()
     for event, kind in matches:
-        groups.setdefault((group_key(event), kind), []).append(event)
+        key = (candidates.record_group(event), kind)
+        groups.setdefault(key, []).append(event)
     statements = [statement("presence_summary", condition=name, scope=scope,
                             matches=len(matches))]
     for (_, kind), events in groups.items():
