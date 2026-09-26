@@ -17,8 +17,14 @@ concepts resolve to one of them only when it is an ancestor of all the
 others (nested candidates); otherwise they are ambiguous. A phrase that
 matches nothing is unknown, and comes with suggestions: concepts whose
 name or synonym begins with the phrase, or contains it as whole words,
-shorter names first. A concept whose descendants cover more than a
-quarter of all standard conditions is too broad to answer.
+shorter names first. When there are none, words of four or more
+letters that are in no name or synonym are compared with the words that
+are (same first letter; one edit, or two for words of eight or more
+letters), and the names and synonyms of the closest spellings (among
+equally close ones, the words in most names first) are suggested. A
+suggestion never resolves a phrase. A concept whose
+descendants cover more than a quarter of all standard conditions is too
+broad to answer.
 
 Normalisation: Unicode compatibility decomposition with accents removed,
 case folded, "&" read as "and", possessive "'s" removed, every other
@@ -45,6 +51,7 @@ import collections
 import csv
 import dataclasses
 import io
+import itertools
 import json
 import re
 import unicodedata
@@ -52,7 +59,7 @@ import unicodedata
 from ehr_evidence_app.gnn import mapping
 from ehr_evidence_app.qa import vocabulary as build
 
-RULES_VERSION = "condition-resolution-v1"
+RULES_VERSION = "condition-resolution-v2"
 MANIFEST_SIZE = 1784
 MANIFEST_SHA256 = ("0214772bc1b0e244f2d5a3e1904f0865"
                    "78a109f931bb016df9a0054df974a466")
@@ -65,6 +72,12 @@ STATUSES = ("resolved", "ambiguous", "unknown", "too_broad")
 MATCH_KINDS = ("exact", "more_specific", "icd_code", "more_specific_icd_code",
                "icd_description")
 SUGGESTIONS = 5
+# Spelling suggestions: words of at least this length are corrected, by
+# at most one edit, or two from LONG_WORD letters; at most VARIANTS
+# corrected phrases are looked up.
+MIN_WORD = 4
+LONG_WORD = 8
+VARIANTS = 4
 
 
 class ResolutionError(Exception):
@@ -108,6 +121,8 @@ class Vocabulary:
         self.standard_count = sum(1 for row in rows.values()
                                   if row.kind == "standard")
         self._phrases = {}
+        self._labelled = None
+        self._words = None
 
     def span(self, concept_id):
         """Return the (start, end) of a concept's descendant pairs."""
@@ -130,6 +145,28 @@ class Vocabulary:
         start, end = self.span(ancestor)
         index = bisect.bisect_left(self.descendants, descendant, start, end)
         return index < end and self.descendants[index] == descendant
+
+    def labelled(self):
+        """Return every (name or synonym as words, concepts) pair."""
+        if self._labelled is None:
+            self._labelled = tuple(
+                (tuple(key.split()), ids)
+                for table in (self.names, self.synonyms)
+                for key, ids in table.items())
+        return self._labelled
+
+    def words(self):
+        """Return the alphabetic words of names and synonyms with how many
+        names and synonyms hold them, by first letter."""
+        if self._words is None:
+            found = collections.defaultdict(collections.Counter)
+            for words, _ in self.labelled():
+                for word in set(words):
+                    if word.isalpha():
+                        found[word[0]][word] += 1
+            self._words = {letter: dict(group)
+                           for letter, group in found.items()}
+        return self._words
 
     def phrases(self, concepts):
         """Return the normalised names and synonyms of concepts and their
@@ -336,29 +373,89 @@ def resolve(text, vocab, suggestions=True):
                       if suggestions else ())
 
 
+def edit_distance(first, second, limit):
+    """Return the edit distance of two words, or limit + 1 when it is
+    larger than limit."""
+    if abs(len(first) - len(second)) > limit:
+        return limit + 1
+    previous = list(range(len(second) + 1))
+    for row, char in enumerate(first, 1):
+        current = [row] + [0] * len(second)
+        for column, other in enumerate(second, 1):
+            current[column] = min(previous[column] + 1,
+                                  current[column - 1] + 1,
+                                  previous[column - 1] + (char != other))
+        if min(current) > limit:
+            return limit + 1
+        previous = current
+    return previous[-1]
+
+
+def spellings(vocab, phrase):
+    """Return phrases with each unknown word replaced by its closest
+    spellings in the vocabulary, closest first."""
+    index = vocab.words()
+    options, changed = [], False
+    for word in phrase.split():
+        group = index.get(word[:1], {})
+        if len(word) < MIN_WORD or not word.isalpha() or word in group:
+            options.append([word])
+            continue
+        limit = 2 if len(word) >= LONG_WORD else 1
+        close = sorted((edit_distance(word, other, limit), -count, other)
+                       for other, count in group.items()
+                       if abs(len(other) - len(word)) <= limit)
+        close = [other for distance, _, other in close
+                 if distance <= limit][:2]
+        changed = changed or bool(close)
+        options.append(close or [word])
+    if not changed:
+        return []
+    return [" ".join(words) for words in itertools.islice(
+        itertools.product(*options), VARIANTS)]
+
+
+def containing(vocab, words, rank, ranked):
+    """Rank concepts whose name or synonym begins with the words (rank)
+    or contains them (rank + 1)."""
+    for candidate, ids in vocab.labelled():
+        if words[0] not in candidate:
+            continue
+        if candidate[:len(words)] == words:
+            found = rank
+        elif any(candidate[start:start + len(words)] == words
+                 for start in range(1, len(candidate))):
+            found = rank + 1
+        else:
+            continue
+        for concept in ids:
+            score = (found, len(candidate),
+                     -vocab.descendant_count(concept), concept)
+            if concept not in ranked or score < ranked[concept]:
+                ranked[concept] = score
+
+
 def suggest(vocab, phrase, limit=SUGGESTIONS):
     """Return concepts whose name or synonym begins with the phrase or
     contains its words: names that begin with it first, then shorter
-    names, then broader concepts. Never a resolution."""
+    names, then broader concepts. Without any, the names and synonyms
+    of the closest spellings. Never a resolution."""
     words = tuple(phrase.split())
     if not words:
         return ()
     ranked = {}
-    for table in (vocab.names, vocab.synonyms):
-        for key, ids in table.items():
-            candidate = tuple(key.split())
-            if candidate[:len(words)] == words:
-                rank = 0
-            elif any(candidate[start:start + len(words)] == words
-                     for start in range(1, len(candidate))):
-                rank = 1
-            else:
-                continue
-            for concept in ids:
-                score = (rank, len(candidate),
-                         -vocab.descendant_count(concept), concept)
-                if concept not in ranked or score < ranked[concept]:
-                    ranked[concept] = score
+    containing(vocab, words, 0, ranked)
+    if not ranked:
+        variants = spellings(vocab, phrase)
+        for variant in variants:
+            for table in (vocab.names, vocab.synonyms):
+                for concept in table.get(variant, ()):
+                    score = (0, len(variant.split()),
+                             -vocab.descendant_count(concept), concept)
+                    if concept not in ranked or score < ranked[concept]:
+                        ranked[concept] = score
+        if not ranked and variants:
+            containing(vocab, tuple(variants[0].split()), 2, ranked)
     ordered = sorted(ranked, key=ranked.get)
     broad = BROAD_FRACTION * vocab.standard_count
     return tuple(concept for concept in ordered

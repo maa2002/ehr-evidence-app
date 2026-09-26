@@ -164,6 +164,18 @@ class BoundaryTests(unittest.TestCase):
                               response.claims, response.bundle),
                              (outcome, (reason,), (), None), question)
 
+    def test_ranking_and_spelling(self):
+        """Rankings are refused; misspellings get suggestions only."""
+        response = ask("What were the top three diagnoses?").response
+        self.assertEqual((response.outcome, response.reason_codes),
+                         ("abstention", ("task_unsupported",)))
+        self.assertIn("not ranked", response.text)
+        result = ask("Is synthetik concept 1001 recorded?")
+        self.assertEqual((result.response.outcome, result.resolution.status),
+                         ("clarification", "unknown"))
+        self.assertEqual(result.resolution.concepts[0], 1001)
+        self.assertIn("Did you mean", result.response.text)
+
     def test_limits_and_unknown_cases(self):
         """Over-long questions and cases without bundles end early."""
         response = ask("x" * (LIMITS.max_question_chars + 1)).response

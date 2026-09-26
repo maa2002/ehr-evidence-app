@@ -184,7 +184,46 @@ class OutOfScopeTests(unittest.TestCase):
          "task_unsupported"),
         ("When was heart failure first recorded?", "abstain",
          "task_unsupported"),
+        ("What were the top three billed diagnoses?", "abstain",
+         "task_unsupported"),
+        ("List the top 5 diagnoses.", "abstain", "task_unsupported"),
+        ("What is her main diagnosis?", "abstain", "task_unsupported"),
+        ("What conditions do other patients have?", "clarify",
+         "case_ambiguous"),
+        ("Does the patient in bed 4 have COPD?", "clarify",
+         "case_ambiguous"),
+        ("Will her kidney disease get worse?", "abstain",
+         "task_unsupported"),
+        ("Did she undergo surgery?", "abstain", "task_unsupported"),
+        ("List the diagnoses. Is heart failure recorded?", "clarify",
+         "task_ambiguous"),
+        ("Show all conditions; does she have COPD?", "clarify",
+         "task_ambiguous"),
+        ("List her conditions along with whether she has asthma", "clarify",
+         "task_ambiguous"),
     )
+
+    def test_ranking_words_inside_names_wait_for_the_vocabulary(self):
+        """'Primary' in a condition name is a guard, not a refusal."""
+        result = interpret.interpret("Is primary hypertension recorded?")
+        self.assertEqual((result.task, result.term, result.guard),
+                         ("condition_presence", "primary hypertension",
+                          ("abstain", "task_unsupported", "ranking")))
+
+    def test_list_and_history_wordings(self):
+        """Problem lists, PMH, 'hx of' and inclusion wordings."""
+        for question, task, term in (
+                ("What's on her problem list?", "condition_list", None),
+                ("Show me the PMH", "condition_list", None),
+                ("hx of MI?", "condition_presence", "mi"),
+                ("Is COPD among them?", "condition_presence", "copd"),
+                ("Is diabetes on her problem list?", "condition_presence",
+                 "diabetes"),
+                ("Any past medical history of stroke?", "condition_presence",
+                 "stroke")):
+            result = interpret.interpret(question)
+            self.assertEqual((result.task, result.term), (task, term),
+                             question)
 
     def test_at_least_once_is_a_presence_check(self):
         """'At least once' asks whether it is recorded at all."""
@@ -265,6 +304,29 @@ class ScopeMentionTests(unittest.TestCase):
         result = self.check("Is there evidence of AKI during the final "
                             "admission?", "selected_visit", last=True)
         self.assertEqual(result.term, "aki")
+
+    def test_more_phrases(self):
+        """Hospital stays, this admission, plural spans, number words."""
+        for question, kind, number, last in (
+                ("Was sepsis coded during this hospital stay?",
+                 "selected_visit", None, True),
+                ("Is sepsis recorded in the present admission?",
+                 "selected_visit", None, True),
+                ("Is sepsis recorded before this admission?",
+                 "pre_target_history", None, False),
+                ("Was sepsis recorded before admission?",
+                 "pre_target_history", None, False),
+                ("Any sepsis in her prior hospitalization?",
+                 "pre_target_history", None, False),
+                ("Was sepsis coded across her admissions?", "case_visits",
+                 None, False),
+                ("Was sepsis noted throughout his hospital stays?",
+                 "case_visits", None, False),
+                ("Is sepsis recorded in admission two?", "selected_visit", 2,
+                 False),
+                ("Was sepsis coded in ICU stay 3?", "selected_visit", 3,
+                 False)):
+            self.check(question, kind, number, last)
 
     def test_no_scope_words(self):
         """'Ever' and 'at any time' are not scope phrases."""

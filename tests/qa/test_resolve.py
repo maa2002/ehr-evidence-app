@@ -156,6 +156,21 @@ class ResolutionTests(unittest.TestCase):
         self.check("zzqx", "unknown", concepts=())
         self.check("   ", "unknown", concepts=())
 
+    def test_spelling_suggestions(self):
+        """A misspelt word is suggested its closest spellings, never
+        resolved."""
+        for text, concept in (("pnuemonia", 11), ("penumonia", 11),
+                              ("congestive heart failur", 4),
+                              ("hart failure", 3),
+                              ("diabetis mellitus", 8)):
+            result = self.check(text, "unknown")
+            self.assertEqual(result.concepts[0], concept, text)
+        self.check("pneumonias", "resolved", "name", (11,))
+        self.assertEqual(resolve.spellings(VOCAB, "heart failure"), [])
+        self.assertEqual(resolve.edit_distance("heart", "hart", 1), 1)
+        self.assertEqual(resolve.edit_distance("heart", "hurts", 1), 2)
+        self.assertEqual(resolve.edit_distance("a", "abcd", 1), 2)
+
     def test_icd_codes(self):
         """Known codes resolve as codes; unknown codes fall through."""
         self.check("I50.9", "resolved", "icd_code", (), ("I509",))

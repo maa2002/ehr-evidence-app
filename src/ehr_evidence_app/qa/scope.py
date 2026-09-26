@@ -12,12 +12,18 @@ and binds the request:
 Recognised phrases (after interpretation's normalisation):
 
 * pre-target history: "before (or prior to) the final / last / latest /
-  most recent / current admission", "previous (prior, earlier, past)
-  admissions", "pre-target history";
-* one visit: "the first / second ... admission", "admission 2", "visit
-  number 3", "the final (last, latest, most recent, current) admission";
+  most recent / current / this admission", "before admission",
+  "previous (prior, earlier, past) admissions" or "a prior admission",
+  "pre-target history";
+* one visit: "the first / second ... admission", "admission 2",
+  "admission two", "visit number 3", "the final (last, latest, most
+  recent, current, present) admission", "this admission";
 * all case visits: "in any (all, every) of the admissions", "any
-  admission", "the entire (whole, complete) record".
+  admission", "across (throughout, over) her admissions", "the entire
+  (whole, complete) record".
+
+An admission may also be called a visit, stay, encounter or
+hospitalisation, with "hospital", "inpatient" or "ICU" before it.
 
 Words such as "ever" or "at any time" are not scope phrases: the answer
 states its scope, so the reader sees which records it covers.
@@ -30,9 +36,13 @@ import re
 
 from ehr_evidence_app.evidence import contracts
 
-VISIT = r"(?:admission|visit|stay|hospitali[sz]ation|encounter)"
-VISITS = r"(?:admissions|visits|stays|hospitali[sz]ations|encounters)"
-LAST = r"(?:final|last|latest|most recent|current|target|index)"
+KIND = r"(?:(?:hospital|inpatient|icu) )?"
+VISIT = (r"(?:%s(?:admission|visit|stay|encounter)|hospitali[sz]ation)"
+         % KIND)
+VISITS = (r"(?:%s(?:admissions|visits|stays|encounters)|"
+          r"hospitali[sz]ations)" % KIND)
+LAST = (r"(?:final|last|latest|most recent|current|present|ongoing|"
+        r"target|index|this)")
 OWNER = r"(?:the |this |his |her |their |that )?"
 IN = r"(?:(?:in|during|at|for|on|within|from|of|throughout) )?"
 ORDINALS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
@@ -40,6 +50,8 @@ ORDINALS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
             "1st": 1, "2nd": 2, "3rd": 3, "4th": 4, "5th": 5, "6th": 6,
             "7th": 7, "8th": 8, "9th": 9, "10th": 10}
 ORDINAL = "(?P<ordinal>%s)" % "|".join(ORDINALS)
+NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+           "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
 
 # Patterns in priority order; a matched span is blanked before the next.
 PATTERNS = (
@@ -47,20 +59,26 @@ PATTERNS = (
         r"\b(?:before|prior to|preceding|earlier than|previous to) %s%s %s\b"
         % (OWNER, LAST, VISIT))),
     ("pre_target_history", re.compile(
-        r"\b(?:previous|prior|earlier|past|preceding|former) %s\b" % VISITS)),
+        r"\b(?:before|prior to|preceding|earlier than|previous to) %s%s\b"
+        % (OWNER, VISIT))),
+    ("pre_target_history", re.compile(
+        r"\b(?:previous|prior|earlier|past|preceding|former|older) "
+        r"(?:%s|%s)\b" % (VISITS, VISIT))),
     ("pre_target_history", re.compile(r"\bpre ?target history\b")),
     ("case_visits", re.compile(
         r"\b(?:in |across |during |over |throughout |at )?(?:any|all|every|"
         r"each) (?:of %s)?%s\b" % (OWNER, VISITS))),
     ("case_visits", re.compile(r"\b%s(?:any|every) %s\b" % (IN, VISIT))),
     ("case_visits", re.compile(
+        r"\b(?:across|throughout|over|in|during) %s%s\b" % (OWNER, VISITS))),
+    ("case_visits", re.compile(
         r"\b%s%s(?:entire|whole|complete|full) (?:record|chart)\b"
         % (IN, OWNER))),
     ("selected_visit", re.compile(r"\b%s%s%s %s\b" % (IN, OWNER, ORDINAL,
                                                     VISIT))),
     ("selected_visit", re.compile(
-        r"\b%s%s%s (?:number |no |# ?)?(?P<number>[0-9]{1,3})\b"
-        % (IN, OWNER, VISIT))),
+        r"\b%s%s%s (?:number |no |# ?)?(?P<number>[0-9]{1,3}|%s)\b"
+        % (IN, OWNER, VISIT, "|".join(NUMBERS)))),
     ("selected_visit_last", re.compile(r"\b%s%s%s %s\b" % (IN, OWNER, LAST,
                                                          VISIT))),
 )
@@ -97,7 +115,8 @@ def mentions(text):
             if groups.get("ordinal"):
                 number = ORDINALS[groups["ordinal"]]
             elif groups.get("number"):
-                number = int(groups["number"])
+                number = NUMBERS.get(groups["number"]) or int(
+                    groups["number"])
             found.append(Mention(
                 kind="selected_visit" if kind.startswith("selected")
                 else kind,

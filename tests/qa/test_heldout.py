@@ -100,7 +100,7 @@ class ReadingTests(unittest.TestCase):
                  "clarification:task_ambiguous"),
                 ("What medications is she on?", "abstention:other_data"),
                 ("Is a chest X-ray recorded?", "abstention:other_data"),
-                ("Was AKI recorded after the surgery?",
+                ("Was AKI recorded after the transfer?",
                  "abstention:time_or_count")):
             self.assertEqual(heldout.reading(question, VOCAB)[0], found,
                              question)
