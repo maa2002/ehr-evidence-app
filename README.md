@@ -62,7 +62,7 @@ Code is one package, `src/ehr_evidence_app`:
 | `evidence` | Request and response contracts, evidence records, scoped retrieval, claim policy, QA and explanation bundles |
 | `casesets` | Versioned development and evaluation case sets: registry and seeded selection |
 | `qa` | Condition vocabulary, question interpretation, concept and scope resolution, scoped answers, development suite |
-| `validation` | Candidate contract, checks before generation, structure and reference, support and wording checks |
+| `validation` | Candidate contract, checks before generation, structure and reference, support and wording checks, template explanation |
 | `tracking` | Tracker policy, ClearML connection checks, controlled tracking, lineage |
 | `environment` | Application and GNN environment verification |
 | `quality` | Publication audit of repository content and history; release checks |
@@ -117,7 +117,7 @@ See [docs/data-handling.md](docs/data-handling.md).
 | [Record evidence](docs/evidence.md) | Contracts, evidence records, scopes and coverage, event linkage, bundles, evidence claim policy |
 | [Case sets](docs/case-sets.md) | Development and evaluation case sets: registry, draw rule, preparation stages |
 | [Natural-language QA](docs/qa.md) | Interpretation, scope, concept resolution and matching, answers, development suite |
-| [Validation](docs/validation.md) | Candidate contract, checks before generation, structure and reference, support and wording checks |
+| [Validation](docs/validation.md) | Candidate contract, checks before generation, structure and reference, support and wording checks, explanations |
 | [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, lineage |
 | [Environments](docs/environments.md) | Application and GNN environments |
 | [Development](docs/development.md) | Set-up, tests, quality gates, CI, conventions, releases |

@@ -80,7 +80,7 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `evidence` | Request and response contracts, evidence records, snapshot and case readers, readable names, scoped retrieval, claim policy, QA and explanation bundles | `vocabulary`, `contracts`, `schema`, `readers`, `concepts`, `retrieval`, `policy`, `bundles` |
 | `casesets` | Case-set registry, seeded case-set selection, case-set preparation | `registry`, `selection`, `prepare` |
 | `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, template candidates, scoped answers, development suite, held-out and written wording tests | `vocabulary`, `resolve`, `interpret`, `scope`, `templates`, `answer`, `suite`, `heldout`, `written` |
-| `validation` | Candidate contract, checks before generation, structure and reference checks, support of QA statements, wording rules | `candidate`, `evidence`, `structure`, `support`, `language` |
+| `validation` | Candidate contract, checks before generation, structure and reference checks, support of QA statements, wording rules, template explanation and its preservation checks | `candidate`, `evidence`, `structure`, `support`, `language`, `explanation` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |

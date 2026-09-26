@@ -17,15 +17,16 @@ session set-up in [development.md](development.md#session-set-up).
 | 35 | `validation.evidence` | Checks before generation | done |
 | 36 | `validation.candidate`, `validation.structure` | The candidate contract; structure and reference checks | done |
 | 37 | `validation.support` | Support of every QA statement by its cited records | done |
-| 38 | `validation.explanation` | Template explanation; prediction and attribution preservation | planned |
-| 39 | `validation.language` | Wording rules for every outcome; dates and recurrence | wording rules done; dates and recurrence of explanations with item 38 |
+| 38 | `validation.explanation` | Template explanation; prediction and attribution preservation | done |
+| 39 | `validation.language` | Wording rules for every outcome; dates and recurrence | done |
 | 40 | `validation.gate` | The release gate | planned |
 | 40.1 | `validation.mutations` | Mutation suite: every error class applied to correct responses | planned |
 
 ## Candidates
 
-A writer (the QA templates in `qa.templates` now, the language model of
-Phase 7) produces a candidate, never released text. A candidate names its
+A writer (the QA templates in `qa.templates` and the template explanation
+in `validation.explanation` now, the language model of Phase 7) produces a
+candidate, never released text. A candidate names its
 request, case, scope, outcome, reason codes and, for an answer, its bundle,
 and holds an ordered list of statements. Each statement has:
 
@@ -33,7 +34,7 @@ and holds an ordered list of statements. Each statement has:
   cites and the answers it may appear in;
 - its facts as typed **slots**. Slot values are references and numbers; the
   text they show is rendered from the evidence bundle and the vocabulary, so
-  a writer never types a condition name, a count or a visit;
+  a writer never types a condition name, a count, a visit or a score;
 - a **wording**: the words around the facts, with one placeholder, such as
   `{condition}`, for each slot of its kind;
 - the bundle **references** that support it.
@@ -48,21 +49,27 @@ and holds an ordered list of statements. Each statement has:
 | `presence_item` | `condition`, `count`, `visits`, `match` | the matching records | presence answers |
 | `presence_absent` | `condition`, `scope` | the coverage record | not recorded |
 | `presence_unmapped` | `unmapped` | the coverage record | not recorded |
+| `prediction` | `label`, `score`, `logit` | the prediction (P1) | explanations |
+| `driver` | `rank`, `driver`, `score` | the driver's attribution | explanations |
+| `driver_history` | `driver`, `count`, `visits` | the driver's linked records in pre-target visits | explanations |
+| `driver_context` | `driver`, `count` | the driver's records in the final admission | explanations |
 | `notice` | the notice's own | nothing | any released outcome it is approved for |
 
 A condition is named by a recorded event (its label comes from the bundle),
 by vocabulary concepts (their names come from the vocabulary) or by an ICD
 code. A notice is one of a fixed list of approved texts
 (`validation.candidate.NOTICES`): that "not recorded" is not a statement
-of clinical absence, that a list is complete, each refusal and each
-clarifying question. A notice's wording must be its approved text
+of clinical absence, that a list is complete, what attribution scores
+and the model's score mean, each restriction of an explanation, each
+refusal and each clarifying question. A notice's wording must be its approved text
 exactly; its slots (the user's term, suggested names, scopes) are filled in
 like any other.
 
 The released text and claims are rendered from the statements only: each
-statement is one line, list items led by "- ", and each statement that
-cites records is also a claim with the same text, split into claims of at
-most 50 references. So no sentence reaches the user that is not a
+statement is one line, list items led by "- " and items under them by
+"  - ", and each statement that cites evidence is also a claim with the
+same text, split into claims of at most 50 references. Scores are shown
+to three significant figures; their slots hold the exact values. So no sentence reaches the user that is not a
 statement of the candidate. The contract's JSON Schema is committed as
 [schemas/candidate.schema.json](schemas/candidate.schema.json).
 
@@ -79,8 +86,18 @@ The bundle has already been verified against its pinned manifest.
 | A record has neither a name nor a code | case rejection, `evidence_inconsistent` |
 | Coverage is not complete | abstention, `coverage_incomplete` |
 
-A case rejection releases no text. Explanation requests are checked with
-their prediction and attributions in work item 38.
+An explanation request is checked the same way against its explanation
+bundle, and also:
+
+| Finding | Outcome |
+| --- | --- |
+| The bundle's prediction is not the one the request selects, by its output-record digest | case rejection, `prediction_link_invalid` |
+| Its visits do not end with the final admission | case rejection, `history_inconsistent` |
+| The coverage of the linked history is not complete | abstention, `evidence_insufficient` |
+| No attribution is positive | abstention, `no_positive_attribution` |
+| No driver may be described | abstention, `explanation_ineligible` |
+
+A case rejection releases no text.
 
 ## Structure and reference checks
 
@@ -91,7 +108,7 @@ the bundle bound to that request:
 | --- | --- |
 | A malformed document; an outcome, reason codes, task or bundle that do not fit together; a statement of a kind the answer cannot hold, or an answer without the statements it needs (a list needs one summary, at least one item and the completeness notice); a wording whose placeholders are not exactly its kind's slots; a changed notice; a statement that cites what its kind does not cite; a response the renderer cannot build within the response limits | `structure_invalid` |
 | Another request's case or scope; a statement about another scope; another bundle than the one bound to the request | `scope_violated` |
-| A reference, event, visit number or concept that the bundle or the vocabulary lacks | `reference_unresolved` |
+| A reference, event, driver, visit number or concept that the bundle or the vocabulary lacks | `reference_unresolved` |
 
 The checks extend the citation check of `evidence.schema` to candidates.
 They say nothing about whether the cited records support what a statement
@@ -132,18 +149,63 @@ Rules version `wording-rules-v1`:
 | Advice | "should", "recommend", "start therapy" | `prohibited_wording` |
 | Certainty | "definitely", "proves", "confirms" | `prohibited_wording` |
 | Diagnosis | "diagnosed with", "consistent with", "likely has" | `prohibited_wording` |
-| Dates, recurrence and frequency | a date, a month, "again", "recurs", "often", "every visit" | `date_unsupported` |
+| Model performance | "AUROC", "accuracy" | `prohibited_wording` |
+| In explanations, the score as a risk or probability | "a risk of", "the probability" | `prohibited_wording` |
+| In explanations, the prediction as prospective | "in advance", "forecast" | `prohibited_wording` |
+| Dates, recurrence and frequency typed into a wording | a date, a month, "again", "recurs", "often", "every visit" | `date_unsupported` |
 
-A negation shortly before a causal or diagnostic word lets it pass, so
-"attribution does not mean causation" and "this application does not
-diagnose" are allowed. QA answers state no dates or recurrence at all;
-explanations will be allowed them only with the linked events the
-evidence claim policy allows (work item 38). Every template wording and
-approved notice passes the rules, and a test keeps it so.
+A negation shortly before a causal, diagnostic or risk word lets it pass,
+so "attribution does not mean causation", "this application does not
+diagnose" and "not a clinical risk" are allowed. How often and in which
+visits a driver's concept was recorded is stated only through the slots
+of a statement that cites the driver's linked events, as the evidence
+claim policy allows; QA answers state it only as the records they cite.
+Every template wording and approved notice passes the rules in the
+outcomes it is used in, and a test keeps it so.
 
 The rules are patterns: a sentence that says something prohibited in
 words no pattern knows is not caught. A gap found later becomes a new
 rules version, measured again.
+
+## Explanations
+
+`validation.explanation` builds the template explanation of a selected
+prediction from its explanation bundle alone (`explanation-template-v1`):
+
+1. the selected label, as one output of the model's multi-label
+   prediction, with its uncalibrated score and logit;
+2. every driver that may be described, in the order the model lists
+   them, with its attribution score;
+3. under each driver, how many of its concept's records lie in which
+   pre-target visits, citing its linked history events, and its
+   final-admission records as context, citing those;
+4. notices on what attribution scores and the model's score mean, and one
+   for each restriction of the case.
+
+Its checks apply to any explanation candidate, whoever wrote it:
+
+| Finding | Reason code |
+| --- | --- |
+| The prediction is not stated once, with the bundle's label, score and logit | `prediction_altered` |
+| The drivers described are not exactly the bundle's describable drivers, in its order, with its scores and ranks; a zero-score driver is described | `attribution_altered` |
+| A history statement cites other records than the driver's linked events in pre-target visits, or a context statement other records than its final-admission ones, or either miscounts them or their visits; the restrictions disclosed, as reason codes or notices, are not the case's | `claim_unsupported` |
+| A notice on what the scores mean is missing | `structure_invalid` |
+
+With the structure checks and the wording rules this enforces the
+evidence claim policy (`evidence-policy-v1`): no score is tied to a date,
+a visit or a recurrence (history statements carry no score and driver
+statements no visits); history cites linked events in pre-target visits
+only; final-admission records are context only; zero-score drivers are
+never described; the label is one output, never the only diagnosis; the
+score is never a clinical risk.
+
+Every case of the development case sets gets its template explanation,
+and every one passes all checks:
+
+| Case set | Explanations | Drivers | History statements | Context statements | Claims | Restrictions disclosed (batch-sensitive, final-admission drivers, excluded outcome entries) |
+| --- | --- | --- | --- | --- | --- | --- |
+| `dev-30-v1` | 26 of 26 | 578 | 404 | 250 | 1,258 | 6, 26, 10 |
+| `pilot-10-v1` | 10 of 10 | 188 | 142 | 71 | 412 | 2, 9, 3 |
 
 ## QA responses
 
@@ -166,4 +228,13 @@ The default modes check invented candidates and bundles:
 & $AppPython -m ehr_evidence_app.validation.evidence
 & $AppPython -m ehr_evidence_app.validation.support
 & $AppPython -m ehr_evidence_app.validation.language
+& $AppPython -m ehr_evidence_app.validation.explanation
+```
+
+Operator mode explains every admitted case of a development case set and
+prints aggregate counts only; it refuses the evaluation case set:
+
+```powershell
+& $AppPython -m ehr_evidence_app.validation.explanation --operator-real --case-set dev-30-v1
+& $AppPython -m ehr_evidence_app.validation.explanation --operator-real --case-set pilot-10-v1
 ```

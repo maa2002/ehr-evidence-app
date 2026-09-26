@@ -191,7 +191,8 @@ Every other prohibition stands, including tying a score to a date, a visit
 or a recurrence. Conditions attached to the policy: history statements cite
 linked events in pre-target visits only; final-admission drug and procedure
 records are described only as final-admission context; final-admission
-diagnoses never enter an explanation.
+diagnoses never enter an explanation. The template explanation and its
+checks enforce the policy (see [validation.md](validation.md#explanations)).
 
 ## Published records
 

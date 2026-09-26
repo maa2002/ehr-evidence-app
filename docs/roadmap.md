@@ -80,10 +80,10 @@ Described in [validation.md](validation.md) and decided in
   `validation.structure`; QA responses are rendered from checked
   candidates)
 - 37 Check QA support (done: `validation.support`)
-- 38 Check prediction and attribution preservation
-- 39 Check history and language (wording rules for every outcome done in
-  `validation.language`; dates and recurrence of explanations follow with
-  item 38)
+- 38 Check prediction and attribution preservation (done: the template
+  explanation and its checks in `validation.explanation`)
+- 39 Check history and language (done: `validation.language`, and the
+  history statements of explanations)
 - 40 Compose the release gate
 - 40.1 Test the checks with a mutation suite
 
