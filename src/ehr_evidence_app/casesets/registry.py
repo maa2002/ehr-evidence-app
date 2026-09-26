@@ -92,7 +92,8 @@ PINS = {
     "dev-30-v1": {
         "selection": (6696, "593899ea2fe1a479aed7720ddcc5fa5a"
                             "87d2c61c677b015b985a72dac0b0f3fd"),
-        "snapshot_manifest": None,
+        "snapshot_manifest": (15148, "36a70b700ffc3911aec1f08dbdf18534"
+                                     "c8330a9b43179327419cd3401e9411d8"),
         "prepared_mapping": None,
         "prepared_outputs": None,
         "prepared_closure": None,
@@ -101,7 +102,8 @@ PINS = {
     "eval-100-v1": {
         "selection": (17696, "f8d385dc3b2c69b1d024fc55e9f2e0ca"
                              "a2505aea00a53b3754f820b00632ad36"),
-        "snapshot_manifest": None,
+        "snapshot_manifest": (15245, "60b230af38ef98dd705e272ec180acc8"
+                                     "4943f8027df50930bc8763f3b4c4d63d"),
         "prepared_mapping": None,
         "prepared_outputs": None,
         "prepared_closure": None,
