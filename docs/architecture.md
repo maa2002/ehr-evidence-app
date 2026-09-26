@@ -177,7 +177,7 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | 32.1 | `qa.vocabulary` | `protected-data\vocabularies\condition-vocabulary-athena-20260831-v1` |
 | 34.2 | copied unchanged | `protected-data\question-sets\mimic-iv-ext-instr` |
 | 34.2 | `qa.heldout` | `protected-data\question-sets\mimic-iv-ext-instr-partitions-v1` |
-| 34.3 | `qa.written` | `protected-data\question-sets\written-v1` |
+| 34.3 | `qa.written` | `protected-data\question-sets\written-v1` to `written-v3`, one set per rule version |
 
 Work items 16 (bridge output contract) and 18 (target and history policy)
 are specifications; they are described in

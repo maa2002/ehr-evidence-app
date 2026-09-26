@@ -42,8 +42,9 @@ described in [evidence.md](evidence.md) and decided in
 Described in [qa.md](qa.md) and decided in
 [ADR 0006](decisions/0006-condition-vocabulary.md),
 [ADR 0007](decisions/0007-rule-based-qa.md),
-[ADR 0008](decisions/0008-question-set-partitions.md) and
-[ADR 0009](decisions/0009-rules-version-2.md).
+[ADR 0008](decisions/0008-question-set-partitions.md),
+[ADR 0009](decisions/0009-rules-version-2.md) and
+[ADR 0010](decisions/0010-fail-safes.md).
 
 - 31 Interpret tasks (done; rule-based)
 - 32 Resolve concepts (done)
@@ -64,6 +65,10 @@ Described in [qa.md](qa.md) and decided in
 - 34.4 Close the gaps with rules version 2 and spelling suggestions (done:
   measured on a new written set, 147 of 198 as expected and 3 wrong
   answers; [ADR 0009](decisions/0009-rules-version-2.md))
+- 34.5 Add fail-safes with rules version 4 (done: measured on a new
+  written set, 147 of 226 as expected and 2 wrong answers, against 9
+  with version 2 on the same questions;
+  [ADR 0010](decisions/0010-fail-safes.md))
 
 ## Phase 6. Validation
 

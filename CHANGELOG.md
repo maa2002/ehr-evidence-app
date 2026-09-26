@@ -9,21 +9,31 @@ change interfaces.
 
 ### Added
 
-- Development suite version 3 with a family for each fail-safe and for
-  negative wordings: 1,892 of 1,892 on `dev-30-v1`, 784 of 784 on the
-  pilot; the vocabulary sweep still returns the asked concept for all
-  788,221 questions.
+- Development suite version 4 with a family for each fail-safe, for
+  negative wordings and for the new scope phrasings: 1,892 of 1,892 on
+  `dev-30-v1`, 784 of 784 on the pilot; the vocabulary sweep still
+  returns the asked concept for all 788,221 questions.
+- Written sets `written-v3` and `written-v4`, with four more families:
+  lists of only some conditions, lists of a number of conditions, two
+  conditions at once and presence checks asked in a negative way.
 
 ### Changed
 
-- Rules version 3: layered fail-safes, so that every word of an
-  answered question is accounted for. A visit, stay or time named in
-  words that are not a scope phrase, an exclusion or filter, a word
-  outside the question frames and the condition phrase, or two
-  presence checks in one message now get a clarification, and a list
-  limited to a number of conditions is refused like a ranking. "This
-  admission" names the selected visit when a visit is selected.
-  Negative wordings ("is there no record of X") check X.
+- Rules version 4, with fail-safes
+  ([ADR 0010](docs/decisions/0010-fail-safes.md)): a list or a presence
+  check is released only when every word of the question is accounted
+  for. A visit, stay or time named in unrecognised words, an exclusion
+  or filter, any other word outside the question frames and the
+  condition phrase, and two presence checks in one message get a
+  clarification; a list of only some of the conditions is refused.
+  More ways of naming the selected scope are read ("the selected part
+  of the record", "visit 2 of 4", "the current, final admission"), and
+  "this admission" names the selected visit when a visit is selected.
+  Negative wordings ("is there no record of X") check X. On a new
+  written set, 147 of 226 questions are handled as expected and 2 get a
+  wrong answer, against 154 and 9 with version 2 on the same questions.
+  Rules version 3, the fail-safes alone, was measured on the set before
+  and not released.
 
 ## [0.7.0] - 2026-09-26
 

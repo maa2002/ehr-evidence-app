@@ -12,8 +12,10 @@ term resolution and matching),
 [ADR 0007](decisions/0007-rule-based-qa.md) (interpretation, answers and
 how they are measured),
 [ADR 0008](decisions/0008-question-set-partitions.md) (partitions of the
-external question set) and
-[ADR 0009](decisions/0009-rules-version-2.md) (rules version 2). Command
+external question set),
+[ADR 0009](decisions/0009-rules-version-2.md) (rules version 2) and
+[ADR 0010](decisions/0010-fail-safes.md) (fail-safes, rules versions 3
+and 4). Command
 examples assume the session set-up in
 [development.md](development.md#session-set-up).
 
@@ -67,16 +69,20 @@ absence.
 The question is normalised as the vocabulary is: accents removed, case
 folded, "&" read as "and", possessives and symbols dropped, dots inside
 codes kept. Scope phrases are set aside (see [Scope](#scope)). This
-section describes rules version 2 (`question-interpretation-v2`);
-release 0.6.0 had version 1.
+section describes rules version 4 (`question-interpretation-v4`);
+release 0.6.0 had version 1 and release 0.7.0 version 2, and version 3
+was measured but not released.
 
 - **Presence frames** give a presence check and the condition phrase:
   "is X recorded", "was X documented", "does the patient have X", "has the
   patient been diagnosed with X", "any history of X", "is there any record
   of X", "check whether X is recorded", "hx of X", "is X on her problem
-  list", "is X among them", "X is documented". The phrase runs
-  to the last reporting word, so "Abnormal fetal heart beat noted before
-  labor" stays whole.
+  list", "is X among them", "X is documented", "was the patient ever
+  diagnosed with X". The phrase runs to the last reporting word, so
+  "Abnormal fetal heart beat noted before labor" stays whole. Negative
+  wordings ("is there no record of X", "is X not recorded", "does the
+  patient not have X", "X or not") check X, and the answer states
+  whether X is recorded.
 - **List frames** give a list: "list the conditions", "what diagnoses are
   recorded", "what has the patient been diagnosed with", "show me the past
   medical history", "how many diagnoses were coded", "what is on her
@@ -99,6 +105,7 @@ the supported tasks:
 | Other data | abstention, `task_unsupported` | "What medications is he taking?", "Show the lab results", "Did she undergo surgery?" |
 | Dates, times, order or counts | abstention, `task_unsupported` | "Was AKI recorded after the transfer?", "Is diabetes documented more than twice?" |
 | A ranking of conditions | abstention, `task_unsupported` | "What were the top three diagnoses?", "What is her main diagnosis?" |
+| Only some of the conditions | abstention, `task_unsupported` | "Give me a few of the diagnoses", "List some of her diagnoses" |
 
 The same words inside a condition phrase are part of condition names
 ("Poisoning by drug", "Cirrhosis following cardiac procedure", "Hitting
@@ -122,6 +129,30 @@ question with neither. A phrase that is only a pronoun ("is it recorded")
 gets `concept_unknown`. A phrase that is only a word for conditions ("are
 any diagnoses recorded") asks for the list.
 
+### Fail-safes
+
+Since rules version 3, a list or a presence check is released only when
+every word of the question is accounted for: by a question frame, the
+condition phrase, a scope phrase, or a fixed list of harmless words
+(politeness, reporting words such as "documented" or "billed", "ever",
+"at any point"). Otherwise the first fail-safe that applies gives a
+clarification:
+
+| Fail-safe | Clarification | Examples |
+| --- | --- | --- |
+| A visit, stay or time named in words that are not a scope phrase | `scope_ambiguous`, naming the selected scope | "Was X coded in the admission before the last one?", "Is X recorded now?", "What are his current diagnoses?" |
+| An exclusion or filter; in a list, also a negation | `task_ambiguous` | "List the conditions except diabetes", "Which conditions are not recorded?" |
+| Any other word | `task_ambiguous` | "List her cardiac conditions", "Is X recorded in his family history?" |
+| Two presence checks in one message | `task_ambiguous` | "Is X recorded? Is Y recorded?" |
+
+The question words removed from the ends of the condition phrase are
+checked for visits, times and exclusions as well. The condition phrase
+itself is not checked: it has to resolve to a condition, or the
+question gets a clarification anyway. Version 3 also stopped many
+harmless questions that named the selected scope in words of their
+own; version 4 reads those words as scope phrases (see [Scope](#scope))
+and accepts more harmless words.
+
 ## Scope
 
 A question is answered within the active case and scope chosen in the
@@ -129,13 +160,20 @@ case selector. Recognised scope phrases:
 
 | Scope | Phrases |
 | --- | --- |
-| Pre-target history | "before (prior to) the final (last, latest, most recent, current, this) admission", "before admission", "previous (prior, earlier, past) admissions", "a prior hospitalisation", "pre-target history" |
-| One visit | "visit 2", "admission number 3", "admission two", "the second admission", "the final (last, present) admission", "this admission" |
-| All case visits | "in any admission", "across all admissions", "across (throughout) her admissions", "in the entire record" |
+| The active scope, whichever it is | "the selected part of the record", "the selected time frame", "the chosen period" |
+| Pre-target history | "before (prior to) the final (last, latest, most recent, current, this) admission", "before the current, final admission", "before admission", "previous (prior, earlier, past) admissions", "a prior hospitalisation", "pre-target history" |
+| One visit | "visit 2", "admission number 3", "admission two", "visit 2 of 4", "the second admission", "the final (last, current, present) admission", "the current, final admission", "this admission", "her hospital stay" |
+| All case visits | "in any admission", "across all admissions", "across (throughout) her admissions", "all of her admissions, including the current one", "in the entire record" |
 
 An admission may also be called a visit, stay, encounter or
-hospitalisation, with "hospital", "inpatient" or "ICU" before it.
-"This admission" means the current, final admission.
+hospitalisation, with "hospital", "inpatient" or "ICU" before it; a
+phrase may start with "at the time of" or "during the course of", and
+name the admissions as "the patient's". "This admission", and an
+admission named without a number or order ("her hospital stay", "the
+admission"), name the selected visit when a visit is selected, and the
+final admission otherwise; "the current admission" is always the final
+one. A visit, stay or time named in other words gets a clarification
+(see [Fail-safes](#fail-safes)).
 
 No phrase, or a phrase naming the active scope, keeps the active scope. A
 phrase naming another scope, two different scopes, or a visit the case
@@ -216,6 +254,8 @@ source snapshot, the case set's visits and the vocabulary tables:
 | `unknown_term`, `too_broad`, `ambiguous_term` | Invented, broad and ambiguous terms | Their clarification |
 | `ranking`, `two_requests` | Fixed requests (suite version 2) | An abstention, or `task_ambiguous` |
 | `misspelling` | A recorded concept's name with one letter dropped (suite version 2) | `concept_unknown`, suggesting the concept |
+| `presence_negated` | A concept of the scope, asked in a negative wording (suite version 3) | Its records, or `not_recorded` |
+| `scope_unrecognised`, `count_list`, `qualified`, `unexplained`, `two_conditions` | A fixed request for each fail-safe (suite version 3) | `scope_ambiguous`, an abstention, or `task_ambiguous` |
 
 A response is correct when its outcome, reason codes, task and scope are
 as expected, it returns exactly the expected records, a list names exactly
@@ -225,8 +265,8 @@ asks the same questions. The suite prints aggregate counts and digests
 only and writes nothing. It refuses the evaluation case set, which is held
 for Phase 9.
 
-Results (suite version 1 with the rules of release 0.6.0, suite version
-2 with rules version 2):
+Results (suite version 1 with the rules of release 0.6.0, and each
+later suite version with the rule version of the same number):
 
 | Suite | Case set | Admitted cases | Questions | Correct | Presence records (expected, returned, correct) | Unscored description matches | Summary SHA-256 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -234,12 +274,16 @@ Results (suite version 1 with the rules of release 0.6.0, suite version
 | v1 | `pilot-10-v1` | 10 | 648 | 648 | 368, 368, 368 | none | `d3da7b6cecce15b247304c054984a06bbd078c07609a8fc3679b8d7cef70cacb` |
 | v2 | `dev-30-v1` | 26 | 1,628 | 1,628 | 919, 919, 919 | 15 records in 5 questions | `af9f5e5c86bd9415a099bee5b143552019eae182faf6405c1afc96b1a24413a6` |
 | v2 | `pilot-10-v1` | 10 | 678 | 678 | 389, 389, 389 | none | `61a38f7a8aabcb9ee4596ee1527c54733478f9a079c5a8ae87c4345cc434c634` |
+| v3 | `dev-30-v1` | 26 | 1,892 | 1,892 | 1,089, 1,089, 1,089 | 10 records in 5 questions | `83b82783ffab9597ee2d8d4d9ff4e651a1c6452cc8e346be1d9cc81fc3fe4588` |
+| v3 | `pilot-10-v1` | 10 | 784 | 784 | 439, 439, 439 | 3 records in 1 question | `17f0671a9385d20b7524e1c44f65c6919130a77e5d0d3678e50dfb381c7f9a89` |
+| v4 | `dev-30-v1` | 26 | 1,892 | 1,892 | 1,169, 1,169, 1,169 | 10 records in 7 questions | `fce42eb09ef0c9e0660d565a65eebd3fa0f06da4a01ab9032e7384a8cf9aaf28` |
+| v4 | `pilot-10-v1` | 10 | 784 | 784 | 447, 447, 447 | 2 records in 2 questions | `04d33370291c796a955563392abcd7864f4be29d5babc8c88a27aa4c1643c055` |
 
 The vocabulary sweep asks about every standard condition by name in each
 of the suite's seven presence wordings, and reads no patient data. Of
 112,693 standard conditions, 87 share their name with another concept and
 3 are too broad; for the other 112,603, all 788,221 questions resolve to
-the concept asked about, with either rule version.
+the concept asked about, with each rule version.
 
 These results show that interpretation, scope binding, resolution,
 matching, coverage and citations agree with an independent computation on
@@ -325,6 +369,14 @@ ranking questions answered with a list, all of them asking for a number
 of diagnoses without a ranking word ("list the three diagnoses"); no
 question about other data answered (summary SHA-256
 `3c4274ef04d122ff57bd0dfbcc12b61b68b2b29a44b036d32eb8eff5b31ec405`).
+With rules versions 3 and 4, again as follow-ups only: 32,117 of 32,392
+as expected (99.2%) with each; no ranking question, no list of a number
+of conditions and no question about other data answered; 781 of the
+1,056 all-diagnoses questions read as lists, down from 885 with version
+2, the others ending in a clarification (summary SHA-256 for version 4
+`a6f6ec62a471ef1d513b433dd6ff4e4ea024e3301bfcae720dd1a11be8d1103b`,
+for version 3
+`7440fa00ab94ae70868a21f8f3e0cd62fb3c4f8566bcfbcd3ba14c3f36406731`).
 
 ## Written wording test
 
@@ -344,7 +396,7 @@ spreadsheet), one row per question:
 | `case` | The case number |
 | `scope` | The scope imagined as selected: `history`, `all` or `visit N` |
 | `question` | The question, as it would be typed |
-| `intent` | `list` (the recorded conditions), `presence` (whether one condition is recorded), `refuse` (something the application should not answer, such as a treatment or a laboratory value) or `clarify` (a question it should answer with a clarifying question: one naming another part of the record or a visit the case lacks, two requests at once, or one too vague to act on) |
+| `intent` | `list` (the recorded conditions), `presence` (whether one condition is recorded), `refuse` (something the application should not answer, such as a treatment, a laboratory value or a number of conditions) or `clarify` (a question it should answer with a clarifying question: one naming another part of the record or a visit the case lacks, two requests or two conditions at once, a list of only some conditions, or one too vague to act on) |
 | `concept` | For `presence`, the OMOP concept ID of the condition meant; empty otherwise |
 | `family` | Optional: a label that groups the results |
 
@@ -419,19 +471,83 @@ answers fell from 9 to 3, all scope wordings the rules still do not
 recognise. Two presence checks named their scope in words the rules read
 as a different scope, and got a clarification.
 
+Sets `written-v3` and `written-v4` add four families for the
+fail-safes: lists of only some conditions and two conditions at once
+(to clarify), lists of a number of conditions (to refuse) and presence
+checks asked in a negative way. `written-v3` was worded after rules
+version 3 was fixed and scored once with it (questions file SHA-256
+`5c3051312e29a2600b09611fef02fc9bb4b00f9e499dfe34076085af33c490d8`,
+summary SHA-256
+`0f2655541281c5b50db76737ba57a653d4336ebc5f1cc81264c2412d9f95d9be`).
+Scoring the same questions with each rule version shows what version 3
+changed:
+
+| Rules on `written-v3` | As expected | Wrong answers | Lists | Presence exact | Refused | Clarified |
+| --- | --- | --- | --- | --- | --- | --- |
+| Version 2 | 151 of 228 (66.2%) | 9 | 18 of 25 | 58 of 116 | 45 of 48 | 30 of 39 |
+| Version 3, scored once | 105 of 228 (46.1%) | 1 | 3 of 25 | 19 of 116 | 47 of 48 | 36 of 39 |
+| Version 4, development | 148 of 228 (64.9%) | 0 | 12 of 25 | 54 of 116 | 48 of 48 | 34 of 39 |
+
+Version 3 removed 8 of the 9 wrong answers of version 2, but its
+fail-safes also stopped 55 questions that version 2 answered correctly:
+32 through the list of harmless words and 23 through the check for
+unrecognised visits, most of them naming the selected scope in words
+of their own ("the selected part of the record", "the current, final
+admission"). Version 4 was written to read those words, so on this set,
+which informed it, its result is a development figure only.
+
+Set `written-v4` was worded after rules version 4 was fixed, in the same
+thirteen families with new cases, scopes and conditions, and scored once
+with rules version 4 (questions file SHA-256
+`662a1b4525c24aca885e609bf4f7149de58124238aa70309a0882bbfb71e84b2`,
+summary SHA-256
+`9fc9b0867f25d3f0bc57ec3202d0c59b8492a89b497e8bc4fa272c99e849165e`):
+
+| Family | Questions | As expected | Otherwise |
+| --- | --- | --- | --- |
+| List | 24 | 10 lists citing exactly the scope's records | 14 clarifications or abstentions |
+| Presence, recorded condition | 45 | 24 exact | 21 clarifications or abstentions |
+| Presence, broader condition | 20 | 11 exact | 9 clarifications or abstentions |
+| Presence, condition not recorded | 44 | 23 exact | 21 clarifications or abstentions |
+| Presence, asked in a negative way | 8 | 2 exact | 6 clarifications or abstentions |
+| Refuse | 40 | 38 refused | 2 answered as condition questions |
+| Refuse: a number of conditions | 6 | 6 refused | none |
+| Clarify: another part of the record | 10 | 5 clarifications | 5 abstentions |
+| Clarify: two requests at once | 6 | 6 clarifications | none |
+| Clarify: two conditions at once | 6 | 6 clarifications | none |
+| Clarify: a list of only some conditions | 8 | 8 clarifications | none |
+| Clarify: too vague | 5 | 4 clarifications | 1 abstention |
+| Clarify: a visit the case lacks | 4 | 4 clarifications | none |
+| All | 226 | 147 (65.0%) | 2 wrong answers; 77 clarifications or abstentions instead of an answer |
+
+Every presence answer was about the condition meant and every list that
+was given was exact. On the same questions, rules version 2 gives 154
+as expected (68.1%) and 9 wrong answers: three lists of only some
+conditions, two messages with two requests and two lists of a number of
+conditions were answered, and so were the same two refusals. Version 3
+gives 102 (45.1%) and 2 wrong answers. Version 4 keeps the fail-safes'
+gain at a net cost of 7: 19 lists and presence checks that version 2
+answered correctly now get a clarification, 10 of them for a visit named
+in words that are still not recognised, and 3 questions that should get
+a clarification get an abstention; 8 presence checks that version 2
+could not read, and the 7 questions it answered wrongly, are now as
+expected.
+
 ## Limits
 
-- One condition per question. Dates, times, the order of events, counts
-  and rankings are not answered, but a list limited to a number of
-  conditions without a ranking word ("list the three diagnoses") is
-  answered with the whole list.
-- Negated questions ("is heart failure not recorded") and unusual wording
-  get a clarification rather than a guess; so do abbreviations, everyday
-  terms and misspellings that are not in the vocabulary, the last with
-  suggestions of the closest spellings (see the written test results).
-- A scope named in words the rules do not recognise is not noticed, and
-  the selected scope answers the question. "This admission" is read as
-  the current, final admission.
+- One condition per question. Dates, times, the order of events, counts,
+  rankings and lists of a number of conditions are not answered.
+- Unusual wording gets a clarification rather than a guess; so do
+  abbreviations, everyday terms and misspellings that are not in the
+  vocabulary, the last with suggestions of the closest spellings (see
+  the written test results).
+- The fail-safes ask again whenever a word is not accounted for, so
+  some harmless questions get a clarification: a visit or time named in
+  words the rules do not recognise, even when it is the selected scope,
+  or a harmless word missing from the fixed list.
+- A request that should be refused can still read as a condition
+  question when its words name a condition (2 of 226 in the last
+  written set).
 - Answers report recorded condition records, never clinical status,
   severity or current state.
 - ICD description matches of records without a standard concept are a
@@ -454,6 +570,8 @@ as a different scope, and got a clarification.
 & $AppPython -m ehr_evidence_app.qa.written --operator-real --overview dev-30-v1
 & $AppPython -m ehr_evidence_app.qa.written --operator-real --score
 & $AppPython -m ehr_evidence_app.qa.written --operator-real --score --set written-v2
+& $AppPython -m ehr_evidence_app.qa.written --operator-real --score --set written-v3
+& $AppPython -m ehr_evidence_app.qa.written --operator-real --score --set written-v4
 ```
 
 The vocabulary build and the partition record each write one new
