@@ -41,8 +41,9 @@ described in [evidence.md](evidence.md) and decided in
 
 Described in [qa.md](qa.md) and decided in
 [ADR 0006](decisions/0006-condition-vocabulary.md),
-[ADR 0007](decisions/0007-rule-based-qa.md) and
-[ADR 0008](decisions/0008-question-set-partitions.md).
+[ADR 0007](decisions/0007-rule-based-qa.md),
+[ADR 0008](decisions/0008-question-set-partitions.md) and
+[ADR 0009](decisions/0009-rules-version-2.md).
 
 - 31 Interpret tasks (done; rule-based)
 - 32 Resolve concepts (done)
@@ -60,6 +61,9 @@ Described in [qa.md](qa.md) and decided in
   has not read the rules (done: 139 of 198 questions as expected; every
   presence answer about the condition meant; 9 wrong answers from scope
   wordings, two requests at once and two refusals)
+- 34.4 Close the gaps with rules version 2 and spelling suggestions (done:
+  measured on a new written set, 147 of 198 as expected and 3 wrong
+  answers; [ADR 0009](decisions/0009-rules-version-2.md))
 
 ## Phase 6. Validation
 

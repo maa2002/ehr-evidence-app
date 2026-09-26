@@ -20,10 +20,24 @@ change interfaces.
 - `qa.written`: the written wording test, with a questions template, an
   overview of each case's recorded conditions, and scoring against the
   development suite's oracle by intent (list, presence, refuse, clarify)
-  and by an optional family. With the rules of 0.6.0, 139 of 198 written
-  questions are handled as expected, every presence answer is about the
-  condition meant, and 9 questions get a wrong answer.
+  and by an optional family, in named question sets. With the rules of
+  0.6.0, 139 of 198 written questions are handled as expected, every
+  presence answer is about the condition meant, and 9 questions get a
+  wrong answer.
+- Spelling suggestions: an unknown condition wording is offered the
+  closest spellings in the vocabulary; a suggestion never resolves it.
+- Development suite version 2 with ranking, two-request and misspelling
+  families: 1,628 of 1,628 on `dev-30-v1`, 678 of 678 on the pilot.
 - CI runs the synthetic modes of `qa.heldout` and `qa.written`.
+
+### Changed
+
+- Rules version 2 ([ADR 0009](docs/decisions/0009-rules-version-2.md)):
+  rankings of conditions are refused; more scope wordings are read; two
+  requests are found across sentences and before the out-of-scope rules;
+  the other-patient, prognosis and procedure rules are wider; "hx of",
+  problem lists and inclusion wordings are read. On a new written set,
+  147 of 198 questions are handled as expected and 3 get a wrong answer.
 
 ## [0.6.0] - 2026-09-26
 
