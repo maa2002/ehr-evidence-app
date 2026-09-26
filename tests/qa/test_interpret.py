@@ -7,7 +7,7 @@ they must yield; none of them is the independent held-out test.
 import unittest
 
 from ehr_evidence_app.evidence import contracts
-from ehr_evidence_app.qa import interpret, scope
+from ehr_evidence_app.qa import interpret, resolve, scope
 
 HISTORY = contracts.ScopeRef(kind="pre_target_history")
 ALL = contracts.ScopeRef(kind="case_visits")
@@ -30,6 +30,52 @@ class NormalisationTests(unittest.TestCase):
         self.assertEqual(interpret.normalize("  Heart-failure!!  "),
                          "heart failure")
         self.assertEqual(interpret.normalize(None), "")
+
+    def test_normalize_like_the_vocabulary(self):
+        """Accents and '&' are read as the vocabulary index reads them."""
+        for text in ("Ménière's disease", "Crohn's disease & colitis",
+                     "Sjögren syndrome"):
+            self.assertEqual(interpret.normalize(text),
+                             resolve.normalize(text), text)
+
+    def test_candidates(self):
+        """Question words leave the phrase one at a time, longest first."""
+        for question, terms in (
+                ("Is cough reflex present recorded?",
+                 ("cough reflex present", "cough reflex")),
+                ("Is newly diagnosed diabetes recorded?",
+                 ("newly diagnosed diabetes",)),
+                ("Has heart failure ever been diagnosed?",
+                 ("heart failure ever been", "heart failure ever",
+                  "heart failure")),
+                ("Is a diagnosis of heart failure recorded in the chart?",
+                 ("a diagnosis of heart failure recorded",
+                  "diagnosis of heart failure recorded",
+                  "heart failure recorded", "heart failure")),
+                ("Does the patient have a history of heart failure?",
+                 ("heart failure",)),
+                ("Is muscle, ligament and fascia disorders recorded?",
+                 ("muscle ligament and fascia disorders",))):
+            result = interpret.interpret(question)
+            self.assertEqual((result.task, result.terms),
+                             ("condition_presence", terms), question)
+
+    def test_words_for_conditions_ask_for_the_list(self):
+        """'Are any diagnoses recorded' and similar questions are lists."""
+        for question in ("Are any diagnoses recorded?",
+                         "Is there any diagnosis recorded?",
+                         "What medical conditions are recorded?"):
+            self.assertEqual(interpret.interpret(question).task,
+                             "condition_list", question)
+
+    def test_code_prefixes(self):
+        """'ICD-10 code', 'diagnosis code' and 'code' are not the term."""
+        for question, term in (("Is ICD-10 code I50.9 recorded?", "i50.9"),
+                               ("Was diagnosis code 428.0 coded?", "428.0"),
+                               ("Is code E11.9 documented?", "e11.9"),
+                               ("Any ICD-9-CM 250.00?", "250.00")):
+            self.assertEqual(interpret.interpret(question).term, term,
+                             question)
 
     def test_clean_term(self):
         """Question words around the condition are removed."""
@@ -126,7 +172,26 @@ class OutOfScopeTests(unittest.TestCase):
         ("List the conditions and tell me if diabetes is recorded",
          "clarify", "task_ambiguous"),
         ("Is it recorded?", "clarify", "concept_unknown"),
+        ("Was heart failure recorded in 2150?", "abstain",
+         "task_unsupported"),
+        ("Has sepsis been coded since March?", "abstain",
+         "task_unsupported"),
+        ("Was AKI recorded after the surgery?", "abstain",
+         "task_unsupported"),
+        ("Is diabetes documented more than twice?", "abstain",
+         "task_unsupported"),
+        ("What conditions were recorded in the last 6 months?", "abstain",
+         "task_unsupported"),
+        ("When was heart failure first recorded?", "abstain",
+         "task_unsupported"),
     )
+
+    def test_at_least_once_is_a_presence_check(self):
+        """'At least once' asks whether it is recorded at all."""
+        result = interpret.interpret(
+            "Was heart failure recorded at least once?")
+        self.assertEqual((result.task, result.term),
+                         ("condition_presence", "heart failure"))
 
     def test_cases(self):
         """Each question ends with its expected status and reason."""
@@ -149,10 +214,26 @@ class OutOfScopeTests(unittest.TestCase):
             result = interpret.interpret(question)
             self.assertEqual((result.task, result.term),
                              ("condition_presence", term), question)
-        for question in ("Which drugs was he given?",
-                         "Is a medication list recorded?"):
-            self.assertEqual(interpret.interpret(question).reason,
-                             "task_unsupported", question)
+        self.assertEqual(interpret.interpret(
+            "Which drugs was he given?").reason, "task_unsupported")
+
+    def test_rules_inside_the_phrase_wait_for_the_vocabulary(self):
+        """Out-of-scope words inside the phrase are kept as a guard."""
+        for question, term, guard in (
+                ("Is a medication list recorded?", "medication list",
+                 ("abstain", "task_unsupported", "other_data")),
+                ("Is plain X-ray of hand normal recorded?",
+                 "plain x ray of hand normal",
+                 ("abstain", "task_unsupported", "other_data")),
+                ("Is hitting other person recorded?", "hitting other person",
+                 ("clarify", "case_ambiguous", "other_patient")),
+                ("Is heart failure recorded?", "heart failure", None)):
+            result = interpret.interpret(question)
+            self.assertEqual((result.task, result.term, result.guard),
+                             ("condition_presence", term, guard), question)
+        result = interpret.interpret("Is drug abuse recorded for patient 12?")
+        self.assertEqual((result.status, result.reason),
+                         ("clarify", "case_ambiguous"))
 
 
 class ScopeMentionTests(unittest.TestCase):

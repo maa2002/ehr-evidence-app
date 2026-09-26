@@ -317,8 +317,9 @@ def decide(vocab, phrase, rule, ids):
     return Resolution(phrase, "resolved", rule, concepts)
 
 
-def resolve(text, vocab):
-    """Resolve one condition phrase by the fixed rules."""
+def resolve(text, vocab, suggestions=True):
+    """Resolve one condition phrase by the fixed rules; an unknown phrase
+    comes with suggestions unless they are not wanted."""
     phrase = normalize(text)
     if not phrase:
         return Resolution(phrase, "unknown")
@@ -331,7 +332,8 @@ def resolve(text, vocab):
             ids = table.get(candidate)
             if ids:
                 return decide(vocab, candidate, rule, ids)
-    return Resolution(phrase, "unknown", concepts=suggest(vocab, phrase))
+    return Resolution(phrase, "unknown", concepts=suggest(vocab, phrase)
+                      if suggestions else ())
 
 
 def suggest(vocab, phrase, limit=SUGGESTIONS):

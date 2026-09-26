@@ -10,11 +10,14 @@ One question about the active case and scope becomes exactly one response:
    and verified against its manifest;
 4. a list needs complete coverage: it names every distinct condition with
    its records, and lists records without a standard concept by ICD code;
-5. a presence check resolves the condition (qa.resolve). Any matching
-   record makes it recorded, citing every match. With complete coverage and
-   no match it is not recorded within the scope, which is never a statement
-   of clinical absence. Ambiguous, unknown and too broad terms get a
-   clarification. Coverage that is not complete gives an abstention.
+5. a presence check resolves the longest candidate of the condition phrase
+   that names something (qa.resolve). A phrase that names nothing and holds
+   an out-of-scope word ("chest X-ray", "medication list") gets that rule's
+   abstention or clarification. Any matching record makes the condition
+   recorded, citing every match. With complete coverage and no match it is
+   not recorded within the scope, which is never a statement of clinical
+   absence. Ambiguous, unknown and too broad terms get a clarification.
+   Coverage that is not complete gives an abstention.
 
 Claims cite the bundle's own references, and the response is bound to the
 bundle by identifier and digest and checked with the citation rules before
@@ -57,9 +60,15 @@ UNSUPPORTED_TEXT = {
                          "what is recorded.",
     "other_data": "Only recorded conditions (diagnoses) can be queried here; "
                   "medications, procedures, results and notes cannot.",
+    "time_or_count": "Questions about dates, times, the order of events or "
+                     "how often something was recorded are outside what "
+                     "this application answers; the visits are chosen with "
+                     "the scope selector.",
 }
 SUPPORTED = ("It can list the conditions recorded within the selected scope, "
              "or check whether a named condition is recorded there.")
+# Out-of-scope rules that end in a clarification rather than an abstention.
+UNSUPPORTED_CATEGORIES = ("explanation", "other_patient")
 
 
 class AnswerError(Exception):
@@ -344,6 +353,31 @@ def presence_answer(request_id, case, scope, bundle, bundle_ref, resolution,
                    claims=claims, bundle=bundle_ref), matched
 
 
+def resolve_phrase(interpretation, vocab, suggestions=True):
+    """Resolve the longest candidate of the condition phrase that names
+    something; when none does, the shortest, with suggestions unless they
+    are not wanted."""
+    terms = interpretation.terms or (interpretation.term,)
+    for term in terms[:-1]:
+        resolution = resolve.resolve(term, vocab, suggestions=False)
+        if resolution.status != "unknown":
+            return resolution
+    return resolve.resolve(terms[-1], vocab, suggestions=suggestions)
+
+
+def out_of_scope(request_id, case, scope, status, reason, category):
+    """Return the abstention or clarification of an out-of-scope rule."""
+    if status == "abstain":
+        return respond(request_id, case, scope, "abstention",
+                       text="%s %s" % (UNSUPPORTED_TEXT[category],
+                                       SUPPORTED),
+                       reasons=(reason,))
+    return respond(request_id, case, scope, "clarification",
+                   text=clarification_text(interpreter.Interpretation(
+                       "clarify", reason=reason, category=category)),
+                   reasons=(reason,))
+
+
 def clarification_text(interpretation, resolution=None, vocab=None,
                        requested=None, active=None):
     """Return the text of a clarification."""
@@ -396,12 +430,13 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
                               "operational_error",
                               reasons=("limit_exceeded",)))
     interpretation = interpreter.interpret(question)
-    if interpretation.status == "abstain":
-        return Result(respond(
-            request_id, case, active_scope, "abstention",
-            text="%s %s" % (UNSUPPORTED_TEXT[interpretation.category],
-                            SUPPORTED),
-            reasons=(interpretation.reason,)))
+    if interpretation.status == "abstain" or (
+            interpretation.status == "clarify"
+            and interpretation.category in UNSUPPORTED_CATEGORIES):
+        return Result(out_of_scope(request_id, case, active_scope,
+                                   interpretation.status,
+                                   interpretation.reason,
+                                   interpretation.category))
     if interpretation.status == "clarify":
         return Result(respond(request_id, case, active_scope,
                               "clarification",
@@ -448,7 +483,12 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
                                        bundle_ref)
         result = Result(response, request, digest, groups=groups)
     else:
-        resolution = resolve.resolve(interpretation.term, vocab)
+        resolution = resolve_phrase(interpretation, vocab)
+        if interpretation.guard and resolution.status == "unknown":
+            return Result(out_of_scope(request_id, case, scope,
+                                       *interpretation.guard),
+                          request=request, bundle_sha256=digest,
+                          resolution=resolution)
         if resolution.status != "resolved":
             reason = {"ambiguous": "concept_ambiguous",
                       "unknown": "concept_unknown",
