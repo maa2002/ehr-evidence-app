@@ -5,11 +5,11 @@ vocabulary is the suite's invented one, aligned with it. No real record is
 read.
 """
 
-import dataclasses
 import unittest
 
 from ehr_evidence_app.evidence import bundles, contracts, schema
 from ehr_evidence_app.qa import answer, suite
+from ehr_evidence_app.validation import candidate as candidates
 
 CASE_SET = "synthetic-1-v1"
 HISTORY = contracts.ScopeRef(kind="pre_target_history")
@@ -72,7 +72,7 @@ class ListTests(unittest.TestCase):
         response = ask("List the diagnoses.", visit(2)).response
         self.assertEqual(response.outcome, "not_recorded")
         self.assertEqual(response.claims[0].refs, ("C1",))
-        self.assertIn(answer.ABSENCE, response.text)
+        self.assertIn(candidates.NOTICES["absence"].text, response.text)
 
 
 class PresenceTests(unittest.TestCase):
@@ -93,7 +93,7 @@ class PresenceTests(unittest.TestCase):
         response = ask("Any history of synthetic concept 1002?").response
         self.assertEqual(response.outcome, "not_recorded")
         self.assertEqual(response.claims[0].refs, ("C1",))
-        self.assertIn(answer.ABSENCE, response.text)
+        self.assertIn(candidates.NOTICES["absence"].text, response.text)
 
     def test_terms_that_need_clarification(self):
         """Unknown, ambiguous and too broad terms are not guessed."""
@@ -181,7 +181,7 @@ class BoundaryTests(unittest.TestCase):
         for question, outcome, reason, words in (
                 ("Was synthetic concept 1002 recorded during the hospital "
                  "course?", "clarification", "scope_ambiguous",
-                 "The selected scope is pre-target history"),
+                 "The selected scope is the pre-target history"),
                 ("List the conditions except the chronic ones.",
                  "clarification", "task_ambiguous", "\"except\""),
                 ("List the patient's cardiac conditions.",
@@ -211,6 +211,23 @@ class BoundaryTests(unittest.TestCase):
             response = ask(question, active).response
             self.assertEqual((response.outcome, response.scope),
                              (outcome, active), active)
+
+    def test_released_text_is_the_candidates(self):
+        """A response is rendered from its checked candidate; a faulty
+        candidate is withheld as a validation rejection."""
+        result = ask("List all recorded conditions.", ALL)
+        bundle, digest = BUNDLES.qa_bundle(1, ALL)
+        self.assertEqual(result.response.text,
+                         candidates.render(result.candidate, bundle)[0])
+        other = result.candidate.model_copy(update={
+            "case": result.candidate.case.model_copy(
+                update={"case_number": 2})})
+        response = answer.release(other, "q-1", result.response.case, ALL,
+                                  VOCAB, bundle, digest)
+        self.assertEqual((response.outcome, response.reason_codes,
+                          response.text, response.claims),
+                         ("validation_rejection", ("scope_violated",), None,
+                          ()))
 
     def test_limits_and_unknown_cases(self):
         """Over-long questions and cases without bundles end early."""
@@ -242,28 +259,37 @@ class BoundaryTests(unittest.TestCase):
                          ("case_rejection", ("scope_invalid",)))
 
     def test_incomplete_coverage_abstains(self):
-        """A scope whose coverage is not complete gets no answer."""
+        """A scope whose coverage is not complete gets no answer, and a
+        bundle of another case is rejected before any text."""
         good, digest = BUNDLES.qa_bundle(1, HISTORY)
-        coverage = dataclasses.make_dataclass(
-            "Coverage", [("status", str)])("unavailable")
-        stub = dataclasses.make_dataclass(
-            "Stub", [("coverage", object)])(coverage)
+        self.assertIsInstance(good, schema.QABundle)
 
-        class Partial(answer.BundleSet):
-            """A bundle set whose history bundle is incomplete."""
+        def serving(bundle):
+            """Return a bundle set that serves one changed bundle."""
+            class Changed(answer.BundleSet):
+                """A bundle set whose history bundle is replaced."""
 
-            def qa_bundle(self, case_number, scope):
-                """Return the incomplete stand-in."""
-                return stub, digest
+                def qa_bundle(self, case_number, scope):
+                    """Return the changed bundle."""
+                    return bundle, digest
 
-        partial = Partial(CASE_SET, None, {"files": [
-            {"kind": "qa", "case_number": 1,
-             "scope": {"kind": "selected_visit", "visit_number": 1}}]})
-        response = ask("Is synthetic concept 1001 recorded?",
-                       scope=HISTORY, bundle_set=partial).response
+            return Changed(CASE_SET, None, {"files": [
+                {"kind": "qa", "case_number": 1,
+                 "scope": {"kind": "selected_visit", "visit_number": 1}}]})
+
+        partial = good.model_copy(update={"coverage": good.coverage.model_copy(
+            update={"status": "unavailable"})})
+        response = ask("Is synthetic concept 1001 recorded?", scope=HISTORY,
+                       bundle_set=serving(partial)).response
         self.assertEqual((response.outcome, response.reason_codes),
                          ("abstention", ("coverage_incomplete",)))
-        self.assertIsInstance(good, schema.QABundle)
+        other = good.model_copy(update={"case": good.case.model_copy(
+            update={"case_number": 2})})
+        response = ask("Is synthetic concept 1001 recorded?", scope=HISTORY,
+                       bundle_set=serving(other)).response
+        self.assertEqual((response.outcome, response.reason_codes,
+                          response.text),
+                         ("case_rejection", ("identity_inconsistent",), None))
 
     def test_plans(self):
         """The pilot and registered case sets have pinned bundle sets."""

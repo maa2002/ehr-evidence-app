@@ -754,8 +754,8 @@ def score(probe, result, bundle, unmapped):
         returned = matched - unscored
         if references != matched:
             failures.append("citations")
-    if response.outcome == "not_recorded" and [
-            claim.refs for claim in response.claims] != [("C1",)]:
+    if response.outcome == "not_recorded" and (not response.claims or any(
+            claim.refs != ("C1",) for claim in response.claims)):
         failures.append("citations")
     if probe.records - returned:
         failures.append("records_missing")
