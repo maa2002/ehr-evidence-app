@@ -418,7 +418,15 @@ class TorchRuntime:
             pmo.confirm_inputs(held)
             pmo.prepare_model(model)
             union = sorted(set(indices) | set(pmo.CANONICAL_PREFIX))
-            records = pmo.generate(bridge, model, processed, union)
+            # The bridge moves a graph to the device in place, so records are
+            # generated from clones and the batch measurement below starts
+            # from the untouched preprocessed collection, as in the run
+            # binding.
+            view = list(processed)
+            for index in union:
+                view[index] = processed[index].clone()
+            records = pmo.generate(bridge, model, view, union)
+            del view
             report = pmo.compare_canonical(
                 [records[index] for index in pmo.CANONICAL_PREFIX],
                 canonical)
