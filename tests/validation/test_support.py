@@ -11,7 +11,7 @@ import unittest
 from ehr_evidence_app.evidence import bundles, contracts
 from ehr_evidence_app.qa import answer, suite
 from ehr_evidence_app.validation import candidate as candidates
-from ehr_evidence_app.validation import structure, support
+from ehr_evidence_app.validation import gate, structure, support
 
 ALL = contracts.ScopeRef(kind="case_visits")
 HISTORY = contracts.ScopeRef(kind="pre_target_history")
@@ -110,8 +110,8 @@ class SupportTests(unittest.TestCase):
         wrong = statements(result.candidate, s1=item.model_copy(update={
             "slots": item.slots.model_copy(update={
                 "count": item.slots.count + 1})}))
-        response = answer.release(wrong, "q-1", result.response.case, ALL,
-                                  VOCAB, bundle, digest)
+        response = gate.release(wrong, "q-1", result.response.case, ALL,
+                                bundle, digest, VOCAB)
         self.assertEqual((response.outcome, response.reason_codes,
                           response.text),
                          ("validation_rejection", ("claim_unsupported",),

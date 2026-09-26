@@ -86,6 +86,8 @@ jobs:
             "ehr_evidence_app.validation.support",
             "ehr_evidence_app.validation.language",
             "ehr_evidence_app.validation.explanation",
+            "ehr_evidence_app.validation.gate",
+            "ehr_evidence_app.validation.mutations",
             "ehr_evidence_app.tracking.lineage",
             "ehr_evidence_app.tracking.policy",
             "ehr_evidence_app.tracking.connection"

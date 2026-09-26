@@ -5,8 +5,9 @@ answers and the bundle bound to that request, before any other check:
 
 * structure_invalid: the document is malformed; its outcome, reason codes,
   task and statements do not fit together; a wording's placeholders are
-  not exactly the slots of its kind, or a notice's wording is not its
-  approved text; a statement cites evidence its kind does not cite; or the
+  not exactly the slots of its kind, a wording holds a digit (a fact
+  typed outside the slots), or a notice's wording is not its approved
+  text; a statement cites evidence its kind does not cite; or the
   response it renders would break the response contract;
 * scope_violated: the candidate, or a scope it states, names another
   request, case or scope, or another bundle than the one bound to the
@@ -99,11 +100,13 @@ def binding_problems(candidate, bundle, bundle_sha256):
 
 
 def wording_problems(statement):
-    """Return problems of a statement's wording and slots."""
+    """Return problems of a statement's wording and slots. A wording
+    holds no digit: counts, visits, dates and scores are slots."""
     names = candidates.placeholders(statement.wording)
     left = candidates.PLACEHOLDER.sub("", statement.wording)
     expected = candidates.expected_slots(statement)
     if ("{" in left or "}" in left
+            or any(char.isdigit() for char in left)
             or sorted(names) != sorted(expected)
             or set(statement.slots.filled()) != set(expected)
             or statement.slots.visits == ()):

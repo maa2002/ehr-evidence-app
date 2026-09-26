@@ -23,12 +23,12 @@ One question about the active case and scope becomes exactly one response:
 
 Every response with text is first written as a candidate by the templates
 (qa.templates): its facts are slots, and its refusals and clarifying
-questions are approved notices. The candidate is checked for structure
-and references (validation.structure), for the support of its statements
-by their cited records (validation.support) and against the wording rules
-(validation.language); the released text and claims are rendered from it.
-A candidate that fails is withheld as a validation rejection. Phase 7 may
-reword the templates behind the same checks.
+questions are approved notices. The candidate leaves through the release
+gate (validation.gate), which checks its structure and references, the
+support of its statements by their cited records and its wording, and
+renders the released text and claims from it. A candidate that fails is
+withheld as a validation rejection. Phase 7 may reword the templates
+behind the same gate.
 """
 
 from __future__ import annotations
@@ -46,8 +46,7 @@ from ehr_evidence_app.qa import interpret as interpreter
 from ehr_evidence_app.qa import resolve, templates
 from ehr_evidence_app.qa import scope as scopes
 from ehr_evidence_app.validation import candidate as candidates
-from ehr_evidence_app.validation import evidence, language, structure, \
-    support
+from ehr_evidence_app.validation import evidence, gate
 
 RULES_VERSION = "qa-answer-v5"
 PILOT = "pilot-10-v1"
@@ -179,38 +178,6 @@ def respond(request_id, case, scope, outcome, reasons=(), task=None):
         scope=scope, outcome=outcome, reason_codes=tuple(reasons))
 
 
-def namer(vocab):
-    """Return a function giving a concept's vocabulary name, or None."""
-    def name(concept):
-        """Return one concept's name, or None when it is unknown."""
-        row = vocab.rows.get(concept) if vocab is not None else None
-        return row.name if row is not None else None
-    return name
-
-
-def release(candidate, request_id, case, scope, vocab=None, bundle=None,
-            bundle_sha256=None):
-    """Return the Response of a candidate for the request (request_id,
-    case, scope): rendered from it when it passes the structure,
-    reference, support, wording and citation checks, withheld as a
-    validation rejection otherwise."""
-    concept_name = namer(vocab)
-    problems = structure.check(candidate, request_id, case, scope, bundle,
-                               bundle_sha256, concept_name)
-    if not problems:
-        problems = tuple(sorted(set(support.check(candidate, bundle, vocab)
-                                    + language.check(candidate))))
-    if not problems:
-        response = candidates.response(candidate, bundle, concept_name)
-        if bundle is not None:
-            problems = tuple(schema.citation_problems(response, bundle,
-                                                      bundle_sha256))
-        if not problems:
-            return response
-    return respond(request_id, case, scope, "validation_rejection",
-                   reasons=problems, task=candidate.task)
-
-
 def out_of_scope(request_id, case, scope, status, reason, category):
     """Return the candidate of an out-of-scope rule's abstention or
     clarification."""
@@ -323,8 +290,9 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
 
     def unbound(candidate):
         """Return the Result of a candidate before any scope is bound."""
-        return Result(release(candidate, request_id, case, active_scope,
-                              vocab), candidate=candidate)
+        return Result(gate.release(candidate, request_id, case,
+                                   active_scope, vocab=vocab),
+                      candidate=candidate)
 
     if interpretation.status == "abstain" or (
             interpretation.status == "clarify"
@@ -361,9 +329,9 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
 
     def bound(candidate, cited=False, **fields):
         """Return the Result of a candidate for the bound request."""
-        return Result(release(candidate, request_id, case, scope, vocab,
-                              bundle if cited else None,
-                              digest if cited else None),
+        return Result(gate.release(candidate, request_id, case, scope,
+                                   bundle if cited else None,
+                                   digest if cited else None, vocab),
                       request=request, bundle_sha256=digest,
                       candidate=candidate, **fields)
 

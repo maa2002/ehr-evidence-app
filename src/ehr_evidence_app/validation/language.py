@@ -6,7 +6,7 @@ condition named "Pneumonia caused by a virus" never trips a rule. Every
 statement of every released outcome is read: answers, refusals and
 clarifying questions (and, from work item 38, explanations).
 
-Rules version wording-rules-v1 prohibits (prohibited_wording):
+Rules version wording-rules-v2 prohibits (prohibited_wording):
 
 * causal or directional attribution ("caused", "led to", "due to",
   "raised the risk", "risk factor");
@@ -23,8 +23,11 @@ Rules version wording-rules-v1 prohibits (prohibited_wording):
   prediction read as prospective ("in advance", "forecast").
 
 Causal, diagnostic and risk words pass when a negation comes shortly
-before them ("attribution does not mean causation", "this application
-does not diagnose", "not a clinical risk"). Dates, recurrence and
+before them in the same clause ("attribution does not mean causation",
+"this application does not diagnose", "not a clinical risk"). Version
+1 also let a negation in an earlier clause pardon them ("X is not
+recorded, caused by ..."); the mutation suite (validation.mutations)
+found it. Dates, recurrence and
 frequency are never typed into a wording (date_unsupported); an
 explanation states how often and in which visits a driver's concept was
 recorded only through the slots of a statement that cites its linked
@@ -46,13 +49,14 @@ import sys
 
 from ehr_evidence_app.validation import candidate as candidates
 
-RULES_VERSION = "wording-rules-v1"
+RULES_VERSION = "wording-rules-v2"
 # Stands in for a slot, so that no fact is read as wording.
 SLOT = "X"
 NEGATIONS = frozenset(("not", "no", "never", "nor", "without", "cannot",
                        "neither", "none"))
-# How many words before a match a negation may stand.
+# How many words before a match a negation may stand, within its clause.
 NEGATION_WINDOW = 4
+CLAUSE_END = re.compile(r"[.,;:!?()]")
 # (rule, pardoned by a negation, pattern, outcomes it applies to; None for
 # every outcome)
 PROHIBITED = (
@@ -119,8 +123,10 @@ def neutral(wording):
 
 
 def negated(text, start):
-    """Return True when a negation stands shortly before a position."""
-    words = re.findall(r"[a-z']+", text[:start])
+    """Return True when a negation stands shortly before a position, in
+    the same clause."""
+    clause = CLAUSE_END.split(text[:start])[-1]
+    words = re.findall(r"[a-z']+", clause)
     return any(word.split("'")[0] in NEGATIONS or word.endswith("n't")
                for word in words[-NEGATION_WINDOW:])
 
@@ -174,6 +180,8 @@ SYNTHETIC_WORDINGS = (
     ("{condition} was recorded again in 2150.", ("date_unsupported",)),
     ("{condition} recurs within {scope}.", ("date_unsupported",)),
     ("The score is not a clinical risk.", ()),
+    ("{condition} is not recorded, caused by {scope}.",
+     ("prohibited_wording",)),
     ("{label} has a risk of {score}.", ("prohibited_wording",)),
     ("The model forecasts {label}.", ("prohibited_wording",)),
     ("The model has an AUROC of 0.9.", ("prohibited_wording",)),

@@ -50,7 +50,7 @@ from ehr_evidence_app.casesets import registry
 from ehr_evidence_app.evidence import bundles, contracts, readers, schema
 from ehr_evidence_app.gnn import mapping
 from ehr_evidence_app.validation import candidate as candidates
-from ehr_evidence_app.validation import evidence, language, structure
+from ehr_evidence_app.validation import evidence, gate
 
 TEMPLATE_VERSION = "explanation-template-v1"
 WORDINGS = {
@@ -220,17 +220,10 @@ def rejected(request, reasons, outcome="validation_rejection"):
 
 
 def release(candidate, request, bundle=None, bundle_sha256=None):
-    """Return the Response of an explanation candidate: rendered from it
-    when it passes the structure, preservation and wording checks,
-    withheld as a validation rejection otherwise."""
-    problems = structure.check(candidate, request.request_id, request.case,
-                               request.scope, bundle, bundle_sha256)
-    if not problems:
-        problems = tuple(sorted(set(check(candidate, bundle)
-                                    + language.check(candidate))))
-    if problems:
-        return rejected(request, problems)
-    return candidates.response(candidate, bundle)
+    """Return the Response of an explanation candidate for a request,
+    through the release gate."""
+    return gate.release(candidate, request.request_id, request.case,
+                        request.scope, bundle, bundle_sha256)
 
 
 def explain(request, bundle, bundle_sha256):
@@ -296,8 +289,11 @@ def synthetic_faults(good, bundle):
         ("attribution_altered", good.model_copy(update={
             "statements": tuple(swapped)}), bundle),
         ("attribution_altered", good, zeroed),
+        # Restrictions disclosed that are not the case's: none for a case
+        # that has some, one for a case that has none.
         ("claim_unsupported", good.model_copy(update={
-            "reason_codes": ()}), bundle),
+            "reason_codes": () if bundle.restrictions
+            else ("batch_sensitive_prediction",)}), bundle),
         ("structure_invalid", good.model_copy(update={
             "statements": tuple(item for item in good.statements
                                 if item.notice != "attribution_meaning")}),
@@ -419,8 +415,7 @@ def main(argv=None):
         for key, value in counts.items():
             print("%-48s %d" % (key, value))
         ok = counts.get("outcome validation_rejection", 0) == 0
-        print("template %s, wording rules %s" % (TEMPLATE_VERSION,
-                                                 language.RULES_VERSION))
+        print("template %s" % TEMPLATE_VERSION)
         print("RESULT: %s" % ("PASS" if ok else "FAIL"))
         return 0 if ok else 1
     explained, detected, total = run_synthetic()

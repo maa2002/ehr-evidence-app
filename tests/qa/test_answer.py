@@ -10,6 +10,7 @@ import unittest
 from ehr_evidence_app.evidence import bundles, contracts, schema
 from ehr_evidence_app.qa import answer, suite
 from ehr_evidence_app.validation import candidate as candidates
+from ehr_evidence_app.validation import gate
 
 CASE_SET = "synthetic-1-v1"
 HISTORY = contracts.ScopeRef(kind="pre_target_history")
@@ -222,8 +223,8 @@ class BoundaryTests(unittest.TestCase):
         other = result.candidate.model_copy(update={
             "case": result.candidate.case.model_copy(
                 update={"case_number": 2})})
-        response = answer.release(other, "q-1", result.response.case, ALL,
-                                  VOCAB, bundle, digest)
+        response = gate.release(other, "q-1", result.response.case, ALL,
+                                bundle, digest, VOCAB)
         self.assertEqual((response.outcome, response.reason_codes,
                           response.text, response.claims),
                          ("validation_rejection", ("scope_violated",), None,
