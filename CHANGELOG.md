@@ -5,7 +5,12 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
-## [Unreleased]
+## [0.5.0] - 2026-09-26
+
+Versioned development and evaluation case sets (work item 30.1), which
+complete Phase 4: a 30-case development set and a 100-case evaluation set,
+drawn from the upstream validation and test partitions and prepared,
+linked and bundled by the same pipeline as the pilot.
 
 ### Added
 
@@ -34,12 +39,6 @@ change interfaces.
 - `sources.pilot` checks the database connection before it creates a
   version directory, so a wrong password leaves nothing behind and the
   label can be reused.
-
-### Fixed
-
-- `casesets.prepare` generates records from cloned graphs, because the
-  bridge moves a graph to the device in place and the batch measurement
-  must start from the untouched preprocessed collection.
 
 ## [0.4.0] - 2026-09-26
 
@@ -133,6 +132,6 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.4.0...HEAD
+[0.5.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/maa2002/ehr-evidence-app/tree/v0.3.0
