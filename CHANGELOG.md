@@ -19,11 +19,23 @@ change interfaces.
 - Evidence schema 1.1: each record may carry its source concept
   (vocabulary, code and description). Version 2 bundle sets carry it;
   version 1 bundles remain valid.
+- `qa.interpret`: a deterministic interpreter that turns a question about
+  the active case into a condition list or a condition presence check, or
+  ends it with a clarification or abstention.
+- `qa.scope`: scope phrases in questions; the active scope applies, and a
+  question naming another scope gets a clarification.
+- `qa.answer`: list and presence answers from a verified QA bundle, with
+  claims citing the bundle's records and "not recorded within the scope"
+  only under complete coverage.
+- Clarification reason codes `concept_unknown`, `concept_too_broad`,
+  `case_ambiguous` and `prediction_selection_needed`.
 
 ### Changed
 
 - The storage policy admits the Athena vocabulary directory as a
   read-only vocabulary source.
+- A response names no task when the question could not be interpreted as
+  one; answers and explanations still always name theirs.
 
 ## [0.5.0] - 2026-09-26
 
