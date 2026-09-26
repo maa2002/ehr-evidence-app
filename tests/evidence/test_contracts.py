@@ -183,6 +183,17 @@ class ResponseTests(unittest.TestCase):
             with self.assertRaises(ValidationError):
                 parse(contracts.Response, value)
 
+    def test_task_is_absent_only_without_an_interpretation(self):
+        """A clarification may name no task; answers always name theirs."""
+        unclear = response(task=None, outcome="clarification", claims=None,
+                           bundle=None, text="Which condition do you mean?",
+                           reason_codes=["task_ambiguous"])
+        self.assertIsNone(parse(contracts.Response, unclear).task)
+        for outcome in ("answer", "not_recorded", "explanation"):
+            with self.assertRaises(ValidationError):
+                parse(contracts.Response, response(task=None,
+                                                   outcome=outcome))
+
     def test_claim_references_are_bundle_local(self):
         """References follow the V/E/P/A/C pattern and are not empty."""
         for refs in ([], ["X1"], ["E0"], ["E1234567"]):

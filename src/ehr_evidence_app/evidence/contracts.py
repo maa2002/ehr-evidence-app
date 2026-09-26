@@ -179,11 +179,15 @@ class BundleRef(Frozen):
 
 
 class Response(Frozen):
-    """Exactly one outcome for one request."""
+    """Exactly one outcome for one request.
+
+    The task is absent only when the question could not be interpreted as
+    any task; answers and explanations always name theirs.
+    """
 
     schema_version: Literal["1.0"]
     request_id: Identifier
-    task: vocab.Task
+    task: Optional[vocab.Task] = None
     case: CaseRef
     scope: ScopeRef
     outcome: vocab.Outcome

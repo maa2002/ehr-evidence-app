@@ -109,7 +109,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "Exactly one outcome for one request.",
+  "description": "Exactly one outcome for one request.\n\nThe task is absent only when the question could not be interpreted as\nany task; answers and explanations always name theirs.",
   "properties": {
     "bundle": {
       "anyOf": [
@@ -155,9 +155,12 @@
           "attribution_altered",
           "backend_failed",
           "batch_sensitive_prediction",
+          "case_ambiguous",
           "case_not_admitted",
           "claim_unsupported",
           "concept_ambiguous",
+          "concept_too_broad",
+          "concept_unknown",
           "coverage_incomplete",
           "date_unsupported",
           "evidence_inconsistent",
@@ -169,6 +172,7 @@
           "no_positive_attribution",
           "prediction_altered",
           "prediction_link_invalid",
+          "prediction_selection_needed",
           "prohibited_wording",
           "reference_unresolved",
           "resource_exhausted",
@@ -205,13 +209,21 @@
       "$ref": "#/$defs/ScopeRef"
     },
     "task": {
-      "enum": [
-        "condition_list",
-        "condition_presence",
-        "prediction_explanation"
+      "anyOf": [
+        {
+          "enum": [
+            "condition_list",
+            "condition_presence",
+            "prediction_explanation"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "title": "Task",
-      "type": "string"
+      "default": null,
+      "title": "Task"
     },
     "text": {
       "anyOf": [
@@ -231,7 +243,6 @@
   "required": [
     "schema_version",
     "request_id",
-    "task",
     "case",
     "scope",
     "outcome"
