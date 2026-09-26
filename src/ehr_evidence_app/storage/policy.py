@@ -26,9 +26,11 @@ Missing leaves are allowed; nothing beneath the first missing component exists
 to be inspected.
 
 Source access is the other half: the legacy export directory on C: is a
-read-only copy source, the configured PostgreSQL database on loopback is a
-read-only connection source, and psql runs from an allow-listed environment
-whose read-only options cannot be overridden by inherited settings.
+read-only copy source, the Athena vocabulary directory in the cold archive
+is a read-only vocabulary source, the configured PostgreSQL database on
+loopback is a read-only connection source, and psql runs from an
+allow-listed environment whose read-only options cannot be overridden by
+inherited settings.
 
 These are checks at one moment. They cannot stop a concurrent external change
 to the filesystem made after the check and before the write.
@@ -60,6 +62,9 @@ RUNTIME_DIRECTORY_KEYS = frozenset([
 ROOT_NAMES = {"workspace": PRIVATE_ROOT, "runtime": RUNTIME_ROOT}
 DRIVE_FIXED = 3
 LEGACY_SOURCE_DIR = "C:\\omop_export"
+# The Athena vocabulary release in the cold archive: vocabulary only, no
+# patient data. Read-only, and only by the condition vocabulary build.
+VOCABULARY_SOURCE_DIR = "W:\\Industry Dataset\\Athena"
 
 ALLOWED_SOURCE_HOSTS = ("127.0.0.1", "::1", "localhost")
 REQUIRED_SOURCE_DATABASE = "mimiciv_omop"
@@ -557,6 +562,36 @@ def source_directory_problem(path):
         return None
     return ("source directory must be %s or lie under %s outside the "
             "runtime root" % (LEGACY_SOURCE_DIR, POLICY_ANCHOR))
+
+
+def vocabulary_source_problem(path, directory=VOCABULARY_SOURCE_DIR):
+    """Return why path is not a readable vocabulary source file, else None.
+
+    The directory must be exactly the Athena vocabulary directory, or a
+    directory under the policy anchor outside the disposable runtime root.
+    The file must lie directly in it and be a plain regular file reached
+    without symlinks, junctions or reparse points. Vocabulary sources are
+    read, never written.
+    """
+    for label, value in (("vocabulary directory", directory),
+                         ("vocabulary file", path)):
+        problem = path_problem(value)
+        if problem:
+            return "%s: %s" % (label, problem)
+    if not (ntpath.normcase(directory) == ntpath.normcase(
+            VOCABULARY_SOURCE_DIR)
+            or (is_within(directory, POLICY_ANCHOR, strict=True)
+                and not is_within(directory, RUNTIME_ROOT))):
+        return ("vocabulary directory must be %s or lie under %s outside "
+                "the runtime root" % (VOCABULARY_SOURCE_DIR, POLICY_ANCHOR))
+    if ntpath.normcase(ntpath.dirname(path)) != ntpath.normcase(directory):
+        return "vocabulary file must lie directly in its directory"
+    problem = filesystem_problem(path, "file")
+    if problem:
+        return problem
+    if not os.path.isfile(path):
+        return "vocabulary file is missing"
+    return None
 
 
 def executable_problem(path):

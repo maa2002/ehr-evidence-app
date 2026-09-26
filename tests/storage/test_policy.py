@@ -282,6 +282,26 @@ class PathPolicyTests(ScratchTestCase):
                        for option in action.option_strings}
             self.assertEqual(options, expected[name], name)
 
+    def test_vocabulary_source_files(self):
+        """Only plain files directly in a permitted vocabulary directory."""
+        self.assertEqual(guard.VOCABULARY_SOURCE_DIR,
+                         "W:\\Industry Dataset\\Athena")
+        source = os.path.join(self.work, "athena")
+        os.makedirs(source)
+        path = os.path.join(source, "CONCEPT.csv")
+        write_text(path)
+        self.assertIsNone(guard.vocabulary_source_problem(path, source))
+        for candidate, expected in (
+                (os.path.join(self.work, "CONCEPT.csv"), "directly"),
+                (os.path.join(source, "missing.csv"), "missing"),
+                ("relative\\CONCEPT.csv", "vocabulary file")):
+            self.assertIn(expected, guard.vocabulary_source_problem(
+                candidate, source))
+        for directory in ("C:\\elsewhere", guard.RUNTIME_ROOT + "\\athena"):
+            self.assertIn("vocabulary directory must be",
+                          guard.vocabulary_source_problem(
+                              directory + "\\CONCEPT.csv", directory))
+
     def test_approved_destinations_and_missing_leaves_are_accepted(self):
         """Existing and not-yet-created private destinations pass."""
         existing_file = os.path.join(self.work, "report.json")

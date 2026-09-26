@@ -10,7 +10,8 @@ it never modifies them. Command examples assume the session set-up in
 | --- | --- | --- |
 | OMOP CDM database | local PostgreSQL 18, database `mimiciv_omop`, schema `omopcdm` | read-only transactions on loopback |
 | Legacy CSV exports | `C:\omop_export` | read-only copy source |
-| Raw MIMIC-IV 3.1 and Athena vocabularies | external archive disk | not read by this project |
+| Raw MIMIC-IV 3.1 | external archive disk | not read by this project |
+| Athena vocabularies (release of 31 August 2026) | external archive disk | four pinned files read once, read-only, to build the condition vocabulary ([ADR 0006](decisions/0006-condition-vocabulary.md)) |
 
 **Source identity.** The upstream ETL code is in the inherited tree
 (`OHDSI_MIMIC\`) and its loader reads the MIMIC-IV 3.1 files. This is
