@@ -20,8 +20,8 @@ oracle (qa.suite), which reads the source snapshot and the vocabulary:
   records of the concept meant (matches by ICD description aside);
 * refuse: the response is a clarification or an abstention;
 * clarify: the response is a clarification (a question naming another
-  scope or a visit the case lacks, two requests at once, or one too vague
-  to act on).
+  scope or a visit the case lacks, two requests or two conditions at
+  once, a list of only some conditions, or one too vague to act on).
 
 To help the writer choose conditions, an overview of each case's recorded
 conditions by scope can be written to the protected workspace; it is

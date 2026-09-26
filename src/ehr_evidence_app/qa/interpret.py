@@ -16,7 +16,8 @@ then:
    (clarification: select that case), treatment, prognosis or risk, a
    diagnosis to be made, other data types such as medications, laboratory
    results or procedures, dates, times, order or counts, and a ranking
-   of conditions (abstention; the scope selector chooses the visits).
+   of conditions or only some of them (abstention; the scope selector
+   chooses the visits).
    Inside the condition
    phrase such words belong to condition names ("drug-induced", "cardiac
    procedure", "other person"), so the rule found there is kept with the
@@ -26,8 +27,9 @@ then:
    neither, gets a clarification.
 
 Every word of a task question must be understood, or the question is
-not answered (version 3). Before a list or presence check is released,
-these fail-safes turn a possible misreading into a clarification:
+not answered (versions 3 and 4). Before a list or presence check is
+released, these fail-safes turn a possible misreading into a
+clarification:
 
 * a mention of admissions, visits, stays, the hospital or the ICU, or of
   a time ("now", "currently", "at that time"), that is not a
@@ -40,9 +42,10 @@ these fail-safes turn a possible misreading into a clarification:
 * two presence checks in one message ask for one condition at a time.
 
 The question words removed from the ends of the condition phrase (see
-below) are checked for scope words, exclusions and negations too.
-A list limited to a number of conditions is refused, as rankings are.
-Negative forms of a presence check ("is there no record of X") check X.
+below) are checked for scope words, exclusions and negations too. A list
+of only some of the conditions ("three of them", "a few", "some of her
+diagnoses") is refused, as rankings are. Negative forms of a presence
+check ("is there no record of X") check X.
 
 The condition phrase comes with its candidates, longest first: the phrase
 as asked, then with one question word at a time removed from its start
@@ -61,7 +64,7 @@ import unicodedata
 
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "question-interpretation-v3"
+RULES_VERSION = "question-interpretation-v4"
 CONTRACTIONS = {"what's": "what is", "isn't": "is not", "wasn't": "was not",
                 "doesn't": "does not", "didn't": "did not",
                 "hasn't": "has not", "haven't": "have not",
@@ -132,9 +135,14 @@ UNSUPPORTED = (
     ("abstain", "task_unsupported", "ranking", re.compile(
         r"\b(?:first|1st|top|primary|principal|main|leading|predominant|"
         r"most (?:important|significant|serious|severe|relevant)|"
-        r"biggest|(?:[0-9]+|one|two|three|four|five|six|seven|eight|nine|"
-        r"ten|a few|a couple of|several) (?:[a-z]+ ){0,3}%s)\b"
-        % CONDITIONS)),
+        r"biggest)\b")),
+    # Only some of the conditions (three of them, a few, some of them):
+    # none can be chosen over another.
+    ("abstain", "task_unsupported", "count_list", re.compile(
+        r"\b(?:(?:[0-9]+|one|two|three|four|five|six|seven|eight|nine|ten|"
+        r"a few|a couple of|several) (?:[a-z]+ ){0,3}%s|(?:some|a handful|"
+        r"a number|a selection|a sample|a subset|a couple|a few|several) "
+        r"of (?:[a-z]+ ){0,3}%s)\b" % (CONDITIONS, CONDITIONS))),
 )
 # Data words that are part of a condition name ("drug abuse", "adverse drug
 # reaction", "allergy to medication") do not make a question about other
@@ -295,6 +303,16 @@ health evidence sign signs indication indications mention mentions
 documentation among suffer suffers suffered suffering got get gets carry
 carries actually not no never full complete entire right correct true ok
 okay yes hi hello hey thanks thank quick question just well
+ehr emr electronic data database information info details detail entries
+entry available provided reports system selected chosen about into
+through upon via per whatever whichever anyone anything anybody
+something somebody really indeed specifically exactly officially
+formally definitely clearly shows showed shown indicate indicates
+indicated indicating reflect reflects reflected contain contains
+contained include includes say says said state states stated reveal
+reveals revealed want wanted need needed wonder wondering curious
+interested help access accessed review reviewing search searching
+looking seeing seen found share pulled getting
 """.split())
 # A condition named only by a pronoun refers to earlier conversation, which
 # questions never rely on.

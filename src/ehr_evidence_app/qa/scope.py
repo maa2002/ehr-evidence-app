@@ -11,18 +11,22 @@ and binds the request:
 
 Recognised phrases (after interpretation's normalisation):
 
+* the active scope itself: "the selected part of the record", "the
+  selected time frame", "the chosen period";
 * pre-target history: "before (or prior to) the final / last / latest /
   most recent / current / this admission", "before admission",
   "previous (prior, earlier, past) admissions" or "a prior admission",
   "pre-target history";
 * one visit: "the first / second ... admission", "admission 2",
-  "admission two", "visit number 3", "the final (last, latest, most
-  recent, current, present) admission"; "this admission" names the
-  selected visit when a visit is selected, and the final admission
-  otherwise;
+  "admission two", "visit number 3", "visit 2 of 4", "the final (last,
+  latest, most recent, current, present) admission", "the current,
+  final admission"; "this admission", and an admission named without a
+  number or order ("her hospital stay"), name the selected visit when a
+  visit is selected, and the final admission otherwise;
 * all case visits: "in any (all, every) of the admissions", "any
-  admission", "across (throughout, over) her admissions", "the entire
-  (whole, complete) record".
+  admission", "across (throughout, over) her admissions", "all of her
+  admissions, including the current one", "the entire (whole,
+  complete) record".
 
 An admission may also be called a visit, stay, encounter or
 hospitalisation, with "hospital", "inpatient" or "ICU" before it, and
@@ -48,6 +52,8 @@ VISITS = (r"(?:%s(?:admissions|visits|stays|encounters)|"
           r"hospitali[sz]ations)" % KIND)
 LAST = (r"(?:final|last|latest|most recent|current|present|ongoing|"
         r"target|index|this)")
+# One or two of them: "the current, final admission".
+LASTS = r"%s(?: (?:and |or )?%s)?" % (LAST, LAST)
 OWNER = (r"(?:the |this |his |her |their |that |the patient |"
          r"this patient )?")
 IN = (r"(?:(?:in|during|at|for|on|within|from|of|throughout|across|over|"
@@ -60,12 +66,32 @@ ORDINALS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
 ORDINAL = "(?P<ordinal>%s)" % "|".join(ORDINALS)
 NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
            "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+NUMBER = r"(?:[0-9]{1,3}|%s)" % "|".join(NUMBERS)
+# "Visit 2 of 4", "the second admission out of three".
+OF_TOTAL = (r"(?: (?:of|out of) (?:the |her |his |their |the patient )?"
+            r"%s(?: %s)?)?" % (NUMBER, VISITS))
+# "All of her admissions, including the current one".
+INCLUDING = (r"(?: including (?:the |this |her |his |their )?%s"
+             r"(?: one| %s)?)?" % (LASTS, VISIT))
+# The part of the record chosen in the scope selector.
+SELECTED = r"(?:selected|chosen)"
+AREA = (r"(?:part|portion|section|period|time period|timeframe|"
+        r"time frame|window|range|scope|time span|timespan|record|"
+        r"records|chart|data|information|admissions?|visits?|stays?|"
+        r"encounters?|hospitali[sz]ations?)")
+RECORDS = (r"(?:record|records|chart|history|medical record|medical "
+           r"records|health record|health records|ehr|emr)")
 
 # Patterns in priority order; a matched span is blanked before the next.
 PATTERNS = (
+    ("active", re.compile(
+        r"\b%s(?:(?:the |this |your |my )?(?:currently )?%s %s(?: of %s%s)?|"
+        r"(?:the |this )?(?:part|portion|section) of %s%s (?:that is |"
+        r"that s |currently |being )?%s)\b"
+        % (IN, SELECTED, AREA, OWNER, RECORDS, OWNER, RECORDS, SELECTED))),
     ("pre_target_history", re.compile(
         r"\b(?:before|prior to|preceding|earlier than|previous to) %s%s %s\b"
-        % (OWNER, LAST, VISIT))),
+        % (OWNER, LASTS, VISIT))),
     ("pre_target_history", re.compile(
         r"\b(?:before|prior to|preceding|earlier than|previous to) %s%s\b"
         % (OWNER, VISIT))),
@@ -74,28 +100,34 @@ PATTERNS = (
         r"(?:%s|%s)\b" % (VISITS, VISIT))),
     ("pre_target_history", re.compile(r"\bpre ?target history\b")),
     ("case_visits", re.compile(
-        r"\b(?:in |across |during |over |throughout |at )?(?:any|all|every|"
-        r"each) (?:of %s)?%s\b" % (OWNER, VISITS))),
+        r"\b(?:in |across |during |over |throughout |through |at |for )?"
+        r"(?:any|all|every|each) (?:of %s)?%s%s\b"
+        % (OWNER, VISITS, INCLUDING))),
     ("case_visits", re.compile(r"\b%s(?:any|every) %s\b" % (IN, VISIT))),
     ("case_visits", re.compile(
-        r"\b(?:across|throughout|over|in|during) %s%s\b" % (OWNER, VISITS))),
+        r"\b(?:across|throughout|through|over|in|during|for|from|within|"
+        r"of) %s%s%s\b" % (OWNER, VISITS, INCLUDING))),
     ("case_visits", re.compile(
         r"\b%s%s(?:entire|whole|complete|full) (?:record|chart)\b"
         % (IN, OWNER))),
-    ("selected_visit", re.compile(r"\b%s%s%s %s\b" % (IN, OWNER, ORDINAL,
-                                                    VISIT))),
+    ("selected_visit", re.compile(r"\b%s%s%s %s%s\b" % (
+        IN, OWNER, ORDINAL, VISIT, OF_TOTAL))),
     ("selected_visit", re.compile(
-        r"\b%s%s%s (?:number |no |# ?)?(?P<number>[0-9]{1,3}|%s)\b"
-        % (IN, OWNER, VISIT, "|".join(NUMBERS)))),
+        r"\b%s%s%s (?:number |no |# ?)?(?P<number>%s)%s\b"
+        % (IN, OWNER, VISIT, NUMBER, OF_TOTAL))),
     ("selected_visit_last", re.compile(r"\b%s%s(?P<last>%s) %s\b" % (
-        IN, OWNER, LAST, VISIT))),
+        IN, OWNER, LASTS, VISIT))),
+    # An admission named without a number or an order: the one in view.
+    ("selected_visit_this", re.compile(
+        r"\b%s(?:the |this |that |her |his |their |the patient |"
+        r"this patient )%s\b" % (IN, VISIT))),
 )
 
 
 @dataclasses.dataclass(frozen=True)
 class Mention:
     """One scope phrase found in a question; this marks "this
-    admission"."""
+    admission" and an admission named without a number or order."""
 
     kind: str
     visit_number: int | None
@@ -130,8 +162,11 @@ def mentions(text):
             found.append(Mention(
                 kind="selected_visit" if kind.startswith("selected")
                 else kind,
-                visit_number=number, last=kind == "selected_visit_last",
-                span=match.span(), this=groups.get("last") == "this"))
+                visit_number=number,
+                last=kind in ("selected_visit_last", "selected_visit_this"),
+                span=match.span(),
+                this=(kind == "selected_visit_this"
+                      or groups.get("last") == "this")))
         working = pattern.sub(lambda match: " " * len(match.group(0)),
                               working)
     return tuple(sorted(found, key=lambda item: item.span))
@@ -148,8 +183,11 @@ def remove(text, found):
 def requested_scope(mention, visit_count, active=None):
     """Return the ScopeRef a mention names for a case, or None.
 
-    "This admission" names the active visit when a visit is selected.
+    "The selected part of the record" names the active scope; "this
+    admission" names the active visit when a visit is selected.
     """
+    if mention.kind == "active":
+        return active
     if mention.kind != "selected_visit":
         return contracts.ScopeRef(kind=mention.kind)
     if mention.this and active is not None and (

@@ -41,7 +41,7 @@ from ehr_evidence_app.qa import interpret as interpreter
 from ehr_evidence_app.qa import resolve
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "qa-answer-v3"
+RULES_VERSION = "qa-answer-v4"
 PILOT = "pilot-10-v1"
 MAX_REFS = 50
 CLAIM_LIMIT = 200
@@ -68,6 +68,10 @@ UNSUPPORTED_TEXT = {
     "ranking": "Questions about which condition is first, main or most "
                "important are outside what this application answers: the "
                "recorded conditions are not ranked.",
+    "count_list": "Lists of only some of the conditions, such as three of "
+                  "them, are outside what this application answers: the "
+                  "recorded conditions are not ranked, so none is chosen "
+                  "over another.",
 }
 SUPPORTED = ("It can list the conditions recorded within the selected scope, "
              "or check whether a named condition is recorded there.")

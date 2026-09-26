@@ -56,7 +56,7 @@ from ehr_evidence_app.evidence.concepts import NAME_LIMIT
 from ehr_evidence_app.qa import answer, interpret, resolve
 from ehr_evidence_app.qa import vocabulary as build
 
-SUITE_VERSION = "qa-development-suite-v3"
+SUITE_VERSION = "qa-development-suite-v4"
 FAMILIES = ("list", "presence_name", "presence_synonym", "presence_ancestor",
             "presence_code", "presence_absent", "scope_same", "scope_other",
             "visit_missing", "unsupported", "explanation", "other_patient",
@@ -109,7 +109,8 @@ UNRECOGNISED_SCOPES = ("Was {c} coded in the admission before the last one?",
 COUNTED_LISTS = ("List three recorded conditions.",
                  "Give me a few of the diagnoses.",
                  "What are 5 of the patient's conditions?",
-                 "Show two of her diagnoses.")
+                 "Show two of her diagnoses.",
+                 "List some of her diagnoses.")
 QUALIFIED = ("List the conditions except the chronic ones.",
              "What diagnoses other than the cardiac ones are recorded?",
              "Which conditions are not recorded?",
@@ -381,32 +382,44 @@ def choose(options, *key):
     return ordered(options, *key)[0]
 
 
-THIS_VISIT = ("during this admission", "in this hospital stay")
+# Phrases that name the active scope whichever it is, and phrases that
+# name the selected visit when a visit is selected.
+ACTIVE = ("in the selected part of the record",
+          "within the selected time frame")
+THIS_VISIT = ("during this admission", "in this hospital stay",
+              "during her hospital stay")
 
 
 def scope_phrases(scope, visit_count):
     """Return phrases that name a scope for a case.
 
     "This admission" names the selected visit when a visit is selected,
-    and the final admission otherwise.
+    and the final admission otherwise; "the selected part of the
+    record" names the active scope.
     """
     if scope.kind == "pre_target_history":
         return ("before the final admission", "in previous admissions",
                 "prior to the last admission",
-                "in her prior hospitalizations", "before this admission")
+                "in her prior hospitalizations", "before this admission",
+                "before the current, final admission", *ACTIVE)
     if scope.kind == "case_visits":
         return ("in any admission", "across all admissions",
                 "in the entire record", "across her admissions",
-                "throughout his hospital stays")
+                "throughout his hospital stays",
+                "in all of her admissions, including the current one",
+                *ACTIVE)
     number = scope.visit_number
     phrases = ["in visit %d" % number, "during admission %d" % number,
-               "during hospital stay %d" % number, *THIS_VISIT]
+               "during hospital stay %d" % number,
+               "in admission %d of %d" % (number, visit_count),
+               *THIS_VISIT, *ACTIVE]
     if number <= len(ORDINALS):
         phrases += ["in the %s admission" % ORDINALS[number - 1],
                     "in admission %s" % NUMBER_WORDS[number - 1]]
     if number == visit_count:
         phrases += ["in the final admission", "during the last admission",
-                    "in the present admission"]
+                    "in the present admission",
+                    "in the current, final admission"]
     return tuple(phrases)
 
 
@@ -557,8 +570,9 @@ class ScopeProbes:
         others = [(slug(scope), phrase) for scope in self.scopes
                   if scope != self.scope
                   for phrase in scope_phrases(scope, count)
-                  if phrase not in THIS_VISIT
-                  or self.scope.kind != "selected_visit"]
+                  if phrase not in ACTIVE and (
+                      phrase not in THIS_VISIT
+                      or self.scope.kind != "selected_visit")]
         _, phrase = choose(others, *self.key, "other")
         if self.named and choose(("presence", "list"), *self.key,
                                  "other-task") == "presence":

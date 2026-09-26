@@ -329,12 +329,13 @@ class FailSafeTests(unittest.TestCase):
             "clarify", "task_ambiguous", "two_conditions")
 
     def test_counted_lists_are_refused(self):
-        """A list limited to a number of conditions is a ranking."""
+        """A list of only some of the conditions is refused."""
         self.check((
             "List three conditions.", "Give me a few of the diagnoses.",
             "What are 5 of the patient's conditions?",
-            "Show two of her diagnoses."),
-            "abstain", "task_unsupported", "ranking")
+            "Show two of her diagnoses.", "List some of her diagnoses.",
+            "Show me a handful of the recorded conditions."),
+            "abstain", "task_unsupported", "count_list")
 
     def test_negative_and_harmless_wordings_stay_tasks(self):
         """Negative forms check the condition; known words are kept."""
@@ -440,6 +441,30 @@ class ScopeMentionTests(unittest.TestCase):
             self.assertEqual((mention.last, mention.this), (True, this),
                              question)
 
+    def test_ways_of_naming_the_selected_scope(self):
+        """The selected part of the record, two ending words, totals,
+        'including the current one' and an admission without a number.
+        """
+        for question, kind, number, last in (
+                ("Is sepsis recorded in the selected part of the record?",
+                 "active", None, False),
+                ("List the diagnoses within the chosen time frame.",
+                 "active", None, False),
+                ("Is sepsis recorded in the current, final admission?",
+                 "selected_visit", None, True),
+                ("Was sepsis coded before the current (final) admission?",
+                 "pre_target_history", None, False),
+                ("Is sepsis recorded in admission 2 of 4?",
+                 "selected_visit", 2, False),
+                ("Was sepsis coded in her second admission out of three?",
+                 "selected_visit", 2, False),
+                ("Was sepsis coded in all of her admissions, including "
+                 "the current one?", "case_visits", None, False),
+                ("Was sepsis noted during her hospital stay?",
+                 "selected_visit", None, True)):
+            result = self.check(question, kind, number, last)
+            self.assertEqual(result.status, "task", question)
+
     def test_no_scope_words(self):
         """'Ever' and 'at any time' are not scope phrases."""
         for question in ("Has she ever had sepsis?",
@@ -481,6 +506,20 @@ class BindingTests(unittest.TestCase):
                              ("clarify", visit(3)))
         binding = self.bind("Is sepsis recorded in the current "
                             "admission?", visit(1))
+        self.assertEqual((binding.status, binding.requested),
+                         ("clarify", visit(3)))
+
+    def test_selected_part_of_the_record_is_the_active_scope(self):
+        """'The selected part of the record' binds to any active scope;
+        an admission without a number follows the selected visit."""
+        for active in (HISTORY, visit(2), ALL):
+            binding = self.bind("Is sepsis recorded in the selected part "
+                                "of the record?", active)
+            self.assertEqual((binding.status, binding.scope),
+                             ("bound", active))
+        question = "Was sepsis noted during her hospital stay?"
+        self.assertEqual(self.bind(question, visit(1)).scope, visit(1))
+        binding = self.bind(question, ALL)
         self.assertEqual((binding.status, binding.requested),
                          ("clarify", visit(3)))
 
