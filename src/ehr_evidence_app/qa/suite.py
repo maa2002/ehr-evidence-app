@@ -52,11 +52,12 @@ from ehr_evidence_app.evidence.concepts import NAME_LIMIT
 from ehr_evidence_app.qa import answer, interpret, resolve
 from ehr_evidence_app.qa import vocabulary as build
 
-SUITE_VERSION = "qa-development-suite-v1"
+SUITE_VERSION = "qa-development-suite-v2"
 FAMILIES = ("list", "presence_name", "presence_synonym", "presence_ancestor",
             "presence_code", "presence_absent", "scope_same", "scope_other",
             "visit_missing", "unsupported", "explanation", "other_patient",
-            "unknown_term", "too_broad", "ambiguous_term")
+            "unknown_term", "too_broad", "ambiguous_term", "ranking",
+            "two_requests", "misspelling")
 PRESENCE = ("Is {c} recorded?", "Does the patient have {c}?",
             "Any history of {c}?", "Was {c} documented?",
             "Has the patient been diagnosed with {c}?",
@@ -79,6 +80,17 @@ UNSUPPORTED = ("What medications is the patient taking?",
 EXPLANATION = ("Why did the model predict {c}?", "Explain this prediction.")
 OTHER_PATIENT = ("Is {c} recorded for patient {n}?",
                  "What about the next patient?")
+RANKING = ("What were the top three diagnoses?",
+           "What is the patient's main diagnosis?",
+           "List the five most important conditions.",
+           "Which diagnosis was billed first?")
+TWO_REQUESTS = ("List all recorded conditions. Is {c} recorded?",
+                "Show all diagnoses and tell me whether {c} is recorded.",
+                "What conditions are documented; does the patient have "
+                "{c}?")
+MISSPELT = ("Is {c} recorded?", "Does the patient have {c}?")
+NUMBER_WORDS = ("one", "two", "three", "four", "five", "six", "seven",
+                "eight", "nine", "ten")
 INVENTED = ("florbnitis", "quazzle syndrome", "vextral fever",
             "plimbic disorder", "zorvanian palsy")
 BROAD = ("disease", "disorder", "clinical finding", "finding")
@@ -308,6 +320,7 @@ class Probe:
     groups: frozenset | None = None
     coded_only: bool = False
     subject: int | str | None = None
+    suggests: bool = False
 
 
 def slug(scope):
@@ -338,16 +351,21 @@ def scope_phrases(scope, visit_count):
     """Return phrases that name a scope for a case."""
     if scope.kind == "pre_target_history":
         return ("before the final admission", "in previous admissions",
-                "prior to the last admission")
+                "prior to the last admission",
+                "in her prior hospitalizations", "before this admission")
     if scope.kind == "case_visits":
         return ("in any admission", "across all admissions",
-                "in the entire record")
+                "in the entire record", "across her admissions",
+                "throughout his hospital stays")
     number = scope.visit_number
-    phrases = ["in visit %d" % number, "during admission %d" % number]
+    phrases = ["in visit %d" % number, "during admission %d" % number,
+               "during hospital stay %d" % number]
     if number <= len(ORDINALS):
-        phrases.append("in the %s admission" % ORDINALS[number - 1])
+        phrases += ["in the %s admission" % ORDINALS[number - 1],
+                    "in admission %s" % NUMBER_WORDS[number - 1]]
     if number == visit_count:
-        phrases += ["in the final admission", "during the last admission"]
+        phrases += ["in the final admission", "during the last admission",
+                    "during this admission", "in the present admission"]
     return tuple(phrases)
 
 
@@ -541,6 +559,22 @@ def case_probes(oracle, case, pools, skipped):
         "other_patient", choose(OTHER_PATIENT, *key, "other").format(
             c=name, n=case.case_number + 40), "clarification",
         "case_ambiguous"))
+    probes.append(fixed("ranking", choose(RANKING, *key, "ranking"),
+                        "abstention", "task_unsupported"))
+    probes.append(fixed(
+        "two_requests", choose(TWO_REQUESTS, *key, "two").format(c=name),
+        "clarification", "task_ambiguous"))
+    misspelt = misspelling(oracle, names)
+    if misspelt:
+        concept, phrase = misspelt
+        probes.append(Probe(
+            family="misspelling",
+            question=choose(MISSPELT, *key, "misspelt").format(c=phrase),
+            case_number=case.case_number, scope=scope,
+            outcome="clarification", reasons=("concept_unknown",),
+            task="condition_presence", subject=concept, suggests=True))
+    else:
+        skipped["misspelling:none"] += 1
     for family, reason in (("unknown_term", "concept_unknown"),
                            ("too_broad", "concept_too_broad"),
                            ("ambiguous_term", "concept_ambiguous")):
@@ -551,6 +585,29 @@ def case_probes(oracle, case, pools, skipped):
         probes.append(fixed(family, choose(PRESENCE, *key, family).format(
             c=term), "clarification", reason, "condition_presence"))
     return probes
+
+
+def misspelling(oracle, concepts):
+    """Return (concept, name with one letter dropped) for the first
+    concept whose misspelt name names nothing and holds no out-of-scope
+    word, or None."""
+    vocab = oracle.vocab
+    for concept in concepts:
+        words = resolve.normalize(vocab.rows[concept].name).split()
+        if interpret.guard_of(" ".join(words)):
+            continue
+        longest = max(range(len(words)), key=lambda at: len(words[at]))
+        word = words[longest]
+        if len(word) < 6 or not word.isalpha():
+            continue
+        wrong = word[:len(word) // 2] + word[len(word) // 2 + 1:]
+        phrase = " ".join(words[:longest] + [wrong] + words[longest + 1:])
+        if (wrong in vocab.words().get(wrong[0], ())
+                or not oracle.names_nothing_else(phrase)
+                or phrase in vocab.synonyms):
+            continue
+        return concept, phrase
+    return None
 
 
 def generate(oracle):
@@ -598,6 +655,9 @@ def score(probe, result, bundle, unmapped):
         failures.append("task")
     if response.scope != probe.scope:
         failures.append("scope")
+    if probe.suggests and (result.resolution is None or probe.subject
+                           not in result.resolution.concepts):
+        failures.append("suggestion_missing")
     if response.outcome not in EVIDENTIAL:
         return failures, unscored
     references = cited(response, bundle)

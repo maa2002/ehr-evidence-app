@@ -48,7 +48,11 @@ from ehr_evidence_app.storage import policy as guard
 
 TEST_VERSION = "written-wording-v1"
 PROTECTED_ROOT = guard.PRIVATE_ROOT + "\\protected-data"
-WRITTEN_DIR = PROTECTED_ROOT + "\\question-sets\\written-v1"
+QUESTION_SETS = PROTECTED_ROOT + "\\question-sets"
+# Each set is written once and scored once; a later rule version is
+# measured on a new set.
+SETS = ("written-v1", "written-v2")
+WRITTEN_DIR = QUESTION_SETS + "\\" + SETS[0]
 QUESTIONS_NAME = "questions.csv"
 OVERVIEW_NAME = "case-overview-%s.csv"
 COLUMNS = ("id", "case_set", "case", "scope", "question", "intent",
@@ -298,9 +302,16 @@ def csv_bytes(lines):
     return buffer.getvalue().encode("utf-8-sig")
 
 
-def write_template():
+def set_dir(name):
+    """Return the protected folder of a named question set."""
+    if name not in SETS:
+        raise WrittenError("question_set_unknown")
+    return QUESTION_SETS + "\\" + name
+
+
+def write_template(name=SETS[0]):
     """Write the empty questions file for the writer to fill in."""
-    write_new(WRITTEN_DIR + "\\" + QUESTIONS_NAME, csv_bytes([COLUMNS]))
+    write_new(set_dir(name) + "\\" + QUESTIONS_NAME, csv_bytes([COLUMNS]))
 
 
 def overview_lines(oracle, vocab):
@@ -327,25 +338,25 @@ def overview_lines(oracle, vocab):
     return lines
 
 
-def write_overview(label):
+def write_overview(label, name=SETS[0]):
     """Write the overview of one development case set; return its size."""
     vocab = resolve.load()
     oracle, _, _ = case_set_inputs(label, vocab)
     data = csv_bytes(overview_lines(oracle, vocab))
-    write_new(WRITTEN_DIR + "\\" + OVERVIEW_NAME % label, data)
+    write_new(set_dir(name) + "\\" + OVERVIEW_NAME % label, data)
     return len(data)
 
 
-def run_score():
+def run_score(name=SETS[0]):
     """Score the questions file once with the rules as they are."""
     held = []
     try:
         data, signature = mapping.read_verified(
-            WRITTEN_DIR + "\\" + QUESTIONS_NAME, "questions",
+            set_dir(name) + "\\" + QUESTIONS_NAME, "questions",
             "input_hash_mismatch:questions")
     except mapping.MappingError as error:
         raise WrittenError(str(error)) from None
-    held.append((WRITTEN_DIR + "\\" + QUESTIONS_NAME, signature,
+    held.append((set_dir(name) + "\\" + QUESTIONS_NAME, signature,
                  "questions"))
     rows, problems = parse_questions(data, development_labels())
     vocab = resolve.load()
@@ -451,6 +462,8 @@ def main(argv=None):
                              "aggregate counts only")
     parser.add_argument("--template", action="store_true",
                         help="write the empty questions file")
+    parser.add_argument("--set", default=SETS[0], choices=SETS,
+                        help="the question set (default %(default)s)")
     parser.add_argument("--overview",
                         help="write the recorded-condition overview of a "
                              "development case set")
@@ -468,13 +481,13 @@ def main(argv=None):
         return 2
     try:
         if args.operator_real and args.template:
-            write_template()
+            write_template(args.set)
             print("questions file written")
         elif args.operator_real and args.overview:
             print("overview written: %d bytes" % write_overview(
-                args.overview))
+                args.overview, args.set))
         elif args.operator_real:
-            report(run_score())
+            report(run_score(args.set))
         else:
             document = run_synthetic()
             report(document)

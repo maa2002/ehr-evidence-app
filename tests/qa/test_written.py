@@ -92,6 +92,14 @@ class ScoringTests(unittest.TestCase):
         for key, value in written.SYNTHETIC_EXPECTED.items():
             self.assertEqual(document[key], value, key)
 
+    def test_question_sets(self):
+        """Question sets are named; an unknown name is refused."""
+        self.assertTrue(written.set_dir("written-v2").endswith(
+            "\\question-sets\\written-v2"))
+        with self.assertRaisesRegex(written.WrittenError,
+                                    "question_set_unknown"):
+            written.set_dir("written-v9")
+
     def test_evaluation_case_sets_are_refused(self):
         """Only development case sets are questioned."""
         with self.assertRaisesRegex(written.WrittenError,
