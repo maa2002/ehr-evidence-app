@@ -61,7 +61,7 @@ attribution.
 | Experiment tracking and lineage foundations | implemented |
 | Inherited GNN integration | implemented and closed for the 10-person development pilot |
 | Evidence contracts, records, event linkage and bundles | implemented for the development pilot and the development and evaluation case sets |
-| Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out wording test done; written wording test open |
+| Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out and written wording tests done |
 | LLM generation, validation | planned |
 | API, interface and evaluation | planned |
 

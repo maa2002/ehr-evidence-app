@@ -26,7 +26,7 @@ external question set). Command examples assume the session set-up in
 | 34 | `qa.answer` | List and presence answers from a verified QA bundle |
 | 34.1 | `qa.suite` | Development question suite with an independent oracle; vocabulary sweep |
 | 34.2 | `qa.heldout` | Partitions of MIMIC-IV-Ext-Instr; held-out wording test |
-| 34.3 | `qa.written` | Written wording test: template, case overview, scoring |
+| 34.3 | `qa.written` | Written wording test: template, case overview, scoring by intent and family |
 
 ## From question to response
 
@@ -301,37 +301,69 @@ ignored and the whole list is returned.
 
 ## Written wording test
 
-Work item 34.3 (open) measures presence-check wording, which the dataset
-above does not contain: about forty questions written in their own words
-by someone who has not read the [Interpretation](#interpretation) rules,
+Work item 34.3 measures presence-check wording, which the dataset above
+does not contain, and the other intents on new wording: questions worded
+by a writer who has not read the [Interpretation](#interpretation) rules,
 about development cases, scored once with `qa.written`. The questions
 file is `protected-data\question-sets\written-v1\questions.csv` (UTF-8,
 opens in a spreadsheet), one row per question:
 
 | Column | Content |
 | --- | --- |
-| `id` | A unique label, such as `q01` |
+| `id` | A unique label, such as `q001` |
 | `case_set` | `dev-30-v1` (or `pilot-10-v1`) |
 | `case` | The case number |
 | `scope` | The scope imagined as selected: `history`, `all` or `visit N` |
 | `question` | The question, as it would be typed |
-| `intent` | `list` (the recorded conditions), `presence` (whether one condition is recorded) or `refuse` (something the application should not answer, such as a treatment or a laboratory value) |
+| `intent` | `list` (the recorded conditions), `presence` (whether one condition is recorded), `refuse` (something the application should not answer, such as a treatment or a laboratory value) or `clarify` (a question it should answer with a clarifying question: one naming another part of the record or a visit the case lacks, two requests at once, or one too vague to act on) |
 | `concept` | For `presence`, the OMOP concept ID of the condition meant; empty otherwise |
+| `family` | Optional: a label that groups the results |
 
 The overview `case-overview-dev-30-v1.csv` in the same folder lists each
 case's recorded conditions by scope with their concept IDs; concepts that
-are not recorded can be looked up on Athena. Questions should be worded
-freely (abbreviations, everyday terms, typing as usual) rather than
-copying names. A useful mix is about ten lists, twenty presence checks
-(about half recorded) and ten requests to refuse, over different scopes.
+are not recorded can be looked up on Athena.
 
 The score compares every response with the development suite's oracle. A
 list is correct when it cites exactly the scope's records. A presence
 check is understood when the resolved concept is the concept meant, an
 ancestor or a descendant of it, and exact when the answer also returns
 exactly the records of the concept meant. A refusal is correct when the
-response is a clarification or an abstention. The file's SHA-256 is
-recorded with the result.
+response is a clarification or an abstention, and a clarify question when
+it is a clarification. The file's SHA-256 is recorded with the result.
+
+### Results
+
+The set scored has 198 questions over all 26 admitted cases of
+`dev-30-v1` and 11 scopes, in nine families. Presence checks ask about a
+condition recorded in the scope, a broader condition of a recorded one,
+or a common condition that is not recorded; about half the lists and
+presence checks name the scope in words. Test `written-wording-v1` with
+the rules of release 0.6.0 (questions file SHA-256
+`3e1be93864d0b9e0988c0ecb30d9ce0a064b2e348abda4396c94d3d1df99bb23`,
+summary SHA-256
+`c3200af8b35047f0a6f1bc7dc76f83041234e20899266a5bb3121266037bcc33`):
+
+| Family | Questions | As expected | Otherwise |
+| --- | --- | --- | --- |
+| List | 23 | 17 lists citing exactly the scope's records | 6 clarifications or abstentions |
+| Presence, recorded condition | 45 | 25 exact | 1 related concept; 19 clarifications or abstentions |
+| Presence, broader condition | 20 | 9 exact | 11 clarifications or abstentions |
+| Presence, condition not recorded | 45 | 33 exact | 12 clarifications or abstentions |
+| Refuse | 40 | 38 refused | 2 answered as condition questions |
+| Clarify: another part of the record | 10 | 7 clarifications | 3 answered within the selected scope |
+| Clarify: two requests at once | 6 | 2 clarifications | 4 answered for one request |
+| Clarify: too vague | 5 | 4 clarifications | 1 abstention |
+| Clarify: a visit the case lacks | 4 | 4 clarifications | none |
+| All | 198 | 139 (70.2%) | 1 related-concept answer; 9 wrong answers; 49 clarifications or abstentions instead of an answer |
+
+Every presence answer was about the condition meant, and every list that
+was given cited exactly the scope's records. Of the 42 presence checks
+that got no answer, 32 were asked for a condition wording that is not a
+name or synonym in the vocabulary, and got a clarification. The 9 wrong
+answers come from three gaps: scope wordings that are not recognised
+(the question's own scope is replaced by the selected one), two requests
+joined without a list word in each part, and two requests to refuse that
+read as condition questions.
 
 ## Limits
 
@@ -340,7 +372,11 @@ recorded with the result.
   list ("list the top three diagnoses") is answered with the whole
   unranked list (see the held-out results).
 - Negated questions ("is heart failure not recorded") and unusual wording
-  get a clarification rather than a guess.
+  get a clarification rather than a guess; so do abbreviations, everyday
+  terms and misspellings that are not in the vocabulary (see the written
+  test results).
+- A scope named in words the rules do not recognise is not noticed, and
+  the selected scope answers the question.
 - Answers report recorded condition records, never clinical status,
   severity or current state.
 - ICD description matches of records without a standard concept are a

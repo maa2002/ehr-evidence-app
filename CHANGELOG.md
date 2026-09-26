@@ -17,9 +17,12 @@ change interfaces.
   rules of 0.6.0, 31,235 of 32,392 held-out questions are handled as
   expected and no question about other data is answered; 987 ranking
   questions are answered with an unranked list.
-- `qa.written`: the written wording test for presence checks, with a
-  questions template, an overview of each case's recorded conditions and
-  scoring against the development suite's oracle.
+- `qa.written`: the written wording test, with a questions template, an
+  overview of each case's recorded conditions, and scoring against the
+  development suite's oracle by intent (list, presence, refuse, clarify)
+  and by an optional family. With the rules of 0.6.0, 139 of 198 written
+  questions are handled as expected, every presence answer is about the
+  condition meant, and 9 questions get a wrong answer.
 - CI runs the synthetic modes of `qa.heldout` and `qa.written`.
 
 ## [0.6.0] - 2026-09-26

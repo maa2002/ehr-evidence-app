@@ -56,8 +56,10 @@ Described in [qa.md](qa.md) and decided in
   (done: partitions fixed; 31,235 of 32,392 held-out questions as
   expected, no question about other data answered, 987 ranking questions
   answered with an unranked list)
-- 34.3 Measure presence-check wording on questions written by someone who
-  has not read the rules (open: waits on the written questions)
+- 34.3 Measure presence-check wording on questions worded by a writer who
+  has not read the rules (done: 139 of 198 questions as expected; every
+  presence answer about the condition meant; 9 wrong answers from scope
+  wordings, two requests at once and two refusals)
 
 ## Phase 6. Validation
 
