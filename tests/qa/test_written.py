@@ -94,7 +94,7 @@ class ScoringTests(unittest.TestCase):
 
     def test_question_sets(self):
         """Question sets are named; an unknown name is refused."""
-        for name in ("written-v2", "written-v3"):
+        for name in ("written-v2", "written-v3", "written-v4"):
             self.assertTrue(written.set_dir(name).endswith(
                 "\\question-sets\\" + name))
         with self.assertRaisesRegex(written.WrittenError,
