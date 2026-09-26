@@ -68,4 +68,11 @@ mutation suite and release 0.8.0 (40 and 40.1).
 - Answer text changes shape: every statement is one line, and every
   statement that cites records is also a claim with the same text.
 - A candidate that fails a check is withheld as a validation rejection
-  with the check's reason codes; nothing unchecked is released.
+  with the check's reason codes, and a check that fails to run is an
+  operational error; nothing unchecked is released. Every response with
+  text leaves through one release gate.
+- On the development case sets the mutation suite detects every one of
+  15,558 mutants in 40 error classes, while all 620 original responses
+  and every control are released unchanged. Its first run found that
+  wording rules version 1 let a negation in an earlier clause pardon a
+  prohibited word; version 2 closes it.

@@ -73,7 +73,7 @@ Described in [qa.md](qa.md) and decided in
 ## Phase 6. Validation
 
 Described in [validation.md](validation.md) and decided in
-[ADR 0011](decisions/0011-validation-design.md).
+[ADR 0011](decisions/0011-validation-design.md). Complete.
 
 - 35 Check evidence before generation (done: `validation.evidence`)
 - 36 Check structure and references (done: the candidate contract and
@@ -84,8 +84,10 @@ Described in [validation.md](validation.md) and decided in
   explanation and its checks in `validation.explanation`)
 - 39 Check history and language (done: `validation.language`, and the
   history statements of explanations)
-- 40 Compose the release gate
-- 40.1 Test the checks with a mutation suite
+- 40 Compose the release gate (done: `validation.gate`)
+- 40.1 Test the checks with a mutation suite (done: every mutant of 40
+  error classes detected on the development case sets, every original
+  released unchanged)
 
 ## Phase 7. LLM and operations
 

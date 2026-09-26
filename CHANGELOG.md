@@ -9,7 +9,7 @@ change interfaces.
 
 ### Added
 
-- `validation` package (Phase 6, work items 35 to 39;
+- `validation` package (Phase 6, work items 35 to 40.1;
   [ADR 0011](docs/decisions/0011-validation-design.md)): the candidate
   contract, in which a response is a list of statements with typed
   slots for its facts and approved notices, rendered into the released
@@ -17,12 +17,18 @@ change interfaces.
   structure and reference checks (`validation.structure`); support of
   every QA statement by its cited records (`validation.support`, work
   item 37); versioned wording rules for every outcome
-  (`validation.language`, `wording-rules-v1`, work item 39); the
+  (`validation.language`, `wording-rules-v2`, work item 39); the
   template explanation of a selected prediction, with checks that it
   preserves the prediction, the drivers, their order and scores, and
   cites history only as the evidence claim policy allows
   (`validation.explanation`, work item 38): all 36 development cases
-  get an explanation that passes every check. The candidate's JSON
+  get an explanation that passes every check; the release gate
+  (`validation.gate`, work item 40), through which every response with
+  text leaves, withholding a failing candidate as a validation
+  rejection and a check that fails to run as an operational error; the
+  mutation suite (`validation.mutations`, work item 40.1), which
+  detects all 15,558 mutants of 40 error classes on the development
+  case sets while every original response passes. The candidate's JSON
   Schema is committed with the other contracts.
 - `qa.templates`: the QA answers, refusals and clarifying questions
   written as candidates.

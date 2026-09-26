@@ -63,7 +63,7 @@ Every question ends in exactly one response:
 | `abstention` | The request is outside the supported tasks, or coverage is incomplete | `task_unsupported`, `coverage_incomplete` |
 | `case_rejection` | The case or scope has no bundle, or its bundle does not fit the request | `case_not_admitted`, `scope_invalid`, `identity_inconsistent`, `history_inconsistent`, `evidence_inconsistent` |
 | `validation_rejection` | A candidate fails a check | `structure_invalid`, `reference_unresolved`, `scope_violated`, `claim_unsupported`, `prohibited_wording`, `date_unsupported` |
-| `operational_error` | A limit is exceeded | `limit_exceeded` |
+| `operational_error` | A limit is exceeded, or a check fails to run | `limit_exceeded`, `validator_failed` |
 
 A `not_recorded` answer always says that the condition is not recorded
 within the selected scope, and that this is not a statement of clinical
@@ -214,11 +214,12 @@ A record matches a resolved phrase, and the answer states how:
 Answers are written as candidates by fixed templates (`qa.templates`):
 every fact is a slot filled from the bundle, the resolution or the
 interpretation, and every refusal and clarifying question is an
-approved notice. The candidate is checked for structure and references,
-for the support of its statements by their cited records and against
-the wording rules, and the released text and claims are rendered from
-it, one statement per line; a candidate that fails a check is withheld
-as a validation rejection (see [validation.md](validation.md)).
+approved notice. The candidate leaves through the release gate, which
+checks its structure and references, the support of its statements by
+their cited records and its wording, and renders the released text and
+claims from it, one statement per line; a candidate that fails a check
+is withheld as a validation rejection (see
+[validation.md](validation.md)).
 
 - **List.** Every distinct condition of the scope, with its number of
   records and its visits; records without a standard concept are listed by

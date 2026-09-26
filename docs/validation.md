@@ -19,8 +19,8 @@ session set-up in [development.md](development.md#session-set-up).
 | 37 | `validation.support` | Support of every QA statement by its cited records | done |
 | 38 | `validation.explanation` | Template explanation; prediction and attribution preservation | done |
 | 39 | `validation.language` | Wording rules for every outcome; dates and recurrence | done |
-| 40 | `validation.gate` | The release gate | planned |
-| 40.1 | `validation.mutations` | Mutation suite: every error class applied to correct responses | planned |
+| 40 | `validation.gate` | The release gate | done |
+| 40.1 | `validation.mutations` | Mutation suite: every error class applied to correct responses | done |
 
 ## Candidates
 
@@ -106,7 +106,7 @@ the bundle bound to that request:
 
 | Finding | Reason code |
 | --- | --- |
-| A malformed document; an outcome, reason codes, task or bundle that do not fit together; a statement of a kind the answer cannot hold, or an answer without the statements it needs (a list needs one summary, at least one item and the completeness notice); a wording whose placeholders are not exactly its kind's slots; a changed notice; a statement that cites what its kind does not cite; a response the renderer cannot build within the response limits | `structure_invalid` |
+| A malformed document; an outcome, reason codes, task or bundle that do not fit together; a digit in a wording (counts, visits, dates and scores are slots); a statement of a kind the answer cannot hold, or an answer without the statements it needs (a list needs one summary, at least one item and the completeness notice); a wording whose placeholders are not exactly its kind's slots; a changed notice; a statement that cites what its kind does not cite; a response the renderer cannot build within the response limits | `structure_invalid` |
 | Another request's case or scope; a statement about another scope; another bundle than the one bound to the request | `scope_violated` |
 | A reference, event, driver, visit number or concept that the bundle or the vocabulary lacks | `reference_unresolved` |
 
@@ -138,7 +138,7 @@ to support.
 released outcome: answers, refusals and clarifying questions. It reads
 only the writer's words: each slot is replaced by a neutral token first,
 so a condition named "Pneumonia caused by a virus" never trips a rule.
-Rules version `wording-rules-v1`:
+Rules version `wording-rules-v2`:
 
 | Rule | Examples | Reason code |
 | --- | --- | --- |
@@ -154,9 +154,13 @@ Rules version `wording-rules-v1`:
 | In explanations, the prediction as prospective | "in advance", "forecast" | `prohibited_wording` |
 | Dates, recurrence and frequency typed into a wording | a date, a month, "again", "recurs", "often", "every visit" | `date_unsupported` |
 
-A negation shortly before a causal, diagnostic or risk word lets it pass,
-so "attribution does not mean causation", "this application does not
-diagnose" and "not a clinical risk" are allowed. How often and in which
+A negation shortly before a causal, diagnostic or risk word, in the same
+clause, lets it pass, so "attribution does not mean causation", "this
+application does not diagnose" and "not a clinical risk" are allowed.
+Version 1 also let a negation in an earlier clause pardon such a word
+("X is not recorded within the scope, caused by the final admission");
+the mutation suite found it, and version 2 reads negations within their
+clause only. How often and in which
 visits a driver's concept was recorded is stated only through the slots
 of a statement that cites the driver's linked events, as the evidence
 claim policy allows; QA answers state it only as the records they cite.
@@ -207,16 +211,69 @@ and every one passes all checks:
 | `dev-30-v1` | 26 of 26 | 578 | 404 | 250 | 1,258 | 6, 26, 10 |
 | `pilot-10-v1` | 10 of 10 | 188 | 142 | 71 | 412 | 2, 9, 3 |
 
-## QA responses
+## Release gate
 
-Every QA response with text is written as a candidate by `qa.templates`,
-checked for structure and references, support and wording, and rendered
-from the candidate (`qa.answer`, rules `qa-answer-v5`). A candidate that
-fails a check is withheld: the response is a validation rejection with
-the check's reason codes and no text. Responses
-without text (operational errors and case rejections) have no candidate.
-The development suite gives the same results with the answers written this
-way (see [qa.md](qa.md#development-suite)).
+Every response with text leaves the application through
+`validation.gate.release`, for QA answers (`qa.answer`, rules
+`qa-answer-v5`) and explanations alike. The gate runs every check the
+candidate's answer requires: structure and references always, then
+support for lists and presence checks, preservation for explanations and
+the wording rules for every outcome, and finally the citation check on
+the rendered response. Then:
+
+| Finding | Released |
+| --- | --- |
+| Every check passes | The response, rendered from the candidate's statements only |
+| A check finds problems | A validation rejection with their reason codes; no text, no claims |
+| A check fails to run | An operational error, `validator_failed`; no text |
+
+Since the text is rendered from checked statements only, a candidate
+cannot carry a sentence past the checks: an extra sentence in a notice is
+a changed notice, and a fact typed into a wording is a digit outside the
+slots. Responses without text (operational errors and case rejections)
+have no candidate. The QA development suite gives the same results
+through the gate (see [qa.md](qa.md#development-suite)).
+
+## Mutation suite
+
+`validation.mutations` tests the checks by breaking correct responses
+(`validation-mutations-v1`). Correct candidates are built by the
+templates: for every scope bundle of every case, the list and presence
+checks of a recorded condition and of one recorded elsewhere; refusals
+and clarifying questions; and every case's template explanation. Every
+error class is applied to them, or to the bundles they come from:
+
+| Item | Error classes | Expected |
+| --- | --- | --- |
+| 35 | bundle of another case, bundle of another scope, history gap, record without a name, prediction not selected | case rejection |
+| 35 | incomplete coverage | abstention |
+| 36 | malformed document, missing slot, fact typed into a wording, changed notice | `structure_invalid` |
+| 36 | absent reference | `reference_unresolved` |
+| 36 | another patient, another scope, another bundle | `scope_violated` |
+| 37 | omitted diagnosis, added diagnosis, wrong count, wrong visits, record of another condition, unsupported positive, negative for a recorded condition, negative without complete coverage | `claim_unsupported` |
+| 38 | altered label, altered score | `prediction_altered` |
+| 38 | altered attribution score, reordered drivers, omitted driver, zero-score driver described | `attribution_altered` |
+| 38 | final-admission record as history, restriction misdisclosed | `claim_unsupported` |
+| 39 | causal, directional, percentage, exclusive, diagnostic, advice and status wording | `prohibited_wording` |
+| 39 | a date or recurrence typed into a wording | `date_unsupported` |
+| 40 | a check that fails to run | operational error, `validator_failed` |
+
+A mutant is detected when it ends in its class's outcome with its class's
+reason code. Every original must be released unchanged, and so must a
+control: a correct statement that a record does not mean causation,
+added to an answer. Results, with the evaluation case set untouched:
+
+| Samples | Originals released unchanged | Controls passed | Mutants detected | Error classes |
+| --- | --- | --- | --- | --- |
+| Invented fixtures | 17 of 17 | 13 of 13 | 345 of 345 | 39 |
+| `dev-30-v1` | 434 of 434 | 430 of 430 | 10,935 of 10,935 | 40 |
+| `pilot-10-v1` | 186 of 186 | 182 of 182 | 4,623 of 4,623 | 40 |
+
+The suite found one gap on its first run, in wording rules version 1
+(see [Wording](#wording)), which version 2 closes. It measures the
+defined error classes; a statement that says something prohibited in
+words no rule knows is outside what it can show, which is why the facts
+stay in slots that no writer types.
 
 ## Commands
 
@@ -229,12 +286,17 @@ The default modes check invented candidates and bundles:
 & $AppPython -m ehr_evidence_app.validation.support
 & $AppPython -m ehr_evidence_app.validation.language
 & $AppPython -m ehr_evidence_app.validation.explanation
+& $AppPython -m ehr_evidence_app.validation.gate
+& $AppPython -m ehr_evidence_app.validation.mutations
 ```
 
-Operator mode explains every admitted case of a development case set and
-prints aggregate counts only; it refuses the evaluation case set:
+Operator modes explain every admitted case of a development case set, or
+run the mutation suite on it, and print aggregate counts only; they
+refuse the evaluation case set:
 
 ```powershell
 & $AppPython -m ehr_evidence_app.validation.explanation --operator-real --case-set dev-30-v1
 & $AppPython -m ehr_evidence_app.validation.explanation --operator-real --case-set pilot-10-v1
+& $AppPython -m ehr_evidence_app.validation.mutations --operator-real --case-set dev-30-v1
+& $AppPython -m ehr_evidence_app.validation.mutations --operator-real --case-set pilot-10-v1
 ```
