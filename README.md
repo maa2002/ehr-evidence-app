@@ -25,9 +25,11 @@ non-causal model sensitivities.
 
 The storage and data-handling controls, source preparation,
 experiment-tracking foundations and the integration of the inherited GNN are
-complete and closed for a 10-person development pilot, and its evidence
+complete and closed for a 10-person development pilot, and evidence
 bundles (request and response contracts, scoped condition evidence, and
-prediction evidence linked to recorded events) are built. Question
+prediction evidence linked to recorded events) are built for the pilot and
+for a 30-case development set and a 100-case evaluation set drawn from the
+upstream validation and test partitions. Question
 interpretation, language-model generation, validation, the API and
 interface, and the evaluation are planned; see the
 [roadmap](docs/roadmap.md) and the [changelog](CHANGELOG.md).

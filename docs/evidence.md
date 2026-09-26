@@ -133,9 +133,9 @@ identifiers of the events behind each edge, and a link status: `verified`
 snapshot: every event in a case visit whose concept is in the model's
 vocabulary must appear as an edge. Scores are not read or divided.
 
-The record is published only if every edge and driver verifies. It reads the
-raw graphs through their verified handle on the CPU in the GNN environment;
-no model is loaded.
+The record states its overall status; the bundle builder accepts it only
+when every edge and driver verifies. It reads the raw graphs through their
+verified handle on the CPU in the GNN environment; no model is loaded.
 
 | Domain | Edges verified | Drivers verified | In-vocabulary events without an edge |
 | --- | --- | --- | --- |
@@ -239,9 +239,8 @@ records exist, so a re-run refuses:
 & $AppPython -m ehr_evidence_app.evidence.bundles --operator-real
 ```
 
-## Next
+## Case sets
 
-Work item 30.1 generalises case preparation (snapshot extraction, identity
-mapping, outputs, closure, linkage and bundles) to separately versioned
-development and evaluation case sets, drawn by a recorded rule. The set
-sizes are fixed before extraction.
+The same linkage and bundle builders run for the development and
+evaluation case sets of work item 30.1, from each set's own pinned records;
+see [case-sets.md](case-sets.md) for their preparation and results.

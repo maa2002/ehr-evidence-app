@@ -94,20 +94,28 @@ PINS = {
                             "87d2c61c677b015b985a72dac0b0f3fd"),
         "snapshot_manifest": (15148, "36a70b700ffc3911aec1f08dbdf18534"
                                      "c8330a9b43179327419cd3401e9411d8"),
-        "prepared_mapping": None,
-        "prepared_outputs": None,
-        "prepared_closure": None,
-        "linkage": None,
+        "prepared_mapping": (39266, "c0d6d45be4233a1ee73620171b088bfc"
+                                    "47f5809f75f0232cdfcde3267e8a84e8"),
+        "prepared_outputs": (140167, "4f10aab041ae2625af95755666217421"
+                                     "921e7607b5784c69e8772308e99d7911"),
+        "prepared_closure": (190439, "18069c8fceca664115e7420b0833604c"
+                                     "ca45b72189ae8001b0baf66fa7376b2d"),
+        "linkage": (374408, "f5134f7d5ce072702cd90236dfd5c1ae"
+                            "9651ba1d976c03d30cec77a2e9a6ad40"),
     },
     "eval-100-v1": {
         "selection": (17696, "f8d385dc3b2c69b1d024fc55e9f2e0ca"
                              "a2505aea00a53b3754f820b00632ad36"),
         "snapshot_manifest": (15245, "60b230af38ef98dd705e272ec180acc8"
                                      "4943f8027df50930bc8763f3b4c4d63d"),
-        "prepared_mapping": None,
-        "prepared_outputs": None,
-        "prepared_closure": None,
-        "linkage": None,
+        "prepared_mapping": (132128, "1d37eb18a09f564c583ceb94a8a74392"
+                                     "884786c7d00a1c2a9a6c49f5551961be"),
+        "prepared_outputs": (455945, "3dc38ab03aa9dd2ed0e64e398a972b15"
+                                     "5c99391bf5a9019d2966d8ac29fd8a76"),
+        "prepared_closure": (620928, "f3de5ac9b7ccd65ad8b2c49b7193d1e9"
+                                     "0366ae6477c9e166856176d072fe41e9"),
+        "linkage": (1359636, "a5923e0d656864701c127c7b12a814ea"
+                             "147f33b35ad215b22d392bf692155185"),
     },
 }
 

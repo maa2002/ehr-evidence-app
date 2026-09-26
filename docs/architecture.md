@@ -60,7 +60,7 @@ attribution.
 | Source preparation: staged exports, bounded read-only pilot | implemented |
 | Experiment tracking and lineage foundations | implemented |
 | Inherited GNN integration | implemented and closed for the 10-person development pilot |
-| Evidence contracts, records, event linkage and bundles | implemented for the development pilot; case-set generalisation planned |
+| Evidence contracts, records, event linkage and bundles | implemented for the development pilot and the development and evaluation case sets |
 | Question interpretation, LLM generation, validation | planned |
 | API, interface and evaluation | planned |
 

@@ -23,6 +23,9 @@ change interfaces.
   facts, and typed admission, published in the closure case schema.
 - `gnn.linkage --case-set` and `evidence.bundles --case-set`: linkage and
   bundles for a registered case set from its pinned records.
+- Prepared, linked and bundled case sets: `dev-30-v1` (26 of 30 cases
+  admitted) and `eval-100-v1` (92 of 100 admitted); every graph edge of
+  both links to recorded events.
 
 ### Changed
 
@@ -31,6 +34,12 @@ change interfaces.
 - `sources.pilot` checks the database connection before it creates a
   version directory, so a wrong password leaves nothing behind and the
   label can be reused.
+
+### Fixed
+
+- `casesets.prepare` generates records from cloned graphs, because the
+  bridge moves a graph to the device in place and the batch measurement
+  must start from the untouched preprocessed collection.
 
 ## [0.4.0] - 2026-09-26
 

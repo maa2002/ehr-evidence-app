@@ -101,6 +101,55 @@ evidence readers, the linkage and the bundle builder read a case set
 exactly as they read the pilot. Cases that fail admission stay in the
 record with typed reasons and are never replaced.
 
+## Results
+
+Every stage record of both case sets is published and pinned in
+`casesets.registry`.
+
+**Source snapshots.** Every table complete, no null visit links and no
+concept without metadata.
+
+| Case set | Persons | Visits | Conditions | Procedures | Drug exposures |
+| --- | --- | --- | --- | --- | --- |
+| `dev-30-v1` | 30 | 116 | 1,495 | 211 | 5,310 |
+| `eval-100-v1` | 100 | 407 | 4,801 | 624 | 14,437 |
+
+**Preparation.** Label correspondence was established and the single-graph
+prediction reproduced for every case, and the canonical-prefix agreement
+passed in both runs. Every quarantined case has repeated visit nodes: one
+source visit at more than one graph position. The Phase 3 rules do not
+admit such cases, because target and history cannot be kept apart.
+
+| Case set | Admitted | Quarantined (repeated visit nodes) | Explanation-eligible | Batch-sensitive | Target-outcome entries excluded (cases) |
+| --- | --- | --- | --- | --- | --- |
+| `dev-30-v1` | 26 of 30 | 4 | 26 | 7 | 18 (10) |
+| `eval-100-v1` | 92 of 100 | 8 | 91 | 23 | 95 (38) |
+
+**Event linkage** (admitted cases). Every graph edge is backed by recorded
+events, every driver links, and no in-vocabulary event lacks an edge.
+
+| Case set | Condition edges | Procedure edges | Drug edges | Drivers verified |
+| --- | --- | --- | --- | --- |
+| `dev-30-v1` | 867 / 867 | 143 / 143 | 1,132 / 1,132 | 596 |
+| `eval-100-v1` | 3,340 / 3,340 | 511 / 511 | 4,225 / 4,225 | 2,117 |
+
+**Evidence bundles.** All published names equal the names in the
+published outputs (604 and 2,115). The largest bundle is 108 KB, within
+the 1 MB limit.
+
+| Measure | `dev-30-v1` | `eval-100-v1` |
+| --- | --- | --- |
+| QA bundles (history / selected visit / all visits) | 135 (26 / 83 / 26) | 519 (92 / 335 / 92) |
+| QA coverage complete / complete and empty | 134 / 1 | 515 / 4 |
+| Condition records in the pre-target history | 682 | 2,588 |
+| Final-admission condition records excluded from the history | 272 | 1,126 |
+| Unmapped condition records kept (in the history) | 80 (51) | 297 (203) |
+| Explanation bundles, eligible | 26, 26 | 92, 91 |
+| Attributions (all narratable) | 578 | 2,023 |
+| Linked history events | 692 | 2,612 |
+| Final-admission context events | 325 | 1,367 |
+| Final-admission diagnoses withheld | 82 | 267 |
+
 ## Commands
 
 ```powershell

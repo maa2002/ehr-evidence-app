@@ -13,7 +13,7 @@ A work item may be split into sub-items such as 0.3.1 and 0.3.2.
 | 1. Repository and environments | 1 to 8 | Inherited baseline record; repository structure and content exclusions; GNN environment capture; application environment |
 | 2. Experiment tracking | 9 to 14 | Tracker policy; ClearML connection checks; controlled metadata tracking; inherited input registration; lineage schema |
 | 3. GNN integration | 15 to 22 | Asset validation; bridge output contract; identity mapping; target and history policy; preprocessing parity; offline outputs; provenance; split membership |
-| 4. Record evidence (development pilot) | 23 to 30 | Request, response and evidence contracts; snapshot and case readers; readable names; scoped retrieval; driver-to-event linkage and evidence claim policy; QA and explanation bundles |
+| 4. Record evidence | 23 to 30.1 | Request, response and evidence contracts; snapshot and case readers; readable names; scoped retrieval; driver-to-event linkage and evidence claim policy; QA and explanation bundles for the pilot, a development set and an evaluation set |
 
 Phase 3 is closed by a run-binding verification and a typed case-admission
 record; see [decisions/0002-phase-3-closure.md](decisions/0002-phase-3-closure.md).
@@ -34,8 +34,8 @@ described in [evidence.md](evidence.md) and decided in
 - 29 Build versioned QA bundles (done for the development pilot)
 - 30 Build explanation bundles (done for the development pilot)
 - 30.1 Generalise case preparation to separately versioned development and
-  evaluation case sets (in progress: registry, seeded selection and
-  case-set extraction done; see [case-sets.md](case-sets.md))
+  evaluation case sets (done: `dev-30-v1` and `eval-100-v1`; see
+  [case-sets.md](case-sets.md))
 
 ## Phase 5. Natural-language QA
 
