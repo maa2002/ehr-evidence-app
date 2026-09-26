@@ -61,7 +61,8 @@ attribution.
 | Experiment tracking and lineage foundations | implemented |
 | Inherited GNN integration | implemented and closed for the 10-person development pilot |
 | Evidence contracts, records, event linkage and bundles | implemented for the development pilot and the development and evaluation case sets |
-| Question interpretation, LLM generation, validation | planned |
+| Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out wording test open |
+| LLM generation, validation | planned |
 | API, interface and evaluation | planned |
 
 See [roadmap.md](roadmap.md) for the planned work.
@@ -78,6 +79,7 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `gnn` | Inherited GNN baseline, asset validation, identity mapping, preprocessing parity, offline outputs, provenance, split membership, run binding, Phase 3 closure, driver-to-event linkage | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission`, `linkage` |
 | `evidence` | Request and response contracts, evidence records, snapshot and case readers, readable names, scoped retrieval, claim policy, QA and explanation bundles | `vocabulary`, `contracts`, `schema`, `readers`, `concepts`, `retrieval`, `policy`, `bundles` |
 | `casesets` | Case-set registry, seeded case-set selection, case-set preparation | `registry`, `selection`, `prepare` |
+| `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, scoped answers, development suite | `vocabulary`, `resolve`, `interpret`, `scope`, `answer`, `suite` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
@@ -119,7 +121,7 @@ fixed roots and allowlists live in code.
 | `G:\Industry Dataset\standardized-omop-gnn-7B82` | Inherited upstream GNN tree, read-only | no |
 | Local PostgreSQL, database `mimiciv_omop` | OMOP CDM source database, read-only | no |
 | `C:\omop_export` | Legacy OMOP CSV exports, read-only | no |
-| External archive disk | Raw MIMIC-IV 3.1 files and Athena vocabularies (cold archive) | no |
+| External archive disk | Raw MIMIC-IV 3.1 files and Athena vocabularies (cold archive; the Athena directory is a read-only vocabulary source) | no |
 
 The storage decision is recorded in
 [decisions/0001-single-volume-storage.md](decisions/0001-single-volume-storage.md);
@@ -172,9 +174,11 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | 30.1 | `casesets.prepare` | `protected-data\case-preparation\<case set>` |
 | 30.1 | `gnn.linkage --case-set` | `protected-data\evidence\event-linkage-<case set>` |
 | 30.1 | `evidence.bundles --case-set` | `protected-data\evidence-bundles\<case set>` |
+| 32.1 | `qa.vocabulary` | `protected-data\vocabularies\condition-vocabulary-athena-20260831-v1` |
 
 Work items 16 (bridge output contract) and 18 (target and history policy)
 are specifications; they are described in
 [inherited-gnn.md](inherited-gnn.md). Work items 23 to 27 are code and
 contracts without a protected artefact of their own; they are described in
-[evidence.md](evidence.md).
+[evidence.md](evidence.md). The other Phase 5 work items (31 to 34.1) have
+no protected artefact; they are described in [qa.md](qa.md).

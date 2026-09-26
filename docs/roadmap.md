@@ -39,10 +39,20 @@ described in [evidence.md](evidence.md) and decided in
 
 ## Phase 5. Natural-language QA
 
-- 31 Interpret tasks
-- 32 Resolve concepts
-- 33 Resolve scope
-- 34 Enforce QA sufficiency
+Described in [qa.md](qa.md) and decided in
+[ADR 0006](decisions/0006-condition-vocabulary.md) and
+[ADR 0007](decisions/0007-rule-based-qa.md).
+
+- 31 Interpret tasks (done; rule-based)
+- 32 Resolve concepts (done)
+- 32.1 Build the condition vocabulary from the pinned Athena release (done)
+- 33 Resolve scope (done)
+- 34 Enforce QA sufficiency (done)
+- 34.1 Measure the pipeline with a development suite and an independent
+  oracle (done: 1,550 of 1,550 questions on `dev-30-v1`, 648 of 648 on
+  the pilot)
+- 34.2 Measure interpretation on held-out wording from MIMIC-IV-Ext-Instr
+  (open: needs credentialed access to the dataset)
 
 ## Phase 6. Validation
 

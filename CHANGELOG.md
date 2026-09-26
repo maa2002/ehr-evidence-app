@@ -21,14 +21,26 @@ change interfaces.
   version 1 bundles remain valid.
 - `qa.interpret`: a deterministic interpreter that turns a question about
   the active case into a condition list or a condition presence check, or
-  ends it with a clarification or abstention.
+  ends it with a clarification or abstention. Out-of-scope rules
+  (explanations, other patients, treatment, prognosis, diagnosis requests,
+  other data, dates, times, order and counts) apply outside the condition
+  phrase, and inside it only when the phrase names no condition; the
+  phrase is resolved by its longest candidate that names something
+  ([ADR 0007](docs/decisions/0007-rule-based-qa.md)).
 - `qa.scope`: scope phrases in questions; the active scope applies, and a
   question naming another scope gets a clarification.
 - `qa.answer`: list and presence answers from a verified QA bundle, with
   claims citing the bundle's records and "not recorded within the scope"
   only under complete coverage.
+- `qa.suite`: a development question suite scored against an independent
+  oracle computed from the source snapshot and the vocabulary, for
+  development case sets only, and a sweep of every standard condition
+  name. `dev-30-v1`: 1,550 of 1,550 questions correct; pilot: 648 of 648;
+  sweep: 788,221 of 788,221 questions resolve to the concept asked about.
 - Clarification reason codes `concept_unknown`, `concept_too_broad`,
   `case_ambiguous` and `prediction_selection_needed`.
+- [Natural-language QA](docs/qa.md) documentation.
+- CI runs the synthetic modes of `qa.vocabulary` and `qa.suite`.
 
 ### Changed
 

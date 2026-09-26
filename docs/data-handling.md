@@ -130,8 +130,13 @@ Permitted read-only sources:
 - the local PostgreSQL database `mimiciv_omop` (see
   [source-data.md](source-data.md) for the connection policy);
 - the installed `psql.exe` and Python interpreters on C:;
-- `C:\omop_export`, exactly that directory, as a copy source. Any other
-  source must lie under the policy anchor.
+- `C:\omop_export`, exactly that directory, as a copy source;
+- the Athena vocabulary directory on the archive disk
+  (`W:\Industry Dataset\Athena`), exactly that directory, for the four
+  pinned vocabulary files that `qa.vocabulary` reads
+  ([ADR 0006](decisions/0006-condition-vocabulary.md)).
+
+Any other source must lie under the policy anchor.
 
 ## Runtime storage preflight
 
