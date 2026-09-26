@@ -1,52 +1,25 @@
 """Synthetic checks for ehr_evidence_app.qa.answer.
 
 The bundle set is the bundle builder's invented one, held in memory; the
-vocabulary is invented and aligned with it. No real record is read.
+vocabulary is the suite's invented one, aligned with it. No real record is
+read.
 """
 
 import dataclasses
 import unittest
 
 from ehr_evidence_app.evidence import bundles, contracts, schema
-from ehr_evidence_app.qa import answer, resolve
-from ehr_evidence_app.qa import vocabulary as build
+from ehr_evidence_app.qa import answer, suite
 
 CASE_SET = "synthetic-1-v1"
 HISTORY = contracts.ScopeRef(kind="pre_target_history")
 ALL = contracts.ScopeRef(kind="case_visits")
 LIMITS = contracts.ExecutionLimits(**bundles.SYNTHETIC_LIMITS)
-FILLERS = {concept: "Synthetic filler %d" % concept
-           for concept in range(1100, 1120)}
-STANDARD = {900: "Clinical finding", 1000: "Synthetic parent disorder",
-            1001: "Synthetic concept 1001", 1002: "Synthetic concept 1002",
-            1003: "Synthetic twin one", 1004: "Synthetic twin two",
-            **FILLERS}
-PARENTS = {1000: 900, 1001: 1000, 1002: 1000, 1003: 900, 1004: 900,
-           **{concept: 900 for concept in FILLERS}}
 
 
 def visit(number):
     """Return a selected-visit scope."""
     return contracts.ScopeRef(kind="selected_visit", visit_number=number)
-
-
-def vocabulary():
-    """Return an invented vocabulary aligned with the synthetic bundles."""
-    concepts = [(concept, "standard", "SNOMED", "Disorder", "S%d" % concept,
-                 "", name) for concept, name in STANDARD.items()]
-    pairs = []
-    for concept in STANDARD:
-        chain, level = [concept], 0
-        while chain[-1] in PARENTS:
-            chain.append(PARENTS[chain[-1]])
-        for level, ancestor in enumerate(chain):
-            pairs.append((ancestor, concept, level))
-    synonyms = [(1003, "STW - Synthetic twin"), (1004, "STW - Synthetic twin")]
-    return resolve.parse({
-        build.FILES["concepts"]: build.encode_tsv("concepts", concepts),
-        build.FILES["synonyms"]: build.encode_tsv("synonyms", synonyms),
-        build.FILES["ancestors"]: build.encode_tsv("ancestors", pairs),
-        build.FILES["icd_maps"]: build.encode_tsv("icd_maps", [])})
 
 
 def bundle_set(tamper=False):
@@ -66,7 +39,7 @@ def bundle_set(tamper=False):
     return answer.BundleSet(CASE_SET, None, manifest, reader=reader)
 
 
-VOCAB = vocabulary()
+VOCAB = suite.synthetic_vocabulary()
 BUNDLES = bundle_set()
 
 
@@ -133,6 +106,32 @@ class PresenceTests(unittest.TestCase):
                              ("clarification", (reason,)), question)
         response = ask("Is synthetic concept recorded?").response
         self.assertIn("Did you mean", response.text)
+
+    def test_longest_candidate_that_names_a_concept(self):
+        """'X present' is a name when the vocabulary has it."""
+        for question, concept in (
+                ("Is synthetic reflex present recorded?", 1007),
+                ("Is synthetic reflex present?", 1008),
+                ("Is the synthetic reflex recorded in the chart?", 1008)):
+            result = ask(question)
+            self.assertEqual(result.resolution.concepts, (concept,),
+                             question)
+
+    def test_out_of_scope_words_inside_condition_names(self):
+        """A rule inside the phrase applies only when it names nothing."""
+        for question in ("Is synthetic X-ray finding recorded?",
+                         "Is synthetic injury of other person recorded?"):
+            self.assertEqual(ask(question).response.outcome, "not_recorded",
+                             question)
+        for question, outcome, reason in (
+                ("Is a chest X-ray recorded?", "abstention",
+                 "task_unsupported"),
+                ("Is the other person recorded?", "clarification",
+                 "case_ambiguous")):
+            response = ask(question).response
+            self.assertEqual((response.outcome, response.reason_codes,
+                              response.task), (outcome, (reason,), None),
+                             question)
 
 
 class BoundaryTests(unittest.TestCase):
