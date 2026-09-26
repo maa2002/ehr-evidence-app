@@ -111,11 +111,15 @@ class ShapeTests(unittest.TestCase):
                          {"const": "not_recorded"})
 
     def test_wordings(self):
-        """A wording holds no digit and only its kind's placeholders, on
-        one line."""
+        """A wording holds no digit and each of its kind's placeholders
+        exactly once, in any order, on one line."""
         rules = shape.wording("list_item")
         for text, allowed in (("{condition}: {count} in {visits}", True),
+                              ("{count} in {visits} for {condition}", True),
                               ("{condition}: 3 in {visits}", False),
+                              ("{condition}: {count}", False),
+                              ("{condition}: {count} in {visits} {count}",
+                               False),
                               ("{condition} within {scope}", False),
                               ("{condition}\n{count} in {visits}", False),
                               ("", False)):

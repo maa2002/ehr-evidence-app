@@ -12,9 +12,10 @@ Both roots live under the one policy anchor on the internal NTFS volume.
 The private workspace root is authoritative for protected data, outputs,
 logs, verification records and ClearML configuration. A separate runtime
 root may hold only the disposable runtime/cache directory keys named in
-RUNTIME_DIRECTORY_KEYS (environments, temp, test temp/cache,
-package/bytecode/XDG caches, Hugging Face, Torch, Conda, models and the
-ClearML cache). Callers name the root they intend explicitly; the default is
+RUNTIME_DIRECTORY_KEYS (environments, including the model environment,
+managed Python installations, temp, test temp/cache, package/bytecode/XDG
+caches, Hugging Face, Torch, CUDA, Conda, models and the ClearML cache).
+Callers name the root they intend explicitly; the default is
 always the private workspace root, and any other path fails closed. Every
 destination is
 checked lexically first (absolute drive path, no UNC/device prefix, no
@@ -58,6 +59,7 @@ RUNTIME_DIRECTORY_KEYS = frozenset([
     "hf_hub", "hf_assets", "hf_datasets", "torch_home", "pip_cache",
     "uv_cache", "xdg_cache", "pycache", "conda_pkgs", "conda_envs",
     "uv_project_env", "venvs", "models", "clearml_cache",
+    "python_installs", "cuda_cache", "llm_env",
 ])
 ROOT_NAMES = {"workspace": PRIVATE_ROOT, "runtime": RUNTIME_ROOT}
 DRIVE_FIXED = 3
@@ -101,6 +103,8 @@ DIRECTORY_VARIABLES = {
     "PIP_CACHE_DIR": "pip_cache",
     "UV_CACHE_DIR": "uv_cache",
     "UV_PROJECT_ENVIRONMENT": "uv_project_env",
+    "UV_PYTHON_INSTALL_DIR": "python_installs",
+    "CUDA_CACHE_PATH": "cuda_cache",
     "XDG_CACHE_HOME": "xdg_cache",
     "CONDA_PKGS_DIRS": "conda_pkgs",
     "CONDA_ENVS_DIRS": "conda_envs",

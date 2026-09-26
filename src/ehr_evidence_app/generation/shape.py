@@ -25,8 +25,8 @@ schema() is the JSON Schema of one request's document, which the model
 runtime enforces while the model writes: references name records,
 visits and drivers of the bundle only, notices are those an answer of the
 task may hold, a statement that cites one prediction or driver states
-that reference's own values, and wordings hold no digit and no
-placeholder of another kind. The schema admits every correct document,
+that reference's own values, and a wording holds no digit and each of its
+kind's placeholders exactly once. The schema admits every correct document,
 and many wrong ones: whether a document is right is decided by the
 release gate on the candidate it becomes. violations() checks a document
 against its schema again, since no document is trusted to have been
@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import itertools
 import json
 import re
 import sys
@@ -51,6 +52,10 @@ from ehr_evidence_app.validation import candidate as candidates
 
 SHAPE_VERSION = "candidate-shape-v1"
 MAX_WORDING = 600
+# A wording's words: letters, spaces and plain punctuation. Runs are not
+# bounded here, since bounded runs make the grammar slow to compile; the
+# worker stops output that runs on (generation.worker).
+WORDS = r"[A-Za-z ,.;:()'/-]*"
 # The notice that introduces an explanation's drivers comes right after
 # its prediction; every other notice ends its answer.
 DRIVERS_NOTICE = "drivers"
@@ -136,10 +141,19 @@ def asked(resolution, bundle, vocabulary):
 
 def wording(kind):
     """Return the schema of a wording of a statement kind: one line of
-    words with no digit, and placeholders of the kind's slots only."""
-    slots = "|".join(candidates.KINDS[kind].slots)
+    letters, spaces and plain punctuation, holding each placeholder of the
+    kind's slots exactly once, in any order, and no other."""
+    orders = ["".join(WORDS + r"\{%s\}" % slot for slot in order) + WORDS
+              for order in itertools.permutations(
+                  candidates.KINDS[kind].slots)]
     return {"type": "string", "minLength": 1, "maxLength": MAX_WORDING,
-            "pattern": r"^(?:[^0-9{}\r\n]|\{(?:%s)\})+$" % slots}
+            "pattern": "^(?:%s)$" % "|".join(orders)}
+
+
+def worded(kind):
+    """Return a reference to a statement kind's wording schema, defined
+    once in the request's schema."""
+    return {"$ref": "#/$defs/%s" % kind}
 
 
 def integer(least, most):
@@ -189,25 +203,25 @@ def list_schema(context):
     visits = visit_numbers(bundle.visits)
     empty = fields({"outcome": {"const": "not_recorded"},
                     "reason_codes": reason_codes("not_recorded"),
-                    "empty": fields({"wording": wording("list_empty")}),
+                    "empty": fields({"wording": worded("list_empty")}),
                     "notices": chosen(notice_ids(context.task,
                                                  "not_recorded"), 0)})
     if not refs:
         return empty
     total = len(refs)
-    item = fields({"wording": wording("list_item"),
+    item = fields({"wording": worded("list_item"),
                    "condition": {"enum": refs},
                    "count": integer(1, total),
                    "visits": chosen(visits), "refs": chosen(refs)})
     answer = fields({
         "outcome": {"const": "answer"},
         "reason_codes": reason_codes("answer"),
-        "summary": fields({"wording": wording("list_summary"),
+        "summary": fields({"wording": worded("list_summary"),
                            "groups": integer(1, total),
                            "records": integer(1, total)}),
         "items": {"type": "array", "items": item, "minItems": 1,
                   "maxItems": total},
-        "unmapped": optional(fields({"wording": wording("list_unmapped"),
+        "unmapped": optional(fields({"wording": worded("list_unmapped"),
                                      "unmapped": integer(1, total)})),
         "notices": chosen(notice_ids(context.task, "answer"), 0)})
     return {"anyOf": [answer, empty]}
@@ -222,13 +236,13 @@ def presence_schema(context):
     absent = fields({
         "outcome": {"const": "not_recorded"},
         "reason_codes": reason_codes("not_recorded"),
-        "absent": fields({"wording": wording("presence_absent")}),
-        "unmapped": optional(fields({"wording": wording("presence_unmapped"),
+        "absent": fields({"wording": worded("presence_absent")}),
+        "unmapped": optional(fields({"wording": worded("presence_unmapped"),
                                      "unmapped": integer(1, total)})),
         "notices": chosen(notice_ids(context.task, "not_recorded"), 0)})
     if not refs:
         return absent
-    item = fields({"wording": wording("presence_item"),
+    item = fields({"wording": worded("presence_item"),
                    "condition": {"enum": refs},
                    "count": integer(1, total), "visits": chosen(visits),
                    "match": {"enum": list(candidates.MATCH_WORDS)},
@@ -236,7 +250,7 @@ def presence_schema(context):
     answer = fields({
         "outcome": {"const": "answer"},
         "reason_codes": reason_codes("answer"),
-        "summary": fields({"wording": wording("presence_summary"),
+        "summary": fields({"wording": worded("presence_summary"),
                            "matches": integer(1, total)}),
         "items": {"type": "array", "items": item, "minItems": 1,
                   "maxItems": total}})
@@ -255,38 +269,55 @@ def explanation_schema(context):
     lines = {"history": {"type": "null"}, "context": {"type": "null"}}
     if history and past:
         lines["history"] = optional(fields({
-            "wording": wording("driver_history"),
+            "wording": worded("driver_history"),
             "count": integer(1, len(history)), "visits": chosen(past),
             "refs": chosen(history)}))
     if final:
         lines["context"] = optional(fields({
-            "wording": wording("driver_context"),
+            "wording": worded("driver_context"),
             "count": integer(1, len(final)), "refs": chosen(final)}))
-    return fields({
+    document = fields({
         "outcome": {"const": "explanation"},
         "reason_codes": reason_codes("explanation"),
-        "prediction": fields({"wording": wording("prediction"),
+        "prediction": fields({"wording": worded("prediction"),
                               "label": {"const": prediction.concept
                                         .concept_id},
                               "score": {"const": prediction.score},
                               "logit": {"const": prediction.logit}}),
         "drivers": {"type": "array", "minItems": 1, "maxItems": drivers,
                     "items": {"anyOf": [fields({
-                        "wording": wording("driver"),
+                        "wording": worded("driver"),
                         "driver": {"const": item.ref},
                         "rank": integer(1, drivers),
-                        "score": {"const": item.score}, **lines})
+                        "score": {"const": item.score},
+                        "history": {"$ref": "#/$defs/history"},
+                        "context": {"$ref": "#/$defs/context"}})
                         for item in bundle.attributions]}},
         "notices": chosen(notice_ids(context.task, "explanation"), 0)})
+    return dict(document, **{"$defs": lines})
+
+
+# The statement kinds whose wordings each task's documents hold.
+WORDED = {"condition_list": ("list_summary", "list_item", "list_unmapped",
+                             "list_empty"),
+          "condition_presence": ("presence_summary", "presence_item",
+                                 "presence_absent", "presence_unmapped"),
+          "prediction_explanation": ("prediction", "driver",
+                                     "driver_history", "driver_context")}
 
 
 def schema(context):
     """Return the JSON Schema of the document a request's answer is
-    written as."""
+    written as; the wordings, and an explanation's history and context,
+    are defined once under $defs."""
     builders = {"condition_list": list_schema,
                 "condition_presence": presence_schema,
                 "prediction_explanation": explanation_schema}
-    return builders[context.task](context)
+    found = builders[context.task](context)
+    definitions = dict(found.get("$defs", {}))
+    definitions.update({kind: wording(kind)
+                        for kind in WORDED[context.task]})
+    return dict(found, **{"$defs": definitions})
 
 
 # --------------------------------------------------------------------------
@@ -298,7 +329,9 @@ TYPES = {"object": dict, "array": list, "string": str, "null": type(None),
 KEYWORDS = frozenset(("anyOf", "const", "enum", "type", "properties",
                       "required", "additionalProperties", "items",
                       "minItems", "maxItems", "uniqueItems", "minLength",
-                      "maxLength", "pattern", "minimum", "maximum"))
+                      "maxLength", "pattern", "minimum", "maximum", "$ref",
+                      "$defs"))
+DEFINITION = re.compile(r"^#/\$defs/([A-Za-z0-9_]+)$")
 
 
 def same(value, expected):
@@ -322,14 +355,20 @@ def typed(value, name):
     return isinstance(value, TYPES[name])
 
 
-def violations(value, schema_, path="$"):
+def violations(value, schema_, path="$", root=None):
     """Return where a JSON value breaks a schema of the keywords this
-    module writes; an unknown keyword is a ValueError."""
+    module writes; an unknown keyword or reference is a ValueError."""
+    root = schema_ if root is None else root
     unknown = set(schema_) - KEYWORDS
     if unknown:
         raise ValueError("unsupported schema keyword: %s" % sorted(unknown))
+    if "$ref" in schema_:
+        match = DEFINITION.match(schema_["$ref"])
+        if match is None or match.group(1) not in root.get("$defs", {}):
+            raise ValueError("unresolved schema reference")
+        return violations(value, root["$defs"][match.group(1)], path, root)
     if "anyOf" in schema_:
-        if all(violations(value, branch, path) for branch in
+        if all(violations(value, branch, path, root) for branch in
                schema_["anyOf"]):
             return [path + ": matches no alternative"]
         return []
@@ -352,7 +391,7 @@ def violations(value, schema_, path="$"):
         for name, item in value.items():
             if name in properties:
                 found += violations(item, properties[name],
-                                    path + "." + name)
+                                    path + "." + name, root)
     if isinstance(value, list):
         if len(value) < schema_.get("minItems", 0) or len(value) > schema_.get(
                 "maxItems", len(value)):
@@ -363,7 +402,7 @@ def violations(value, schema_, path="$"):
         if "items" in schema_:
             for index, item in enumerate(value):
                 found += violations(item, schema_["items"],
-                                    "%s[%d]" % (path, index))
+                                    "%s[%d]" % (path, index), root)
     if isinstance(value, str):
         if not schema_.get("minLength", 0) <= len(value) <= schema_.get(
                 "maxLength", len(value)):

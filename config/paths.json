@@ -150,6 +150,24 @@
       "purpose": "Downloaded or exported model assets.",
       "create": true
     },
+    "llm_env": {
+      "path": "environments\\uv\\ehr-evidence-llm",
+      "root": "runtime",
+      "purpose": "The model worker's virtual environment (Phase 7), created by uv from requirements\\llm.lock.txt. Not pre-created so uv can create it itself.",
+      "create": false
+    },
+    "python_installs": {
+      "path": "python",
+      "root": "runtime",
+      "purpose": "uv-managed Python installations (UV_PYTHON_INSTALL_DIR), such as the model environment's interpreter.",
+      "create": true
+    },
+    "cuda_cache": {
+      "path": "cache\\cuda",
+      "root": "runtime",
+      "purpose": "CUDA compute cache for compiled GPU kernels (CUDA_CACHE_PATH), which otherwise defaults to the user profile on C:.",
+      "create": true
+    },
     "clearml_local": {
       "path": "clearml",
       "purpose": "Local ClearML storage and the ClearML configuration-file destination.",
@@ -276,6 +294,18 @@
       "directory": "uv_project_env",
       "evidence": "declaration",
       "purpose": "Target virtual environment for uv in this project."
+    },
+    {
+      "name": "UV_PYTHON_INSTALL_DIR",
+      "directory": "python_installs",
+      "evidence": "declaration",
+      "purpose": "Where uv installs managed Python interpreters."
+    },
+    {
+      "name": "CUDA_CACHE_PATH",
+      "directory": "cuda_cache",
+      "evidence": "declaration",
+      "purpose": "CUDA compute cache."
     },
     {
       "name": "XDG_CACHE_HOME",

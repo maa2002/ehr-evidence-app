@@ -91,6 +91,7 @@ jobs:
             "ehr_evidence_app.generation.shape",
             "ehr_evidence_app.generation.prompt",
             "ehr_evidence_app.generation.adapter",
+            "ehr_evidence_app.generation.runtime",
             "ehr_evidence_app.tracking.lineage",
             "ehr_evidence_app.tracking.policy",
             "ehr_evidence_app.tracking.connection"

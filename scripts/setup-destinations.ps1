@@ -80,7 +80,7 @@ $RuntimeDirectoryKeys = @(
     'runtime_root', 'temp', 'pytest_temp', 'pytest_cache', 'hf_home', 'hf_hub',
     'hf_assets', 'hf_datasets', 'torch_home', 'pip_cache', 'uv_cache', 'xdg_cache',
     'pycache', 'conda_pkgs', 'conda_envs', 'uv_project_env', 'venvs', 'models',
-    'clearml_cache')
+    'clearml_cache', 'python_installs', 'cuda_cache', 'llm_env')
 $RootNames = @{ 'workspace' = $PrivateRoot; 'runtime' = $RuntimeRoot }
 $RuntimeParent = 'G:\Industry Dataset'
 # Written by ehr_evidence_app.storage.runtime; holds the pinned identity digest.
@@ -97,6 +97,7 @@ $DirectoryVariables = @{
     'HF_ASSETS_CACHE' = 'hf_assets'; 'HF_DATASETS_CACHE' = 'hf_datasets'
     'TORCH_HOME' = 'torch_home'; 'PIP_CACHE_DIR' = 'pip_cache'; 'UV_CACHE_DIR' = 'uv_cache'
     'UV_PROJECT_ENVIRONMENT' = 'uv_project_env'; 'XDG_CACHE_HOME' = 'xdg_cache'
+    'UV_PYTHON_INSTALL_DIR' = 'python_installs'; 'CUDA_CACHE_PATH' = 'cuda_cache'
     'CONDA_PKGS_DIRS' = 'conda_pkgs'; 'CONDA_ENVS_DIRS' = 'conda_envs'
     'PYTEST_DEBUG_TEMPROOT' = 'pytest_temp'; 'CLEARML_CACHE_DIR' = 'clearml_cache'
 }

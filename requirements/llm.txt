@@ -1,0 +1,16 @@
+# Direct requirements of the model worker's environment (Phase 7; see
+# docs/generation.md and docs/environments.md). It is separate from the
+# application environment and shares neither its interpreter nor its
+# packages. Compiled into llm.lock.txt with exact versions and hashes:
+#   uv pip compile requirements\llm.txt --python-version 3.12.13
+#     --python-platform x86_64-pc-windows-msvc --torch-backend cu130
+#     --generate-hashes --default-index https://pypi.org/simple
+#     -o requirements\llm.lock.txt
+torch==2.14.0
+transformers==5.17.0
+accelerate==1.15.0
+safetensors==0.8.0
+tokenizers==0.23.2
+xgrammar==0.2.8
+llguidance==1.8.0
+jinja2==3.1.6

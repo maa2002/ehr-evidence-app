@@ -730,7 +730,7 @@ RUNTIME_KEYS = ("runtime_root", "temp", "pytest_temp", "pytest_cache",
                 "hf_home", "hf_hub", "hf_assets", "hf_datasets", "torch_home",
                 "pip_cache", "uv_cache", "xdg_cache", "pycache", "conda_pkgs",
                 "conda_envs", "uv_project_env", "venvs", "models",
-                "clearml_cache")
+                "clearml_cache", "python_installs", "cuda_cache", "llm_env")
 
 
 class RuntimePolicyTests(ScratchTestCase):

@@ -45,7 +45,10 @@ visit numbers, counts, match kinds, labels, scores and ranks. A \
 "wording" holds no fact: no digits, no dates and no numbers in words.
 3. A wording is one short line of plain words around its placeholders: \
 each placeholder listed for it, written as {name}, exactly once, and no \
-other.
+other. When the answer is shown, each placeholder is replaced by the text \
+of its fact (a condition's name, a count such as "3 records", visits such \
+as "visits 1 and 2", the scope's name), so the words around the \
+placeholders never state those facts again.
 4. Say what is recorded, never what the patient has or does not have. \
 "Not recorded" never means clinically absent.
 5. Do not hedge, rank, judge severity or course, or say when or how \
@@ -59,8 +62,10 @@ Task: list every condition recorded within {scope}.
 
 A condition is one standard concept (the concept_id of a record's \
 "concept"), or, for a record whose concept_id is 0, one ICD source code \
-(its "source_concept" code). The records are the bundle's "events"; a \
-record's visit is the entry of "visits" whose ref is its visit_ref.
+(its "source_concept" code). Records with the same concept_id are one \
+condition, even when their source codes differ. The records are the \
+bundle's "events"; a record's visit is the entry of "visits" whose ref is \
+its visit_ref.
 
 Reply shape:
 - If the bundle has no events: {{"outcome": "not_recorded", \
@@ -100,8 +105,9 @@ reference of its first record, "count": its number of records, \
 "visits": the visit numbers of its records' visits, ascending, each \
 once, "match": its match kind, "refs": the references of all its \
 records}}. A condition is one standard concept, or one ICD source code \
-for a record whose concept_id is 0. The wording has {{condition}}, \
-{{count}}, {{visits}} and {{match}}.
+for a record whose concept_id is 0; records with the same concept_id are \
+one condition, even when their source codes differ. The wording has \
+{{condition}}, {{count}}, {{visits}} and {{match}}.
 - unmapped: null, or when coverage.unmapped_events_in_scope is above \
 zero, {{"wording": ..., "unmapped": that number}}; the wording has \
 {{unmapped}}.
@@ -174,13 +180,28 @@ def bundle_text(bundle):
     return bundle.model_dump_json(exclude_none=True)
 
 
+def example_wordings(task):
+    """Return the templates' wordings of a task's statements, as examples
+    the model may follow or vary."""
+    # Imported here: qa and validation write through this package.
+    from ehr_evidence_app.qa import templates
+    from ehr_evidence_app.validation import explanation
+    found = dict(explanation.WORDINGS, **{
+        kind: templates.wording(kind, 2) for kind in templates.WORDINGS})
+    lines = ["Example wordings (others that follow the rules may be used):"]
+    lines += ['- %s: "%s"' % (kind, found[kind])
+              for kind in shape.WORDED[task]]
+    return "\n".join(lines)
+
+
 def task_text(context):
-    """Return the task and reply shape of a request."""
+    """Return the task, reply shape and example wordings of a request."""
     values = {"scope": scope_text(context.request.scope)}
     if context.task == "condition_presence":
         values.update(label=context.asked.label,
                       counts_as=counts_as_text(context.asked))
-    return TASKS[context.task].format(**values)
+    return "\n\n".join((TASKS[context.task].format(**values),
+                        example_wordings(context.task)))
 
 
 @functools.lru_cache(maxsize=None)
