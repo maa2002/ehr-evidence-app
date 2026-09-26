@@ -72,6 +72,10 @@ BUILDER = "ehr_evidence_app.evidence.bundles %s" % ehr_evidence_app.__version__
 LINKAGE_SHA256 = ("762ae7b57255c6d29cf681ff5f070c64"
                   "86a9914f18705a6ae49f9f313b0c3ede")
 LINKAGE_SIZE = 131641
+# The published version 2 bundle set of the pilot (schema 1.1).
+PILOT_MANIFEST_SIZE = 25104
+PILOT_MANIFEST_SHA256 = ("636b3476196e6f155ef04ed96875f125"
+                         "954f6e2b8cb14522a3ea9b9efa3662d6")
 NAME_AGREEMENT = ("same", "different", "published_empty")
 
 

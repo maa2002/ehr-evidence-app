@@ -105,6 +105,8 @@ PINS = {
                                      "ca45b72189ae8001b0baf66fa7376b2d"),
         "linkage": (374408, "f5134f7d5ce072702cd90236dfd5c1ae"
                             "9651ba1d976c03d30cec77a2e9a6ad40"),
+        "bundles": (56044, "4adbd9c24cb3bbd053331e145fb6bd4b"
+                           "8001c9b78f4944a38d90cf18a0dc696a"),
     },
     "eval-100-v1": {
         "selection": (17696, "f8d385dc3b2c69b1d024fc55e9f2e0ca"
@@ -119,6 +121,8 @@ PINS = {
                                      "0366ae6477c9e166856176d072fe41e9"),
         "linkage": (1359636, "a5923e0d656864701c127c7b12a814ea"
                              "147f33b35ad215b22d392bf692155185"),
+        "bundles": (205608, "5c42897b003145d860c1ccd5ad61cd04"
+                            "84f857b4c29be5e31e9e0e59d169b8f0"),
     },
 }
 
