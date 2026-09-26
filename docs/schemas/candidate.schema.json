@@ -1,0 +1,534 @@
+{
+  "$defs": {
+    "BundleRef": {
+      "additionalProperties": false,
+      "description": "The evidence bundle a response was built from.",
+      "properties": {
+        "bundle_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "title": "Bundle Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "bundle_id",
+        "sha256"
+      ],
+      "title": "BundleRef",
+      "type": "object"
+    },
+    "CaseRef": {
+      "additionalProperties": false,
+      "description": "One case of one case set, numbered from 1 in the closure record.",
+      "properties": {
+        "case_number": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Case Number",
+          "type": "integer"
+        },
+        "case_set": {
+          "pattern": "^[a-z0-9][a-z0-9.-]{0,63}$",
+          "title": "Case Set",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_set",
+        "case_number"
+      ],
+      "title": "CaseRef",
+      "type": "object"
+    },
+    "ConditionName": {
+      "additionalProperties": false,
+      "description": "How a statement names a condition: by a recorded event, by\nvocabulary concepts or by an ICD code. The name shown is rendered from\nthe evidence or the vocabulary.",
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9.]{0,15}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "concepts": {
+          "default": [],
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "maxItems": 50,
+          "title": "Concepts",
+          "type": "array"
+        },
+        "event": {
+          "anyOf": [
+            {
+              "pattern": "^E[1-9][0-9]{0,5}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event"
+        }
+      },
+      "title": "ConditionName",
+      "type": "object"
+    },
+    "ScopeRef": {
+      "additionalProperties": false,
+      "description": "An explicit record scope; only a selected visit names its visit.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "pre_target_history",
+            "selected_visit",
+            "case_visits"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "visit_number": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visit Number"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ScopeRef",
+      "type": "object"
+    },
+    "Slots": {
+      "additionalProperties": false,
+      "description": "The facts of one statement; its kind decides which it has.",
+      "properties": {
+        "condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConditionName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "count": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count"
+        },
+        "groups": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Groups"
+        },
+        "match": {
+          "anyOf": [
+            {
+              "enum": [
+                "exact",
+                "more_specific",
+                "icd_code",
+                "more_specific_icd_code",
+                "icd_description"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Match"
+        },
+        "matches": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Matches"
+        },
+        "names": {
+          "anyOf": [
+            {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "maxItems": 50,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Names"
+        },
+        "records": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Records"
+        },
+        "requested": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScopeRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScopeRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "term": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Term"
+        },
+        "unmapped": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unmapped"
+        },
+        "visits": {
+          "anyOf": [
+            {
+              "items": {
+                "maximum": 1000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "maxItems": 1000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visits"
+        }
+      },
+      "title": "Slots",
+      "type": "object"
+    },
+    "Statement": {
+      "additionalProperties": false,
+      "description": "One statement: its kind, wording, facts and supporting references.\n\nA notice names its approved text; any other statement has no notice.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "list_summary",
+            "list_item",
+            "list_unmapped",
+            "list_empty",
+            "presence_summary",
+            "presence_item",
+            "presence_absent",
+            "presence_unmapped",
+            "notice"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "notice": {
+          "anyOf": [
+            {
+              "enum": [
+                "absence",
+                "list_complete",
+                "coverage_incomplete",
+                "unsupported_treatment",
+                "unsupported_prognosis",
+                "unsupported_diagnosis_request",
+                "unsupported_other_data",
+                "unsupported_time_or_count",
+                "unsupported_ranking",
+                "unsupported_count_list",
+                "concept_ambiguous",
+                "concept_suggested",
+                "concept_unknown",
+                "concept_missing",
+                "concept_too_broad",
+                "scope_other",
+                "scope_several",
+                "scope_unrecognised",
+                "visit_missing",
+                "case_other",
+                "prediction_selection",
+                "qualified",
+                "unexplained",
+                "two_conditions",
+                "two_tasks",
+                "not_understood"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notice"
+        },
+        "refs": {
+          "default": [],
+          "items": {
+            "pattern": "^[VEPAC][1-9][0-9]{0,5}$",
+            "type": "string"
+          },
+          "maxItems": 5000,
+          "title": "Refs",
+          "type": "array"
+        },
+        "slots": {
+          "$ref": "#/$defs/Slots",
+          "default": {
+            "condition": null,
+            "count": null,
+            "groups": null,
+            "match": null,
+            "matches": null,
+            "names": null,
+            "records": null,
+            "requested": null,
+            "scope": null,
+            "term": null,
+            "unmapped": null,
+            "visits": null
+          }
+        },
+        "wording": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Wording",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "wording"
+      ],
+      "title": "Statement",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A candidate response to one request, before any check.",
+  "properties": {
+    "bundle": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BundleRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "case": {
+      "$ref": "#/$defs/CaseRef"
+    },
+    "outcome": {
+      "enum": [
+        "answer",
+        "not_recorded",
+        "explanation",
+        "clarification",
+        "abstention",
+        "case_rejection",
+        "validation_rejection",
+        "operational_error"
+      ],
+      "title": "Outcome",
+      "type": "string"
+    },
+    "reason_codes": {
+      "default": [],
+      "items": {
+        "enum": [
+          "attribution_altered",
+          "backend_failed",
+          "batch_sensitive_prediction",
+          "case_ambiguous",
+          "case_not_admitted",
+          "claim_unsupported",
+          "concept_ambiguous",
+          "concept_too_broad",
+          "concept_unknown",
+          "coverage_incomplete",
+          "date_unsupported",
+          "evidence_inconsistent",
+          "evidence_insufficient",
+          "explanation_ineligible",
+          "history_inconsistent",
+          "identity_inconsistent",
+          "limit_exceeded",
+          "no_positive_attribution",
+          "prediction_altered",
+          "prediction_link_invalid",
+          "prediction_selection_needed",
+          "prohibited_wording",
+          "reference_unresolved",
+          "resource_exhausted",
+          "retrieval_failed",
+          "scope_ambiguous",
+          "scope_invalid",
+          "scope_violated",
+          "structure_invalid",
+          "target_attached_drivers_present",
+          "target_outcome_entries_excluded",
+          "task_ambiguous",
+          "task_unsupported",
+          "timeout",
+          "unmapped_records_in_scope",
+          "validator_failed",
+          "visit_ambiguous"
+        ],
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "request_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/ScopeRef"
+    },
+    "statements": {
+      "items": {
+        "$ref": "#/$defs/Statement"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Statements",
+      "type": "array"
+    },
+    "task": {
+      "anyOf": [
+        {
+          "enum": [
+            "condition_list",
+            "condition_presence",
+            "prediction_explanation"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Task"
+    }
+  },
+  "required": [
+    "schema_version",
+    "request_id",
+    "case",
+    "scope",
+    "outcome",
+    "statements"
+  ],
+  "title": "Candidate",
+  "type": "object"
+}

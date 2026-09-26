@@ -254,11 +254,15 @@ def request_limit_problem(request, limits):
 
 def json_schemas():
     """Return the JSON Schema of each committed contract, by file name."""
-    from ehr_evidence_app.evidence import schema  # Bundles build on these.
+    # Bundles and candidates build on these contracts.
+    from ehr_evidence_app.evidence import schema
+    from ehr_evidence_app.validation import candidate
     schemas = {"request.schema.json": Request.model_json_schema(),
                "response.schema.json": Response.model_json_schema(),
                "execution-limits.schema.json":
-                   LimitsFile.model_json_schema()}
+                   LimitsFile.model_json_schema(),
+               "candidate.schema.json":
+                   candidate.Candidate.model_json_schema()}
     schemas.update(schema.bundle_schemas())
     return schemas
 

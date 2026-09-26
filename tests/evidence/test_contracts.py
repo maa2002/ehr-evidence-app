@@ -245,9 +245,9 @@ class SchemaTests(unittest.TestCase):
         """No committed schema drifts from its model."""
         self.assertEqual(contracts.schema_drift(), [])
         self.assertEqual(sorted(contracts.json_schemas()), [
-            "execution-limits.schema.json", "explanation-bundle.schema.json",
-            "qa-bundle.schema.json", "request.schema.json",
-            "response.schema.json"])
+            "candidate.schema.json", "execution-limits.schema.json",
+            "explanation-bundle.schema.json", "qa-bundle.schema.json",
+            "request.schema.json", "response.schema.json"])
 
     def test_drift_is_detected(self):
         """A changed or missing schema is reported by name."""
