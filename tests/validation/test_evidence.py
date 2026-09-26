@@ -10,7 +10,7 @@ import unittest
 from ehr_evidence_app.evidence import bundles
 from ehr_evidence_app.validation import evidence
 
-QA, _, _ = bundles.run_synthetic()
+QA, EXPLANATIONS, _ = bundles.run_synthetic()
 
 
 class EvidenceTests(unittest.TestCase):
@@ -29,6 +29,17 @@ class EvidenceTests(unittest.TestCase):
         for expected, faulty in evidence.synthetic_faults(bundle):
             self.assertEqual(evidence.qa_stop(evidence.request_for(bundle),
                                               faulty), expected)
+
+    def test_explanations(self):
+        """The selected prediction, the visits, coverage and
+        eligibility each stop an explanation request."""
+        bundle = EXPLANATIONS[0]
+        self.assertIsNone(evidence.explanation_stop(
+            evidence.explanation_request(bundle), bundle))
+        for expected, request, faulty in evidence.explanation_faults(
+                bundle):
+            self.assertEqual(evidence.explanation_stop(request, faulty),
+                             expected)
 
     def test_readable(self):
         """A record is readable by its name or by a source code."""

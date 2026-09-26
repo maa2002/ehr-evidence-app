@@ -16,13 +16,19 @@ Rules version wording-rules-v1 prohibits (prohibited_wording):
   "severe", "resolved", "worsening");
 * advice ("should be treated", "recommend", "start therapy");
 * certainty ("definitely", "proves", "confirms");
-* diagnosis ("diagnosed with", "consistent with", "likely has").
+* diagnosis ("diagnosed with", "consistent with", "likely has");
+* model performance ("AUROC", "accuracy"), which single-case
+  predictions never state;
+* in explanations, the model's score as a risk or probability, and a
+  prediction read as prospective ("in advance", "forecast").
 
-Causal and diagnostic words pass when a negation comes shortly before
-them ("attribution does not mean causation", "this application does not
-diagnose"). Dates, recurrence and frequency are not stated by QA answers
-at all (date_unsupported); explanations may state them only with the
-linked events the evidence claim policy allows (work item 38).
+Causal, diagnostic and risk words pass when a negation comes shortly
+before them ("attribution does not mean causation", "this application
+does not diagnose", "not a clinical risk"). Dates, recurrence and
+frequency are never typed into a wording (date_unsupported); an
+explanation states how often and in which visits a driver's concept was
+recorded only through the slots of a statement that cites its linked
+events, as the evidence claim policy allows (validation.explanation).
 
 The rules are patterns: a sentence that says something prohibited in
 words no pattern knows is not caught. Gaps found later become a new rules
@@ -47,6 +53,8 @@ NEGATIONS = frozenset(("not", "no", "never", "nor", "without", "cannot",
                        "neither", "none"))
 # How many words before a match a negation may stand.
 NEGATION_WINDOW = 4
+# (rule, pardoned by a negation, pattern, outcomes it applies to; None for
+# every outcome)
 PROHIBITED = (
     ("causal", True, re.compile(
         r"\b(?:caus(?:e|es|ed|ing|al|ally|ation|ative)|led to|leads? to|"
@@ -54,34 +62,45 @@ PROHIBITED = (
         r"of|owing to|responsible for|contribut(?:e|es|ed|ing) to|"
         r"trigger(?:s|ed|ing)?|(?:increas|rais|lower|reduc|decreas)(?:e|es|"
         r"ed|ing) the (?:risk|likelihood|chance|odds|probability)|risk "
-        r"factors?|predispos\w*|explains? why)\b")),
+        r"factors?|predispos\w*|explains? why)\b"), None),
     ("percentage", False, re.compile(
         r"(?:\b[0-9]+(?:\.[0-9]+)? ?%|%|\bper ?cent\w*|\bpercentage\w*|"
-        r"\b(?:a|the) (?:share|proportion|fraction) of)")),
+        r"\b(?:a|the) (?:share|proportion|fraction) of)"), None),
     ("exclusive", False, re.compile(
         r"\b(?:the only|sole|solely|exclusively|nothing else|no other "
         r"(?:diagnosis|diagnoses|condition|conditions|cause|causes|reason|"
-        r"explanation|driver|drivers)|entirely|wholly|fully explains?)\b")),
+        r"explanation|driver|drivers)|entirely|wholly|fully explains?)\b"),
+     None),
     ("status", False, re.compile(
         r"\b(?:(?:the patient|this patient|he|she|they) (?:has|have|had|is "
         r"suffering|suffers|suffered|is ill)|severe|severity|mild|moderate|"
         r"worsen\w*|improv(?:e|es|ed|ing)|resolved|resolving|stable|unstable|"
         r"critical|fatal|terminal|curable|incurable|in remission|"
-        r"life ?threatening)\b")),
+        r"life ?threatening)\b"), None),
     ("advice", False, re.compile(
         r"\b(?:should|must|ought to|recommend\w*|advis(?:e|es|ed|able)|"
         r"prescrib\w*|(?:start|stop|begin|continue|change) (?:the )?"
         r"(?:treatment|therapy|medication|drug)|(?:needs?|requires?) "
-        r"(?:treatment|therapy|medication|care))\b")),
+        r"(?:treatment|therapy|medication|care))\b"), None),
     ("certainty", False, re.compile(
         r"\b(?:definitely|certainly|undoubtedly|conclusively|definitive\w*|"
         r"proves?|proven|confirms?|confirmed|guarantee\w*|without (?:a )?"
-        r"doubt|for sure)\b")),
+        r"doubt|for sure)\b"), None),
+    ("performance", False, re.compile(
+        r"\b(?:auroc|auc|roc|accuracy|accurate|f1 score|precision|recall|"
+        r"sensitivity and specificity)\b"), None),
     ("diagnosis", True, re.compile(
         r"\b(?:diagnosed with|(?:is|was|been) diagnosed|diagnose[sd]? "
         r"(?:the patient|him|her|them)|we diagnose|diagnose\b|consistent "
         r"with|suggestive of|indicative of|likely has|probably has|may have|"
-        r"might have|could have)\b")),
+        r"might have|could have)\b"), None),
+    ("score_as_risk", True, re.compile(
+        r"\b(?:risks?|likelihood|probabilit(?:y|ies)|chances?|odds)\b"),
+     ("explanation",)),
+    ("prospective", False, re.compile(
+        r"\b(?:prospective\w*|in advance|ahead of time|beforehand|"
+        r"forecast\w*|early warning|would have predicted|will develop|"
+        r"going to develop)\b"), ("explanation",)),
 )
 DATES = re.compile(
     r"\b(?:[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}/[0-9]{1,2}(?:/[0-9]{2,4})?|"
@@ -106,11 +125,15 @@ def negated(text, start):
                for word in words[-NEGATION_WINDOW:])
 
 
-def findings(wording):
-    """Return (reason code, rule) pairs a wording breaks, in rule order."""
+def findings(wording, outcome=None):
+    """Return (reason code, rule) pairs a wording breaks, in rule order,
+    in a statement of an outcome (every rule when it is None)."""
     text = neutral(wording)
     found = []
-    for rule, pardonable, pattern in PROHIBITED:
+    for rule, pardonable, pattern, outcomes in PROHIBITED:
+        if outcomes is not None and outcome is not None and (
+                outcome not in outcomes):
+            continue
         for match in pattern.finditer(text):
             if pardonable and negated(text, match.start()):
                 continue
@@ -125,7 +148,8 @@ def check(candidate):
     """Return the reason codes of the wording rules a candidate's
     statements break; empty when it passes."""
     return tuple(sorted({code for statement in candidate.statements
-                         for code, _ in findings(statement.wording)}))
+                         for code, _ in findings(statement.wording,
+                                                 candidate.outcome)}))
 
 
 # --------------------------------------------------------------------------
@@ -149,17 +173,23 @@ SYNTHETIC_WORDINGS = (
     ("{condition} is consistent with sepsis.", ("prohibited_wording",)),
     ("{condition} was recorded again in 2150.", ("date_unsupported",)),
     ("{condition} recurs within {scope}.", ("date_unsupported",)),
+    ("The score is not a clinical risk.", ()),
+    ("{label} has a risk of {score}.", ("prohibited_wording",)),
+    ("The model forecasts {label}.", ("prohibited_wording",)),
+    ("The model has an AUROC of 0.9.", ("prohibited_wording",)),
 )
 
 
 def run_synthetic():
     """Return (correct, total) over the invented wordings and every
     approved notice, which must all pass."""
-    cases = list(SYNTHETIC_WORDINGS) + [
-        (notice.text, ()) for notice in candidates.NOTICES.values()]
-    correct = sum(1 for wording, expected in cases
-                  if tuple(sorted({code for code, _ in findings(wording)}))
-                  == expected)
+    cases = [(wording, expected, "explanation")
+             for wording, expected in SYNTHETIC_WORDINGS] + [
+        (notice.text, (), notice.outcomes[0])
+        for notice in candidates.NOTICES.values()]
+    correct = sum(1 for wording, expected, outcome in cases
+                  if tuple(sorted({code for code, _ in findings(
+                      wording, outcome)})) == expected)
     return correct, len(cases)
 
 

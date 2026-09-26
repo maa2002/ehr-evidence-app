@@ -67,7 +67,7 @@ class RenderTests(unittest.TestCase):
         """The wording cannot change a fact: the name is the bundle's."""
         item = GOOD.statements[1].model_copy(update={
             "wording": "Recorded: {condition} ({count} in {visits})"})
-        text = candidates.sentence(item, candidates.bundle_events(BUNDLE))
+        text = candidates.sentence(item, candidates.Lookup(BUNDLE))
         self.assertTrue(text.startswith("Recorded: SYNTHETIC CONCEPT 1001 "
                                         "(2 records in visit"))
 
@@ -80,17 +80,19 @@ class RenderTests(unittest.TestCase):
             slots=candidates.Slots(
                 condition=candidates.ConditionName(concepts=(1001, 1002)),
                 scope=HISTORY), refs=("C1",))
-        self.assertEqual(candidates.sentence(statement, {}, NAMES.get),
+        self.assertEqual(candidates.sentence(
+            statement, candidates.Lookup(None, NAMES.get)),
                          "Synthetic concept 1001; Synthetic concept 1002 is "
                          "not recorded within the pre-target history (the "
                          "visits before the final admission).")
         coded = statement.model_copy(update={"slots": candidates.Slots(
             condition=candidates.ConditionName(code="I509"), scope=HISTORY)})
-        self.assertTrue(candidates.sentence(coded, {}).startswith(
+        self.assertTrue(candidates.sentence(
+            coded, candidates.Lookup()).startswith(
             "ICD code I509 is not recorded"))
         with self.assertRaisesRegex(candidates.CandidateError,
                                     "concept_unknown_to_vocabulary"):
-            candidates.sentence(statement, {})
+            candidates.sentence(statement, candidates.Lookup())
 
     def test_long_references_are_split(self):
         """At most 50 references per claim, with the range in the text."""

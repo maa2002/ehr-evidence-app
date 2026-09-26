@@ -11,8 +11,8 @@ answers and the bundle bound to that request, before any other check:
 * scope_violated: the candidate, or a scope it states, names another
   request, case or scope, or another bundle than the one bound to the
   request (the citation check of evidence.schema, extended to candidates);
-* reference_unresolved: a reference, a named event, a visit number or a
-  concept that the bundle or the vocabulary lacks.
+* reference_unresolved: a reference, a named event, driver or visit
+  number, or a concept, that the bundle or the vocabulary lacks.
 
 These checks say nothing about whether the cited records support what a
 statement says; that is work item 37 (validation.support).
@@ -46,6 +46,11 @@ COMPOSITION = {
     ("condition_presence", "not_recorded"): {"presence_absent": (1, 1),
                                              "presence_unmapped": (0, 1),
                                              "notice": (1, 1)},
+    ("prediction_explanation", "explanation"): {"prediction": (1, 1),
+                                                "driver": (1, None),
+                                                "driver_history": (0, None),
+                                                "driver_context": (0, None),
+                                                "notice": (3, None)},
 }
 EVIDENTIAL = ("answer", "not_recorded")
 
@@ -72,7 +77,11 @@ def outcome_problems(candidate):
     if outcome in EVIDENTIAL:
         if candidate.task not in vocab.QA_TASKS or candidate.bundle is None:
             return {"structure_invalid"}
-    elif outcome == "explanation" or candidate.bundle is not None:
+    elif outcome == "explanation":
+        if (candidate.task != "prediction_explanation"
+                or candidate.bundle is None):
+            return {"structure_invalid"}
+    elif candidate.bundle is not None:
         return {"structure_invalid"}
     return set()
 
@@ -120,40 +129,56 @@ def kind_problems(statement, candidate):
     return set()
 
 
+def cites_as_its_kind(statement):
+    """Return True when a statement cites what its kind cites."""
+    rule = candidates.KINDS[statement.kind].refs
+    refs = statement.refs
+    if len(set(refs)) != len(refs):
+        return False
+    if rule == "events":
+        return bool(refs) and all(ref.startswith("E") for ref in refs)
+    if rule == "coverage":
+        return refs == ("C1",)
+    if rule == "prediction":
+        return refs == ("P1",)
+    if rule == "attribution":
+        return refs == (statement.slots.driver,)
+    return not refs
+
+
 def reference_problems(statement, candidate, bundle, concept_name):
     """Return problems of a statement's references and the evidence and
     concepts its slots name."""
     problems = set()
-    rule = candidates.KINDS[statement.kind].refs
-    refs = statement.refs
-    if len(set(refs)) != len(refs) or (
-            rule == "events" and (not refs or any(
-                not ref.startswith("E") for ref in refs))) or (
-            rule == "coverage" and refs != ("C1",)) or (
-            rule == "none" and refs):
+    if not cites_as_its_kind(statement):
         problems.add("structure_invalid")
+    refs = statement.refs
     slots = statement.slots
     if slots.scope is not None and slots.scope != candidate.scope:
         problems.add("scope_violated")
+    lookup = candidates.Lookup(bundle, concept_name)
     if bundle is not None:
         if any(ref not in schema.bundle_refs(bundle) for ref in refs):
             problems.add("reference_unresolved")
-        events = candidates.bundle_events(bundle)
         condition = slots.condition
         if condition is not None and condition.event is not None and (
-                condition.event not in events):
+                condition.event not in lookup.events):
+            problems.add("reference_unresolved")
+        if slots.driver is not None and (
+                slots.driver not in lookup.attributions):
             problems.add("reference_unresolved")
         numbers = {visit.visit_number for visit in bundle.visits}
         if slots.visits and any(number not in numbers
                                 for number in slots.visits):
             problems.add("reference_unresolved")
-    elif refs or (slots.condition is not None
-                  and slots.condition.event is not None) or slots.visits:
+    elif refs or slots.visits or slots.driver is not None or (
+            slots.condition is not None
+            and slots.condition.event is not None):
         problems.add("reference_unresolved")
     concepts = tuple(slots.names or ()) + (
-        slots.condition.concepts if slots.condition is not None else ())
-    if concepts and (concept_name is None or any(
-            concept_name(concept) is None for concept in concepts)):
+        slots.condition.concepts if slots.condition is not None else ()) + (
+        (slots.label,) if slots.label is not None else ())
+    if any(not lookup.known(concept) for concept in concepts):
         problems.add("reference_unresolved")
     return problems
 

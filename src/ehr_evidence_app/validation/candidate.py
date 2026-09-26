@@ -7,17 +7,20 @@ candidate is an ordered list of statements. Each statement has:
 * a kind from a closed list, which fixes the facts it states, the
   evidence it cites and the answers it may appear in;
 * its facts as typed slots: a condition, counts, visit numbers, a match
-  kind, a scope. Slot values are references and numbers; the text they
-  show is rendered from the evidence bundle and the vocabulary, so a
-  writer never types a condition name, a count or a visit;
+  kind, a scope and, in an explanation, the predicted label with its
+  score and logit, and each driver with its rank and score. Slot values
+  are references and numbers; the text they show is rendered from the
+  evidence bundle and the vocabulary, so a writer never types a
+  condition name, a count, a visit or a score;
 * a wording: the words around the facts, with one placeholder, such as
   {condition}, for each slot of its kind;
 * the bundle references that support it.
 
 A notice is a statement whose wording is one of a fixed list of approved
-texts: the statement that "not recorded" is not clinical absence, the
-refusals and the clarifying questions. A notice may hold slots of its own
-(the user's term, suggested names, scopes) and never cites evidence.
+texts: the statement that "not recorded" is not clinical absence, what
+an attribution score and the model's score mean, the refusals and the
+clarifying questions. A notice may hold slots of its own (the user's
+term, suggested names, scopes) and never cites evidence.
 
 The released text and claims are rendered from a candidate's statements
 only, so no sentence reaches the user that is not a statement of the
@@ -71,6 +74,13 @@ ConceptId = Annotated[int, Field(ge=1)]
 VisitNumber = Annotated[int, Field(ge=1, le=1000)]
 Count = Annotated[int, Field(ge=0, le=1000000)]
 MatchKind = Literal[tuple(MATCH_WORDS)]
+AttributionRef = Annotated[str, StringConstraints(
+    pattern=r"^A[1-9][0-9]{0,5}$")]
+Score = Annotated[float, Field(ge=0.0, allow_inf_nan=False)]
+Logit = Annotated[float, Field(allow_inf_nan=False)]
+Rank = Annotated[int, Field(ge=1, le=10000)]
+DOMAIN_WORDS = {"condition": "diagnosis", "procedure": "procedure",
+                "drug": "medication"}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -79,23 +89,24 @@ class Kind:
 
     slots: the slots it fills, each shown by one placeholder;
     refs: "events" (the records it states), "coverage" (the coverage
-    record, C1) or "none" (it restates the statements it summarises);
-    task and outcomes: the answers it may appear in; item: it is shown as
-    one line of a list.
+    record, C1), "prediction" (P1), "attribution" (the driver it names)
+    or "none" (it restates the statements it summarises);
+    task and outcomes: the answers it may appear in; depth: 0 for a line
+    of its own, 1 for an item of a list, 2 for an item under one.
     """
 
     slots: tuple
     refs: str
     task: str | None
     outcomes: tuple
-    item: bool = False
+    depth: int = 0
 
 
 KINDS = {
     "list_summary": Kind(("groups", "scope", "records"), "none",
                          "condition_list", ("answer",)),
     "list_item": Kind(("condition", "count", "visits"), "events",
-                      "condition_list", ("answer",), item=True),
+                      "condition_list", ("answer",), depth=1),
     "list_unmapped": Kind(("unmapped",), "coverage", "condition_list",
                           ("answer",)),
     "list_empty": Kind(("scope",), "coverage", "condition_list",
@@ -104,11 +115,21 @@ KINDS = {
                              "condition_presence", ("answer",)),
     "presence_item": Kind(("condition", "count", "visits", "match"),
                           "events", "condition_presence", ("answer",),
-                          item=True),
+                          depth=1),
     "presence_absent": Kind(("condition", "scope"), "coverage",
                             "condition_presence", ("not_recorded",)),
     "presence_unmapped": Kind(("unmapped",), "coverage",
                               "condition_presence", ("not_recorded",)),
+    "prediction": Kind(("label", "score", "logit"), "prediction",
+                       "prediction_explanation", ("explanation",)),
+    "driver": Kind(("rank", "driver", "score"), "attribution",
+                   "prediction_explanation", ("explanation",), depth=1),
+    "driver_history": Kind(("driver", "count", "visits"), "events",
+                           "prediction_explanation", ("explanation",),
+                           depth=2),
+    "driver_context": Kind(("driver", "count"), "events",
+                           "prediction_explanation", ("explanation",),
+                           depth=2),
     "notice": Kind((), "none", None, vocab.RELEASED_TEXT_OUTCOMES),
 }
 StatementKind = Literal[tuple(KINDS)]
@@ -209,7 +230,49 @@ NOTICES = {
                         "condition.", ("clarification",)),
     "not_understood": Notice("The question was not understood. " + ASK,
                              ("clarification",)),
+    "drivers": Notice("The recorded concepts the model's output was "
+                      "sensitive to, in the order the model lists them:",
+                      ("explanation",), "prediction_explanation"),
+    "attribution_meaning": Notice("Attribution scores are unsigned "
+                                  "sensitivities of the model's output to "
+                                  "recorded concepts; they do not show "
+                                  "causes, and they are not shares of the "
+                                  "prediction.", ("explanation",),
+                                  "prediction_explanation"),
+    "score_meaning": Notice("The score is the uncalibrated sigmoid of the "
+                            "model's logit, not a clinical risk and not a "
+                            "probability of disease.", ("explanation",),
+                            "prediction_explanation"),
+    "batch_sensitive": Notice("Scoring this patient's graph on its own "
+                              "does not reproduce the published prediction "
+                              "exactly; the published prediction is "
+                              "shown.", ("explanation",),
+                              "prediction_explanation"),
+    "target_attached": Notice("Some of these concepts are also recorded in "
+                              "the final admission; those records are "
+                              "shown as final-admission context, not as "
+                              "history.", ("explanation",),
+                              "prediction_explanation"),
+    "target_excluded": Notice("Diagnoses the model's output lists that are "
+                              "recorded only in the final admission are "
+                              "left out.", ("explanation",),
+                              "prediction_explanation"),
+    "explanation_ineligible": Notice("This prediction has no driver that "
+                                     "may be described, so no explanation "
+                                     "is given.", ("abstention",)),
+    "no_positive_attribution": Notice("No recorded concept has a positive "
+                                      "attribution score for this "
+                                      "prediction, so no explanation is "
+                                      "given.", ("abstention",)),
+    "explanation_incomplete": Notice("The records this explanation needs "
+                                     "could not be read completely, so no "
+                                     "explanation is given.",
+                                     ("abstention",)),
 }
+# The notice that discloses each restriction of an explanation.
+RESTRICTION_NOTICES = {"batch_sensitive_prediction": "batch_sensitive",
+                       "target_attached_drivers_present": "target_attached",
+                       "target_outcome_entries_excluded": "target_excluded"}
 NoticeId = Literal[tuple(NOTICES)]
 
 
@@ -253,6 +316,11 @@ class Slots(Frozen):
     term: Optional[TermText] = None
     names: Optional[tuple[ConceptId, ...]] = Field(default=None,
                                                    max_length=50)
+    label: Optional[ConceptId] = None
+    score: Optional[Score] = None
+    logit: Optional[Logit] = None
+    driver: Optional[AttributionRef] = None
+    rank: Optional[Rank] = None
 
     def filled(self):
         """Return the names of the slots that hold a value."""
@@ -335,6 +403,15 @@ def event_label(event):
     return "code %s" % (event.concept.source_code or "unknown")
 
 
+def concept_label(concept):
+    """Return the readable label of a concept of a prediction or driver."""
+    if concept.name_status == "available":
+        return concept.name
+    if concept.name_status == "unmapped":
+        return "an unmapped concept"
+    return "concept %d" % concept.concept_id
+
+
 def record_group(event):
     """Return the key of the condition a record is of: its standard
     concept, or its source code when it has none. A list names each such
@@ -355,18 +432,53 @@ def counted(name, number):
     return "%d %s" % (number, singular if number == 1 else plural)
 
 
-def concept_names(concepts, concept_name):
-    """Return the vocabulary names of concepts, joined with semicolons."""
-    names = [concept_name(concept) for concept in concepts]
-    if any(name is None for name in names):
-        raise CandidateError("concept_unknown_to_vocabulary")
-    return "; ".join(names)
+def bundle_events(bundle):
+    """Return a bundle's events by reference."""
+    if bundle is None:
+        return {}
+    events = getattr(bundle, "events", None)
+    if events is None:
+        events = bundle.history_events + bundle.final_admission_context
+    return {event.ref: event for event in events}
 
 
-def condition_text(kind, name, events, concept_name):
+class Lookup:
+    """The evidence and names a candidate's slots are rendered from: a
+    bundle's records, prediction and drivers, and a function that gives a
+    vocabulary concept's name, or None."""
+
+    def __init__(self, bundle=None, concept_name=None):
+        """Index the bundle's records, drivers and concepts."""
+        self.events = bundle_events(bundle)
+        self.attributions = {item.ref: item for item in
+                             getattr(bundle, "attributions", ())}
+        self.concepts = {}
+        prediction = getattr(bundle, "prediction", None)
+        if prediction is not None:
+            self.concepts[prediction.concept.concept_id] = prediction.concept
+        for item in self.attributions.values():
+            self.concepts.setdefault(item.concept.concept_id, item.concept)
+        self.concept_name = concept_name or (lambda concept: None)
+
+    def name(self, concept):
+        """Return a concept's name: the bundle's, else the vocabulary's."""
+        if concept in self.concepts:
+            return concept_label(self.concepts[concept])
+        name = self.concept_name(concept)
+        if name is None:
+            raise CandidateError("concept_unknown_to_vocabulary")
+        return name
+
+    def known(self, concept):
+        """Return True when a concept can be named."""
+        return concept in self.concepts or (
+            self.concept_name(concept) is not None)
+
+
+def condition_text(kind, name, lookup):
     """Return the name of a condition as a statement of a kind shows it."""
     if name.event is not None:
-        event = events.get(name.event)
+        event = lookup.events.get(name.event)
         if event is None:
             raise CandidateError("event_not_in_bundle")
         label = event_label(event)
@@ -375,37 +487,48 @@ def condition_text(kind, name, events, concept_name):
         return label
     if name.code is not None:
         return "ICD code %s" % name.code
-    return concept_names(name.concepts, concept_name)
+    return "; ".join(lookup.name(concept) for concept in name.concepts)
 
 
-def slot_text(statement, name, events, concept_name):
+def driver_text(ref, lookup):
+    """Return how a driver is named: its concept and domain."""
+    item = lookup.attributions.get(ref)
+    if item is None:
+        raise CandidateError("driver_not_in_bundle")
+    return "%s (%s)" % (concept_label(item.concept),
+                        DOMAIN_WORDS[item.domain])
+
+
+def slot_text(statement, name, lookup):
     """Return the text one slot of a statement shows."""
-    slots = statement.slots
-    value = getattr(slots, name)
-    if value is None:
+    value = getattr(statement.slots, name)
+    if value is None or value == ():
         raise CandidateError("slot_missing")
     if name in ("scope", "requested"):
         return scope_words(value)
     if name == "condition":
-        return condition_text(statement.kind, value, events, concept_name)
+        return condition_text(statement.kind, value, lookup)
     if name == "visits":
-        if not value:
-            raise CandidateError("slot_missing")
         return join_visits(value)
     if name == "match":
         return MATCH_WORDS[value]
     if name == "names":
-        return concept_names(value, concept_name)
-    if name == "term":
-        return value
+        return "; ".join(lookup.name(concept) for concept in value)
+    if name == "label":
+        return lookup.name(value)
+    if name == "driver":
+        return driver_text(value, lookup)
+    if name in ("score", "logit"):
+        return "%.3g" % value
+    if name in ("term", "rank"):
+        return str(value)
     return counted(name, value)
 
 
-def sentence(statement, events, concept_name=None):
+def sentence(statement, lookup):
     """Return a statement's wording with its slots filled in."""
-    concept_name = concept_name or (lambda concept: None)
     return PLACEHOLDER.sub(lambda match: slot_text(
-        statement, match.group(1), events, concept_name), statement.wording)
+        statement, match.group(1), lookup), statement.wording)
 
 
 def claims_of(text, refs):
@@ -422,27 +545,19 @@ def claims_of(text, refs):
         len(refs)), refs=tuple(chunk)) for index, chunk in enumerate(chunks)]
 
 
-def bundle_events(bundle):
-    """Return a bundle's events by reference."""
-    if bundle is None:
-        return {}
-    events = getattr(bundle, "events", None)
-    if events is None:
-        events = bundle.history_events + bundle.final_admission_context
-    return {event.ref: event for event in events}
-
-
 def render(candidate, bundle=None, concept_name=None):
     """Return (text, claims) rendered from a candidate's statements.
 
-    Every statement is one line, a list item led by "- "; a statement that
-    cites records becomes one or more claims with the same text.
+    Every statement is one line: list items are led by "- ", items under
+    them by "  - "; a statement that cites evidence becomes one or more
+    claims with the same text.
     """
-    events = bundle_events(bundle)
+    lookup = Lookup(bundle, concept_name)
     lines, claims = [], []
     for statement in candidate.statements:
-        text = sentence(statement, events, concept_name)
-        lines.append(("- " + text) if KINDS[statement.kind].item else text)
+        text = sentence(statement, lookup)
+        depth = KINDS[statement.kind].depth
+        lines.append(("  " * (depth - 1) + "- " + text) if depth else text)
         if statement.refs:
             claims += claims_of(text, statement.refs)
     return "\n".join(lines), tuple(claims)

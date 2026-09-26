@@ -152,6 +152,19 @@
           "default": null,
           "title": "Count"
         },
+        "driver": {
+          "anyOf": [
+            {
+              "pattern": "^A[1-9][0-9]{0,5}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Driver"
+        },
         "groups": {
           "anyOf": [
             {
@@ -165,6 +178,31 @@
           ],
           "default": null,
           "title": "Groups"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "logit": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Logit"
         },
         "match": {
           "anyOf": [
@@ -216,6 +254,20 @@
           "default": null,
           "title": "Names"
         },
+        "rank": {
+          "anyOf": [
+            {
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rank"
+        },
         "records": {
           "anyOf": [
             {
@@ -251,6 +303,19 @@
             }
           ],
           "default": null
+        },
+        "score": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
         },
         "term": {
           "anyOf": [
@@ -316,6 +381,10 @@
             "presence_item",
             "presence_absent",
             "presence_unmapped",
+            "prediction",
+            "driver",
+            "driver_history",
+            "driver_context",
             "notice"
           ],
           "title": "Kind",
@@ -350,7 +419,16 @@
                 "unexplained",
                 "two_conditions",
                 "two_tasks",
-                "not_understood"
+                "not_understood",
+                "drivers",
+                "attribution_meaning",
+                "score_meaning",
+                "batch_sensitive",
+                "target_attached",
+                "target_excluded",
+                "explanation_ineligible",
+                "no_positive_attribution",
+                "explanation_incomplete"
               ],
               "type": "string"
             },
@@ -376,13 +454,18 @@
           "default": {
             "condition": null,
             "count": null,
+            "driver": null,
             "groups": null,
+            "label": null,
+            "logit": null,
             "match": null,
             "matches": null,
             "names": null,
+            "rank": null,
             "records": null,
             "requested": null,
             "scope": null,
+            "score": null,
             "term": null,
             "unmapped": null,
             "visits": null

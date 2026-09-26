@@ -10,12 +10,14 @@ import unittest
 
 from ehr_evidence_app.qa import templates
 from ehr_evidence_app.validation import candidate as candidates
-from ehr_evidence_app.validation import language, structure
+from ehr_evidence_app.validation import explanation, language, structure
 
 
-def codes(wording):
-    """Return the reason codes a wording gets."""
-    return tuple(sorted({code for code, _ in language.findings(wording)}))
+def codes(wording, outcome=None):
+    """Return the reason codes a wording gets in a statement of an
+    outcome (under every rule when it is None)."""
+    return tuple(sorted({code for code, _ in language.findings(
+        wording, outcome)}))
 
 
 class LanguageTests(unittest.TestCase):
@@ -27,13 +29,31 @@ class LanguageTests(unittest.TestCase):
         self.assertEqual(correct, total)
 
     def test_own_wordings_pass(self):
-        """Every template wording and approved notice passes."""
-        wordings = [entry for value in templates.WORDINGS.values()
-                    for entry in ((value,) if isinstance(value, str)
-                                  else value)]
-        wordings += [notice.text for notice in candidates.NOTICES.values()]
-        for wording in wordings:
-            self.assertEqual(codes(wording), (), wording)
+        """Every template wording and approved notice passes in the
+        outcomes it is used in."""
+        cases = [(entry, "answer")
+                 for value in templates.WORDINGS.values()
+                 for entry in ((value,) if isinstance(value, str)
+                               else value)]
+        cases += [(wording, "explanation")
+                  for wording in explanation.WORDINGS.values()]
+        cases += [(notice.text, outcome)
+                  for notice in candidates.NOTICES.values()
+                  for outcome in notice.outcomes]
+        for wording, outcome in cases:
+            self.assertEqual(codes(wording, outcome), (), wording)
+
+    def test_explanation_rules(self):
+        """The score read as a risk, or the prediction as prospective,
+        is prohibited in explanations only."""
+        wording = "The model gives {label} a risk of {score}."
+        self.assertEqual(codes(wording, "explanation"),
+                         ("prohibited_wording",))
+        self.assertEqual(codes(wording, "abstention"), ())
+        self.assertEqual(codes("{label} was forecast in advance.",
+                               "explanation"), ("prohibited_wording",))
+        self.assertEqual(codes("The score is not a clinical risk.",
+                               "explanation"), ())
 
     def test_slots_are_not_read(self):
         """A fact in a slot never trips a rule; the same words typed into
