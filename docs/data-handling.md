@@ -10,7 +10,7 @@ there. Command examples assume the session set-up in
 
 | Class | Examples | Where it may live |
 | --- | --- | --- |
-| Protected | Source exports and extracts, identity mappings, model outputs, provenance and split sidecars, prepared evidence | Workspace `protected-data\` only |
+| Protected | Source exports and extracts, identity mappings, model outputs, provenance and split sidecars, prepared evidence, external question sets and their partitions, written test questions | Workspace `protected-data\` only |
 | Private, non-patient | Verification summaries, environment manifests, lineage manifests, asset-validation records, archives | Workspace `outputs\`, `records\`, `archive\` |
 | Disposable | Environments, package and bytecode caches, temporary files, test temp | Runtime root |
 | Publishable | Code, configuration, documentation, synthetic test fixtures | This repository |

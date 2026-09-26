@@ -5,6 +5,23 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
+## [Unreleased]
+
+### Added
+
+- `qa.heldout`: a partition record of MIMIC-IV-Ext-Instr fixed before
+  any measurement (held-out test admissions; training and validation
+  without the test set, admissions in no split or patients of our case
+  sets), and the held-out wording test on its test admissions
+  ([ADR 0008](docs/decisions/0008-question-set-partitions.md)). With the
+  rules of 0.6.0, 31,235 of 32,392 held-out questions are handled as
+  expected and no question about other data is answered; 987 ranking
+  questions are answered with an unranked list.
+- `qa.written`: the written wording test for presence checks, with a
+  questions template, an overview of each case's recorded conditions and
+  scoring against the development suite's oracle.
+- CI runs the synthetic modes of `qa.heldout` and `qa.written`.
+
 ## [0.6.0] - 2026-09-26
 
 Rule-based natural-language QA over the evidence bundles (Phase 5,
@@ -183,6 +200,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.6.0...HEAD
 [0.6.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.3.0...v0.4.0

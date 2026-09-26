@@ -8,9 +8,11 @@ only rephrase an answer, behind the checks of Phase 6.
 
 Decisions are recorded in
 [ADR 0006](decisions/0006-condition-vocabulary.md) (condition vocabulary,
-term resolution and matching) and
+term resolution and matching),
 [ADR 0007](decisions/0007-rule-based-qa.md) (interpretation, answers and
-how they are measured). Command examples assume the session set-up in
+how they are measured) and
+[ADR 0008](decisions/0008-question-set-partitions.md) (partitions of the
+external question set). Command examples assume the session set-up in
 [development.md](development.md#session-set-up).
 
 ## Modules
@@ -23,6 +25,8 @@ how they are measured). Command examples assume the session set-up in
 | 33 | `qa.scope` | Scope phrases and binding to the active scope |
 | 34 | `qa.answer` | List and presence answers from a verified QA bundle |
 | 34.1 | `qa.suite` | Development question suite with an independent oracle; vocabulary sweep |
+| 34.2 | `qa.heldout` | Partitions of MIMIC-IV-Ext-Instr; held-out wording test |
+| 34.3 | `qa.written` | Written wording test: template, case overview, scoring |
 
 ## From question to response
 
@@ -226,24 +230,115 @@ the held-out test below. They are not a measure of clinical correctness.
 
 ## Held-out wording test
 
-Work item 34.2 (open) measures interpretation on questions written by
-others: the diagnosis questions of MIMIC-IV-Ext-Instr, a PhysioNet dataset
-of questions and answers grounded in MIMIC-IV admissions. It is a held-out
-test: the rules are never changed to fit it, and only aggregate counts
-leave the machine.
+Work item 34.2 measures interpretation on questions written by others:
+MIMIC-IV-Ext-Instr 1.0.0 (PhysioNet, credentialed), a dataset built to
+instruction-tune language models, with question and answer pairs
+generated from MIMIC-IV admissions by fixed templates and paraphrased by
+GPT-3.5. It is a held-out test: the rules are never changed to fit it, and
+only aggregate counts leave the machine. `qa.heldout` reads the archive,
+copied unchanged into `protected-data\question-sets\mimic-iv-ext-instr`
+and pinned by SHA-256, and checks every member against the archive's own
+checksums.
 
-The dataset is credentialed. Access needs a credentialed PhysioNet account
-(with the CITI data-research training that MIMIC-IV already requires) and
-the signed data use agreement of the MIMIC-IV-Ext-Instr project. The files
-are placed, unchanged, under
-`G:\Industry Dataset\ehr-evidence-workspace\protected-data\question-sets\mimic-iv-ext-instr`,
-and the harness pins them by SHA-256. It is written once the files are
-available, against their actual layout.
+### Partitions
+
+Before anything was measured, one record fixed every use of the dataset
+([ADR 0008](decisions/0008-question-set-partitions.md)). The archive's
+split is patient-level, but its validation file holds the whole test set,
+5,755 admissions are in no split (183 of their patients are test
+patients), and 26 patients of our case sets are in its training split.
+
+| Partition | Rule | Admissions | Patients | Structured questions | Note questions |
+| --- | --- | --- | --- | --- | --- |
+| held-out | The test admissions | 5,400 | 4,309 | 32,392 | 10,791 |
+| validation | Validation admissions outside the test set | 572 | 473 | 3,431 | 1,143 |
+| training | Training admissions | 47,749 | 38,273 | 286,401 | 95,462 |
+
+Admissions in no split are excluded, and the 37 training admissions of
+patients in our case sets are removed. Only the held-out partition is
+read here; validation and training stay untouched until the Phase 7 and
+Phase 9 plans decide their use, for example for a fine-tuned comparison
+model. Record `mimic-iv-ext-instr-partitions-v1`: 485,743 bytes, SHA-256
+`4bfa37dd40235d5cbee6d3608ea7e20c20e17bbc26821c0b05186f9a14144f95`.
+
+### What is tested
+
+The structured questions come from public templates. The diagnosis
+questions come from four list templates: all billed diagnoses, the first,
+the top three and the top five; none asks whether one condition is
+recorded. The other event types ask about laboratory results,
+microbiology, prescriptions, procedures, transfers, demographics and
+admission details. So:
+
+- an all-diagnoses question must be read as a condition list;
+- a ranking question must not be answered: billing order is not in the
+  evidence, and an unordered list would not answer it;
+- any other question must not be answered.
+
+A diagnosis question counts as a ranking question when it holds a ranking
+word ("first", "top", "primary", "three", "five" and similar). 25.4% of
+them hold none, in line with the one-in-four draw of the all-diagnoses
+template.
+
+### Results
+
+Test `instr-held-out-wording-v1` with the rules of release 0.6.0
+(summary SHA-256
+`f15451d156f55db342d1e142a2db9557499bf09bfc27aca24e3177fe91e82a93`):
+
+| Questions | Number | As expected | Readings |
+| --- | --- | --- | --- |
+| All diagnoses | 1,056 | 886 (83.9%) | 886 lists; 170 clarifications (96 unrecognised, 74 unknown condition phrases) |
+| Ranking of diagnoses | 3,101 | 2,114 (68.2%) | 2,114 clarifications; 987 answered with an unranked list |
+| Other data (seven event types) | 28,235 | 28,235 (100%) | 15,367 abstentions, 12,868 clarifications |
+| All | 32,392 | 31,235 (96.4%) | 987 answered out of scope, all ranking questions |
+
+No question about other data was answered as a condition question. The
+all-diagnoses questions that were not read as lists ended in a
+clarification, never in a wrong answer. The fault is in ranking questions
+that also use a list word ("list the top three diagnoses"): the ranking is
+ignored and the whole list is returned.
+
+## Written wording test
+
+Work item 34.3 (open) measures presence-check wording, which the dataset
+above does not contain: about forty questions written in their own words
+by someone who has not read the [Interpretation](#interpretation) rules,
+about development cases, scored once with `qa.written`. The questions
+file is `protected-data\question-sets\written-v1\questions.csv` (UTF-8,
+opens in a spreadsheet), one row per question:
+
+| Column | Content |
+| --- | --- |
+| `id` | A unique label, such as `q01` |
+| `case_set` | `dev-30-v1` (or `pilot-10-v1`) |
+| `case` | The case number |
+| `scope` | The scope imagined as selected: `history`, `all` or `visit N` |
+| `question` | The question, as it would be typed |
+| `intent` | `list` (the recorded conditions), `presence` (whether one condition is recorded) or `refuse` (something the application should not answer, such as a treatment or a laboratory value) |
+| `concept` | For `presence`, the OMOP concept ID of the condition meant; empty otherwise |
+
+The overview `case-overview-dev-30-v1.csv` in the same folder lists each
+case's recorded conditions by scope with their concept IDs; concepts that
+are not recorded can be looked up on Athena. Questions should be worded
+freely (abbreviations, everyday terms, typing as usual) rather than
+copying names. A useful mix is about ten lists, twenty presence checks
+(about half recorded) and ten requests to refuse, over different scopes.
+
+The score compares every response with the development suite's oracle. A
+list is correct when it cites exactly the scope's records. A presence
+check is understood when the resolved concept is the concept meant, an
+ancestor or a descendant of it, and exact when the answer also returns
+exactly the records of the concept meant. A refusal is correct when the
+response is a clarification or an abstention. The file's SHA-256 is
+recorded with the result.
 
 ## Limits
 
 - One condition per question. Dates, times, the order of events and
-  counts are not answered.
+  counts are not answered, but a ranking question that also asks for a
+  list ("list the top three diagnoses") is answered with the whole
+  unranked list (see the held-out results).
 - Negated questions ("is heart failure not recorded") and unusual wording
   get a clarification rather than a guess.
 - Answers report recorded condition records, never clinical status,
@@ -260,7 +355,16 @@ available, against their actual layout.
 & $AppPython -m ehr_evidence_app.qa.suite --operator-real --vocabulary-sweep
 & $AppPython -m ehr_evidence_app.qa.suite --operator-real --case-set dev-30-v1
 & $AppPython -m ehr_evidence_app.qa.suite --operator-real --case-set pilot-10-v1
+& $AppPython -m ehr_evidence_app.qa.heldout
+& $AppPython -m ehr_evidence_app.qa.heldout --operator-real --partition
+& $AppPython -m ehr_evidence_app.qa.heldout --operator-real --held-out
+& $AppPython -m ehr_evidence_app.qa.written
+& $AppPython -m ehr_evidence_app.qa.written --operator-real --template
+& $AppPython -m ehr_evidence_app.qa.written --operator-real --overview dev-30-v1
+& $AppPython -m ehr_evidence_app.qa.written --operator-real --score
 ```
 
-The vocabulary build writes one new protected directory and refuses an
-existing one. The suite and the sweep write nothing.
+The vocabulary build and the partition record each write one new
+protected directory and refuse an existing one; the template and the
+overview write one new protected file each. The suite, the sweep, the
+held-out test and the score write nothing.

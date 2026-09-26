@@ -40,8 +40,9 @@ described in [evidence.md](evidence.md) and decided in
 ## Phase 5. Natural-language QA
 
 Described in [qa.md](qa.md) and decided in
-[ADR 0006](decisions/0006-condition-vocabulary.md) and
-[ADR 0007](decisions/0007-rule-based-qa.md).
+[ADR 0006](decisions/0006-condition-vocabulary.md),
+[ADR 0007](decisions/0007-rule-based-qa.md) and
+[ADR 0008](decisions/0008-question-set-partitions.md).
 
 - 31 Interpret tasks (done; rule-based)
 - 32 Resolve concepts (done)
@@ -52,7 +53,11 @@ Described in [qa.md](qa.md) and decided in
   oracle (done: 1,550 of 1,550 questions on `dev-30-v1`, 648 of 648 on
   the pilot)
 - 34.2 Measure interpretation on held-out wording from MIMIC-IV-Ext-Instr
-  (open: needs credentialed access to the dataset)
+  (done: partitions fixed; 31,235 of 32,392 held-out questions as
+  expected, no question about other data answered, 987 ranking questions
+  answered with an unranked list)
+- 34.3 Measure presence-check wording on questions written by someone who
+  has not read the rules (open: waits on the written questions)
 
 ## Phase 6. Validation
 

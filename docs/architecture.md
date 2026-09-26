@@ -61,7 +61,7 @@ attribution.
 | Experiment tracking and lineage foundations | implemented |
 | Inherited GNN integration | implemented and closed for the 10-person development pilot |
 | Evidence contracts, records, event linkage and bundles | implemented for the development pilot and the development and evaluation case sets |
-| Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out wording test open |
+| Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out wording test done; written wording test open |
 | LLM generation, validation | planned |
 | API, interface and evaluation | planned |
 
@@ -79,7 +79,7 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `gnn` | Inherited GNN baseline, asset validation, identity mapping, preprocessing parity, offline outputs, provenance, split membership, run binding, Phase 3 closure, driver-to-event linkage | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission`, `linkage` |
 | `evidence` | Request and response contracts, evidence records, snapshot and case readers, readable names, scoped retrieval, claim policy, QA and explanation bundles | `vocabulary`, `contracts`, `schema`, `readers`, `concepts`, `retrieval`, `policy`, `bundles` |
 | `casesets` | Case-set registry, seeded case-set selection, case-set preparation | `registry`, `selection`, `prepare` |
-| `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, scoped answers, development suite | `vocabulary`, `resolve`, `interpret`, `scope`, `answer`, `suite` |
+| `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, scoped answers, development suite, held-out and written wording tests | `vocabulary`, `resolve`, `interpret`, `scope`, `answer`, `suite`, `heldout`, `written` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
@@ -175,6 +175,9 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | 30.1 | `gnn.linkage --case-set` | `protected-data\evidence\event-linkage-<case set>` |
 | 30.1 | `evidence.bundles --case-set` | `protected-data\evidence-bundles\<case set>` |
 | 32.1 | `qa.vocabulary` | `protected-data\vocabularies\condition-vocabulary-athena-20260831-v1` |
+| 34.2 | copied unchanged | `protected-data\question-sets\mimic-iv-ext-instr` |
+| 34.2 | `qa.heldout` | `protected-data\question-sets\mimic-iv-ext-instr-partitions-v1` |
+| 34.3 | `qa.written` | `protected-data\question-sets\written-v1` |
 
 Work items 16 (bridge output contract) and 18 (target and history policy)
 are specifications; they are described in
