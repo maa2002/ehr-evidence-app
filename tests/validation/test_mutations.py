@@ -37,6 +37,24 @@ class MutationTests(unittest.TestCase):
                       "check_fails_to_run", "control_non_causation"):
             self.assertIn(error, classes)
 
+    def test_model_mistakes_are_exercised(self):
+        """Version 2: the mistakes a language model can make and a
+        template cannot are in the run."""
+        classes = set(COUNTS["classes"])
+        for error in ("refusal_of_answerable_request",
+                      "answer_about_another_condition",
+                      "empty_list_for_recorded_scope", "missing_notice",
+                      "extra_notice", "duplicate_notice",
+                      "statements_out_of_order",
+                      "history_under_another_driver",
+                      "fact_of_another_record", "name_of_another_record",
+                      "hedged_wording", "ranking_wording",
+                      "count_in_words", "interpretive_wording",
+                      "association_wording", "course_wording",
+                      "certainty_wording", "recency_wording"):
+            self.assertIn(error, classes)
+        self.assertEqual(mutations.SUITE_VERSION, "validation-mutations-v2")
+
     def test_samples_cover_every_outcome(self):
         """Answers, negatives, refusals, clarifications and an
         explanation are sampled."""

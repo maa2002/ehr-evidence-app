@@ -95,6 +95,31 @@ class SupportTests(unittest.TestCase):
         self.assertEqual(support.check(good, incomplete, VOCAB),
                          ("claim_unsupported",))
 
+    def test_presence_conditions_are_named_once(self):
+        """One condition split into two items of the same match kind is
+        unsupported, although each item alone is true."""
+        result = ask("Is synthetic parent disorder recorded?", ALL)
+        bundle = BUNDLES.qa_bundle(1, ALL)[0]
+        good = result.candidate
+        index = next(number for number, statement in enumerate(
+            good.statements) if statement.kind == "presence_item"
+            and len(statement.refs) > 1)
+        item = good.statements[index]
+        events = candidates.bundle_events(bundle)
+        halves = tuple(item.model_copy(update={
+            "refs": refs, "slots": item.slots.model_copy(update={
+                "condition": candidates.ConditionName(event=refs[0]),
+                "count": len(refs),
+                "visits": support.visits_of(bundle, [events[ref]
+                                                     for ref in refs])})})
+            for refs in (item.refs[:1], item.refs[1:]))
+        split = good.model_copy(update={
+            "statements": good.statements[:index] + halves
+            + good.statements[index + 1:]})
+        self.assertEqual(support.check(good, bundle, VOCAB), ())
+        self.assertEqual(support.check(split, bundle, VOCAB),
+                         ("claim_unsupported",))
+
     def test_refusals_state_no_records(self):
         """Clarifications and abstentions have nothing to support."""
         result = ask("What medications is she on?", HISTORY)

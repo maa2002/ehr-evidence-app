@@ -6,29 +6,35 @@ condition named "Pneumonia caused by a virus" never trips a rule. Every
 statement of every released outcome is read: answers, refusals and
 clarifying questions (and, from work item 38, explanations).
 
-Rules version wording-rules-v2 prohibits (prohibited_wording):
+Rules version wording-rules-v3 prohibits (prohibited_wording):
 
 * causal or directional attribution ("caused", "led to", "due to",
-  "raised the risk", "risk factor");
+  "raised the risk", "risk factor", "associated with", "secondary to");
 * percentage contribution ("40%", "percent", "a share of");
 * exclusivity ("the only diagnosis", "solely", "nothing else");
 * clinical status, severity or course ("the patient has" as a fact,
-  "severe", "resolved", "worsening");
+  "severe", "resolved", "worsening", "chronic", "currently", "active");
 * advice ("should be treated", "recommend", "start therapy");
-* certainty ("definitely", "proves", "confirms");
-* diagnosis ("diagnosed with", "consistent with", "likely has");
+* certainty ("definitely", "proves", "confirms", "clearly");
+* diagnosis ("diagnosed with", "consistent with", "likely has",
+  "suggests", "indicates", "a sign of");
 * model performance ("AUROC", "accuracy"), which single-case
   predictions never state;
 * in explanations, the model's score as a risk or probability, and a
-  prediction read as prospective ("in advance", "forecast").
+  prediction read as prospective ("in advance", "forecast");
+* in answers and explanations, hedged facts ("possibly", "may", "seems
+  to"), rankings ("the main", "most important", "key") and counts or
+  quantities in words ("three", "several", "most"): every fact is
+  certain, unranked and stated by a slot.
 
 Causal, diagnostic and risk words pass when a negation comes shortly
 before them in the same clause ("attribution does not mean causation",
 "this application does not diagnose", "not a clinical risk"). Version
 1 also let a negation in an earlier clause pardon them ("X is not
 recorded, caused by ..."); the mutation suite (validation.mutations)
-found it. Dates, recurrence and
-frequency are never typed into a wording (date_unsupported); an
+found it. Version 3 adds the phrasings a language model writes around
+facts and a template never does. Dates, recurrence, frequency and
+recency are never typed into a wording (date_unsupported); an
 explanation states how often and in which visits a driver's concept was
 recorded only through the slots of a statement that cites its linked
 events, as the evidence claim policy allows (validation.explanation).
@@ -49,7 +55,7 @@ import sys
 
 from ehr_evidence_app.validation import candidate as candidates
 
-RULES_VERSION = "wording-rules-v2"
+RULES_VERSION = "wording-rules-v3"
 # Stands in for a slot, so that no fact is read as wording.
 SLOT = "X"
 NEGATIONS = frozenset(("not", "no", "never", "nor", "without", "cannot",
@@ -59,14 +65,18 @@ NEGATION_WINDOW = 4
 CLAUSE_END = re.compile(r"[.,;:!?()]")
 # (rule, pardoned by a negation, pattern, outcomes it applies to; None for
 # every outcome)
+# The outcomes that state recorded facts.
+FACT_OUTCOMES = ("answer", "not_recorded", "explanation")
 PROHIBITED = (
     ("causal", True, re.compile(
         r"\b(?:caus(?:e|es|ed|ing|al|ally|ation|ative)|led to|leads? to|"
-        r"leading to|results? in|resulted in|resulting in|due to|because "
-        r"of|owing to|responsible for|contribut(?:e|es|ed|ing) to|"
+        r"leading to|results? in|resulted in|resulting in|due to|because|"
+        r"owing to|responsible for|contribut(?:e|es|ed|ing) to|"
         r"trigger(?:s|ed|ing)?|(?:increas|rais|lower|reduc|decreas)(?:e|es|"
         r"ed|ing) the (?:risk|likelihood|chance|odds|probability)|risk "
-        r"factors?|predispos\w*|explains? why)\b"), None),
+        r"factors?|predispos\w*|explains? why|associated with|secondary "
+        r"to|complications? of|attributable to|driven by|as a "
+        r"(?:result|consequence) of|consequen\w*)\b"), None),
     ("percentage", False, re.compile(
         r"(?:\b[0-9]+(?:\.[0-9]+)? ?%|%|\bper ?cent\w*|\bpercentage\w*|"
         r"\b(?:a|the) (?:share|proportion|fraction) of)"), None),
@@ -80,7 +90,9 @@ PROHIBITED = (
         r"suffering|suffers|suffered|is ill)|severe|severity|mild|moderate|"
         r"worsen\w*|improv(?:e|es|ed|ing)|resolved|resolving|stable|unstable|"
         r"critical|fatal|terminal|curable|incurable|in remission|"
-        r"life ?threatening)\b"), None),
+        r"life ?threatening|current(?:ly)?|ongoing|active|inactive|chronic|"
+        r"acute|known|pre-?existing|underlying|newly|new-onset|"
+        r"long-?standing|(?:un|well-|poorly )?controlled)\b"), None),
     ("advice", False, re.compile(
         r"\b(?:should|must|ought to|recommend\w*|advis(?:e|es|ed|able)|"
         r"prescrib\w*|(?:start|stop|begin|continue|change) (?:the )?"
@@ -89,7 +101,8 @@ PROHIBITED = (
     ("certainty", False, re.compile(
         r"\b(?:definitely|certainly|undoubtedly|conclusively|definitive\w*|"
         r"proves?|proven|confirms?|confirmed|guarantee\w*|without (?:a )?"
-        r"doubt|for sure)\b"), None),
+        r"doubt|for sure|clear(?:ly)?|obvious(?:ly)?|evident(?:ly)?|surely|"
+        r"unquestionabl\w*|undeniabl\w*|established)\b"), None),
     ("performance", False, re.compile(
         r"\b(?:auroc|auc|roc|accuracy|accurate|f1 score|precision|recall|"
         r"sensitivity and specificity)\b"), None),
@@ -97,7 +110,10 @@ PROHIBITED = (
         r"\b(?:diagnosed with|(?:is|was|been) diagnosed|diagnose[sd]? "
         r"(?:the patient|him|her|them)|we diagnose|diagnose\b|consistent "
         r"with|suggestive of|indicative of|likely has|probably has|may have|"
-        r"might have|could have)\b"), None),
+        r"might have|could have|suggest\w*|indicat(?:e|es|ed|ing|ion|ions|"
+        r"ive)|points? to|in keeping with|compatible with|typical of|"
+        r"characteristic of|signs? of|symptoms? of|manifestations? of)\b"),
+     None),
     ("score_as_risk", True, re.compile(
         r"\b(?:risks?|likelihood|probabilit(?:y|ies)|chances?|odds)\b"),
      ("explanation",)),
@@ -105,6 +121,22 @@ PROHIBITED = (
         r"\b(?:prospective\w*|in advance|ahead of time|beforehand|"
         r"forecast\w*|early warning|would have predicted|will develop|"
         r"going to develop)\b"), ("explanation",)),
+    ("hedging", False, re.compile(
+        r"\b(?:possibl[ey]|probabl[ey]|perhaps|maybe|likely|unlikely|"
+        r"presumabl[ey]|apparent(?:ly)?|appears? to|seems? to|may|might|"
+        r"could)\b"), FACT_OUTCOMES),
+    ("ranking", False, re.compile(
+        r"\b(?:main|mainly|primary|primarily|principal|chief|chiefly|most "
+        r"(?:important|significant|influential|relevant|notable)|leading|"
+        r"dominant|predominant\w*|major|key|strongest|biggest|largest|top|"
+        r"mostly|largely)\b"), FACT_OUTCOMES),
+    ("count_words", False, re.compile(
+        r"\b(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+        r"thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|"
+        r"twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|"
+        r"thousands?|dozens?|double|triple|half|quarter|several|many|few|"
+        r"multiple|numerous|majority|minority|countless|most)\b"),
+     FACT_OUTCOMES),
 )
 DATES = re.compile(
     r"\b(?:[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}/[0-9]{1,2}(?:/[0-9]{2,4})?|"
@@ -114,7 +146,9 @@ DATES = re.compile(
     r"recur\w*|repeated\w*|again|twice|thrice|[0-9]+ times|frequent\w*|"
     r"often|regularly|every (?:day|week|month|year|visit|admission)|"
     r"(?:daily|weekly|monthly|yearly|annually)|persistent\w*|"
-    r"progress\w*)\b")
+    r"progress\w*|recent\w*|lately|latest|earliest|oldest|newest|"
+    r"(?:first|last|previous|prior|next|earlier|later) (?:visits?|"
+    r"admissions?|stays?|times?|years?|months?|weeks?))\b")
 
 
 def neutral(wording):
@@ -185,6 +219,26 @@ SYNTHETIC_WORDINGS = (
     ("{label} has a risk of {score}.", ("prohibited_wording",)),
     ("The model forecasts {label}.", ("prohibited_wording",)),
     ("The model has an AUROC of 0.9.", ("prohibited_wording",)),
+    # Version 3: what a language model writes around facts.
+    ("{condition} is possibly recorded within {scope}.",
+     ("prohibited_wording",)),
+    ("{condition} is the main condition within {scope}.",
+     ("prohibited_wording",)),
+    ("{condition} is recorded in three visits: {visits}.",
+     ("prohibited_wording",)),
+    ("{condition} suggests heart disease.", ("prohibited_wording",)),
+    ("{condition} is chronic and currently active.",
+     ("prohibited_wording",)),
+    ("{condition} is clearly recorded.", ("prohibited_wording",)),
+    ("{driver} is associated with {label}.", ("prohibited_wording",)),
+    ("{condition} was recorded recently, in {visits}.",
+     ("date_unsupported",)),
+    ("{condition}: {count} in {visits}, in the last admission.",
+     ("date_unsupported",)),
+    ("{condition} does not suggest a diagnosis.", ()),
+    ("{driver}: {count} in {visits}, before the final admission", ()),
+    ("{label} is the label the model selected, one output of its "
+     "multi-label prediction.", ()),
 )
 
 

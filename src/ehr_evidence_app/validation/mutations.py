@@ -30,6 +30,21 @@ to an answer). Results are counted per error class:
 * item 40: a check that fails to run (operational error,
   validator_failed).
 
+Version 2 adds the mistakes a language model can make and a template
+cannot, since in Phase 7 the model writes the candidates:
+
+* a refusal of a request whose bundle is bound (scope_violated), an
+  answer about another condition than the one asked about
+  (scope_violated), and an empty list for a scope with records
+  (claim_unsupported);
+* a missing, extra or repeated notice, and statements out of their
+  order, including a driver's history under another driver
+  (structure_invalid);
+* a fact or the name of another record (claim_unsupported);
+* hedged, ranking, interpretive, association, status and certainty
+  wording and counts in words (prohibited_wording), and recency
+  (date_unsupported).
+
 The default mode uses invented fixtures. The operator mode uses the
 development case sets and prints aggregate counts only; the evaluation case
 set is never used.
@@ -57,7 +72,7 @@ from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import evidence, explanation, gate, \
     structure
 
-SUITE_VERSION = "validation-mutations-v1"
+SUITE_VERSION = "validation-mutations-v2"
 REJECTION = "validation_rejection"
 # Phrases added to a statement's wording, by error class.
 WORDINGS = {
@@ -70,8 +85,20 @@ WORDINGS = {
     "status_wording": ", now resolved",
     "date_wording": ", in March",
     "recurrence_wording": ", recorded again",
+    # What a language model writes around facts (version 2).
+    "hedged_wording": ", possibly",
+    "ranking_wording": ", the main one",
+    "count_in_words": ", in three visits",
+    "interpretive_wording": ", which suggests heart disease",
+    "association_wording": ", associated with the admission",
+    "course_wording": ", currently active",
+    "certainty_wording": ", clearly",
+    "recency_wording": ", recorded recently",
 }
-DATE_CLASSES = ("date_wording", "recurrence_wording")
+DATE_CLASSES = ("date_wording", "recurrence_wording", "recency_wording")
+# The notice an answer of each kind may not hold, for the extra-notice class.
+FOREIGN_NOTICES = {"answer": "absence", "not_recorded": "list_complete",
+                   "explanation": "absence"}
 CONTROL = ", which does not mean causation"
 
 
@@ -81,7 +108,8 @@ class MutationError(Exception):
 
 @dataclasses.dataclass(frozen=True)
 class Sample:
-    """A correct candidate, the request it answers and its bundle."""
+    """A correct candidate, the request it answers and its bundle; for a
+    presence check, the condition the question was resolved to."""
 
     candidate: candidates.Candidate
     request: contracts.Request | None
@@ -90,6 +118,7 @@ class Sample:
     bundle: object = None
     digest: str | None = None
     vocab: object = None
+    condition: candidates.ConditionName | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -279,7 +308,8 @@ def explanation_mutants(sample):
     names = {0: "altered_score", 1: "altered_label",
              2: "altered_attribution_score", 3: "omitted_driver",
              4: "reordered_drivers", 5: "zero_score_driver_described",
-             6: "restriction_misdisclosed"}
+             6: "restriction_misdisclosed",
+             8: "history_under_another_driver"}
     found = [Mutant(names[index], REJECTION, expected, fault,
                     bundle=faulty)
              for index, (expected, fault, faulty) in enumerate(faults)
@@ -354,6 +384,109 @@ def bundle_mutants(sample):
     return found
 
 
+def notice_mutants(good):
+    """Return mutants of the notices and order of an answer or
+    explanation: a required notice left out or repeated, a notice of
+    another outcome added, the first two statements swapped."""
+    found = []
+    required = [index for index in indices(good, "notice")
+                if good.statements[index].notice in ("list_complete",
+                                                     "absence",
+                                                     "score_meaning")]
+    if required:
+        index = required[0]
+        found.append(Mutant("missing_notice", REJECTION, "structure_invalid",
+                            good.model_copy(update={"statements": tuple(
+                                item for number, item in enumerate(
+                                    good.statements) if number != index)})))
+        found.append(Mutant("duplicate_notice", REJECTION,
+                            "structure_invalid", good.model_copy(update={
+                                "statements": good.statements
+                                + (good.statements[index],)})))
+    found.append(Mutant("extra_notice", REJECTION, "structure_invalid",
+                        good.model_copy(update={
+                            "statements": good.statements + (
+                                candidates.notice(
+                                    FOREIGN_NOTICES[good.outcome]),)})))
+    found.append(Mutant("statements_out_of_order", REJECTION,
+                        "structure_invalid", good.model_copy(update={
+                            "statements": good.statements[1:2]
+                            + good.statements[:1] + good.statements[2:]})))
+    return found
+
+
+def record_mutants(good):
+    """Return mutants that give a statement a fact or the name of another
+    record: a list or presence item with another item's count, visits or
+    name, an explanation's history with another driver's records."""
+    found = []
+    items = indices(good, "list_item") or indices(good, "presence_item")
+    if len(items) > 1:
+        first, second = (good.statements[index] for index in items[:2])
+        if first.slots.count != second.slots.count:
+            found.append(Mutant("fact_of_another_record", REJECTION,
+                                "claim_unsupported",
+                                reslot(good, items[0],
+                                       count=second.slots.count)))
+        elif first.slots.visits != second.slots.visits:
+            found.append(Mutant("fact_of_another_record", REJECTION,
+                                "claim_unsupported",
+                                reslot(good, items[0],
+                                       visits=second.slots.visits)))
+        found.append(Mutant("name_of_another_record", REJECTION,
+                            "claim_unsupported", reslot(
+                                good, items[0],
+                                condition=candidates.ConditionName(
+                                    event=second.refs[0]))))
+    histories = indices(good, "driver_history")
+    if len(histories) > 1:
+        first, second = (good.statements[index] for index in histories[:2])
+        if set(first.refs) != set(second.refs):
+            found.append(Mutant("fact_of_another_record", REJECTION,
+                                "claim_unsupported", replace(
+                                    good, histories[0], refs=second.refs,
+                                    slots=first.slots.model_copy(update={
+                                        "count": second.slots.count,
+                                        "visits": second.slots.visits}))))
+    return found
+
+
+def model_mutants(sample):
+    """Return the mistakes a language model can make and a template
+    cannot, on an answer or explanation (version 2)."""
+    good = sample.candidate
+    found = [Mutant("refusal_of_answerable_request", REJECTION,
+                    "scope_violated", good.model_copy(update={
+                        "outcome": "abstention", "bundle": None,
+                        "reason_codes": ("coverage_incomplete",),
+                        "statements": (candidates.notice(
+                            "coverage_incomplete"),)}))]
+    found += notice_mutants(good) + record_mutants(good)
+    if good.task == "condition_list" and good.outcome == "answer":
+        found.append(Mutant("empty_list_for_recorded_scope", REJECTION,
+                            "claim_unsupported", good.model_copy(update={
+                                "outcome": "not_recorded",
+                                "statements": (templates.statement(
+                                    "list_empty", refs=("C1",),
+                                    scope=good.scope),
+                                    candidates.notice("absence"))})))
+    if good.task == "condition_presence" and sample.condition is not None:
+        asked = set(sample.condition.concepts)
+        other = next((concept for concept in sorted(sample.vocab.rows)
+                      if concept not in asked), None)
+        if other is not None:
+            name = candidates.ConditionName(concepts=(other,))
+            statements = tuple(
+                item.model_copy(update={"slots": item.slots.model_copy(
+                    update={"condition": name})})
+                if item.kind in structure.ASKED else item
+                for item in good.statements)
+            found.append(Mutant("answer_about_another_condition", REJECTION,
+                                "scope_violated", good.model_copy(
+                                    update={"statements": statements})))
+    return found
+
+
 def mutants(sample):
     """Return every mutant that applies to a sample."""
     found = contract_mutants(sample) + wording_mutants(sample)
@@ -366,7 +499,7 @@ def mutants(sample):
             sample.candidate.outcome == "explanation"):
         found += explanation_mutants(sample)
     if sample.candidate.outcome in ("answer", "not_recorded", "explanation"):
-        found += bundle_mutants(sample)
+        found += bundle_mutants(sample) + model_mutants(sample)
     found.append(Mutant("check_fails_to_run", "operational_error",
                         "validator_failed", sample.candidate,
                         checks=[("crashing", crashing)]))
@@ -378,11 +511,16 @@ def mutants(sample):
 # --------------------------------------------------------------------------
 
 def released(sample, candidate, bundle=None, checks=None):
-    """Return (outcome, reason codes) of a candidate through the gate."""
+    """Return (outcome, reason codes) of a candidate through the gate, for
+    the sample's request: its bundle is bound when the request is
+    answered from evidence, whatever the candidate names, and a presence
+    check names the condition asked about."""
+    bound = sample.candidate.bundle is not None
     response = gate.release(candidate, candidate.request_id, sample.case,
-                            sample.scope, bundle or sample.bundle
-                            if candidate.bundle is not None else None,
-                            sample.digest, sample.vocab, checks)
+                            sample.scope,
+                            (bundle or sample.bundle) if bound else None,
+                            sample.digest, sample.vocab, checks,
+                            condition=sample.condition)
     return response.outcome, response.reason_codes
 
 
@@ -455,13 +593,13 @@ def qa_samples(case_set, bundle_set, vocab, requested):
         case = contracts.CaseRef(case_set=case_set, case_number=case_number)
         ref = contracts.BundleRef(bundle_id=bundle.bundle_id, sha256=digest)
 
-        def sample(candidate, task):
+        def sample(candidate, task, condition=None):
             """Return a sample of a candidate for a task in this scope."""
             request = contracts.Request(
                 schema_version="1.0", request_id=candidate.request_id,
                 task=task, case=case, scope=scope, question="Invented.")
             return Sample(candidate, request, case, scope, bundle, digest,
-                          vocab)
+                          vocab, condition)
 
         rid = "m-%05d" % index
         candidate, _ = templates.list_candidate(rid, case, scope, bundle,
@@ -481,7 +619,8 @@ def qa_samples(case_set, bundle_set, vocab, requested):
             matches = answer.record_matches(bundle, resolution, vocab)
             candidate = templates.presence_candidate(
                 rid, case, scope, bundle, ref, resolution, matches)
-            found.append(sample(candidate, "condition_presence"))
+            found.append(sample(candidate, "condition_presence",
+                                templates.resolved_name(resolution)))
     for case_number, scope, question in requested:
         result = answer.answer(question, case_set, case_number, scope,
                                bundle_set, vocab, "m-question", limits)

@@ -17,10 +17,17 @@ GOOD = structure.synthetic_list(BUNDLE, DIGEST)
 HISTORY = contracts.ScopeRef(kind="pre_target_history")
 
 
-def check(candidate, concept_name=None):
-    """Check a candidate for the invented request and bundle."""
-    return structure.check(candidate, "q-1", GOOD.case, GOOD.scope, BUNDLE,
-                           DIGEST, concept_name)
+def check(candidate, concept_name=None, condition=None, bound=None):
+    """Check a candidate for the invented request, with the invented
+    bundle bound when the candidate answers from evidence (or as bound
+    says)."""
+    if bound is None:
+        bound = candidate.outcome in ("answer", "not_recorded",
+                                      "explanation")
+    return structure.check(candidate, "q-1", GOOD.case, GOOD.scope,
+                           BUNDLE if bound else None,
+                           DIGEST if bound else None, concept_name,
+                           condition)
 
 
 def clarification(*statements, **fields):
@@ -41,9 +48,10 @@ class StructureTests(unittest.TestCase):
         self.assertEqual(check(GOOD), ())
 
     def test_faults(self):
-        """Wording, references, composition, reasons, case and bundle."""
+        """Wording, references, composition, order, reasons, case and
+        bundle, for the request with its bundle bound."""
         for expected, variant in structure.synthetic_variants(GOOD):
-            self.assertIn(expected, check(variant), expected)
+            self.assertIn(expected, check(variant, bound=True), expected)
 
     def test_parse(self):
         """A malformed document is structure_invalid before any check."""
@@ -69,8 +77,8 @@ class StructureTests(unittest.TestCase):
     def test_clarifications_cite_nothing(self):
         """A clarification has no bundle and cites no evidence."""
         notice = candidates.notice("concept_unknown", term="florbnitis")
-        self.assertEqual(check(clarification(notice, bundle=GOOD.bundle)),
-                         ("structure_invalid",))
+        self.assertEqual(check(clarification(notice, bundle=GOOD.bundle),
+                               bound=True), ("structure_invalid",))
         cited = notice.model_copy(update={"refs": ("C1",)})
         self.assertIn("structure_invalid", check(clarification(cited)))
 
@@ -81,6 +89,53 @@ class StructureTests(unittest.TestCase):
             "slots": items[0].slots.model_copy(update={"scope": HISTORY})})
         self.assertEqual(check(GOOD.model_copy(update={
             "statements": tuple(items)})), ("scope_violated",))
+
+    def test_bound_requests_are_answered_from_their_bundle(self):
+        """A refusal of a request whose bundle is bound, and complete, is
+        a scope violation; the same refusal without a bundle passes."""
+        refusal = GOOD.model_copy(update={
+            "outcome": "abstention", "bundle": None,
+            "reason_codes": ("coverage_incomplete",),
+            "statements": (candidates.notice("coverage_incomplete"),)})
+        self.assertEqual(structure.check(refusal, "q-1", GOOD.case,
+                                         GOOD.scope, BUNDLE, DIGEST),
+                         ("scope_violated",))
+        self.assertEqual(check(refusal), ())
+
+    def test_notices_are_stated_once(self):
+        """A notice stated twice is refused."""
+        self.assertEqual(check(GOOD.model_copy(update={
+            "statements": GOOD.statements + GOOD.statements[-1:]})),
+            ("structure_invalid",))
+
+    def test_statements_keep_their_order(self):
+        """An item before its summary, or the notice inside the list, is
+        refused; the template order passes."""
+        items = GOOD.statements
+        for reordered in (items[1:2] + items[:1] + items[2:],
+                          items[:1] + items[-1:] + items[1:-1]):
+            self.assertEqual(check(GOOD.model_copy(update={
+                "statements": reordered})), ("structure_invalid",))
+
+    def test_presence_answers_name_the_condition_asked_about(self):
+        """A presence answer about another condition than the question's
+        is a scope violation."""
+        absent = candidates.Candidate(
+            schema_version="1.0", request_id="q-1",
+            task="condition_presence", case=GOOD.case, scope=GOOD.scope,
+            outcome="not_recorded", bundle=GOOD.bundle,
+            statements=(candidates.Statement(
+                kind="presence_absent",
+                wording="{condition} is not recorded within {scope}.",
+                slots=candidates.Slots(
+                    condition=candidates.ConditionName(code="Z99"),
+                    scope=GOOD.scope), refs=("C1",)),
+                candidates.notice("absence")))
+        asked = candidates.ConditionName(code="Z99")
+        other = candidates.ConditionName(code="Z98")
+        self.assertEqual(check(absent, condition=asked), ())
+        self.assertEqual(check(absent, condition=other),
+                         ("scope_violated",))
 
     def test_concepts_must_be_in_the_vocabulary(self):
         """A named concept the vocabulary lacks does not resolve."""

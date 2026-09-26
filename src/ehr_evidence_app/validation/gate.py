@@ -68,18 +68,21 @@ def withheld(candidate, request_id, case, scope, outcome, reasons):
 
 
 def release(candidate, request_id, case, scope, bundle=None,
-            bundle_sha256=None, vocab=None, checks=None):
+            bundle_sha256=None, vocab=None, checks=None, condition=None):
     """Return the Response of a candidate for the request (request_id,
     case, scope): rendered from it when every required check passes, a
     validation rejection when any finds a problem, an operational error
     when one fails to run.
 
-    checks replaces the required checks after structure (for tests).
+    bundle is the bundle bound to the request, if any; condition is the
+    ConditionName a presence question was resolved to. checks replaces
+    the required checks after structure (for tests).
     """
     concept_name = concept_namer(vocab)
     try:
         problems = set(structure.check(candidate, request_id, case, scope,
-                                       bundle, bundle_sha256, concept_name))
+                                       bundle, bundle_sha256, concept_name,
+                                       condition))
         if not problems:
             for _, check in (required_checks(candidate) if checks is None
                              else checks):

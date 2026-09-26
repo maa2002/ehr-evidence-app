@@ -248,6 +248,31 @@ def explain(request, bundle, bundle_sha256):
 # Synthetic default mode (invented fixtures only)
 # --------------------------------------------------------------------------
 
+def driver_blocks(candidate):
+    """Return (head, blocks, tail) of an explanation in its order: the
+    statements before the first driver, each driver with the lines under
+    it, and the notices after them."""
+    items = list(candidate.statements)
+    first = next(index for index, item in enumerate(items)
+                 if item.kind == "driver")
+    end = first
+    while end < len(items) and items[end].kind != "notice":
+        end += 1
+    blocks = []
+    for item in items[first:end]:
+        if item.kind == "driver":
+            blocks.append([])
+        blocks[-1].append(item)
+    return items[:first], blocks, items[end:]
+
+
+def ranked(block, rank):
+    """Return a driver block with its driver's rank changed."""
+    driver = block[0]
+    return [driver.model_copy(update={"slots": driver.slots.model_copy(
+        update={"rank": rank})})] + block[1:]
+
+
 def synthetic_faults(good, bundle):
     """Return (expected reason code, candidate, bundle) triples of invented
     faults of a correct explanation."""
@@ -261,33 +286,33 @@ def synthetic_faults(good, bundle):
             "slots": items[index].slots.model_copy(update=slots)})
         return good.model_copy(update={"statements": tuple(items)})
 
-    drivers = [index for index, item in enumerate(good.statements)
-               if item.kind == "driver"]
-    first = good.statements[drivers[0]]
-    swapped = list(good.statements)
-    swapped[drivers[0]], swapped[drivers[1]] = (
-        swapped[drivers[1]].model_copy(update={"slots": swapped[
-            drivers[1]].slots.model_copy(update={"rank": 1})}),
-        swapped[drivers[0]].model_copy(update={"slots": swapped[
-            drivers[0]].slots.model_copy(update={"rank": 2})}))
+    def assembled(blocks):
+        """Return the candidate with its driver blocks replaced."""
+        return good.model_copy(update={"statements": tuple(
+            head + [item for block in blocks for item in block] + tail)})
+
+    head, blocks, tail = driver_blocks(good)
+    first = blocks[0][0]
+    # The drivers without the first, ranked again; the first two swapped.
+    omitted = assembled([ranked(block, rank)
+                         for rank, block in enumerate(blocks[1:], 1)])
+    swapped = assembled([ranked(blocks[1], 1), ranked(blocks[0], 2)]
+                        + blocks[2:])
     # The same explanation, for a bundle whose first driver scores zero.
     zeroed = bundle.model_copy(update={"attributions": tuple(
         item.model_copy(update={"score": 0.0, "score_class": "zero",
                                 "narration_eligible": False})
         if item.ref == first.slots.driver else item
         for item in bundle.attributions)})
-    return [
+    faults = [
         ("prediction_altered", changed("prediction",
                                        score=bundle.prediction.score / 2),
          bundle),
         ("prediction_altered", changed("prediction", logit=-1.0), bundle),
         ("attribution_altered", changed("driver",
                                         score=first.slots.score * 2), bundle),
-        ("attribution_altered", good.model_copy(update={
-            "statements": tuple(item for item in good.statements
-                                if item is not first)}), bundle),
-        ("attribution_altered", good.model_copy(update={
-            "statements": tuple(swapped)}), bundle),
+        ("attribution_altered", omitted, bundle),
+        ("attribution_altered", swapped, bundle),
         ("attribution_altered", good, zeroed),
         # Restrictions disclosed that are not the case's: none for a case
         # that has some, one for a case that has none.
@@ -299,6 +324,16 @@ def synthetic_faults(good, bundle):
                                 if item.notice != "attribution_meaning")}),
          bundle),
     ]
+    lined = [index for index, block in enumerate(blocks) if len(block) > 1]
+    if lined and len(blocks) > 1:
+        # A driver's history and context under another driver.
+        index = lined[0]
+        other = 1 if index == 0 else 0
+        moved = [list(block) for block in blocks]
+        moved[other] = moved[other] + moved[index][1:]
+        moved[index] = moved[index][:1]
+        faults.append(("structure_invalid", assembled(moved), bundle))
+    return faults
 
 
 def run_synthetic():

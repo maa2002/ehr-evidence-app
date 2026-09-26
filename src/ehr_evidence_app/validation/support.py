@@ -15,8 +15,8 @@ any failure is claim_unsupported:
 * every record a presence item cites matches the resolved condition by
   the match kind it states, found with the resolver's own matching
   (qa.resolve.match), and its count and visits are those of the cited
-  records; the answer cites every matching record of the scope, and its
-  summary counts them;
+  records; each condition is named once for each match kind; the answer
+  cites every matching record of the scope, and its summary counts them;
 * "not recorded" needs complete coverage and no record of the scope that
   matches the condition, and its note on records without a standard
   concept counts them;
@@ -141,12 +141,16 @@ def presence_supported(candidate, bundle, events, vocab):
             of_kind(candidate, "presence_unmapped"),
             bundle.coverage.unmapped_events_in_scope)
     items = of_kind(candidate, "presence_item")
+    if not all(item_supported(item, bundle, events)
+               and all(matches.get(ref) == item.slots.match
+                       for ref in item.refs) for item in items):
+        return False
     cited = [ref for item in items for ref in item.refs]
+    named = [(candidates.record_group(events[item.slots.condition.event]),
+              item.slots.match) for item in items]
     summary = of_kind(candidate, "presence_summary")[0].slots
-    return (all(item_supported(item, bundle, events)
-                and all(matches.get(ref) == item.slots.match
-                        for ref in item.refs) for item in items)
-            and len(cited) == len(set(cited)) and set(cited) == set(matches)
+    return (len(cited) == len(set(cited)) and set(cited) == set(matches)
+            and len(named) == len(set(named))
             and summary.matches == len(matches))
 
 

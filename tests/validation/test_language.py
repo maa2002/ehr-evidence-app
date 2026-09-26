@@ -85,6 +85,40 @@ class LanguageTests(unittest.TestCase):
             self.assertIn(rule, [found for _, found in
                                  language.findings(wording)], wording)
 
+    def test_model_phrasings(self):
+        """Version 3: hedged, ranked and counted facts are prohibited in
+        answers and explanations, where every fact is a certain slot, and
+        pass in refusals and clarifying questions; interpretive,
+        association, status, certainty and recency words everywhere."""
+        for wording, rule in (
+                ("{condition} is possibly recorded.", "hedging"),
+                ("{condition} may be recorded.", "hedging"),
+                ("{condition} is the main condition.", "ranking"),
+                ("{driver} is the key driver.", "ranking"),
+                ("{condition} is recorded in three visits.", "count_words"),
+                ("Several conditions are recorded.", "count_words")):
+            for outcome in ("answer", "not_recorded", "explanation"):
+                self.assertIn(rule, [found for _, found in language.findings(
+                    wording, outcome)], (wording, outcome))
+            self.assertEqual(codes(wording, "clarification"), (), wording)
+        for wording, rule in (
+                ("{condition} suggests heart disease.", "diagnosis"),
+                ("{condition} indicates an infection.", "diagnosis"),
+                ("{driver} is associated with {label}.", "causal"),
+                ("{condition} is secondary to {driver}.", "causal"),
+                ("{condition} is chronic.", "status"),
+                ("{condition} is currently active.", "status"),
+                ("{condition} is clearly recorded.", "certainty"),
+                ("{condition} was recorded recently.", "dates"),
+                ("{condition} is recorded in the last admission.", "dates")):
+            self.assertIn(rule, [found for _, found in
+                                 language.findings(wording)], wording)
+        # Words that merely contain a prohibited one pass.
+        for wording in ("{condition} is recorded in its domain.",
+                        "The evidence of {scope} was read.",
+                        "{condition} is not of unknown origin."):
+            self.assertEqual(codes(wording, "answer"), (), wording)
+
     def test_candidates(self):
         """A candidate breaking a rule gets its reason code."""
         bundle, digest = structure.synthetic_bundle()

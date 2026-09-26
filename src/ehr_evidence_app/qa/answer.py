@@ -327,11 +327,13 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
         task=interpretation.task, case=case, scope=scope,
         question=question)
 
-    def bound(candidate, cited=False, **fields):
-        """Return the Result of a candidate for the bound request."""
+    def bound(candidate, cited=False, condition=None, **fields):
+        """Return the Result of a candidate for the bound request; a
+        presence answer is checked against the condition asked about."""
         return Result(gate.release(candidate, request_id, case, scope,
                                    bundle if cited else None,
-                                   digest if cited else None, vocab),
+                                   digest if cited else None, vocab,
+                                   condition=condition),
                       request=request, bundle_sha256=digest,
                       candidate=candidate, **fields)
 
@@ -362,6 +364,8 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
     matches = record_matches(bundle, resolution, vocab)
     candidate = templates.presence_candidate(request_id, case, scope, bundle,
                                              bundle_ref, resolution, matches)
-    return bound(candidate, cited=True, resolution=resolution,
+    return bound(candidate, cited=True,
+                 condition=templates.resolved_name(resolution),
+                 resolution=resolution,
                  matched=tuple(sorted((event.domain, event.native_id)
                                       for event, _ in matches)))

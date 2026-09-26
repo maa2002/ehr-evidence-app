@@ -7,13 +7,23 @@ answers and the bundle bound to that request, before any other check:
   task and statements do not fit together; a wording's placeholders are
   not exactly the slots of its kind, a wording holds a digit (a fact
   typed outside the slots), or a notice's wording is not its approved
-  text; a statement cites evidence its kind does not cite; or the
-  response it renders would break the response contract;
+  text; a notice is stated twice; the statements are not in their
+  answer's order (a list's items follow its summary, an explanation's
+  history and context follow their own driver); a statement cites
+  evidence its kind does not cite; or the response it renders would break
+  the response contract;
 * scope_violated: the candidate, or a scope it states, names another
   request, case or scope, or another bundle than the one bound to the
   request (the citation check of evidence.schema, extended to candidates);
+  a request with a bound bundle is answered without it; a presence
+  answer names another condition than the one the question asks about;
 * reference_unresolved: a reference, a named event, driver or visit
   number, or a concept, that the bundle or the vocabulary lacks.
+
+A writer that is not the templates (the language model of Phase 7) can
+make mistakes the templates cannot, such as answering another condition,
+refusing an answerable request or reordering statements; these checks
+refuse them all.
 
 These checks say nothing about whether the cited records support what a
 statement says; that is work item 37 (validation.support).
@@ -54,6 +64,19 @@ COMPOSITION = {
                                                 "notice": (3, None)},
 }
 EVIDENTIAL = ("answer", "not_recorded")
+# The order of a QA answer's statements, by kind.
+ORDER = {
+    ("condition_list", "answer"): ("list_summary", "list_item",
+                                   "list_unmapped", "notice"),
+    ("condition_list", "not_recorded"): ("list_empty", "notice"),
+    ("condition_presence", "answer"): ("presence_summary", "presence_item"),
+    ("condition_presence", "not_recorded"): ("presence_absent",
+                                             "presence_unmapped", "notice"),
+}
+# The statements under an explanation's driver, in their order.
+DRIVER_LINES = ("driver_history", "driver_context")
+# The statements that name the condition a presence question asks about.
+ASKED = ("presence_summary", "presence_absent")
 
 
 def parse(document):
@@ -88,9 +111,10 @@ def outcome_problems(candidate):
 
 
 def binding_problems(candidate, bundle, bundle_sha256):
-    """Return problems of the bundle a candidate names."""
+    """Return problems of the bundle a candidate names. A request with a
+    bound bundle is answered from it, so the candidate must name it."""
     if candidate.bundle is None:
-        return set()
+        return {"scope_violated"} if bundle is not None else set()
     if (bundle is None or candidate.bundle.bundle_id != bundle.bundle_id
             or candidate.bundle.sha256 != bundle_sha256
             or bundle.case != candidate.case
@@ -187,7 +211,12 @@ def reference_problems(statement, candidate, bundle, concept_name):
 
 
 def composition_problems(candidate):
-    """Return problems of the statements an answer holds."""
+    """Return problems of the statements an answer holds. No notice is
+    stated twice."""
+    notices = [statement.notice for statement in candidate.statements
+               if statement.kind == "notice"]
+    if len(notices) != len(set(notices)):
+        return {"structure_invalid"}
     rules = COMPOSITION.get((candidate.task, candidate.outcome))
     if rules is None:
         return set()
@@ -200,6 +229,56 @@ def composition_problems(candidate):
                                     and counts[kind] > most):
             return {"structure_invalid"}
     return set()
+
+
+def explanation_in_order(statements):
+    """Return True when an explanation states its prediction first, then
+    the notice that introduces the drivers, then each driver followed by
+    its own history and context, then its other notices."""
+    kinds = [statement.kind for statement in statements]
+    if kinds[:2] != ["prediction", "notice"] or (
+            statements[1].notice != "drivers"):
+        return False
+    index, driver, line = 2, None, -1
+    while index < len(statements) and kinds[index] != "notice":
+        statement = statements[index]
+        if statement.kind == "driver":
+            driver, line = statement.slots.driver, -1
+        elif statement.kind in DRIVER_LINES and driver is not None and (
+                statement.slots.driver == driver) and (
+                DRIVER_LINES.index(statement.kind) > line):
+            line = DRIVER_LINES.index(statement.kind)
+        else:
+            return False
+        index += 1
+    return driver is not None and all(kind == "notice"
+                                      for kind in kinds[index:])
+
+
+def order_problems(candidate):
+    """Return problems of the order of an answer's statements."""
+    key = (candidate.task, candidate.outcome)
+    if key == ("prediction_explanation", "explanation"):
+        return set() if explanation_in_order(candidate.statements) else {
+            "structure_invalid"}
+    order = ORDER.get(key)
+    if order is None:
+        return set()
+    places = [order.index(statement.kind) if statement.kind in order
+              else len(order) for statement in candidate.statements]
+    return set() if places == sorted(places) else {"structure_invalid"}
+
+
+def asked_problems(candidate, condition):
+    """Return problems of a presence answer that names another condition
+    than the one the question asks about (a ConditionName; None when the
+    request names no condition)."""
+    if condition is None or candidate.task != "condition_presence":
+        return set()
+    named = [statement.slots.condition for statement in candidate.statements
+             if statement.kind in ASKED]
+    return set() if all(name == condition for name in named) else {
+        "scope_violated"}
 
 
 def size_problems(candidate, bundle, concept_name):
@@ -215,13 +294,15 @@ def size_problems(candidate, bundle, concept_name):
 
 
 def check(candidate, request_id, case, scope, bundle=None,
-          bundle_sha256=None, concept_name=None):
+          bundle_sha256=None, concept_name=None, condition=None):
     """Return the reason codes of a candidate's structure and reference
     problems, sorted; empty when it passes.
 
     request_id, case and scope are those of the request being answered;
     bundle and bundle_sha256 the bundle bound to it, if any; concept_name
-    returns a vocabulary concept's name, or None for an unknown concept.
+    returns a vocabulary concept's name, or None for an unknown concept;
+    condition is the ConditionName a presence question was resolved to,
+    when the request has one.
     """
     problems = set()
     if candidate.request_id != request_id:
@@ -236,6 +317,9 @@ def check(candidate, request_id, case, scope, bundle=None,
         problems |= reference_problems(statement, candidate, bundle,
                                        concept_name)
     problems |= composition_problems(candidate)
+    if not problems:
+        problems |= order_problems(candidate)
+        problems |= asked_problems(candidate, condition)
     if not problems:
         problems |= size_problems(candidate, bundle, concept_name)
     return tuple(sorted(problems))
@@ -294,6 +378,10 @@ def synthetic_variants(good):
         return good.model_copy(update={"statements": tuple(statements)})
 
     other_case = good.case.model_copy(update={"case_number": 2})
+    refusal = good.model_copy(update={
+        "outcome": "abstention", "reason_codes": ("coverage_incomplete",),
+        "bundle": None,
+        "statements": (candidates.notice("coverage_incomplete"),)})
     return [
         ("structure_invalid", with_item(wording="{condition}: {count}")),
         ("structure_invalid", with_item(refs=("C1",))),
@@ -301,12 +389,20 @@ def synthetic_variants(good):
             "statements": good.statements[1:]})),
         ("structure_invalid", good.model_copy(update={
             "reason_codes": ("coverage_incomplete",)})),
+        # The notice stated twice; an item before the summary.
+        ("structure_invalid", good.model_copy(update={
+            "statements": good.statements + good.statements[-1:]})),
+        ("structure_invalid", good.model_copy(update={
+            "statements": good.statements[1:2] + good.statements[:1]
+            + good.statements[2:]})),
         ("reference_unresolved", with_item(refs=("E999",))),
         ("reference_unresolved", with_item(slots=item.slots.model_copy(
             update={"visits": (99,)}))),
         ("scope_violated", good.model_copy(update={"case": other_case})),
         ("scope_violated", good.model_copy(update={
             "bundle": good.bundle.model_copy(update={"sha256": "6" * 64})})),
+        # A refusal of a request whose bundle is bound and complete.
+        ("scope_violated", refusal),
     ]
 
 
