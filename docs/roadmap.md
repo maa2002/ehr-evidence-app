@@ -99,8 +99,10 @@ evidence, and the templates are its fallback.
 - 41 Define the generation adapter (done: `generation.shape`,
   `generation.prompt` and `generation.adapter`; the release gate refuses
   the mistakes a model can make, shown by mutation suite version 2)
-- 42 Implement the initial LLM runtime (next: MedGemma 1.5 4B IT, verified
-  on G:, in full precision)
+- 42 Implement the initial LLM runtime (done: `generation.runtime` and
+  `generation.worker`; MedGemma 1.5 4B IT, verified on G:, runs in full
+  precision in its own environment, measured at about eight tokens a
+  second)
 - 43 Enforce execution limits (done: prompt, output, time, attempt and
   concurrency limits and the fallback)
 - 44 Complete controlled QA (the path is in place; the model follows)

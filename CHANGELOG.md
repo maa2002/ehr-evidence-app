@@ -27,6 +27,22 @@ evidence, and the templates are its fallback.
   the invented fixtures and the development case sets.
 - `max_prompt_tokens` in the execution limits (ceiling 131,072;
   configured 16,384 until the model is measured).
+- The model runtime (work item 42): `config/generation.json` pins
+  MedGemma 1.5 4B IT at revision `91850547` with every file's size and
+  SHA-256, checked before the worker starts (`generation.runtime`); the
+  worker runs in its own environment on G:, loads the model once in full
+  precision (language layers on the GPU, image encoder and tied token
+  embedding table in system memory), decodes greedily under each
+  request's schema with xgrammar, and answers one request at a time over
+  its standard input and output, offline (`generation.worker`); the
+  operator check loads it, writes the invented requests and counts the
+  prompt tokens of a development case set.
+- The model environment: `requirements/llm.txt` and the hashed
+  `requirements/llm.lock.txt` (44 packages; PyTorch 2.14.0 with CUDA 13.0,
+  Transformers 5.17.0, xgrammar 0.2.8, llguidance 1.8.0) on a uv-managed
+  Python 3.12.13; the storage policy routes the model environment
+  (`llm_env`), managed interpreters (`UV_PYTHON_INSTALL_DIR`) and CUDA's
+  compute cache (`CUDA_CACHE_PATH`) to the runtime root.
 - Release-gate checks for the mistakes a language model can make and a
   template cannot: a refusal of a request whose bundle is bound, a
   presence answer about another condition than the one asked about
@@ -47,6 +63,13 @@ evidence, and the templates are its fallback.
 - `qa.answer.answer` and `validation.explanation.explain` take a writer;
   without one every answer from evidence is the template's, recorded as a
   `no_model` fallback, and responses are unchanged.
+- The schema of a wording requires each of its kind's placeholders
+  exactly once and allows only letters, spaces and plain punctuation;
+  wordings are defined once under `$defs`, and the worker stops output
+  that runs 150 tokens without a double quote. The prompt says that
+  placeholders are replaced by their facts' text, gives example wordings
+  and states that records of one standard concept are one condition. All
+  of these follow the model's first runs.
 
 ## [0.8.0] - 2026-09-26
 

@@ -1,10 +1,11 @@
 # Environments
 
-The project uses two Python environments that are never mixed:
+The project uses three Python environments that are never mixed:
 
 | Environment | Purpose | Location | Managed by this project |
 | --- | --- | --- | --- |
-| Application | Tests, tooling, tracking, and later the API, interface and LLM layers | `UV_PROJECT_ENVIRONMENT` under the runtime root | yes, from a hashed lock |
+| Application | Tests, tooling, tracking, the generation adapter, and later the API and interface | `UV_PROJECT_ENVIRONMENT` under the runtime root | yes, from a hashed lock |
+| Model | The language model's worker (`generation.worker`): PyTorch with CUDA, Transformers, the schema-constrained decoders | `environments\uv\ehr-evidence-llm` under the runtime root, with a uv-managed interpreter under `python` | yes, from a hashed lock |
 | GNN (`omopgnn`) | Real-data runs that load the inherited graphs or checkpoint | existing conda environment on C: | no: read-only, never modified |
 
 Command examples assume the session set-up in
@@ -20,7 +21,8 @@ Command examples assume the session set-up in
   for Windows x86-64 and Python 3.12.8 (lock SHA-256
   `9386863C9763E589C8F69DE9CE458A67867FDCB9F587651625E84FAEADB0BCC9`).
 - PyTorch, PyG, CUDA packages, model weights and LLM runtimes are excluded;
-  the LLM runtime is added with the generation layer.
+  the language model runs in the model environment, reached through
+  `generation.runtime` over the worker's standard input and output.
 - The application package is imported from `src` (`PYTHONPATH` or pytest's
   `pythonpath`); it is not installed into the environment.
 
@@ -69,6 +71,54 @@ or LLM module and no upstream directory on `sys.path`.
 ```
 
 It prints the observed versions and `RESULT: PASS` or `RESULT: FAIL`.
+
+## Model environment
+
+The language model's worker runs in its own environment on G:, with its
+own interpreter, so that PyTorch and CUDA never enter the application
+environment ([generation.md](generation.md)):
+
+- a uv-managed CPython 3.12.13 installed under the runtime root
+  (`UV_PYTHON_INSTALL_DIR`), with no executables placed on the user's path
+  and no registry entries;
+- `requirements/llm.txt` names the direct dependencies, and
+  `requirements/llm.lock.txt` pins 44 packages exactly, with SHA-256
+  hashes, for Windows x86-64 and Python 3.12.13 (lock SHA-256
+  `977BD242440105E00A47A3385BBDF8B648B1EB21348D3B32FE31E2962459D29A`);
+- CUDA's compute cache is routed to the runtime root (`CUDA_CACHE_PATH`),
+  and the worker runs with Hugging Face offline, without telemetry, and
+  with every cache, home and temporary directory under the runtime root.
+
+| Direct package | Locked version |
+| --- | --- |
+| PyTorch (CUDA 13.0) | 2.14.0+cu130 |
+| Transformers | 5.17.0 |
+| Accelerate | 1.15.0 |
+| safetensors | 0.8.0 |
+| tokenizers | 0.23.2 |
+| xgrammar | 0.2.8 |
+| llguidance | 1.8.0 |
+| Jinja2 | 3.1.6 |
+
+Create or recreate it from the lock; the Python download is the only
+network access besides the packages:
+
+```powershell
+Set-Location "G:\Industry Dataset\ehr-evidence-app"
+. .\scripts\setup-destinations.ps1 -Quiet
+uv python install 3.12.13 --install-dir $env:UV_PYTHON_INSTALL_DIR --no-bin --no-registry
+$ModelBasePython = Join-Path $env:UV_PYTHON_INSTALL_DIR 'cpython-3.12.13-windows-x86_64-none\python.exe'
+$ModelEnv = 'G:\Industry Dataset\ehr-evidence-runtime\environments\uv\ehr-evidence-llm'
+uv venv $ModelEnv --python $ModelBasePython
+uv pip sync --python (Join-Path $ModelEnv 'Scripts\python.exe') --require-hashes --strict --torch-backend cu130 --default-index https://pypi.org/simple requirements\llm.lock.txt
+```
+
+To change it, edit `requirements/llm.txt`, regenerate the lock and review
+the diff:
+
+```powershell
+uv pip compile requirements\llm.txt --python-version 3.12.13 --python-platform x86_64-pc-windows-msvc --torch-backend cu130 --generate-hashes --default-index https://pypi.org/simple -o requirements\llm.lock.txt
+```
 
 ## GNN environment
 

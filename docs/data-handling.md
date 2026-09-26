@@ -61,6 +61,8 @@ fixed in `RUNTIME_DIRECTORY_KEYS`) and a path inside that root.
 | `uv_cache`, `pip_cache`, `xdg_cache` | runtime | `cache\uv`, `cache\pip`, `cache\xdg` | Package and tool caches |
 | `hf_home`, `hf_hub`, `hf_assets`, `hf_datasets`, `torch_home` | runtime | `cache\huggingface\...`, `cache\torch` | Model-library caches |
 | `conda_pkgs`, `conda_envs`, `venvs`, `uv_project_env` | runtime | `cache\conda-pkgs`, `environments\...` | Downstream environments |
+| `llm_env`, `python_installs` | runtime | `environments\uv\ehr-evidence-llm`, `python` | The model environment and its uv-managed interpreter (`UV_PYTHON_INSTALL_DIR`) |
+| `cuda_cache` | runtime | `cache\cuda` | CUDA compute cache (`CUDA_CACHE_PATH`), which otherwise defaults to the user profile on C: |
 | `models` | runtime | `models` | Downloaded model assets |
 | `clearml_cache` | runtime | `cache\clearml` | ClearML cache |
 

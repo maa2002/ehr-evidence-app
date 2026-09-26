@@ -69,7 +69,7 @@ Code is one package, `src/ehr_evidence_app`:
 | `casesets` | Versioned development and evaluation case sets: registry and seeded selection |
 | `qa` | Condition vocabulary, question interpretation, concept and scope resolution, scoped answers, development suite |
 | `validation` | Candidate contract, checks before generation, structure, reference, support, preservation and wording checks, template explanation, release gate, mutation suite |
-| `generation` | Model-written candidates: document shape and schema, prompt, adapter with limits and template fallback |
+| `generation` | Model-written candidates: document shape and schema, prompt, adapter with limits and template fallback, the pinned model's worker |
 | `tracking` | Tracker policy, ClearML connection checks, controlled tracking, lineage |
 | `environment` | Application and GNN environment verification |
 | `quality` | Publication audit of repository content and history; release checks |
