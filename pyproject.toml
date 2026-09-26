@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ehr-evidence-app"
-version = "0.7.1"
+version = "0.8.0"
 description = "Evidence-grounded EHR question answering and explanation of inherited GNN predictions (research prototype)."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

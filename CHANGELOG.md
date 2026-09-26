@@ -5,7 +5,15 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
-## [Unreleased]
+## [0.8.0] - 2026-09-26
+
+Validation (Phase 6, work items 35 to 40.1): every response with text
+is written as a candidate whose facts are slots filled from the
+evidence, and leaves only through a release gate that checks its
+structure and references, the support of QA statements by their
+cited records, the preservation of the prediction and drivers in the
+new template explanation, and its wording. A mutation suite detects
+every mutant of 40 error classes on the development case sets.
 
 ### Added
 
@@ -296,7 +304,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.1...HEAD
+[0.8.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.5.0...v0.6.0
