@@ -112,6 +112,12 @@ BASE_METADATA = {
 }
 
 
+def subprocess_result(code, stdout):
+    """Return an invented completed psql process."""
+    return pilot.subprocess.CompletedProcess(args=["psql"], returncode=code,
+                                             stdout=stdout, stderr=b"")
+
+
 def configured_test_temp():
     """Return the configured workspace test scratch directory (workspace-only rules)."""
     with open(PATHS_PATH, "r", encoding="utf-8") as handle:
@@ -177,6 +183,7 @@ class PilotTestCase(unittest.TestCase):
             handle.write(b"synthetic placeholder; never executed\n")
         self.config = pilot.load_config(CONFIG_PATH)
         self.version_dir = os.path.join(self.dest, LABEL)
+        self.real_check = pilot.check_connection
         self.calls = []
         self.set_environment()
         self.block_subprocess()
@@ -256,6 +263,9 @@ class PilotTestCase(unittest.TestCase):
         """Replace psql execution with a writer of the synthetic snapshot."""
         original = pilot.run_psql
         self.addCleanup(setattr, pilot, "run_psql", original)
+        checker = pilot.check_connection
+        self.addCleanup(setattr, pilot, "check_connection", checker)
+        pilot.check_connection = lambda config, psql_path: None
 
         def stub(config, version_dir, sql_path, options):
             """Write synthetic partial extracts instead of querying a DB."""
@@ -1057,6 +1067,49 @@ class PilotTestCase(unittest.TestCase):
                                ("psql.exe", "absolute")):
             code, output = self.run_cli(extra=["--psql", path])
             self.assert_refused_before_anything(code, output, expected)
+
+    # -- connection check --------------------------------------------------
+
+    def test_failed_connection_writes_nothing(self):
+        """A refused login stops the run before any directory exists."""
+        self.install_psql_stub()
+        pilot.check_connection = self.real_check
+        with mock.patch.object(pilot.subprocess, "run",
+                               return_value=subprocess_result(2, b"")):
+            code, output = self.run_cli()
+        self.assertEqual(code, 1, output)
+        self.assertIn("database connection failed", output)
+        self.assertIn("nothing was written", output)
+        self.assertEqual(self.calls, [])
+        self.assertFalse(os.path.exists(self.version_dir))
+        self.assert_no_identifiers(output)
+
+    def test_connection_check_uses_the_fixed_flags(self):
+        """SELECT 1 runs read-only, without a prompt, and must return 1."""
+        seen = {}
+
+        def fake_run(command, **kwargs):
+            """Record the call and answer like a working server."""
+            seen["command"], seen["env"] = command, kwargs["env"]
+            return subprocess_result(0, b"1\n")
+
+        with mock.patch.object(pilot.subprocess, "run", fake_run):
+            self.assertIsNone(self.real_check(self.config, self.psql))
+        self.assertEqual(seen["command"][:3], [self.psql, "-X", "-w"])
+        self.assertEqual(seen["command"][-2:], ["-c", "SELECT 1"])
+        self.assertIn("-c default_transaction_read_only=on",
+                      seen["env"]["PGOPTIONS"])
+        for result in (subprocess_result(0, b""),
+                       subprocess_result(1, b"1\n")):
+            with mock.patch.object(pilot.subprocess, "run",
+                                   return_value=result):
+                self.assertIn("connection failed",
+                              self.real_check(self.config, self.psql))
+        timeout = pilot.subprocess.TimeoutExpired("psql", 1)
+        with mock.patch.object(pilot.subprocess, "run",
+                               side_effect=timeout):
+            self.assertIn("could not complete",
+                          self.real_check(self.config, self.psql))
 
     # -- case-set cohorts --------------------------------------------------
 

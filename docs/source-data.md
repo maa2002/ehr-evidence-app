@@ -159,6 +159,11 @@ $env:PGPASSWORD = "<password>"   # process environment only
 Options: `--version-label`, `--cases`, `--dest-root`, `--config`, `--psql`,
 `--subprocess-timeout`, `--verify-only`, `--case-set`.
 
+Before it creates the version directory, the extraction opens one
+read-only connection and runs `SELECT 1` with the same flags and
+environment. A wrong user or password, or a stopped server, therefore ends
+the run with nothing written, and the same label can be used again.
+
 With `--case-set <label>` the same extraction selects exactly the subjects
 of that case set's pinned selection record instead of the first *N*
 qualifying persons, and writes to `protected-data\source-casesets\<label>`;

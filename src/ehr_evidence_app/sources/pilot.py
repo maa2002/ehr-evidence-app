@@ -516,6 +516,30 @@ def write_bytes(path, data):
         handle.write(data or b"")
 
 
+def check_connection(config, psql_path):
+    """Return why a read-only connection cannot be opened, else None.
+
+    Runs SELECT 1 with the extraction's fixed flags and controlled
+    environment (no password prompt, forced read-only options) before any
+    directory exists, so a wrong user or password, or a stopped server,
+    leaves nothing behind. psql's output is discarded: it can name the user.
+    """
+    command = [psql_path, "-X", "-w", "-q", "-A", "-t", "-v",
+               "ON_ERROR_STOP=1", "-c", "SELECT 1"]
+    try:
+        completed = subprocess.run(
+            command, env=psql_environment(config),
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=int(config["connect_timeout_seconds"]) + 30, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return "the database connection check could not complete"
+    if completed.returncode != 0 or completed.stdout.strip() != b"1":
+        return ("the database connection failed: check PGUSER, PGPASSWORD "
+                "and that the server is running; nothing was written")
+    return None
+
+
 def run_psql(config, version_dir, sql_path, options):
     """Execute the generated SQL once and capture its output privately.
 
@@ -920,7 +944,8 @@ def extract(config, args, version_dir, label, cases, psql_path,
               "never overwrites a version. Choose a new --version-label or "
               "use --verify-only.")
         return 1
-    problem = connection_problem(config, psql_path)
+    problem = (connection_problem(config, psql_path)
+               or check_connection(config, psql_path))
     if problem:
         print("FAILED: %s" % problem)
         return 1

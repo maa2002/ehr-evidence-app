@@ -28,6 +28,9 @@ change interfaces.
 
 - The evidence readers accept case-set closure records, bind every case to
   its mapping record by digest, and keep no visits for quarantined cases.
+- `sources.pilot` checks the database connection before it creates a
+  version directory, so a wrong password leaves nothing behind and the
+  label can be reused.
 
 ## [0.4.0] - 2026-09-26
 
