@@ -83,6 +83,8 @@ def event_record(event, ref, visit_ref, concept_table):
         native_id=event.native_id, visit_ref=visit_ref,
         concept=names.concept(event.concept_id, concept_table,
                               event.source_value),
+        source_concept=names.source_concept(event.source_concept_id,
+                                            concept_table),
         start_date=event.start_date, start_datetime=event.start_datetime,
         end_date=event.end_date, end_datetime=event.end_datetime)
 

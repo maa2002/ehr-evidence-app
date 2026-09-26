@@ -5,6 +5,26 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
+## [Unreleased]
+
+### Added
+
+- `qa.vocabulary`: the condition vocabulary, built from the pinned Athena
+  release that was loaded into the OMOP database
+  ([ADR 0006](docs/decisions/0006-condition-vocabulary.md)).
+- `qa.resolve`: condition term resolution by name, synonym or ICD code,
+  with nested-candidate merging, a breadth guard and suggestions for
+  unknown terms; record matching as exact, more specific, by ICD code or by
+  ICD description.
+- Evidence schema 1.1: each record may carry its source concept
+  (vocabulary, code and description). Version 2 bundle sets carry it;
+  version 1 bundles remain valid.
+
+### Changed
+
+- The storage policy admits the Athena vocabulary directory as a
+  read-only vocabulary source.
+
 ## [0.5.0] - 2026-09-26
 
 Versioned development and evaluation case sets (work item 30.1), which
@@ -132,6 +152,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.5.0...HEAD
 [0.5.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/maa2002/ehr-evidence-app/tree/v0.3.0

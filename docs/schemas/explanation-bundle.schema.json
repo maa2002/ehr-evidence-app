@@ -421,6 +421,17 @@
           "title": "Ref",
           "type": "string"
         },
+        "source_concept": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceConcept"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "source_table": {
           "enum": [
             "condition_occurrence",
@@ -619,8 +630,11 @@
           "default": null
         },
         "schema_version": {
-          "const": "1.0",
-          "default": "1.0",
+          "default": "1.1",
+          "enum": [
+            "1.0",
+            "1.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -670,6 +684,59 @@
         "kind"
       ],
       "title": "ScopeRef",
+      "type": "object"
+    },
+    "SourceConcept": {
+      "additionalProperties": false,
+      "description": "The source vocabulary concept a record was coded with, such as an\nICD-10-CM code, as the snapshot's concept table names it.",
+      "properties": {
+        "code": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "concept_id": {
+          "minimum": 1,
+          "title": "Concept Id",
+          "type": "integer"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "name_status": {
+          "enum": [
+            "available",
+            "unavailable"
+          ],
+          "title": "Name Status",
+          "type": "string"
+        },
+        "vocabulary_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Vocabulary Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "concept_id",
+        "vocabulary_id",
+        "code",
+        "name_status"
+      ],
+      "title": "SourceConcept",
       "type": "object"
     },
     "Visit": {
@@ -820,8 +887,11 @@
       "type": "array"
     },
     "schema_version": {
-      "const": "1.0",
-      "default": "1.0",
+      "default": "1.1",
+      "enum": [
+        "1.0",
+        "1.1"
+      ],
       "title": "Schema Version",
       "type": "string"
     },

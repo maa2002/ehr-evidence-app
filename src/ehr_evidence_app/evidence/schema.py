@@ -35,7 +35,9 @@ from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.evidence.contracts import CaseRef, Frozen, \
     Identifier, ScopeRef, Sha256
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
+SCHEMA_VERSIONS = ("1.0", "1.1")
+SchemaVersion = Literal[SCHEMA_VERSIONS]
 VisitRef = Annotated[str, StringConstraints(pattern=r"^V[1-9][0-9]{0,5}$")]
 EventRef = Annotated[str, StringConstraints(pattern=r"^E[1-9][0-9]{0,5}$")]
 AttributionRef = Annotated[str, StringConstraints(
@@ -85,6 +87,25 @@ class Concept(Frozen):
         return self
 
 
+class SourceConcept(Frozen):
+    """The source vocabulary concept a record was coded with, such as an
+    ICD-10-CM code, as the snapshot's concept table names it."""
+
+    concept_id: int = Field(ge=1)
+    vocabulary_id: ShortText
+    code: ShortText
+    name_status: Literal["available", "unavailable"]
+    name: Optional[ShortText] = None
+
+    @model_validator(mode="after")
+    def _name(self):
+        """Only an available source concept carries a name."""
+        if (self.name_status == "available") != (self.name is not None):
+            raise ValueError("only an available source concept carries a "
+                             "name")
+        return self
+
+
 class Visit(Frozen):
     """One case visit with its graph position and role."""
 
@@ -114,6 +135,7 @@ class Event(Frozen):
     native_id: int = Field(ge=1)
     visit_ref: VisitRef
     concept: Concept
+    source_concept: Optional[SourceConcept] = None
     start_date: Optional[DateText] = None
     start_datetime: Optional[DateTimeText] = None
     end_date: Optional[DateText] = None
@@ -243,7 +265,7 @@ class Provenance(Frozen):
     model_outputs: Optional[DigestRef] = None
     linkage_record: Optional[DigestRef] = None
     evidence_policy: Optional[DigestRef] = None
-    schema_version: Literal["1.0"] = SCHEMA_VERSION
+    schema_version: SchemaVersion = SCHEMA_VERSION
     builder: ShortText
 
 
@@ -251,6 +273,15 @@ def _unique(refs, label):
     """Raise when bundle-local references repeat."""
     if len(set(refs)) != len(refs):
         raise ValueError("%s references repeat" % label)
+
+
+def _check_version(bundle, events):
+    """Source concepts need schema 1.1; provenance shares the version."""
+    if bundle.provenance.schema_version != bundle.schema_version:
+        raise ValueError("provenance and bundle schema versions differ")
+    if bundle.schema_version == "1.0" and any(
+            event.source_concept is not None for event in events):
+        raise ValueError("source concepts need schema version 1.1")
 
 
 def _unique_events(events):
@@ -263,7 +294,7 @@ def _unique_events(events):
 class QABundle(Frozen):
     """Evidence for one QA request scope: condition events and coverage."""
 
-    schema_version: Literal["1.0"] = SCHEMA_VERSION
+    schema_version: SchemaVersion = SCHEMA_VERSION
     kind: Literal["qa"] = "qa"
     bundle_id: Identifier
     case: CaseRef
@@ -276,6 +307,7 @@ class QABundle(Frozen):
     @model_validator(mode="after")
     def _references(self):
         """Every event lies in a bundle visit; coverage matches the events."""
+        _check_version(self, self.events)
         _unique([visit.ref for visit in self.visits], "visit")
         _unique([event.ref for event in self.events], "event")
         _unique_events(self.events)
@@ -307,7 +339,7 @@ class QABundle(Frozen):
 class ExplanationBundle(Frozen):
     """Evidence for explaining one selected prediction."""
 
-    schema_version: Literal["1.0"] = SCHEMA_VERSION
+    schema_version: SchemaVersion = SCHEMA_VERSION
     kind: Literal["explanation"] = "explanation"
     bundle_id: Identifier
     case: CaseRef
@@ -329,6 +361,7 @@ class ExplanationBundle(Frozen):
         if self.scope.kind != "pre_target_history":
             raise ValueError("explanations use the pre-target history scope")
         events = self.history_events + self.final_admission_context
+        _check_version(self, events)
         _unique([visit.ref for visit in self.visits], "visit")
         _unique([event.ref for event in events], "event")
         _unique([item.ref for item in self.attributions], "attribution")

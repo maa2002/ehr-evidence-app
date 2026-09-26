@@ -201,6 +201,23 @@ class ConceptNameTests(unittest.TestCase):
                          ("unmapped", names.NAME_LIMIT))
         self.assertIsNone(names.concept(0, snapshot).source_code)
 
+    def test_source_concepts(self):
+        """A source concept needs a vocabulary and a code; names may be
+        unavailable; no source concept gives None."""
+        table = {5: self.ROW(5, "Synthetic source", "Condition",
+                             "ICD10CM", "Q50.9"),
+                 6: self.ROW(6, None, "Condition", "ICD9CM", "999"),
+                 7: self.ROW(7, "No code", "Condition", "ICD9CM")}
+        found = names.source_concept(5, table)
+        self.assertEqual((found.vocabulary_id, found.code, found.name,
+                          found.name_status),
+                         ("ICD10CM", "Q50.9", "Synthetic source",
+                          "available"))
+        self.assertEqual(names.source_concept(6, table).name_status,
+                         "unavailable")
+        for concept_id in (7, 8, 0, None):
+            self.assertIsNone(names.source_concept(concept_id, table))
+
     def test_long_names_are_clipped(self):
         """Names longer than the record limit are clipped, not refused."""
         snapshot = {1: self.ROW(1, "N" * 400, "Condition", "SNOMED")}

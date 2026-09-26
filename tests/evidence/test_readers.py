@@ -156,6 +156,12 @@ class CsvTests(unittest.TestCase):
                 b"1001,Synthetic,Condition,SNOMED\n2001,,Procedure,\n")
         concepts = readers.parse_concepts(rows(data, ("concept_id",)))
         self.assertEqual(concepts[1001].name, "Synthetic")
+        self.assertIsNone(concepts[1001].code)
+        coded = readers.parse_concepts(rows(
+            b"concept_id,concept_name,domain_id,vocabulary_id,"
+            b"concept_code\n5,Source,Condition,ICD10CM,Q50.9\n",
+            ("concept_id",)))
+        self.assertEqual(coded[5].code, "Q50.9")
         self.assertIsNone(concepts[2001].name)
         self.assertIsNone(concepts[2001].vocabulary_id)
         with self.assertRaisesRegex(readers.ReaderError,

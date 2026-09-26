@@ -46,3 +46,19 @@ def concept(concept_id, concepts, source_value=None, legacy=None):
         concept_id=concept_id, name_status="unavailable",
         vocabulary_id=clip(row.vocabulary_id) if row else None,
         domain_id=clip(row.domain_id) if row else None)
+
+
+def source_concept(concept_id, concepts):
+    """Return the SourceConcept of a record's source concept, or None.
+
+    None when the record has no source concept or the snapshot table
+    lacks its vocabulary or code; a missing name stays unavailable.
+    """
+    row = concepts.get(concept_id) if concept_id else None
+    if row is None or not row.vocabulary_id or not row.code:
+        return None
+    return schema.SourceConcept(
+        concept_id=concept_id, vocabulary_id=clip(row.vocabulary_id),
+        code=clip(row.code),
+        name_status="available" if row.name else "unavailable",
+        name=clip(row.name))

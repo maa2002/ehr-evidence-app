@@ -31,7 +31,10 @@ PREPARED_ROOT = PROTECTED_ROOT + "\\case-preparation"
 LINKAGE_ROOT = PROTECTED_ROOT + "\\evidence"
 BUNDLES_ROOT = PROTECTED_ROOT + "\\evidence-bundles"
 STAGES = ("selection", "snapshot_manifest", "prepared_mapping",
-          "prepared_outputs", "prepared_closure", "linkage")
+          "prepared_outputs", "prepared_closure", "linkage", "bundles")
+# Version 1 bundle sets (schema 1.0) are kept under the bare case-set
+# label; version 2 adds each record's source concept (schema 1.1).
+BUNDLE_SET = "bundles-v2"
 SELECTION_NAME = "selection.json"
 SUMMARY_NAME = "summary.json"
 SELECTION_SCHEMA = "case-set-selection"
@@ -155,10 +158,15 @@ def linkage_dir(label):
     return LINKAGE_ROOT + "\\event-linkage-" + label
 
 
+def bundle_set(label):
+    """Return the version label of a case set's current bundle set."""
+    spec(label)
+    return label + "-" + BUNDLE_SET
+
+
 def bundles_dir(label):
     """Return the protected directory of a case set's bundle set."""
-    spec(label)
-    return BUNDLES_ROOT + "\\" + label
+    return BUNDLES_ROOT + "\\" + bundle_set(label)
 
 
 def stage_path(label, stage):
@@ -168,7 +176,8 @@ def stage_path(label, stage):
              "prepared_mapping": prepared_dir(label) + "\\mapping.json",
              "prepared_outputs": prepared_dir(label) + "\\outputs.json",
              "prepared_closure": prepared_dir(label) + "\\closure.json",
-             "linkage": linkage_dir(label) + "\\linkage.json"}
+             "linkage": linkage_dir(label) + "\\linkage.json",
+             "bundles": bundles_dir(label) + "\\manifest.json"}
     if stage not in paths:
         raise RegistryError("stage_unknown")
     return paths[stage]

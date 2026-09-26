@@ -119,7 +119,10 @@ class SpecTests(unittest.TestCase):
                                     "case_set_unknown"):
             registry.spec("dev-31-v1")
         with self.assertRaisesRegex(registry.RegistryError, "stage_unknown"):
-            registry.stage_path(LABEL, "bundles")
+            registry.stage_path(LABEL, "report")
+        self.assertEqual(registry.bundle_set(LABEL), LABEL + "-bundles-v2")
+        self.assertTrue(registry.stage_path(LABEL, "bundles").startswith(
+            registry.bundles_dir(LABEL)))
         for label, stages in registry.PINS.items():
             self.assertIn(label, registry.CASE_SETS)
             for stage, pin in stages.items():

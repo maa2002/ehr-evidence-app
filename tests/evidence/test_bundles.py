@@ -48,6 +48,7 @@ EXPECTED_COUNTS = {
     "linked_history_events": 2,
     "final_admission_context_events": 2,
     "withheld_final_admission_diagnoses": 1,
+    "events_with_source_concept": 11,
     "published_name_agreement": {"same": 3, "different": 0,
                                  "published_empty": 1},
 }

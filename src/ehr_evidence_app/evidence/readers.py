@@ -104,6 +104,7 @@ class ConceptRow:
     name: str | None
     domain_id: str | None
     vocabulary_id: str | None
+    code: str | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -349,7 +350,8 @@ def parse_concepts(rows):
         concepts[concept_id] = ConceptRow(
             concept_id=concept_id, name=optional_text(row["concept_name"]),
             domain_id=optional_text(row["domain_id"]),
-            vocabulary_id=optional_text(row["vocabulary_id"]))
+            vocabulary_id=optional_text(row["vocabulary_id"]),
+            code=optional_text(row.get("concept_code")))
     return concepts
 
 

@@ -160,6 +160,41 @@ class RecordTests(unittest.TestCase):
             schema.Prediction(**dict(prediction.__dict__, logit=math.inf))
 
 
+class SourceConceptTests(unittest.TestCase):
+    """Source concepts need schema 1.1 and name themselves honestly."""
+
+    def test_name_status(self):
+        """Only an available source concept carries a name."""
+        values = dict(concept_id=5001, vocabulary_id="ICD10CM",
+                      code="I50.9", name_status="available",
+                      name="Synthetic description")
+        self.assertEqual(schema.SourceConcept(**values).code, "I50.9")
+        self.assertIsNone(schema.SourceConcept(
+            **dict(values, name_status="unavailable", name=None)).name)
+        for changes in (dict(name=None), dict(name_status="unavailable"),
+                        dict(concept_id=0), dict(code="")):
+            with self.assertRaises(ValidationError):
+                schema.SourceConcept(**dict(values, **changes))
+
+    def test_versions(self):
+        """Schema 1.0 bundles carry no source concepts; versions agree."""
+        document = SyntheticBundles.qa_document("all")
+        self.assertEqual(document["schema_version"], "1.1")
+        self.assertIsNotNone(document["events"][0]["source_concept"])
+        document["schema_version"] = "1.0"
+        document["provenance"]["schema_version"] = "1.0"
+        with self.assertRaises(ValidationError) as caught:
+            schema.QABundle.model_validate_json(json.dumps(document))
+        self.assertIn("need schema version 1.1", str(caught.exception))
+        for event in document["events"]:
+            event["source_concept"] = None
+        schema.QABundle.model_validate_json(json.dumps(document))
+        document["provenance"]["schema_version"] = "1.1"
+        with self.assertRaises(ValidationError) as caught:
+            schema.QABundle.model_validate_json(json.dumps(document))
+        self.assertIn("schema versions differ", str(caught.exception))
+
+
 class AttributionTests(unittest.TestCase):
     """Attribution stays concept-level, unsigned and consistent."""
 

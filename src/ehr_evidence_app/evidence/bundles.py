@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import dataclasses
 import hashlib
 import json
 import ntpath
@@ -60,7 +61,7 @@ from ehr_evidence_app.storage import policy as guard
 SCHEMA = "evidence-bundle-set"
 SUMMARY_SCHEMA = "evidence-bundle-set-summary"
 SCHEMA_VERSION = "1.0"
-OUTPUT_VERSION = "pilot10-v1"
+OUTPUT_VERSION = "pilot10-v2"
 PROTECTED_ROOT = pmo.PROTECTED_ROOT
 OUTPUT_DIR = PROTECTED_ROOT + "\\evidence-bundles\\" + OUTPUT_VERSION
 MANIFEST_NAME = "manifest.json"
@@ -90,7 +91,7 @@ def real_plan(case_set=None):
             "outputs": registry.pinned(case_set, "prepared_outputs"),
             "linkage": registry.pinned(case_set, "linkage"),
             "policy_path": policy.CONFIG_PATH,
-            "version": case_set,
+            "version": registry.bundle_set(case_set),
             "names": {"identity_mapping": case_set + "-mapping",
                       "closure_record": case_set + "-closure",
                       "model_outputs": case_set + "-outputs",
@@ -422,6 +423,12 @@ def summarise(qa, explanations, agreement):
         "withheld_final_admission_diagnoses": sum(
             bundle.coverage.excluded_final_admission_events
             for bundle in explanations),
+        "events_with_source_concept": sum(
+            event.source_concept is not None
+            for event in [event for bundle in qa for event in bundle.events]
+            + [event for bundle in explanations
+               for event in bundle.history_events
+               + bundle.final_admission_context]),
         "published_name_agreement": {state: agreement.get(state, 0)
                                      for state in NAME_AGREEMENT},
     }
@@ -647,10 +654,21 @@ def synthetic_inputs():
         for concept_id, domain_id in ((1001, "Condition"),
                                       (1002, "Condition"),
                                       (2001, "Procedure"), (3001, "Drug"))}
+    events = {}
+    for domain, rows in snapshot.events.items():
+        events[domain] = tuple(dataclasses.replace(
+            event, source_concept_id=5000 + event.native_id,
+            source_value="SYN%d" % event.native_id) for event in rows)
+        for event in rows:
+            concepts[5000 + event.native_id] = readers.ConceptRow(
+                concept_id=5000 + event.native_id,
+                name="SYNTHETIC SOURCE %d" % event.native_id,
+                domain_id="Condition", vocabulary_id="SYNTHETIC-ICD",
+                code="SYN%d" % event.native_id)
     snapshot = readers.Snapshot(
         label=snapshot.label, manifest_sha256=snapshot.manifest_sha256,
         concepts_sha256=snapshot.concepts_sha256, complete=True,
-        visits=visits, events=snapshot.events, concepts=concepts)
+        visits=visits, events=events, concepts=concepts)
     legacy = {9001: readers.ConceptRow(
         concept_id=9001, name="SYNTHETIC LABEL", domain_id="Condition",
         vocabulary_id="SYNTHETIC")}
