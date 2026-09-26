@@ -62,7 +62,8 @@ attribution.
 | Inherited GNN integration | implemented and closed for the 10-person development pilot |
 | Evidence contracts, records, event linkage and bundles | implemented for the development pilot and the development and evaluation case sets |
 | Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out and written wording tests done |
-| LLM generation, validation | planned |
+| Validation and the release gate | implemented; mutation suite version 2 covers model-written candidates |
+| LLM generation | in progress: the output shape, prompt, adapter, limits and fallback are implemented and tested without a model; the model runtime, controlled QA and explanations with the model, and runtime records follow |
 | API, interface and evaluation | planned |
 
 See [roadmap.md](roadmap.md) for the planned work.
@@ -81,6 +82,7 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `casesets` | Case-set registry, seeded case-set selection, case-set preparation | `registry`, `selection`, `prepare` |
 | `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, template candidates, scoped answers, development suite, held-out and written wording tests | `vocabulary`, `resolve`, `interpret`, `scope`, `templates`, `answer`, `suite`, `heldout`, `written` |
 | `validation` | Candidate contract, checks before generation, structure and reference checks, support of QA statements, wording rules, template explanation and its preservation checks, release gate, mutation suite | `candidate`, `evidence`, `structure`, `support`, `language`, `explanation`, `gate`, `mutations` |
+| `generation` | Candidates written by the language model: the document shape and its schema, the prompt, the adapter with its limits and the template fallback | `shape`, `prompt`, `adapter` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
@@ -105,7 +107,7 @@ fixed roots and allowlists live in code.
 | `upstream_split_membership.json` | `gnn.split` | Split sidecar schema, argument allowlist and flags |
 | `phase3_closure.json` | `gnn.admission` | Closure policy: admission scope, label layers, driver tags, claim policy, superseded flags |
 | `evidence_policy.json` | `evidence.policy`, `evidence.bundles` | Evidence claim policy extending the closure policy for linked events |
-| `execution_limits.json` | `evidence.contracts`, `evidence.bundles` | Request and bundle execution limits, within fixed ceilings |
+| `execution_limits.json` | `evidence.contracts`, `evidence.bundles` | Request, bundle and generation execution limits, within fixed ceilings |
 | `case_sets.json` | `casesets.registry`, `casesets.selection`, `sources.pilot` | Case-set purposes, partitions, sizes, seeds, eligibility and draw rule |
 | `clearml_policy.json` | `tracking.policy` | Tracker payload and storage policy |
 | `clearml_connection.json` | `tracking.connection` | Hosted ClearML declaration |
@@ -187,4 +189,6 @@ contracts without a protected artefact of their own; they are described in
 [evidence.md](evidence.md). The other Phase 5 work items (31 to 34.1) have
 no protected artefact; they are described in [qa.md](qa.md). Phase 6 work
 items have none either; they are described in
-[validation.md](validation.md).
+[validation.md](validation.md). Phase 7 work items are described in
+[generation.md](generation.md); their runtime records come with work
+item 46.

@@ -1,10 +1,13 @@
 # Natural-language QA
 
 Phase 5 answers one question about the active case and scope from that
-case's verified QA bundle. Interpretation, resolution and answers follow
-fixed rules; no model is involved, so the same question about the same
-bundle always gets the same response. The language model of Phase 7 may
-only rephrase an answer, behind the checks of Phase 6.
+case's verified QA bundle. Interpretation and resolution follow fixed
+rules, and so does which answer a question gets. From Phase 7 the
+language model writes each answer from evidence as a complete candidate,
+behind the checks of Phase 6, and the templates described here are its
+fallback ([generation.md](generation.md)); refusals and clarifying
+questions stay the templates' notices. Without the model the same
+question about the same bundle always gets the same response.
 
 Decisions are recorded in
 [ADR 0006](decisions/0006-condition-vocabulary.md) (condition vocabulary,

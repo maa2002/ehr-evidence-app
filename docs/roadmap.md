@@ -91,12 +91,23 @@ Described in [validation.md](validation.md) and decided in
 
 ## Phase 7. LLM and operations
 
-- 41 Define the generation adapter
-- 42 Implement the initial LLM runtime
-- 43 Enforce execution limits
-- 44 Complete controlled QA
-- 45 Complete controlled explanations
+Described in [generation.md](generation.md) and decided in
+[ADR 0012](decisions/0012-generation-design.md). In progress: the
+language model writes the complete candidate of every response from
+evidence, and the templates are its fallback.
+
+- 41 Define the generation adapter (done: `generation.shape`,
+  `generation.prompt` and `generation.adapter`; the release gate refuses
+  the mistakes a model can make, shown by mutation suite version 2)
+- 42 Implement the initial LLM runtime (next: MedGemma 1.5 4B IT, verified
+  on G:, in full precision)
+- 43 Enforce execution limits (done: prompt, output, time, attempt and
+  concurrency limits and the fallback)
+- 44 Complete controlled QA (the path is in place; the model follows)
+- 45 Complete controlled explanations (the path is in place; the model
+  follows)
 - 46 Add protected runtime records
+- 46.1 Measure the model on the development case sets
 
 ## Phase 8. API and interface
 

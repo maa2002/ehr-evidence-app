@@ -5,6 +5,49 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
+## [Unreleased]
+
+LLM and operations (Phase 7, work items 41 to 46.1), in progress: the
+language model writes the complete candidate of every response from
+evidence, and the templates are its fallback.
+
+### Added
+
+- `generation` package (Phase 7, work items 41 and 43;
+  [ADR 0012](docs/decisions/0012-generation-design.md),
+  [docs/generation.md](docs/generation.md)): the JSON document a
+  candidate is written as and each request's JSON Schema
+  (`generation.shape`, `candidate-shape-v1`); the prompt with the rules,
+  a worked example on invented data and the complete bundle
+  (`generation.prompt`, `prompt-v1`); the adapter, the one path from a
+  writer's output to a release, under the prompt, output, time, attempt
+  and concurrency limits, which releases the template candidate with one
+  of eleven recorded fallback reasons whenever the model's is not
+  (`generation.adapter`), with a scripted backend and scripted runs on
+  the invented fixtures and the development case sets.
+- `max_prompt_tokens` in the execution limits (ceiling 131,072;
+  configured 16,384 until the model is measured).
+- Release-gate checks for the mistakes a language model can make and a
+  template cannot: a refusal of a request whose bundle is bound, a
+  presence answer about another condition than the one asked about
+  (`scope_violated`), a notice stated twice and statements out of their
+  answer's order (`structure_invalid`), and a condition named twice for
+  one match kind in a presence answer (`claim_unsupported`).
+
+### Changed
+
+- Wording rules version 3 (`wording-rules-v3`): association,
+  complication, interpretive, disease-course, certainty and recency
+  wording everywhere, and hedged, ranked or counted facts in answers and
+  explanations.
+- Mutation suite version 2 (`validation-mutations-v2`): 18 classes of
+  model-style mistakes; on the development case sets it detects all
+  23,999 mutants in 58 classes, and every original and control is
+  released unchanged.
+- `qa.answer.answer` and `validation.explanation.explain` take a writer;
+  without one every answer from evidence is the template's, recorded as a
+  `no_model` fallback, and responses are unchanged.
+
 ## [0.8.0] - 2026-09-26
 
 Validation (Phase 6, work items 35 to 40.1): every response with text
@@ -304,6 +347,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.8.0...HEAD
 [0.8.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.6.0...v0.7.0

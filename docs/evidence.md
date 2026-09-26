@@ -52,10 +52,12 @@ fields. Their JSON Schemas are committed in [schemas/](schemas/) and a test
 fails when they drift from the models; regenerate them with
 `--write-schemas`.
 
-Execution limits (question length, output tokens, concurrency, duration,
-attempts, evidence items and bundle bytes) have fixed ceilings in code.
-`config/execution_limits.json` may lower a limit, never raise it; a request
-outside a limit ends as an explicit outcome.
+Execution limits (question length, prompt and output tokens, concurrency,
+duration, attempts, evidence items and bundle bytes) have fixed ceilings
+in code. `config/execution_limits.json` may lower a limit, never raise it;
+a request outside a limit ends as an explicit outcome. On the generation
+path the model's attempt ends instead and the template answers, a
+recorded fallback ([generation.md](generation.md#limits)).
 
 ## Evidence records
 

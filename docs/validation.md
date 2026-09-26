@@ -3,8 +3,10 @@
 Phase 6 makes sure nothing reaches a user unless it has been checked
 against the evidence: checks before any text is written, checks on every
 candidate response, and one release gate that withholds whatever fails. It
-is built before the language model of Phase 7 exists, so that model can only
-reword text that passes the same checks. Nothing here loads a model.
+was built before the language model of Phase 7, which writes the complete
+candidate of every response from evidence ([generation.md](generation.md)),
+so that everything the model writes passes the same checks. Nothing here
+loads a model.
 
 The design is recorded in
 [ADR 0011](decisions/0011-validation-design.md). Command examples assume the
@@ -24,9 +26,10 @@ session set-up in [development.md](development.md#session-set-up).
 
 ## Candidates
 
-A writer (the QA templates in `qa.templates` and the template explanation
-in `validation.explanation` now, the language model of Phase 7) produces a
-candidate, never released text. A candidate names its
+A writer (the language model of Phase 7, with the QA templates in
+`qa.templates` and the template explanation in `validation.explanation`
+as its fallback) produces a candidate, never released text. A candidate
+names its
 request, case, scope, outcome, reason codes and, for an answer, its bundle,
 and holds an ordered list of statements. Each statement has:
 
@@ -106,13 +109,15 @@ the bundle bound to that request:
 
 | Finding | Reason code |
 | --- | --- |
-| A malformed document; an outcome, reason codes, task or bundle that do not fit together; a digit in a wording (counts, visits, dates and scores are slots); a statement of a kind the answer cannot hold, or an answer without the statements it needs (a list needs one summary, at least one item and the completeness notice); a wording whose placeholders are not exactly its kind's slots; a changed notice; a statement that cites what its kind does not cite; a response the renderer cannot build within the response limits | `structure_invalid` |
-| Another request's case or scope; a statement about another scope; another bundle than the one bound to the request | `scope_violated` |
+| A malformed document; an outcome, reason codes, task or bundle that do not fit together; a digit in a wording (counts, visits, dates and scores are slots); a statement of a kind the answer cannot hold, or an answer without the statements it needs (a list needs one summary, at least one item and the completeness notice); a wording whose placeholders are not exactly its kind's slots; a changed notice, or a notice stated twice; statements out of their answer's order (a list's items after its summary, the notice at the end; an explanation's prediction first, then the notice introducing the drivers, each driver followed by its own history and context, then the other notices); a statement that cites what its kind does not cite; a response the renderer cannot build within the response limits | `structure_invalid` |
+| Another request's case or scope; a statement about another scope; another bundle than the one bound to the request; a request with a bound bundle answered without it, such as a refusal of an answerable request; a presence answer about another condition than the one the question was resolved to | `scope_violated` |
 | A reference, event, driver, visit number or concept that the bundle or the vocabulary lacks | `reference_unresolved` |
 
 The checks extend the citation check of `evidence.schema` to candidates.
-They say nothing about whether the cited records support what a statement
-says; that is the next check.
+The order, the notices stated twice, the bound bundle and the condition
+asked about were added in Phase 7 for the mistakes a language model can
+make and a template cannot. The checks say nothing about whether the cited
+records support what a statement says; that is the next check.
 
 ## Support
 
@@ -125,7 +130,7 @@ statement of an answer says. Any failure is `claim_unsupported`.
 | A list | It names every condition of the scope once and cites every record of the scope once; its summary counts the scope's conditions and records; its note on records without a standard concept counts them |
 | An empty list | Coverage is complete and empty |
 | A presence item | Every record it cites matches the resolved condition by the match kind it states, found with the resolver's own matching; its count and visits are those of the cited records |
-| A presence answer | It cites every matching record of the scope, and its summary counts them |
+| A presence answer | It cites every matching record of the scope, names each condition once for each match kind, and its summary counts the matching records |
 | Not recorded | Coverage is complete and no record of the scope matches the condition; its note on records without a standard concept counts them |
 | Any answer | It discloses `unmapped_records_in_scope` exactly when the scope holds records without a standard concept |
 
@@ -138,21 +143,24 @@ to support.
 released outcome: answers, refusals and clarifying questions. It reads
 only the writer's words: each slot is replaced by a neutral token first,
 so a condition named "Pneumonia caused by a virus" never trips a rule.
-Rules version `wording-rules-v2`:
+Rules version `wording-rules-v3`:
 
 | Rule | Examples | Reason code |
 | --- | --- | --- |
-| Causal or directional attribution | "caused", "led to", "due to", "raised the risk", "risk factor" | `prohibited_wording` |
+| Causal or directional attribution | "caused", "led to", "due to", "raised the risk", "risk factor", "associated with", "secondary to" | `prohibited_wording` |
 | Percentage contribution | "40%", "percent", "a share of" | `prohibited_wording` |
 | Exclusivity | "the only diagnosis", "solely", "nothing else" | `prohibited_wording` |
-| Clinical status, severity or course | "the patient has" as a fact, "severe", "resolved", "worsening" | `prohibited_wording` |
+| Clinical status, severity or course | "the patient has" as a fact, "severe", "resolved", "worsening", "chronic", "currently", "active" | `prohibited_wording` |
 | Advice | "should", "recommend", "start therapy" | `prohibited_wording` |
-| Certainty | "definitely", "proves", "confirms" | `prohibited_wording` |
-| Diagnosis | "diagnosed with", "consistent with", "likely has" | `prohibited_wording` |
+| Certainty | "definitely", "proves", "confirms", "clearly" | `prohibited_wording` |
+| Diagnosis | "diagnosed with", "consistent with", "likely has", "suggests", "indicates", "a sign of" | `prohibited_wording` |
 | Model performance | "AUROC", "accuracy" | `prohibited_wording` |
 | In explanations, the score as a risk or probability | "a risk of", "the probability" | `prohibited_wording` |
 | In explanations, the prediction as prospective | "in advance", "forecast" | `prohibited_wording` |
-| Dates, recurrence and frequency typed into a wording | a date, a month, "again", "recurs", "often", "every visit" | `date_unsupported` |
+| In answers and explanations, hedged facts | "possibly", "may", "seems to" | `prohibited_wording` |
+| In answers and explanations, rankings | "the main", "most important", "key" | `prohibited_wording` |
+| In answers and explanations, counts or quantities in words | "three", "several", "most" | `prohibited_wording` |
+| Dates, recurrence, frequency and recency typed into a wording | a date, a month, "again", "recurs", "often", "every visit", "recently", "the last admission" | `date_unsupported` |
 
 A negation shortly before a causal, diagnostic or risk word, in the same
 clause, lets it pass, so "attribution does not mean causation", "this
@@ -160,7 +168,11 @@ application does not diagnose" and "not a clinical risk" are allowed.
 Version 1 also let a negation in an earlier clause pardon such a word
 ("X is not recorded within the scope, caused by the final admission");
 the mutation suite found it, and version 2 reads negations within their
-clause only. How often and in which
+clause only. Version 3 adds the phrasings a language model writes around
+facts and a template never does; every fact of an answer or explanation
+is certain, unranked and stated by a slot, so hedges, rankings and counts
+in words are prohibited there, while refusals and clarifying questions
+may use them. How often and in which
 visits a driver's concept was recorded is stated only through the slots
 of a statement that cites the driver's linked events, as the evidence
 claim policy allows; QA answers state it only as the records they cite.
@@ -215,7 +227,9 @@ and every one passes all checks:
 
 Every response with text leaves the application through
 `validation.gate.release`, for QA answers (`qa.answer`, rules
-`qa-answer-v5`) and explanations alike. The gate runs every check the
+`qa-answer-v5`) and explanations alike, whoever wrote them. The gate is
+given the request, the bundle bound to it and, for a presence check, the
+condition the question was resolved to. It runs every check the
 candidate's answer requires: structure and references always, then
 support for lists and presence checks, preservation for explanations and
 the wording rules for every outcome, and finally the citation check on
@@ -237,11 +251,13 @@ through the gate (see [qa.md](qa.md#development-suite)).
 ## Mutation suite
 
 `validation.mutations` tests the checks by breaking correct responses
-(`validation-mutations-v1`). Correct candidates are built by the
+(`validation-mutations-v2`). Correct candidates are built by the
 templates: for every scope bundle of every case, the list and presence
 checks of a recorded condition and of one recorded elsewhere; refusals
 and clarifying questions; and every case's template explanation. Every
-error class is applied to them, or to the bundles they come from:
+error class is applied to them, or to the bundles they come from, and
+checked for the request each answers, with its bundle bound. Version 2
+adds the mistakes a language model can make and a template cannot:
 
 | Item | Error classes | Expected |
 | --- | --- | --- |
@@ -257,6 +273,11 @@ error class is applied to them, or to the bundles they come from:
 | 39 | causal, directional, percentage, exclusive, diagnostic, advice and status wording | `prohibited_wording` |
 | 39 | a date or recurrence typed into a wording | `date_unsupported` |
 | 40 | a check that fails to run | operational error, `validator_failed` |
+| Model (v2) | a refusal of an answerable request, an answer about another condition | `scope_violated` |
+| Model (v2) | a missing, extra or repeated notice; statements out of their order; a driver's history under another driver | `structure_invalid` |
+| Model (v2) | an empty list for a scope with records; a fact or the name of another record | `claim_unsupported` |
+| Model (v2) | hedged, ranking, interpretive, association, course and certainty wording; a count in words | `prohibited_wording` |
+| Model (v2) | recency typed into a wording | `date_unsupported` |
 
 A mutant is detected when it ends in its class's outcome with its class's
 reason code. Every original must be released unchanged, and so must a
@@ -265,12 +286,14 @@ added to an answer. Results, with the evaluation case set untouched:
 
 | Samples | Originals released unchanged | Controls passed | Mutants detected | Error classes |
 | --- | --- | --- | --- | --- |
-| Invented fixtures | 17 of 17 | 13 of 13 | 345 of 345 | 39 |
-| `dev-30-v1` | 434 of 434 | 430 of 430 | 10,935 of 10,935 | 40 |
-| `pilot-10-v1` | 186 of 186 | 182 of 182 | 4,623 of 4,623 | 40 |
+| Invented fixtures | 17 of 17 | 13 of 13 | 522 of 522 | 57 |
+| `dev-30-v1` | 434 of 434 | 430 of 430 | 16,869 of 16,869 | 58 |
+| `pilot-10-v1` | 186 of 186 | 182 of 182 | 7,130 of 7,130 | 58 |
 
-The suite found one gap on its first run, in wording rules version 1
-(see [Wording](#wording)), which version 2 closes. It measures the
+Version 1 detected all 15,558 mutants of its 40 classes on the
+development case sets. The suite found one gap on its first run, in
+wording rules version 1 (see [Wording](#wording)), which version 2
+closes. It measures the
 defined error classes; a statement that says something prohibited in
 words no rule knows is outside what it can show, which is why the facts
 stay in slots that no writer types.
