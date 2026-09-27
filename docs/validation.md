@@ -200,10 +200,10 @@ rules version, measured again.
 An explanation describes the selected drivers: the eligible drivers with
 the highest attribution scores, highest first, ties in the bundle's
 order, at most the number configured in `config/explanation.json`
-(ADR 0013). Every attribution stays in the evidence bundle for
+(ADR 0013, ADR 0014). Every attribution stays in the evidence bundle for
 inspection. `validation.explanation` builds the template explanation of a
-selected prediction from its explanation bundle alone
-(`explanation-template-v2`):
+selected prediction from its explanation bundle alone, and checks any
+explanation (`explanation-template-v3`):
 
 1. the selected label, as one output of the model's multi-label
    prediction, with its uncalibrated score and logit;
@@ -221,9 +221,9 @@ Its checks apply to any explanation candidate, whoever wrote it:
 
 | Finding | Reason code |
 | --- | --- |
-| The prediction is not stated once, with the bundle's label, score and logit | `prediction_altered` |
-| The drivers described are not exactly the selected drivers, in their order, with their scores and ranks; a zero-score driver, or a driver not selected, is described | `attribution_altered` |
-| A history statement cites other records than the driver's linked events in pre-target visits, or a context statement other records than its final-admission ones, or either miscounts them or their visits; a driver described with such records leaves its history or context out; the restrictions disclosed, as reason codes or notices, are not the case's; the drivers not described are not stated, or are miscounted | `claim_unsupported` |
+| The prediction is not stated once, with the bundle's label, and its score and logit as a response shows them | `prediction_altered` |
+| The drivers described are not exactly the selected drivers, in their order, with their ranks, and their scores as a response shows them; a zero-score driver, or a driver not selected, is described | `attribution_altered` |
+| A history statement cites other records than the driver's linked events in pre-target visits, or a context statement other records than its final-admission ones, or either miscounts them or their visits; the restrictions disclosed, as reason codes or notices, are not the case's; the drivers not described are not stated, or are miscounted | `claim_unsupported` |
 | A notice on what the scores mean is missing | `structure_invalid` |
 
 With the structure checks and the wording rules this enforces the
@@ -234,17 +234,27 @@ only; final-admission records are context only; zero-score drivers are
 never described; the label is one output, never the only diagnosis; the
 score is never a clinical risk.
 
+A score or logit is checked as a response shows it, to three significant
+figures: that is the claim the response makes, and no released text can
+differ from the one the exact value renders. The template states the
+exact values. A driver's history or context may be left out: a line that
+is stated must cite all of its records, since it states their count, but
+none is required. How many of the available lines a writer states is
+measured apart from the release (`generation.measure`), so that saying
+less is never mistaken for being right (ADR 0014).
+
 Every case of the development case sets gets its template explanation
-with the configured number of drivers, 10, and every one passes all
+with the configured number of drivers, 5, and every one passes all
 checks:
 
 | Case set | Explanations | Drivers described | Drivers not described | History statements | Context statements | Claims | Restrictions disclosed (batch-sensitive, final-admission drivers, excluded outcome entries) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dev-30-v1` | 26 of 26 | 259 | 319 | 179 | 106 | 570 | 6, 26, 10 |
-| `pilot-10-v1` | 10 of 10 | 92 | 96 | 70 | 28 | 201 | 2, 9, 3 |
+| `dev-30-v1` | 26 of 26 | 130 | 448 | 82 | 59 | 297 | 6, 26, 10 |
+| `pilot-10-v1` | 10 of 10 | 47 | 141 | 36 | 14 | 107 | 2, 9, 3 |
 
 Version 1 described every eligible driver in the model's order: 578
-drivers on `dev-30-v1` and 188 on `pilot-10-v1`.
+drivers on `dev-30-v1` and 188 on `pilot-10-v1`; with 10 drivers, version
+2 described 259 and 92.
 
 ## Release gate
 
@@ -274,15 +284,15 @@ through the gate (see [qa.md](qa.md#development-suite)).
 ## Mutation suite
 
 `validation.mutations` tests the checks by breaking correct responses
-(`validation-mutations-v3`). Correct candidates are built by the
+(`validation-mutations-v4`). Correct candidates are built by the
 templates: for every scope bundle of every case, the list and presence
 checks of a recorded condition and of one recorded elsewhere; refusals
 and clarifying questions; and every case's template explanation. Every
 error class is applied to them, or to the bundles they come from, and
 checked for the request each answers, with its bundle bound. Version 2
-added the mistakes a language model can make and a template cannot, and
-version 3 the mistakes of driver selection, of an explanation's
-completeness and of a statement's polarity:
+added the mistakes a language model can make and a template cannot,
+version 3 the mistakes of driver selection and of a statement's
+polarity, and version 4 checks scores as a response shows them:
 
 | Item | Error classes | Expected |
 | --- | --- | --- |
@@ -305,22 +315,26 @@ completeness and of a statement's polarity:
 | Model (v2) | recency typed into a wording | `date_unsupported` |
 | Selection (v3) | a driver not selected described | `attribution_altered` |
 | Selection (v3) | the drivers not described miscounted, or not stated | `claim_unsupported` |
-| Completeness (v3) | a driver's history or context left out | `claim_unsupported` |
 | Polarity (v3) | a statement that something is recorded negated; a statement that something is not recorded worded as a record | `prohibited_wording` |
+| Scores (v4) | a score wrong in its last shown figure | `prediction_altered`, `attribution_altered` |
 
 A mutant is detected when it ends in its class's outcome with its class's
-reason code. Every original must be released unchanged, and so must a
-control: a correct statement that a record does not mean causation,
-added to an answer. Results, with the evaluation case set untouched:
+reason code. Every original must be released unchanged, and so must
+every control: a correct statement that a record does not mean
+causation, added to an answer; and in an explanation, a driver's history
+or context left out, and scores stated to the figures a response shows.
+Results, with the evaluation case set untouched:
 
 | Samples | Originals released unchanged | Controls passed | Mutants detected | Error classes |
 | --- | --- | --- | --- | --- |
-| Invented fixtures | 18 of 18 | 14 of 14 | 583 of 583 | 64 |
-| `dev-30-v1` | 434 of 434 | 430 of 430 | 17,416 of 17,416 | 65 |
-| `pilot-10-v1` | 186 of 186 | 182 of 182 | 7,356 of 7,356 | 65 |
+| Invented fixtures | 18 of 18 | 21 of 21 | 584 of 584 | 64 |
+| `dev-30-v1` | 434 of 434 | 530 of 530 | 17,414 of 17,414 | 65 |
+| `pilot-10-v1` | 186 of 186 | 220 of 220 | 7,356 of 7,356 | 65 |
 
 Version 1 detected all 15,558 mutants of its 40 classes on the
-development case sets, and version 2 all 23,999 of its 58. The suite
+development case sets, version 2 all 23,999 of its 58, and version 3 all
+24,772 of its 65, when it still required a driver's history and context.
+The suite
 found one gap on its first run, in wording rules version 1 (see
 [Wording](#wording)), which version 2 closes. It measures the defined
 error classes; a statement that says something prohibited in words no

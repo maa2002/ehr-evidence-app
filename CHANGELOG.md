@@ -9,28 +9,35 @@ change interfaces.
 
 LLM and operations (Phase 7, work items 41 to 46.1), in progress: the
 language model writes the complete candidate of every response from
-evidence, from a compact view of that evidence, and the templates are its
-fallback.
+evidence, from a deterministic view of that evidence structured for its
+task, and the templates are its fallback.
 
 ### Added
 
 - `generation` package (Phase 7, work items 41 and 43;
   [ADR 0012](docs/decisions/0012-generation-design.md),
   [ADR 0013](docs/decisions/0013-compact-generation.md),
+  [ADR 0014](docs/decisions/0014-structured-evidence.md),
   [docs/generation.md](docs/generation.md)): the compact JSON document a
   candidate is written as, each item a row under one wording for its
   kind, records listed before what is counted from them and every
-  wording led by its subject, and each request's JSON Schema, which
-  admits only the replies the request can have (`generation.shape`,
-  `candidate-shape-v3`); the model's view of the evidence, a
-  deterministic projection of the canonical bundle without serialization
-  redundancy or fields its task does not use (`generation.projection`,
-  `projection-v1`), from which the correct answer of every development
-  request is derived; the prompt with the rules, a worked example on
-  invented data that groups records, the replies the request admits and
-  its projection (`generation.prompt`, `prompt-v3`); the adapter, the one
-  path from a writer's output to a
-  release, under the prompt, output, time, attempt and concurrency
+  wording led by its subject, and each task's JSON Schema, which enforces
+  the contract's syntax and nothing that depends on the evidence
+  (`generation.shape`, `candidate-shape-v4`); the model's view of the
+  evidence, a deterministic projection structured for its task: a list's
+  records grouped by condition, a presence check's matching records with
+  the coverage status, and one block per selected driver, each with the
+  counts and visits derived from its records, the notice of each of the
+  case's restrictions, and no outcome or name (`generation.projection`,
+  `projection-v4`), from which the correct
+  answer of every development request is derived; the prompt with the
+  rules, worked examples on invented data that group records and
+  disclose a record without a standard concept, in an answer and in "not
+  recorded", every reply the task can have and the request's projection
+  (`generation.prompt`, `prompt-v7`);
+  the
+  adapter, the one path from a writer's output to a release, under the
+  prompt, output, time, attempt and concurrency
   limits, which releases the template candidate with one of eleven
   recorded fallback reasons whenever the model's is not, each reason with
   its category (`limit_exceeded` for a prompt or output over its limit)
@@ -58,15 +65,20 @@ fallback.
   to the runtime root.
 - Driver selection for explanations (`config/explanation.json`): an
   explanation describes the eligible drivers with the highest attribution
-  scores, highest first, at most a configured number (10, to be frozen
-  before the final evaluation), and a new approved notice states how many
-  more are kept in the evidence; the gate requires exactly the selected
-  drivers and that number.
+  scores, highest first, at most a configured number (5 until it is
+  frozen before the final evaluation), and a new approved notice states
+  how many more are kept in the evidence; the gate requires exactly the
+  selected drivers and that number.
 - Development measurement (`generation.measure`, work item 46.1): the
   prompt and output token distributions of a development case set with
-  the model's tokenizer, for each candidate number of drivers, and a
+  the model's tokenizer, for each candidate number of drivers; a
   benchmark of the model at one precision on a deterministic, stratified
-  sample of development requests.
+  sample of development requests, naming by field what went wrong with
+  each document, the requests withheld for counts or visits alone, and
+  how many of the available history and context lines an explanation
+  states; and a paired comparison of BF16 and NF4 on the same requests,
+  with Newcombe's interval for the paired difference in release rate, the
+  exact McNemar test and non-inferiority at a margin of 5 points.
 - Release-gate checks for the mistakes a language model can make and a
   template cannot: a refusal of a request whose bundle is bound, a
   presence answer about another condition than the one asked about
@@ -79,10 +91,11 @@ fallback.
 - Candidate contract version 1.1: the `drivers_omitted` notice and its
   `omitted` slot; the notice introducing the drivers names them as those
   with the highest attribution scores, in order of their scores.
-- Template explanation version 2 (`explanation-template-v2`): the
+- Template explanation version 3 (`explanation-template-v3`): the
   selected drivers in order of their scores, and the notice on the
-  drivers not described. The gate withholds an explanation that leaves
-  out a described driver's history or context.
+  drivers not described; scores and logits are checked as a response
+  shows them, to three significant figures; a driver's history or context
+  may be left out, and one that is stated must cite all of its records.
 - Wording rules version 3 (`wording-rules-v3`): association,
   complication, interpretive, disease-course, certainty and recency
   wording everywhere, and hedged, ranked or counted facts in answers and
@@ -92,12 +105,13 @@ fallback.
   statement that something is not recorded must negate every
   "recorded"; the model negated a list's summary on invented data and the
   gate released it.
-- Mutation suite version 3 (`validation-mutations-v3`): version 2 added
+- Mutation suite version 4 (`validation-mutations-v4`): version 2 added
   18 classes of model-style mistakes, version 3 the classes of driver
-  selection, of an explanation's completeness and of a statement's
-  polarity; on the development case sets
-  it detects all 24,772 mutants in 65 classes, and every original and
-  control is released unchanged.
+  selection and of a statement's polarity, and version 4 scores wrong in
+  their last shown figure, with controls that must be released (a
+  driver's history or context left out, scores stated to the figures
+  shown); on the development case sets it detects all 24,770 mutants in
+  65 classes, and every original and control is released unchanged.
 - `qa.answer.answer` and `validation.explanation.explain` take a writer;
   without one every answer from evidence is the template's, recorded as a
   `no_model` fallback, and responses are unchanged.

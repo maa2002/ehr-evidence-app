@@ -1,31 +1,36 @@
 # Generation
 
 Phase 7 makes a language model the author of every response from
-evidence. MedGemma 1.5 4B IT, run locally, reads a compact projection of a
-request's evidence bundle and writes the complete candidate: the outcome,
-the statements with their wordings, facts and references, the notices and
-the reason codes. The candidate is released only through the release gate
-of Phase 6 ([validation.md](validation.md)), which checks it against the
+evidence. MedGemma 1.5 4B IT, run locally, reads a deterministic
+projection of a request's evidence, structured for its task, and writes
+the complete candidate: the outcome, the statements with their wordings,
+facts and references, the notices and the reason codes. The canonical
+evidence bundle remains complete and unchanged for provenance and
+validation. The candidate is released only through the release gate of
+Phase 6 ([validation.md](validation.md)), which checks it against the
 canonical bundle, and when it is not released the template candidate is,
 as a recorded fallback.
 
 The design is recorded in
-[ADR 0012](decisions/0012-generation-design.md), and the compact
-representation, the selection of drivers and the precision comparison in
-[ADR 0013](decisions/0013-compact-generation.md). Command examples assume
+[ADR 0012](decisions/0012-generation-design.md); the compact
+representation and the selection of drivers in
+[ADR 0013](decisions/0013-compact-generation.md); and the structured
+evidence, syntax-only decoding, the parity of the Phase 9 conditions and
+the precision decision in
+[ADR 0014](decisions/0014-structured-evidence.md). Command examples assume
 the session set-up in [development.md](development.md#session-set-up).
 
 ## Work items
 
 | Work item | Module | Role | State |
 | --- | --- | --- | --- |
-| 41 | `generation.shape`, `generation.projection`, `generation.prompt`, `generation.adapter` | The document a candidate is written as and its schema; the model's view of the evidence; the prompt; the adapter between the application and a writer | done; compact since milestone 3 |
+| 41 | `generation.shape`, `generation.projection`, `generation.prompt`, `generation.adapter` | The document a candidate is written as and its schema; the model's view of the evidence; the prompt; the adapter between the application and a writer | done; structured evidence and syntax-only decoding since milestone 3 |
 | 42 | `generation.runtime`, `generation.worker` | The pinned model, the worker in its own environment on G:, and the backend that reaches it | done; two precisions measured |
 | 43 | `generation.adapter` | Prompt, output, time, attempt and concurrency limits; the fallback and its category | done |
-| 44 | `qa.answer` | Answers from evidence written through the adapter | done; measured on development requests |
-| 45 | `validation.explanation` | Explanations of the selected drivers written through the adapter | done; measured on development requests |
+| 44 | `qa.answer` | Answers from evidence written through the adapter | in progress: measured on development requests |
+| 45 | `validation.explanation` | Explanations of the selected drivers written through the adapter | in progress: measured on development requests |
 | 46 | `generation.records` | Protected runtime records, tracker aggregates, the log audit | milestone 4 |
-| 46.1 | `generation.measure` | Development measurement: token distributions and the precision benchmark | done |
+| 46.1 | `generation.measure` | Development measurement: token distributions, the benchmark and the paired precision comparison | in progress |
 
 ## What the model writes
 
@@ -36,7 +41,7 @@ question or the checks before generation, and stay the templates'
 approved notices.
 
 It writes one compact JSON document in the shape of its answer
-(`candidate-shape-v3`). The facts of each item stand in a row, and one
+(`candidate-shape-v4`). The facts of each item stand in a row, and one
 wording serves every item of its kind. A row lists its records before
 what is counted from them, and a summary comes after its items, so that
 the model counts what it has already written:
@@ -63,21 +68,30 @@ every other notice at the end. Visit numbers are read as a set.
 ## The model's view of the evidence
 
 The model does not read the canonical bundle. It reads a deterministic
-projection of it (`generation.projection`, `projection-v1`), which leaves
-out only serialization redundancy and what the task does not use:
+projection of it, structured for its task (`generation.projection`,
+`projection-v4`), which holds all the evidence the request needs without
+serialization redundancy or unrelated fields:
 
-| Task | The projection holds | Left out |
-| --- | --- | --- |
-| Lists and presence checks | The task, the coverage status and the number of records without a standard concept; each record of the scope as a row `[ref, visit, concept_id, source]`: its reference, visit number, standard concept (0 when it has none) and ICD source code; for a presence check, which concepts or source codes count as the condition asked about, and how | Names, dates, native identifiers, visit and record metadata, provenance |
-| Explanations | The prediction's label, score and logit; the case's restrictions; each selected driver as a row `[ref, score, history, context]`, with its linked records in pre-target visits (reference and visit number) and in the final admission (reference); how many eligible drivers are not described | The drivers not selected, names, dates, native identifiers, provenance |
+| Task | The projection holds |
+| --- | --- |
+| Lists | The coverage status, the number of records without a standard concept, the numbers of conditions and records, and the scope's records grouped by condition (a standard concept, or the ICD source code of records without one), in the order of each condition's first record, each record as `[ref, visit]`, each group with its number of records and visit numbers |
+| Presence checks | The coverage status, the number of records without a standard concept, the number of matching records, and the records that match the condition asked about, as the resolver matches them (`qa.resolve.match`), grouped by condition and match kind in the same way, with their numbers and visit numbers; an empty set when none matches |
+| Explanations | The prediction's label, score and logit; the case's restrictions, with the approved notice that discloses each; one block per selected driver, highest score first, with its rank, reference and attribution score, its own linked records in pre-target visits as `[ref, visit]` with their number and visit numbers, and its records in the final admission with their number; how many eligible drivers are not described |
 
-The canonical bundle stays unchanged for provenance and validation: the
-release gate checks every candidate against it, and every name a response
-shows is rendered from it, since the model refers to records by their
-references. A presence prompt states which concepts count as the
-condition asked about, since the bundle does not carry the vocabulary's
-hierarchy or descriptions; the model still finds, groups, counts and cites
-the records.
+Names, dates, native identifiers, visit and record metadata and provenance
+are left out: the model refers to records by their references, and every
+name a response shows is rendered from the canonical bundle. Grouping
+records by condition, finding the records that match a condition and
+joining a driver to its verified records are deterministic operations of
+the application, as in Phase 5; the model is not asked to repeat them.
+So are the counts and visits derived from the records: `projection-v2`
+left them to the model, and on 33 sampled development requests 3 in each
+precision were withheld for counts or visits alone, which met the test
+fixed beforehand for giving them (ADR 0014, decision 2). The projection
+states no outcome and no name: the model decides the outcome and which
+records each statement cites, restates the counts and visits, and writes
+every wording. A driver's attribution belongs to its concept, not to a
+visit; its block only joins it to the concept's verified occurrences.
 
 The projection holds everything its task needs: `projection.answer`
 derives the correct document from the projection alone, and it equals the
@@ -85,50 +99,53 @@ template's for every request:
 
 | Samples | Requests answered from their projection alone | Projection size, of the bundles' |
 | --- | --- | --- |
-| Invented fixtures | 16 of 16 | 10% |
-| `dev-30-v1` | 430 of 430 | 5% |
-| `pilot-10-v1` | 182 of 182 | 6% |
+| Invented fixtures | 16 of 16 | 11% |
+| `dev-30-v1` | 430 of 430 | 4% |
+| `pilot-10-v1` | 182 of 182 | 4% |
 
 ## Driver selection
 
 An explanation describes the eligible drivers with the highest attribution
 scores, highest first, ties in the bundle's order, and at most the number
-configured in `config/explanation.json` (`explanation-template-v2`; see
+configured in `config/explanation.json` (`explanation-template-v3`; see
 [validation.md](validation.md#explanations)). A notice states how many
 eligible drivers are not described and kept in the evidence, and every
 attribution stays in the evidence bundle for inspection. The number is
 measured over candidate values on the development case sets (see
 [below](#measurement-on-this-laptop)) and frozen before the final
-evaluation; until then it is 10, marked not frozen.
+evaluation, without the evaluation case set; until then it is 5, marked
+not frozen (ADR 0014).
 
 ## The schema
 
-Each request's document has its own JSON Schema, which the model runtime
-enforces while the model writes:
+Each task's document has one JSON Schema, which the model runtime
+enforces while the model writes. It enforces the contract's syntax, and
+nothing that depends on the evidence (`candidate-shape-v4`, ADR 0014):
 
-- a reference names one of the bundle's records or one of the selected
-  drivers, and a visit number one of the bundle's visits; history and
-  context cite the bundle's history and final-admission records;
-- an item or a driver is a row of a fixed number of values, each in its
-  place;
-- a notice is one the answer may hold, named by its identifier; its
-  text is fixed, and the notice on drivers not described is admitted
-  only when some are;
-- a statement that cites the prediction or a driver states that
-  reference's own label, score and logit, and an explanation the number
-  of drivers not described;
-- a count is a whole number within what the bundle holds;
-- a wording is one line of letters, spaces and plain punctuation, holding
-  each placeholder of its kind exactly once and no other; it begins with
-  its subject's placeholder (the condition, the number of conditions,
-  the label, the rank or the driver), the others in any order, and only
-  an empty list's wording begins freely;
-- a list of a scope with records admits only an answer, and a scope with
-  no records admits only "not recorded".
+- the document's fields, their types, and rows of a fixed number of
+  values, each in its place;
+- the contract's closed vocabularies: the outcomes of the task, the
+  reason codes of each outcome, the notices an answer of the task may
+  hold, named by their identifiers, and the match kinds;
+- the formats and ranges the candidate contract gives references, visit
+  numbers, counts, ranks, scores and concepts, read from the contract
+  itself;
+- a wording of one line of letters, spaces and plain punctuation,
+  holding each placeholder of its kind exactly once and no other; it
+  begins with its subject's placeholder (the condition, the number of
+  conditions, the label, the rank or the driver), the others in any
+  order, and only an empty list's wording begins freely.
+
+Which records, visits and drivers exist, the prediction's and drivers'
+values, and which outcome and notices a request calls for are left to the
+prompt's grounding rules and the release gate. So the model can cite a
+record the bundle does not hold, restate a score wrongly or choose the
+wrong outcome, and the gate withholds each of them. The schema is the
+same for every request of a task, and the same for both conditions of the
+Phase 9 comparison.
 
 The wordings, and an explanation's history and context, are defined once
-under `$defs` and referenced, so the schema stays small however many
-drivers a prediction has. The first runs of the model showed why the
+under `$defs` and referenced. The first runs of the model showed why the
 wording is this narrow: allowed any characters, a wording that had lost a
 placeholder ran on into markup until the output limit. Bounding the length
 of a wording's runs in the schema made each request's grammar take 10 to
@@ -136,28 +153,31 @@ of a wording's runs in the schema made each request's grammar take 10 to
 150 tokens without a double quote is stopped and cut off, and so falls
 back.
 
-The schema admits every correct document written in this style, and
-many wrong ones. Whether a document is right is decided by the release
-gate on the candidate it becomes. The adapter checks every document
-against its schema again, since none is trusted to have been
-constrained; xgrammar does not enforce that a list's values are
-distinct, so a repeated visit or notice is found only then. The runtime
-writes JSON with a space after each comma and colon, and every document
-in a prompt, or counted against a limit, is written the same way.
+The adapter checks every document against its schema again, since none
+is trusted to have been constrained; xgrammar does not enforce that a
+list's values are distinct, so a repeated visit or notice is found only
+then. The runtime writes JSON with a space after each comma and colon, and
+every document in a prompt, or counted against a limit, is written the
+same way.
 
 ## The prompt
 
-The prompt (`prompt-v3`) is two chat messages: the rules every reply
+The prompt (`prompt-v7`) is two chat messages: the rules every reply
 follows, then one worked example on invented data, the task with the
 shape of its reply, and the request's projection as JSON. The rules ask
 for facts in their fields only, wordings without facts that begin with
 the placeholder named for them, one wording for every item of its kind,
-and nothing the evidence does not record. The task offers only the
-replies the request admits, with their example wordings: a list of a
-scope with records is offered as an answer, one without as empty. The
-list and presence examples group several records of one concept into one
-item, and an explanation's example leaves drivers out exactly when the
-request does.
+and nothing the evidence does not record. The task offers every reply the
+task can have, each with the condition on the view that calls for it (a
+list whose "conditions" hold groups is an answer, one whose "conditions"
+are empty is "not recorded"), and the example wordings of each. The list
+and presence examples group several records of one concept into one
+item, and each includes a record without a standard concept, which its
+reply discloses: they are built from invented bundles whose last record
+has lost its standard concept. A presence check is shown two examples
+whatever its evidence, the answer and a "not recorded" for a condition
+none of the records match. An explanation's example leaves drivers out
+exactly when the request does.
 
 Prompts and model output hold patient records; they are never logged.
 
@@ -346,8 +366,8 @@ the template and counts as a failure of the model.
 | --- | --- | --- | --- | --- | --- | --- |
 | `prompt-v2`, `candidate-shape-v2` | BF16, mixed placement | 4 of 33 | 13 cut off by the runaway guard, 15 withheld by the gate, 1 breaking its schema | lists 6.3, presence checks 5.3 to 5.4, explanations 8.4 | lists 23.9, presence checks 22.3 to 24.4, explanations 73.7; 99.0 | 6,439 to 6,600 MiB |
 | `prompt-v2`, `candidate-shape-v2` | NF4, GPU-resident | 4 of 33 | 16 cut off, 13 withheld | lists and presence checks 13.3 to 13.5, explanations 7.5 | lists 12.6, presence checks 12.8, explanations 73.2; 75.6 | 3,596 to 3,746 MiB |
-| `prompt-v3`, `candidate-shape-v3` | BF16, mixed placement | 3 of 33 | 28 withheld, 2 breaking their schema | 8.0 to 8.4 | lists 22.2, presence checks 18.3 to 21.0, explanations 76.8; 78.8 | 6,369 to 6,630 MiB |
-| `prompt-v3`, `candidate-shape-v3` | NF4, GPU-resident | 4 of 33 | 28 withheld, 1 breaking its schema | lists and presence checks 13.3 to 14.1, explanations 7.3 | lists 14.0, presence checks 8.2 to 11.7, explanations 56.5; 93.2 | 3,535 to 3,773 MiB |
+| `prompt-v3`, `candidate-shape-v3` | BF16, mixed placement | 4 of 33 | 27 withheld, 2 breaking their schema | 8.0 to 8.4 | lists 22.2, presence checks 18.3 to 21.0, explanations 76.8; 78.8 | 6,369 to 6,630 MiB |
+| `prompt-v3`, `candidate-shape-v3` | NF4, GPU-resident | 5 of 33 | 27 withheld, 1 breaking its schema | lists and presence checks 13.3 to 14.1, explanations 7.3 | lists 14.0, presence checks 8.2 to 11.7, explanations 56.5; 93.2 | 3,535 to 3,773 MiB |
 
 By task, the requests released as the model wrote them:
 
@@ -355,15 +375,13 @@ By task, the requests released as the model wrote them:
 | --- | --- | --- | --- | --- | --- |
 | v2, BF16 | 0 | 1 | 0 | 0 | 3 |
 | v2, NF4 | 0 | 1 | 1 | 0 | 2 |
-| v3, BF16 | 2 | 1 | 0 | 0 | 0 |
-| v3, NF4 | 3 | 1 | 0 | 0 | 0 |
+| v3, BF16 | 2 | 1 | 0 | 0 | 1 |
+| v3, NF4 | 3 | 1 | 0 | 0 | 1 |
 
-The benchmark ran before the gate required an explanation to state each
-described driver's history and context (ADR 0013, decision 7). With
-`prompt-v3` it had released one explanation in each precision that left
-a driver's history out; both are counted here as withheld, as the gate
-now withholds them, and greedy decoding writes the same documents again.
-`prompt-v2` was measured under the gate of its time.
+Each version is counted under the gate of its time. The explanation
+released in each precision with `prompt-v3` left a driver's history out;
+for a while the gate withheld that (ADR 0013, decision 7), and it
+releases it again since ADR 0014 (decision 5).
 
 NF4 writes lists and presence checks about 1.7 times as fast as BF16
 with the mixed placement, in a little over half the GPU memory. An
@@ -410,10 +428,64 @@ so their timings are not used:
 | 8 | 1 of 8 | 541 |
 | 10 | 0 of 8 | 636 |
 
-Fewer drivers were released more often, but the numbers are too small to
-choose K by. With K = 5 or fewer every development explanation fits the
-output limit. K stays 10, marked not frozen, until it is chosen and
-frozen before the final evaluation.
+These runs used `candidate-shape-v3` and `prompt-v3`. Fewer drivers were
+released more often, but the numbers are too small to choose K by. With
+K = 5 or fewer every development explanation fits the output limit, and
+K is 5, marked not frozen, until it is chosen and frozen before the
+final evaluation (ADR 0014).
+
+### Structured evidence
+
+With the structured view of ADR 0014, syntax-only decoding and K = 5,
+the same 33 requests were written in both precisions and compared pair
+by pair (`--paired`), each version on its committed code and under the
+gate as it now stands:
+
+| Commit | What changed | BF16 released | NF4 released | NF4 minus BF16, 95% CI; exact McNemar p |
+| --- | --- | --- | --- | --- |
+| `7f14baf` | `projection-v2`: records grouped, matching sets, driver blocks, no counts; `prompt-v4`; `candidate-shape-v4` | 9 of 33 | 8 of 33 | -3.0 points, -10.8 to +4.2; 1.000 |
+| `96edab4` | `projection-v3`: counts and visits given; `prompt-v5` | 12 | 11 | -3.0, -9.5 to +3.3; 1.000 |
+| `42c9011` | `prompt-v6`: the examples disclose a record without a standard concept | 21 | 18 | -9.1, -18.4 to +0.6; 0.250 |
+| `20e02a0` | `projection-v4`: the notice of each restriction; `prompt-v7`: a "not recorded" example as well | 26 | 17 | -27.3, -41.2 to -11.6; 0.004 |
+
+By task, BF16 and NF4:
+
+| Commit | Lists (8) | Empty list (1) | Presence, recorded (8) | Presence, recorded elsewhere (8) | Explanations (8) |
+| --- | --- | --- | --- | --- | --- |
+| `7f14baf` | 3, 3 | 1, 0 | 2, 2 | 3, 3 | 0, 0 |
+| `96edab4` | 3, 3 | 1, 0 | 2, 2 | 3, 3 | 3, 3 |
+| `42c9011` | 7, 5 | 1, 0 | 7, 7 | 3, 3 | 3, 3 |
+| `20e02a0` | 7, 5 | 1, 0 | 7, 5 | 5, 5 | 6, 2 |
+
+With `projection-v2` the test for counts and visits was met: 3 requests
+in each precision were withheld for counts or visits alone, all of them
+explanations. `projection-v3` gave them, and no request has been withheld
+for them alone since. The largest failure of lists and presence checks
+was then the disclosure of records without a standard concept, which no
+worked example had shown; `prompt-v6` showed it in an answer and
+`prompt-v7` in a "not recorded" too. Half the explanations stated the
+wrong notices for their restrictions until `projection-v4` gave the
+notice of each. With BF16 at `20e02a0`, what is left is one list item
+miscounted, one presence answer without its disclosure, three "not
+recorded" without theirs, and two explanations with an added driver or a
+history row that cites other records; the model stated 14 of the 19
+available history lines and 24 of 24 context lines, and every released
+explanation all of its own.
+
+As the task became feasible the precisions parted: at `20e02a0` BF16
+released every request NF4 did and 9 more. NF4 repeated visits and
+notices, stated notices of restrictions the case does not have, left out
+disclosures and answered an empty list with records the bundle does not
+hold. Latency and memory at `20e02a0`:
+
+| Precision | Seconds, median (largest): lists, presence checks, explanations | Peak GPU memory |
+| --- | --- | --- |
+| BF16, mixed placement | 42.4 (83.8); 16.4 to 17.1 (18.1); 65.8 (73.6) | 6,489 to 6,642 MiB |
+| NF4, GPU-resident | 32.4 (64.2); 12.2 to 13.0 (13.9); 48.2 (51.8) | 3,645 to 3,787 MiB |
+
+These versions were tuned on these 33 requests, so their last rates are
+optimistic. The precision, K and the limits are decided on the whole of
+`dev-30-v1` (ADR 0014, decision 9); `eval-100-v1` is not used.
 
 ## Commands
 
@@ -453,4 +525,5 @@ with the model at one precision:
 & $AppPython -m ehr_evidence_app.generation.measure --benchmark --case-set dev-30-v1 --precision bf16-mixed --per-group 8
 & $AppPython -m ehr_evidence_app.generation.measure --benchmark --case-set dev-30-v1 --precision nf4 --per-group 8
 & $AppPython -m ehr_evidence_app.generation.measure --benchmark --case-set dev-30-v1 --task prediction_explanation --drivers 5
+& $AppPython -m ehr_evidence_app.generation.measure --paired --case-set dev-30-v1 --per-group 1000
 ```

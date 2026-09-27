@@ -3,7 +3,9 @@
 Status: accepted (2026-09-27); amended by
 [ADR 0013](0013-compact-generation.md): the model reads a compact
 projection of the bundle, and an explanation describes the selected
-drivers.
+drivers; and by [ADR 0014](0014-structured-evidence.md): the projection is
+structured for its task, and the schema enforces the contract's syntax
+only, with evidence truth left to the prompt and the gate.
 
 ## Context
 

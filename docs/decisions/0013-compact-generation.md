@@ -2,7 +2,11 @@
 
 Status: accepted (2026-09-27). Amends [ADR 0012](0012-generation-design.md),
 decision 1: the model reads a compact projection of the bundle, and an
-explanation describes the selected drivers.
+explanation describes the selected drivers. Amended by
+[ADR 0014](0014-structured-evidence.md): the projection is structured for
+its task (decision 1), the schema enforces syntax only (decision 6), and
+an explanation's history and context are measured, not required
+(decision 7).
 
 ## Context
 

@@ -62,8 +62,8 @@ attribution.
 | Inherited GNN integration | implemented and closed for the 10-person development pilot |
 | Evidence contracts, records, event linkage and bundles | implemented for the development pilot and the development and evaluation case sets |
 | Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out and written wording tests done |
-| Validation and the release gate | implemented; mutation suite version 3 covers model-written candidates and driver selection |
-| LLM generation | in progress: the compact output shape, the model's view of the evidence, the prompt, adapter, limits and fallback, and the pinned model's worker in its own environment are implemented; QA answers and explanations are measured with the model on development requests; runtime records follow |
+| Validation and the release gate | implemented; mutation suite version 4 covers model-written candidates, driver selection and scores as shown |
+| LLM generation | in progress: the compact output shape with syntax-only decoding, the model's structured view of the evidence, the prompt, adapter, limits and fallback, and the pinned model's worker in its own environment are implemented; QA answers and explanations are measured with the model on development requests; runtime records follow |
 | API, interface and evaluation | planned |
 
 See [roadmap.md](roadmap.md) for the planned work.

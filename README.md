@@ -38,8 +38,8 @@ are slots filled from the evidence, and leaves only through a release
 gate that checks its structure, references, support, preservation of the
 prediction and wording, tested by a mutation suite. Language-model
 generation is in progress: MedGemma 1.5 4B IT, run locally, writes the
-complete candidate of every answer and explanation from a compact view
-of its evidence, through an adapter that releases the template's
+complete candidate of every answer and explanation from a structured
+view of its evidence, through an adapter that releases the template's
 candidate whenever the model's is not released. The API and interface and the evaluation are
 planned; see the [roadmap](docs/roadmap.md) and the
 [changelog](CHANGELOG.md).
