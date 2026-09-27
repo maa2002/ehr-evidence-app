@@ -113,6 +113,17 @@ class MeasureTests(unittest.TestCase):
         self.assertEqual(measure.differences(task, wrong, expected),
                          {"prediction.score"})
 
+    def test_notices_are_named(self):
+        """A notice missing or added is named by its identifier."""
+        expected = {"outcome": "explanation",
+                    "notices": ["drivers", "target_attached"]}
+        stated = {"outcome": "explanation",
+                  "notices": ["drivers", "target_excluded"]}
+        self.assertEqual(measure.differences("prediction_explanation",
+                                             stated, expected),
+                         {"notices: target_attached missing",
+                          "notices: target_excluded added"})
+
     def test_history_findings_name_their_part(self):
         """A driver's history or context row is named by the part that
         differs, or as left out; counts and visits alone are

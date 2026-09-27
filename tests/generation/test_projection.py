@@ -60,6 +60,8 @@ class ProjectionTests(unittest.TestCase):
                 self.assertLessEqual(set(cited), set(item.linked_event_refs))
             self.assertEqual(view["drivers_not_described"],
                              shape.omitted_drivers(context))
+            self.assertEqual(len(view["restriction_notices"]),
+                             len(view["restrictions"]))
 
     def test_lists_are_grouped_by_condition(self):
         """A list's view holds every record of the scope once, grouped by

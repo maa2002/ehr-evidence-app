@@ -218,6 +218,14 @@ def differences(task, document, expected):
         if key == rows and isinstance(mine, list) and isinstance(theirs,
                                                                  list):
             found |= row_differences(task, mine, theirs)
+        elif key == "notices" and isinstance(mine, list) and isinstance(
+                theirs, list):
+            # Notices are named by their approved identifiers.
+            found |= {"notices: %s missing" % notice
+                      for notice in set(theirs) - set(mine)}
+            found |= {"notices: %s added" % notice
+                      for notice in set(mine) - set(theirs)
+                      if isinstance(notice, str)}
         elif isinstance(mine, dict) and isinstance(theirs, dict):
             found |= {"%s.%s" % (key, name)
                       for name in set(mine) | set(theirs)

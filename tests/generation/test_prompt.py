@@ -32,32 +32,42 @@ class PromptTests(unittest.TestCase):
             self.assertNotIn(context.bundle.bundle_id, body)
 
     def test_examples_are_invented(self):
-        """Each task's worked example uses the invented fixtures, with
-        records to answer from; the list and presence examples group
-        several records into one item; an explanation's example leaves
-        drivers out exactly when its request does."""
+        """Each task's worked examples use the invented fixtures; the list
+        and presence answers group several records into one item; every
+        list and presence example discloses a record without a standard
+        concept, a presence check's "not recorded" too; an explanation's
+        example leaves drivers out exactly when its request does."""
         examples = prompt.examples()
         self.assertEqual(set(examples), {
             "condition_list", "condition_presence",
+            ("condition_presence", False),
             ("prediction_explanation", True),
             ("prediction_explanation", False)})
         for key, (context, template) in examples.items():
             self.assertTrue(context.request.case.case_set.startswith(
                 "synthetic-"))
-            self.assertIn(template.outcome, ("answer", "explanation"))
-            if context.task != "prediction_explanation":
+            if context.task == "prediction_explanation":
+                continue
+            self.assertEqual(template.reason_codes,
+                             ("unmapped_records_in_scope",))
+            self.assertEqual(projection.view(context)[
+                "records_without_standard_concept"], 1)
+            if template.outcome == "answer":
                 self.assertGreater(max(len(item.refs)
                                        for item in template.statements
                                        if item.kind.endswith("_item")), 1)
-                # Each discloses a record without a standard concept.
-                self.assertEqual(template.reason_codes,
-                                 ("unmapped_records_in_scope",))
-                self.assertEqual(projection.view(context)[
-                    "records_without_standard_concept"], 1)
+        absent = examples[("condition_presence", False)][1]
+        self.assertEqual(absent.outcome, "not_recorded")
+        self.assertIn("presence_unmapped",
+                      {item.kind for item in absent.statements})
         for context, _ in PAIRS:
+            chosen = prompt.examples_of(context)
+            if context.task == "condition_presence":
+                self.assertEqual({template.outcome for _, template in chosen},
+                                 {"answer", "not_recorded"})
             if context.task != "prediction_explanation":
                 continue
-            example, template = prompt.example_of(context)
+            (example, template), = chosen
             notices = json.loads(shape.text(shape.document_of(template)))[
                 "notices"]
             self.assertEqual("drivers_omitted" in notices,

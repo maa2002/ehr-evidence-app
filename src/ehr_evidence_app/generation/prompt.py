@@ -3,7 +3,7 @@
 messages() returns the two chat messages of one request: the rules every
 answer follows, then one worked example on invented data, and the
 request's task, the shape of its reply and its evidence as the compact
-projection of generation.projection (prompt-v6, ADR 0014). The canonical
+projection of generation.projection (prompt-v7, ADR 0014). The canonical
 bundle is not sent: the projection, structured for its task, leaves out
 serialization redundancy and what the task does not use, and holds
 everything a correct answer needs. A request whose prompt is over its
@@ -26,7 +26,7 @@ import sys
 from ehr_evidence_app.generation import projection, shape
 from ehr_evidence_app.validation import candidate as candidates
 
-PROMPT_VERSION = "prompt-v6"
+PROMPT_VERSION = "prompt-v7"
 RULES = """\
 You write the responses of a research application that answers questions \
 about one patient's recorded conditions, and explains a model's \
@@ -126,7 +126,8 @@ Task: explain the selected prediction through the recorded concepts with \
 the highest attribution scores.
 
 The view gives the prediction (its label, score and logit), the case's \
-restrictions, and the drivers to describe, highest score first, each with \
+restrictions and the notice of each (restriction_notices), and the drivers \
+to describe, highest score first, each with \
 its rank, ref and attribution score, its history (its records in visits \
 before the final admission, as [ref, visit], the visit being the record's \
 visit number), with their number (history_count) and visit numbers \
@@ -151,10 +152,8 @@ ascending and each once, their number]; context is null when the \
 driver's context is empty, otherwise [the refs of its context, their \
 number].
 - notices: "drivers", then "drivers_omitted" when drivers_not_described \
-is above zero, then "attribution_meaning" and "score_meaning", then for \
-each restriction its notice: batch_sensitive_prediction: \
-"batch_sensitive"; target_attached_drivers_present: "target_attached"; \
-target_outcome_entries_excluded: "target_excluded".
+is above zero, then "attribution_meaning" and "score_meaning", then the \
+notices in restriction_notices.
 - omitted: drivers_not_described when it is above zero, otherwise null."""
 # One explanation example describes two drivers and leaves one out.
 EXAMPLE_DRIVERS = 2
@@ -196,10 +195,12 @@ def task_text(context):
                        + [example_wordings(context)])
 
 
-def without_standard_concept(context):
+def without_standard_concept(context, unmatched=False):
     """Return an invented request whose last record has lost its standard
     concept, with its template: the list or presence example then shows
-    how records without one are grouped by their ICD code and disclosed."""
+    how records without one are grouped by their ICD code and disclosed.
+    With unmatched, the presence question asks about a condition none of
+    the records match, so that "not recorded" is disclosed too."""
     from ehr_evidence_app.evidence import contracts, schema
     from ehr_evidence_app.qa import answer, resolve, suite, templates
     bundle = context.bundle
@@ -220,8 +221,14 @@ def without_standard_concept(context):
             request.request_id, request.case, request.scope, bundle, ref)
         return shape.Context(request, bundle, context.bundle_sha256), template
     vocabulary = suite.synthetic_vocabulary()
+    concepts = context.asked.name.concepts
+    if unmatched:
+        concepts = next(
+            (concept,) for concept in sorted(vocabulary.rows)
+            if not answer.record_matches(bundle, resolve.Resolution(
+                "", "resolved", "concepts", concepts=(concept,)), vocabulary))
     resolution = resolve.Resolution("", "resolved", "concepts",
-                                    concepts=context.asked.name.concepts)
+                                    concepts=concepts)
     template = templates.presence_candidate(
         request.request_id, request.case, request.scope, bundle, ref,
         resolution, answer.record_matches(bundle, resolution, vocabulary))
@@ -234,9 +241,11 @@ def examples():
     """Return the worked examples, on invented data: for a list and a
     presence check, the invented answer that groups the most records into
     the most items (the smallest such), with its last record's standard
-    concept removed so that the example discloses it; for an explanation,
-    the invented one describing two of its drivers and leaving one out
-    (keyed True), and describing all of them (keyed False)."""
+    concept removed so that the example discloses it, and for a presence
+    check also its "not recorded" for a condition none of the records
+    match (keyed ("condition_presence", False)); for an explanation, the
+    invented one describing two of its drivers and leaving one out (keyed
+    True), and describing all of them (keyed False)."""
     from ehr_evidence_app.validation import explanation
     found = {}
     for context, template in shape.synthetic_contexts():
@@ -262,18 +271,24 @@ def examples():
     for task in ("condition_list", "condition_presence"):
         rank, context, _ = found[task]
         found[task] = (rank,) + without_standard_concept(context)
+    found[("condition_presence", False)] = (0,) + without_standard_concept(
+        found["condition_presence"][1], unmatched=True)
     return {key: (context, template)
             for key, (_, context, template) in found.items()}
 
 
-def example_of(context):
-    """Return the worked example of a request: its task's, and for an
-    explanation the one that leaves drivers out exactly when the request
-    does."""
+def examples_of(context):
+    """Return the worked examples of a request: its task's; for a presence
+    check both its answer and its "not recorded", whatever the evidence;
+    for an explanation the one that leaves drivers out exactly when the
+    request does."""
     if context.task == "prediction_explanation":
-        return examples()[(context.task,
-                           shape.omitted_drivers(context) > 0)]
-    return examples()[context.task]
+        return [examples()[(context.task,
+                            shape.omitted_drivers(context) > 0)]]
+    if context.task == "condition_presence":
+        return [examples()[context.task],
+                examples()[(context.task, False)]]
+    return [examples()[context.task]]
 
 
 def request_text(context):
@@ -285,14 +300,12 @@ def request_text(context):
 def messages(context):
     """Return the chat messages of a request: the rules, then the worked
     example, the request and its evidence view."""
-    example, template = example_of(context)
-    body = "\n\n".join((
-        "Worked example, on invented data.",
-        request_text(example),
-        "Reply:", shape.text(shape.document_of(template)),
-        "Now the request.",
-        request_text(context),
-        "Reply with the JSON document only."))
+    parts = []
+    for example, template in examples_of(context):
+        parts += ["Worked example, on invented data.", request_text(example),
+                  "Reply:", shape.text(shape.document_of(template))]
+    body = "\n\n".join(parts + ["Now the request.", request_text(context),
+                                 "Reply with the JSON document only."])
     return [{"role": "system", "content": RULES},
             {"role": "user", "content": body}]
 

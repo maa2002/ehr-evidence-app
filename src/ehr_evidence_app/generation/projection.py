@@ -1,7 +1,7 @@
 """The model's view of an evidence bundle (Phase 7; ADR 0013, ADR 0014).
 
 The model does not read the canonical bundle: it reads a compact,
-deterministic projection of it, structured for its task (projection-v3).
+deterministic projection of it, structured for its task (projection-v4).
 The canonical bundle stays unchanged for provenance and validation, and
 the release gate checks the model's candidate against it. The projection
 leaves out serialization redundancy and what the task does not use, and
@@ -21,7 +21,8 @@ without the outcome of the answer:
   as the resolver matches it (qa.resolve.match, through
   generation.shape.asked);
 * an explanation: the prediction's label, score and logit; the case's
-  restrictions; each selected driver, highest score first, with its rank,
+  restrictions, and the approved notice that discloses each; each
+  selected driver, highest score first, with its rank,
   reference and attribution score, its linked records in pre-target
   visits as [reference, visit number] with their number and visit
   numbers, and its records in the final admission with their number; and
@@ -34,6 +35,8 @@ still writes the complete candidate: its outcome, the records each
 statement cites, the counts and visits it states, the notices and every
 wording. Version 2 gave no counts or visits; the model was withheld for
 them alone often enough to meet the test of ADR 0014 (decision 2).
+Version 4 gives the notice of each restriction, a fixed lookup the model
+got wrong in half the explanations sampled.
 
 answer() writes the correct compact document from the projection alone.
 The default and operator modes compare it with the template's document for
@@ -55,7 +58,7 @@ import sys
 
 from ehr_evidence_app.generation import shape
 
-PROJECTION_VERSION = "projection-v3"
+PROJECTION_VERSION = "projection-v4"
 RECORD_COLUMNS = ["ref", "visit"]
 
 
@@ -157,6 +160,8 @@ def explanation_view(context):
                            "score": prediction.score,
                            "logit": prediction.logit},
             "restrictions": list(bundle.restrictions),
+            "restriction_notices": [RESTRICTION_NOTICES[code]
+                                    for code in bundle.restrictions],
             "drivers": [driver_block(rank, item, history, final, numbers)
                         for rank, item in enumerate(
                             shape.selected_drivers(context), 1)],
@@ -284,8 +289,7 @@ def explanation_answer(projection):
             "drivers": drivers,
             "notices": ["drivers"] + (["drivers_omitted"] if left else [])
             + ["attribution_meaning", "score_meaning"]
-            + [RESTRICTION_NOTICES[code]
-               for code in projection["restrictions"]],
+            + projection["restriction_notices"],
             "omitted": left or None}
 
 
