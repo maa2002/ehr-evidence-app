@@ -61,7 +61,8 @@ class MutationTests(unittest.TestCase):
         classes = set(COUNTS["classes"])
         for error in ("unselected_driver_described",
                       "omitted_drivers_miscounted",
-                      "omitted_drivers_unstated", "negated_fact",
+                      "omitted_drivers_unstated", "omitted_driver_history",
+                      "omitted_driver_context", "negated_fact",
                       "absence_worded_as_record"):
             self.assertIn(error, classes)
 

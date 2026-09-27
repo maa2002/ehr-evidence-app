@@ -74,10 +74,10 @@ class CheckTests(unittest.TestCase):
         """Prediction, drivers, order, a zero-score driver, disclosures
         and a missing notice, for the configured number of drivers and for
         one driver, where the drivers not described are stated too."""
+        names = set()
         for limit in (None, 1):
             _, good = explanation.explain(REQUEST, BUNDLE, DIGEST,
                                           limit=limit)
-            names = set()
             for name, expected, fault, bundle in explanation.synthetic_faults(
                     good, BUNDLE):
                 names.add(name)
@@ -89,7 +89,18 @@ class CheckTests(unittest.TestCase):
                 self.assertIsNone(response.text)
         self.assertLessEqual({"omitted_drivers_miscounted",
                               "omitted_drivers_unstated",
-                              "unselected_driver_described"}, names)
+                              "unselected_driver_described",
+                              "omitted_driver_history",
+                              "omitted_driver_context"}, names)
+
+    def test_history_and_context_are_stated(self):
+        """A driver described with history or final-admission records
+        states them; leaving either line out is unsupported."""
+        for kind in ("driver_history", "driver_context"):
+            fault = GOOD.model_copy(update={"statements": tuple(
+                item for item in GOOD.statements if item.kind != kind)})
+            self.assertEqual(explanation.check(fault, BUNDLE),
+                             ("claim_unsupported",), kind)
 
     def test_history_must_be_the_drivers_linked_events(self):
         """A history statement citing another driver's records is

@@ -30,8 +30,10 @@ The checks apply to any explanation candidate, whoever wrote it:
 * claim_unsupported: a history statement cites other records than the
   driver's linked events in pre-target visits, a context statement other
   records than its final-admission ones, or either miscounts them or their
-  visits; the restrictions disclosed, as reason codes or notices, are not
-  the case's; the drivers not described are not stated, or miscounted;
+  visits; a driver described with such records leaves its history or
+  context out; the restrictions disclosed, as reason codes or notices, are
+  not the case's; the drivers not described are not stated, or
+  miscounted;
 * structure_invalid: a notice on what the scores mean is missing.
 
 With the structure checks and the wording rules this enforces the evidence
@@ -229,12 +231,15 @@ def driver_problems(candidate, bundle, limit=None):
 
 
 def record_problems(candidate, bundle):
-    """Return problems of the history and context an explanation states."""
+    """Return problems of the history and context an explanation states:
+    each driver described states them exactly when it has such records,
+    citing them all, with their count and, for history, their visits."""
     attributions = {item.ref: item for item in bundle.attributions}
     allowed = {"driver_history": {event.ref
                                   for event in bundle.history_events},
                "driver_context": {event.ref for event in
                                   bundle.final_admission_context}}
+    described = [item.slots.driver for item in of_kind(candidate, "driver")]
     for kind, refs in allowed.items():
         seen = set()
         for item in of_kind(candidate, kind):
@@ -248,6 +253,11 @@ def record_problems(candidate, bundle):
                     or item.slots.count != len(linked)
                     or (kind == "driver_history" and tuple(
                         item.slots.visits) != visits_of(bundle, linked))):
+                return {"claim_unsupported"}
+        for ref in described:
+            driver = attributions.get(ref)
+            if driver is not None and ref not in seen and any(
+                    event in refs for event in driver.linked_event_refs):
                 return {"claim_unsupported"}
     return set()
 
@@ -427,6 +437,16 @@ def synthetic_faults(good, bundle):
         faults += [("omitted_driver", "attribution_altered", dropped, bundle),
                    ("reordered_drivers", "attribution_altered", swapped,
                     bundle)]
+    for kind in ("driver_history", "driver_context"):
+        lines = [number for number, item in enumerate(good.statements)
+                 if item.kind == kind]
+        if lines:
+            # A driver's history or context left out.
+            faults.append(("omitted_" + kind, "claim_unsupported",
+                           good.model_copy(update={"statements": tuple(
+                               item for number, item in enumerate(
+                                   good.statements) if number != lines[0])}),
+                           bundle))
     lined = [index for index, block in enumerate(blocks) if len(block) > 1]
     if lined and len(blocks) > 1:
         # A driver's history and context under another driver.

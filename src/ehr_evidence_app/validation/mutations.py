@@ -47,10 +47,10 @@ cannot, since in Phase 7 the model writes the candidates:
 
 Version 3 adds the mistakes of driver selection and of a statement's
 polarity: a driver not selected described (attribution_altered), the
-drivers not described miscounted or unstated (claim_unsupported), a
-statement that something is recorded worded as a negation, and a
-statement that something is not recorded worded as a record
-(prohibited_wording).
+drivers not described miscounted or unstated, and a driver's history or
+context left out (claim_unsupported), a statement that something is
+recorded worded as a negation, and a statement that something is not
+recorded worded as a record (prohibited_wording).
 
 The default mode uses invented fixtures. The operator mode uses the
 development case sets and prints aggregate counts only; the evaluation case
