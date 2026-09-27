@@ -32,8 +32,9 @@ def check(candidate, concept_name=None, condition=None, bound=None):
 
 def clarification(*statements, **fields):
     """Return an invented clarification candidate."""
-    values = dict(schema_version="1.0", request_id="q-1", case=GOOD.case,
-                  scope=GOOD.scope, outcome="clarification",
+    values = dict(schema_version=candidates.CANDIDATE_VERSION,
+                  request_id="q-1", case=GOOD.case, scope=GOOD.scope,
+                  outcome="clarification",
                   reason_codes=("concept_unknown",),
                   statements=statements)
     values.update(fields)
@@ -121,7 +122,7 @@ class StructureTests(unittest.TestCase):
         """A presence answer about another condition than the question's
         is a scope violation."""
         absent = candidates.Candidate(
-            schema_version="1.0", request_id="q-1",
+            schema_version=candidates.CANDIDATE_VERSION, request_id="q-1",
             task="condition_presence", case=GOOD.case, scope=GOOD.scope,
             outcome="not_recorded", bundle=GOOD.bundle,
             statements=(candidates.Statement(

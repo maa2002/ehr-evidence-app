@@ -6,7 +6,7 @@ condition named "Pneumonia caused by a virus" never trips a rule. Every
 statement of every released outcome is read: answers, refusals and
 clarifying questions (and, from work item 38, explanations).
 
-Rules version wording-rules-v3 prohibits (prohibited_wording):
+Rules version wording-rules-v4 prohibits (prohibited_wording):
 
 * causal or directional attribution ("caused", "led to", "due to",
   "raised the risk", "risk factor", "associated with", "secondary to");
@@ -25,15 +25,24 @@ Rules version wording-rules-v3 prohibits (prohibited_wording):
 * in answers and explanations, hedged facts ("possibly", "may", "seems
   to"), rankings ("the main", "most important", "key") and counts or
   quantities in words ("three", "several", "most"): every fact is
-  certain, unranked and stated by a slot.
+  certain, unranked and stated by a slot;
+* a statement worded against its kind: a statement that something is
+  recorded (a list's or presence answer's summary and items, the
+  prediction, a driver, its history and context) negated ("No
+  conditions are recorded" above a list), and a statement that
+  something is not recorded (an empty list, a condition not recorded)
+  that does not negate every "recorded" it holds.
 
 Causal, diagnostic and risk words pass when a negation comes shortly
 before them in the same clause ("attribution does not mean causation",
-"this application does not diagnose", "not a clinical risk"). Version
-1 also let a negation in an earlier clause pardon them ("X is not
-recorded, caused by ..."); the mutation suite (validation.mutations)
-found it. Version 3 adds the phrasings a language model writes around
-facts and a template never does. Dates, recurrence, frequency and
+"this application does not diagnose", "not a clinical risk"), and such a
+negation is the only one a statement that something is recorded may
+hold. Version 1 also let a negation in an earlier clause pardon them ("X
+is not recorded, caused by ..."); the mutation suite
+(validation.mutations) found it. Version 3 adds the phrasings a language
+model writes around facts and a template never does, and version 4 reads
+a wording with its statement's kind, after the model negated a list's
+summary on invented data. Dates, recurrence, frequency and
 recency are never typed into a wording (date_unsupported); an
 explanation states how often and in which visits a driver's concept was
 recorded only through the slots of a statement that cites its linked
@@ -55,7 +64,7 @@ import sys
 
 from ehr_evidence_app.validation import candidate as candidates
 
-RULES_VERSION = "wording-rules-v3"
+RULES_VERSION = "wording-rules-v4"
 # Stands in for a slot, so that no fact is read as wording.
 SLOT = "X"
 NEGATIONS = frozenset(("not", "no", "never", "nor", "without", "cannot",
@@ -63,6 +72,14 @@ NEGATIONS = frozenset(("not", "no", "never", "nor", "without", "cannot",
 # How many words before a match a negation may stand, within its clause.
 NEGATION_WINDOW = 4
 CLAUSE_END = re.compile(r"[.,;:!?()]")
+WORD = re.compile(r"[a-z']+")
+# Statement kinds that state that something is recorded, and those that
+# state that something is not.
+AFFIRMATIVE = ("list_summary", "list_item", "presence_summary",
+               "presence_item", "prediction", "driver", "driver_history",
+               "driver_context")
+ABSENT = ("list_empty", "presence_absent")
+RECORD = re.compile(r"\brecord(?:s|ed)?\b")
 # (rule, pardoned by a negation, pattern, outcomes it applies to; None for
 # every outcome)
 # The outcomes that state recorded facts.
@@ -156,18 +173,52 @@ def neutral(wording):
     return candidates.PLACEHOLDER.sub(SLOT, wording).casefold()
 
 
+def is_negation(word):
+    """Return True when a word is a negation."""
+    return word.split("'")[0] in NEGATIONS or word.endswith("n't")
+
+
 def negated(text, start):
     """Return True when a negation stands shortly before a position, in
     the same clause."""
     clause = CLAUSE_END.split(text[:start])[-1]
-    words = re.findall(r"[a-z']+", clause)
-    return any(word.split("'")[0] in NEGATIONS or word.endswith("n't")
-               for word in words[-NEGATION_WINDOW:])
+    return any(is_negation(word)
+               for word in WORD.findall(clause)[-NEGATION_WINDOW:])
 
 
-def findings(wording, outcome=None):
+def disclaims(text, end):
+    """Return True when a word that a negation pardons (causal,
+    diagnostic, risk) follows a position shortly, in the same clause, so
+    that a negation there denies a prohibited reading."""
+    clause = CLAUSE_END.split(text[end:])[0]
+    window = " ".join(WORD.findall(clause)[:NEGATION_WINDOW])
+    return any(pattern.search(window)
+               for _, pardonable, pattern, _ in PROHIBITED if pardonable)
+
+
+def polarity(text, kind):
+    """Return the rule a wording breaks for its statement's kind: a
+    negation that denies no prohibited reading, in a statement that
+    something is recorded (negated_fact), or a statement that something
+    is not recorded in which a "recorded" is missing or not negated
+    (absence_unstated); None when it breaks neither."""
+    if kind in AFFIRMATIVE:
+        for match in WORD.finditer(text):
+            if is_negation(match.group()) and not disclaims(text,
+                                                            match.end()):
+                return "negated_fact"
+    if kind in ABSENT:
+        found = list(RECORD.finditer(text))
+        if not found or not all(negated(text, match.start())
+                                for match in found):
+            return "absence_unstated"
+    return None
+
+
+def findings(wording, outcome=None, kind=None):
     """Return (reason code, rule) pairs a wording breaks, in rule order,
-    in a statement of an outcome (every rule when it is None)."""
+    in a statement of an outcome (every rule when it is None) and of a
+    kind (no rule of a kind when it is None)."""
     text = neutral(wording)
     found = []
     for rule, pardonable, pattern, outcomes in PROHIBITED:
@@ -179,6 +230,9 @@ def findings(wording, outcome=None):
                 continue
             found.append(("prohibited_wording", rule))
             break
+    rule = polarity(text, kind)
+    if rule is not None:
+        found.append(("prohibited_wording", rule))
     if DATES.search(text):
         found.append(("date_unsupported", "dates"))
     return found
@@ -189,7 +243,8 @@ def check(candidate):
     statements break; empty when it passes."""
     return tuple(sorted({code for statement in candidate.statements
                          for code, _ in findings(statement.wording,
-                                                 candidate.outcome)}))
+                                                 candidate.outcome,
+                                                 statement.kind)}))
 
 
 # --------------------------------------------------------------------------
@@ -240,18 +295,51 @@ SYNTHETIC_WORDINGS = (
     ("{label} is the label the model selected, one output of its "
      "multi-label prediction.", ()),
 )
+# Version 4: (statement kind, outcome, wording, expected reason codes).
+SYNTHETIC_KINDS = (
+    ("list_summary", "answer",
+     "No conditions are recorded within {scope} ({records}): {groups}",
+     ("prohibited_wording",)),
+    ("list_summary", "answer",
+     "{groups} are recorded within {scope} ({records}), which does not "
+     "mean causation:", ()),
+    ("presence_item", "answer",
+     "{condition} ({count} in {visits}; not matched as {match})",
+     ("prohibited_wording",)),
+    ("driver_history", "explanation",
+     "{driver}: {count} in {visits}, never in the final admission",
+     ("prohibited_wording",)),
+    ("prediction", "explanation",
+     "{label} ({score}, logit {logit}), not a clinical risk", ()),
+    ("presence_absent", "not_recorded",
+     "{condition} is recorded within {scope}.", ("prohibited_wording",)),
+    ("presence_absent", "not_recorded",
+     "{condition} does not appear within {scope}.",
+     ("prohibited_wording",)),
+    ("list_empty", "not_recorded",
+     "Conditions are recorded within {scope}, none elsewhere.",
+     ("prohibited_wording",)),
+    ("presence_absent", "not_recorded",
+     "{condition} is not recorded within {scope}.", ()),
+    ("list_empty", "not_recorded",
+     "No conditions are recorded within {scope}.", ()),
+    ("list_unmapped", "answer",
+     "{unmapped} of these records have no standard concept.", ()),
+)
 
 
 def run_synthetic():
     """Return (correct, total) over the invented wordings and every
     approved notice, which must all pass."""
-    cases = [(wording, expected, "explanation")
+    cases = [(wording, expected, "explanation", None)
              for wording, expected in SYNTHETIC_WORDINGS] + [
-        (notice.text, (), notice.outcomes[0])
-        for notice in candidates.NOTICES.values()]
-    correct = sum(1 for wording, expected, outcome in cases
+        (notice.text, (), notice.outcomes[0], "notice")
+        for notice in candidates.NOTICES.values()] + [
+        (wording, expected, outcome, kind)
+        for kind, outcome, wording, expected in SYNTHETIC_KINDS]
+    correct = sum(1 for wording, expected, outcome, kind in cases
                   if tuple(sorted({code for code, _ in findings(
-                      wording, outcome)})) == expected)
+                      wording, outcome, kind)})) == expected)
     return correct, len(cases)
 
 

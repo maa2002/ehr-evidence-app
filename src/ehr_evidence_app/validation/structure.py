@@ -360,8 +360,9 @@ def synthetic_list(bundle, digest):
             refs=tuple(event.ref for event in events)))
     statements.append(candidates.notice("list_complete"))
     return candidates.Candidate(
-        schema_version="1.0", request_id="q-1", task="condition_list",
-        case=bundle.case, scope=bundle.scope, outcome="answer",
+        schema_version=candidates.CANDIDATE_VERSION, request_id="q-1",
+        task="condition_list", case=bundle.case, scope=bundle.scope,
+        outcome="answer",
         bundle=contracts.BundleRef(bundle_id=bundle.bundle_id,
                                    sha256=digest),
         statements=tuple(statements))

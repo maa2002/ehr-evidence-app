@@ -8,7 +8,7 @@ loaded.
 import json
 import unittest
 
-from ehr_evidence_app.generation import worker
+from ehr_evidence_app.generation import shape, worker
 
 
 class Module:
@@ -117,6 +117,10 @@ class WorkerTests(unittest.TestCase):
                 return {'"': 1, '",': 2, "<0x22>": 3, "word": 4, "{": 5}
 
         self.assertEqual(worker.quote_tokens(Tokenizer()), {1, 2, 3})
+
+    def test_separators(self):
+        """The runtime writes JSON as the prompts' examples do."""
+        self.assertEqual(worker.SEPARATORS, shape.SEPARATORS)
 
     def test_out_of_memory(self):
         """Memory errors and CUDA's are recognised by type or message."""

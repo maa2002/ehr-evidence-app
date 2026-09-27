@@ -25,6 +25,7 @@
     ]
   },
   "worker": {
+    "precision": "bf16-mixed",
     "decoder": "xgrammar",
     "seed": 20260927,
     "minimum_free_gpu_mib": 6800,

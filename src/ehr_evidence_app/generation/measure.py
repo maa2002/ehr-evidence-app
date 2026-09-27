@@ -1,0 +1,451 @@
+"""Development measurement of the model's generation (work item 46.1).
+
+Two operator modes read a development case set (never the evaluation set)
+and print aggregate counts only:
+
+* --tokens counts, with the model's own tokenizer (through the worker),
+  the prompt tokens of every request's compact prompt and the output
+  tokens of its template document in the compact shape; for explanations,
+  for each candidate number of drivers. This is the token distribution the
+  limits are set from (ADR 0013).
+* --benchmark writes a representative sample of the requests with the
+  model at one precision, and reports by task how many candidates the gate
+  released as the model wrote them, the fallbacks by reason, and the
+  prompt and output tokens, seconds, tokens a second and peak GPU memory.
+  For each document it names, without any value, what went wrong: where
+  output was cut off, how it broke its schema or shape, or which fields
+  differ from the template's document (the correct answer; wordings are
+  the model's own and are not compared).
+  The sample is drawn deterministically: for each task and outcome, the
+  requests are ordered by a digest of their identifiers and the first are
+  taken. --task keeps one task's requests, and --drivers has explanations
+  describe another number of drivers than the configured one, so that
+  candidate numbers are compared on the same requests.
+
+A request over a limit is a fallback, counted as a failure of the model,
+never as its success. The default mode checks the sampling and summary
+functions on invented values.
+
+Usage:
+    python -m ehr_evidence_app.generation.measure
+    python -m ehr_evidence_app.generation.measure --tokens \\
+        --case-set dev-30-v1
+    python -m ehr_evidence_app.generation.measure --benchmark \\
+        --case-set dev-30-v1 --precision bf16-mixed --per-group 8
+    python -m ehr_evidence_app.generation.measure --benchmark \\
+        --case-set dev-30-v1 --task prediction_explanation --drivers 5
+"""
+
+from __future__ import annotations
+
+import argparse
+import collections
+import hashlib
+import json
+import re
+import statistics
+import sys
+import time
+
+from ehr_evidence_app.evidence import vocabulary as vocab
+from ehr_evidence_app.generation import adapter, prompt, shape
+
+CANDIDATE_LIMITS = (3, 5, 8, 10, 15)
+PRECISIONS = ("bf16-mixed", "nf4")
+PRECISION_LABELS = {"bf16-mixed": "BF16, mixed GPU/CPU placement (output "
+                                  "layer and token embeddings on the "
+                                  "processor)",
+                    "nf4": "4-bit NF4, GPU-resident"}
+# The rows of each task's document, and their columns.
+ROWS = {"condition_list": ("items", shape.LIST_ROW),
+        "condition_presence": ("items", shape.PRESENCE_ROW),
+        "prediction_explanation": ("drivers", shape.DRIVER_ROW)}
+KEY = re.compile(r'"([a-z_]+)": ')
+PATH_TOKEN = re.compile(r"\$|\.[a-z_]+|\[\d+\]")
+
+
+def summary(values):
+    """Return n, min, median, 90th percentile and max of some numbers."""
+    values = sorted(values)
+    if not values:
+        return "n=0"
+    p90 = values[min(len(values) - 1, int(round(0.9 * (len(values) - 1))))]
+    return "n=%d min=%s median=%s p90=%s max=%s" % (
+        len(values), round(values[0], 1), round(statistics.median(values), 1),
+        round(p90, 1), round(values[-1], 1))
+
+
+def group_of(context, template):
+    """Return the stratum of a request: its task and template outcome."""
+    return "%s %s" % (context.task, template.outcome)
+
+
+def order_key(context):
+    """Return a request's place in the deterministic sample order."""
+    request = context.request
+    text = "|".join((request.case.case_set, str(request.case.case_number),
+                     request.scope.kind, str(request.scope.visit_number),
+                     request.task, request.request_id))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def sample(pairs, per_group):
+    """Return up to per_group requests of each stratum, deterministically."""
+    groups = collections.defaultdict(list)
+    for context, template in pairs:
+        groups[group_of(context, template)].append((context, template))
+    found = []
+    for name in sorted(groups):
+        members = sorted(groups[name], key=lambda pair: order_key(pair[0]))
+        found += members[:per_group]
+    return found
+
+
+def with_limit(context, template, limit):
+    """Return an explanation request and its template for another number
+    of drivers."""
+    from ehr_evidence_app.validation import explanation
+    return (shape.Context(context.request, context.bundle,
+                          context.bundle_sha256, limit=limit),
+            explanation.template(context.request, context.bundle,
+                                 context.bundle_sha256, limit))
+
+
+def normal(value):
+    """Return a JSON value with each list of plain values as a sorted set,
+    since visits, references, notices and reason codes are read as sets."""
+    if isinstance(value, list):
+        if all(not isinstance(item, (list, dict)) for item in value):
+            return sorted({json.dumps(item) for item in value})
+        return [normal(item) for item in value]
+    if isinstance(value, dict):
+        return {key: normal(item) for key, item in value.items()}
+    return value
+
+
+def row_differences(task, mine, theirs):
+    """Return where a document's rows differ from the template's: rows
+    added, repeated or missing, in another order, or a column's value. A
+    condition may be named by any of its records; a driver by its own
+    reference."""
+    name, columns = ROWS[task]
+    if task == "prediction_explanation":
+        index = {row[0]: at for at, row in enumerate(theirs)}
+    else:
+        cited = columns.index("refs")
+        index = {ref: at for at, row in enumerate(theirs)
+                 for ref in row[cited]}
+    found, places = set(), []
+    for row in mine:
+        at = index.get(row[0])
+        if at is None:
+            found.add(name + ": added")
+            continue
+        places.append(at)
+        for column, value, expected in zip(columns, row, theirs[at]):
+            if normal(value) != normal(expected):
+                found.add("%s[%s]" % (name, column))
+    if len(set(places)) != len(places):
+        found.add(name + ": repeated")
+    if set(range(len(theirs))) - set(places):
+        found.add(name + ": missing")
+    elif places != sorted(places):
+        found.add(name + ": order")
+    return found
+
+
+def differences(task, document, expected):
+    """Return the fields in which a model's document differs from the
+    template's, by name only; wordings, which are the model's own, are not
+    compared."""
+    if document.get("outcome") != expected.get("outcome"):
+        return {"outcome %s instead of %s" % (document.get("outcome"),
+                                              expected.get("outcome"))}
+    rows = ROWS[task][0]
+    found = set()
+    for key in sorted(set(document) | set(expected)):
+        mine, theirs = document.get(key), expected.get(key)
+        if key.endswith("wording"):
+            continue
+        if key == rows and isinstance(mine, list) and isinstance(theirs,
+                                                                 list):
+            found |= row_differences(task, mine, theirs)
+        elif isinstance(mine, dict) and isinstance(theirs, dict):
+            found |= {"%s.%s" % (key, name)
+                      for name in set(mine) | set(theirs)
+                      if name != "wording"
+                      and normal(mine.get(name)) != normal(theirs.get(name))}
+        elif normal(mine) != normal(theirs):
+            found.add(key)
+    return found
+
+
+def cut_place(text):
+    """Return where output cut off at a limit stopped: after which key,
+    and whether inside a string. A wording holds no double quote, so the
+    quotes before the cut tell."""
+    keys = KEY.findall(text)
+    return "after %s, %s" % (keys[-1] if keys else "the start",
+                             "inside a string" if text.count('"') % 2
+                             else "outside a string")
+
+
+def place(problem):
+    """Return a schema problem with its row and element numbers removed and
+    a row's column kept, such as "$.items[][2]: repeated items"."""
+    path, _, message = problem.partition(": ")
+    found, depth = [], None
+    for token in PATH_TOKEN.findall(path):
+        if not token.startswith("["):
+            found.append(token)
+            depth = 0 if token in (".items", ".drivers") else None
+        elif depth == 1:
+            found.append(token)
+            depth = 2
+        else:
+            found.append("[]")
+            depth = 1 if depth == 0 else None
+    return "".join(found) + ": " + message
+
+
+def schema_findings(document, rules):
+    """Return where a document breaks its schema; when the schema has
+    alternatives (an answer or "not recorded"), where it breaks the
+    closest one."""
+    branches = rules.get("anyOf", [rules])
+    return {place(problem) for problem in min(
+        (shape.violations(document, branch, "$", rules)
+         for branch in branches), key=len)}
+
+
+def findings(context, template, written):
+    """Return what went wrong with a model's document, by name only: where
+    it was cut, how it breaks its schema or its shape, or where it differs
+    from the template's document."""
+    output = written.output
+    if output is None:
+        return set()
+    if not output.finished:
+        return {"cut " + cut_place(output.text)}
+    try:
+        document = json.loads(output.text)
+    except ValueError:
+        return {"not JSON"}
+    problems = schema_findings(document, shape.schema(context))
+    if problems:
+        return problems
+    try:
+        shape.candidate(context, document)
+    except shape.ShapeError as error:
+        return {"shape: %s" % error}
+    return differences(context.task, document, shape.document_of(template))
+
+
+def tokens(case_set, backend):
+    """Print the prompt and output token distributions of a case set."""
+    pairs, _ = adapter.development_requests(case_set)
+    counts = collections.defaultdict(lambda: ([], []))
+    for context, template in pairs:
+        variants = [(context.task, context, template)]
+        if context.task == "prediction_explanation":
+            variants = [("%s K=%d" % (context.task, limit),)
+                        + with_limit(context, template, limit)
+                        for limit in CANDIDATE_LIMITS]
+        for label, variant, drafted in variants:
+            prompts, outputs = counts[label]
+            prompts.append(backend.prompt_tokens(prompt.messages(variant)))
+            outputs.append(backend.text_tokens(
+                shape.text(shape.document_of(drafted))))
+    for label, (prompts, outputs) in sorted(counts.items()):
+        print("%s %-34s prompt tokens %s" % (case_set, label,
+                                              summary(prompts)))
+        print("%s %-34s output tokens %s" % (case_set, label,
+                                              summary(outputs)))
+
+
+def chosen_requests(pairs, per_group, task=None, drivers=None):
+    """Return the benchmark's sample: of one task's requests when task is
+    given, with explanations describing drivers drivers when given (the
+    same requests as with the configured number)."""
+    if task is not None:
+        pairs = [pair for pair in pairs if pair[0].task == task]
+    return [with_limit(context, template, drivers)
+            if drivers is not None
+            and context.task == "prediction_explanation"
+            else (context, template)
+            for context, template in sample(pairs, per_group)]
+
+
+def write_sample(pairs, release_of, writer, per_group, task=None,
+                 drivers=None):
+    """Write the sample of some requests through the adapter; return, by
+    stratum, each request's Written and what went wrong with it."""
+    results = collections.defaultdict(list)
+    for context, template in chosen_requests(pairs, per_group, task,
+                                             drivers):
+        written = adapter.write(writer, context, template,
+                                release_of(context))
+        results[group_of(context, template)].append(
+            (written, findings(context, template, written)))
+    return results
+
+
+def report(case_set, results, seconds):
+    """Print, by stratum, the outcomes, what went wrong by name, and the
+    tokens, seconds and memory; aggregates only."""
+    for name, pairs in sorted(results.items()):
+        items = [item for item, _ in pairs]
+        outcomes = collections.Counter(
+            "released as written" if item.author == "model"
+            else "fallback " + item.fallback + (
+                " " + ",".join(item.gate_reasons)
+                if item.gate_reasons else "") for item in items)
+        outputs = [item.output for item in items if item.output]
+        print("%s %s: %d requests; %s" % (
+            case_set, name, len(items),
+            "; ".join("%s %d" % pair for pair in sorted(outcomes.items()))))
+        found = collections.Counter(
+            ("released" if item.fallback is None else item.fallback, finding)
+            for item, names in pairs for finding in names)
+        for (reason, finding), count in sorted(found.items()):
+            print("  %s: %s %d" % (reason, finding, count))
+        if outputs:
+            print("  prompt tokens %s" % summary(
+                [output.prompt_tokens for output in outputs]))
+            print("  output tokens %s" % summary(
+                [output.output_tokens for output in outputs]))
+            print("  seconds %s" % summary(
+                [output.seconds for output in outputs]))
+            print("  tokens a second %s" % summary(
+                [output.output_tokens / output.seconds
+                 for output in outputs if output.seconds]))
+            peaks = [output.peak_memory_bytes / 2 ** 20 for output in outputs
+                     if output.peak_memory_bytes]
+            if peaks:
+                print("  peak GPU MiB %s" % summary(peaks))
+    released = sum(item.author == "model" for pairs in results.values()
+                   for item, _ in pairs)
+    total = sum(len(pairs) for pairs in results.values())
+    print("%s: released as the model wrote them %d of %d; %.0f s" % (
+        case_set, released, total, seconds))
+
+
+def benchmark(case_set, backend, per_group, limits, task=None,
+              drivers=None):
+    """Write a sample of a case set's requests with the model; print, by
+    stratum, the outcomes and the timings."""
+    pairs, release_of = adapter.development_requests(case_set)
+    started = time.monotonic()
+    results = write_sample(pairs, release_of, adapter.Writer(backend, limits),
+                           per_group, task, drivers)
+    report(case_set, results, time.monotonic() - started)
+
+
+def run_synthetic():
+    """Return problems of the sampling and summaries on invented data."""
+    problems = []
+    pairs = shape.synthetic_contexts()
+    once = sample(pairs, 1)
+    if sample(pairs, 1) != once:
+        problems.append("the sample is not deterministic")
+    if len({group_of(context, template) for context, template in once}) \
+            != len(once):
+        problems.append("a stratum is sampled twice")
+    if summary([3, 1, 2]) != "n=3 min=1 median=2 p90=3 max=3":
+        problems.append("the summary is wrong")
+    fewer = chosen_requests(pairs, 1, "prediction_explanation", 1)
+    if not fewer or any(context.task != "prediction_explanation"
+                        or context.limit != 1 for context, _ in fewer):
+        problems.append("the task or the number of drivers is not applied")
+    for context, template in pairs:
+        document = shape.document_of(template)
+        if differences(context.task, document, document):
+            problems.append("a document differs from itself")
+        rows, columns = ROWS[context.task]
+        if document.get(rows):
+            column = "rank" if rows == "drivers" else "count"
+            changed = json.loads(json.dumps(document))
+            changed[rows][0][columns.index(column)] += 1
+            if differences(context.task, changed, document) != {
+                    "%s[%s]" % (rows, column)}:
+                problems.append("a changed row is not found")
+    if cut_place('{"outcome": "answer", "summary": {"wording": "abc') != (
+            "after wording, inside a string"):
+        problems.append("the place of a cut is wrong")
+    return problems
+
+
+def main(argv=None):
+    """Run the default mode, or an operator mode on a development case
+    set; prints aggregate counts only."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--tokens", action="store_true",
+                        help="count prompt and output tokens of a case set")
+    parser.add_argument("--benchmark", action="store_true",
+                        help="write a sample of a case set with the model")
+    parser.add_argument("--case-set",
+                        help="the development case set (dev-30-v1 or "
+                             "pilot-10-v1)")
+    parser.add_argument("--precision", choices=PRECISIONS,
+                        default="bf16-mixed")
+    parser.add_argument("--per-group", type=int, default=8)
+    parser.add_argument("--seconds", type=int, default=None,
+                        help="time limit of a request for the benchmark "
+                             "(default: the configured limit)")
+    parser.add_argument("--output-tokens", type=int, default=None,
+                        help="output limit for the benchmark (default: the "
+                             "configured limit)")
+    parser.add_argument("--task", choices=vocab.TASKS, default=None,
+                        help="benchmark one task's requests only")
+    parser.add_argument("--drivers", type=int, default=None,
+                        help="drivers an explanation describes in the "
+                             "benchmark (default: the configured number)")
+    args = parser.parse_args(argv)
+    if (args.tokens or args.benchmark) != bool(args.case_set) or (
+            args.tokens and args.benchmark):
+        print("FAILED: give one of --tokens and --benchmark with "
+              "--case-set")
+        return 2
+    if args.drivers is not None and not 1 <= args.drivers <= 100:
+        print("FAILED: --drivers is a number from 1 to 100")
+        return 2
+    if not args.case_set:
+        problems = run_synthetic()
+        for problem in problems:
+            print("PROBLEM: %s" % problem)
+        print("RESULT: %s" % ("FAIL" if problems else "PASS"))
+        return 1 if problems else 0
+    from ehr_evidence_app.evidence import contracts
+    from ehr_evidence_app.generation import runtime
+    backend = runtime.WorkerBackend(verify=False, precision=args.precision)
+    try:
+        if args.tokens:
+            tokens(args.case_set, backend)
+        else:
+            limits = contracts.load_limits()
+            changes = {}
+            if args.seconds:
+                changes["max_request_seconds"] = args.seconds
+            if args.output_tokens:
+                changes["max_output_tokens"] = args.output_tokens
+            limits = limits.model_copy(update=changes)
+            print("precision: %s" % PRECISION_LABELS[args.precision])
+            print("limits: %d prompt tokens, %d output tokens, %d s" % (
+                limits.max_prompt_tokens, limits.max_output_tokens,
+                limits.max_request_seconds))
+            if args.drivers is not None:
+                print("drivers an explanation describes: %d"
+                      % args.drivers)
+            benchmark(args.case_set, backend, args.per_group, limits,
+                      args.task, args.drivers)
+    except adapter.DevelopmentError as error:
+        print("FAILED: %s" % error)
+        return 1
+    finally:
+        backend.stop()
+    print("RESULT: PASS")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

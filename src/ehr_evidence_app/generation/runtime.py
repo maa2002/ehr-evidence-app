@@ -93,6 +93,7 @@ class ModelPin(Frozen):
 class WorkerSettings(Frozen):
     """How the worker runs."""
 
+    precision: Literal["bf16-mixed", "nf4"]
     decoder: Literal["xgrammar", "llguidance"]
     seed: int = Field(ge=0, le=2 ** 31 - 1)
     minimum_free_gpu_mib: int = Field(ge=0, le=1_000_000)
@@ -188,14 +189,17 @@ class WorkerBackend:
     """The model worker as a generation.adapter backend."""
 
     def __init__(self, settings=None, python=None, directory=None,
-                 fake=None, verify=True, runtime_root=policy.RUNTIME_ROOT):
+                 fake=None, verify=True, runtime_root=policy.RUNTIME_ROOT,
+                 precision=None):
         """Hold the worker's settings; nothing starts until it is used.
 
         python is the model environment's interpreter; fake starts the
         worker's stand-in engine (for tests), which loads no model;
-        runtime_root holds the worker's caches, home and temporary files.
+        runtime_root holds the worker's caches, home and temporary files;
+        precision overrides the configured one (for measurement).
         """
         self.settings = settings or load_settings()
+        self.precision = precision or self.settings.worker.precision
         self.python = python or (LLM_ENV + "\\Scripts\\python.exe")
         self.directory = directory or model_directory(self.settings)
         self.fake = fake
@@ -216,7 +220,8 @@ class WorkerBackend:
         worker = self.settings.worker
         found = [self.python, "-m", "ehr_evidence_app.generation.worker",
                  "--decoder", worker.decoder, "--seed", str(worker.seed),
-                 "--minimum-free-gpu-mib", str(worker.minimum_free_gpu_mib)]
+                 "--minimum-free-gpu-mib", str(worker.minimum_free_gpu_mib),
+                 "--precision", self.precision]
         if self.fake:
             return found + ["--fake", self.fake]
         return found + ["--model-dir", self.directory,
@@ -338,6 +343,7 @@ class WorkerBackend:
         found = {"backend": "worker",
                  "model": self.settings.model.repository,
                  "revision": self.settings.model.revision,
+                 "precision": self.precision,
                  "decoder": self.settings.worker.decoder,
                  "seed": self.settings.worker.seed}
         for key in ("torch", "cuda", "transformers", "decoder_version",

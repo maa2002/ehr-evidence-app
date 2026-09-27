@@ -23,11 +23,14 @@ Prompts and output travel only through the pipes. The worker writes status
 lines and exception type names to its standard error, never a prompt, a
 document or a record, and anything a library prints goes there too.
 
-Placement (ADR 0012, decision 2): the model is loaded in bfloat16 in system
-memory; its language layers, final norm and rotary embeddings are moved to
-the GPU, while the image encoder, which a text request never runs, and the
-token embedding table, which Gemma also uses as its output layer, stay in
-system memory and run there. Decoding is greedy and constrained by the
+Precision and placement: in bf16-mixed, the configured precision (ADR
+0012, decision 2), the model is loaded in bfloat16 in system memory; its
+language layers, final norm and rotary embeddings are moved to the GPU,
+while the image encoder, which a text request never runs, and the token
+embedding table, which Gemma also uses as its output layer, stay in system
+memory and run there, so the model is not GPU-resident. In nf4, measured
+for comparison (ADR 0013), the weights are 4-bit NF4 computing in
+bfloat16, all on the GPU. Decoding is greedy and constrained by the
 request's JSON Schema.
 
 --fake runs a stand-in that loads no model, for tests of the protocol.
@@ -46,10 +49,17 @@ import time
 
 PROTOCOL_VERSION = "worker-v1"
 DECODERS = ("xgrammar", "llguidance")
+# bf16-mixed: bfloat16 weights, the language layers on the GPU and the
+# token embeddings and output layer on the processor (not GPU-resident);
+# nf4: 4-bit NF4 weights computing in bfloat16, all on the GPU.
+PRECISIONS = ("bf16-mixed", "nf4")
 FAKES = ("ok", "oom", "fail", "slow", "truncate")
 # Output that runs this many tokens without a double quote is inside one
 # string that never ends: generation stops, and the output is cut off.
 RUNAWAY_TOKENS = 150
+# How JSON is written between values; generation.shape writes the
+# documents in its prompts' examples the same way.
+SEPARATORS = (", ", ": ")
 
 
 class LoadError(Exception):
@@ -187,7 +197,8 @@ class XGrammar:
     def processor(self, schema):
         """Return the logits processor of one request's schema."""
         compiled = self.compiler.compile_json_schema(
-            json.dumps(schema), any_whitespace=False, strict_mode=True)
+            json.dumps(schema), any_whitespace=False,
+            separators=SEPARATORS, strict_mode=True)
         return self.xgrammar.contrib.hf.LogitsProcessor(compiled)
 
 
@@ -196,7 +207,7 @@ class Engine:
     memory, with its tokenizer and a schema-constrained decoder."""
 
     def __init__(self, model_dir, repository, revision, decoder, seed,
-                 minimum_free_mib):
+                 minimum_free_mib, precision="bf16-mixed"):
         """Load the model; raises LoadError when it cannot."""
         import torch
         import transformers
@@ -210,12 +221,23 @@ class Engine:
         started = time.monotonic()
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             model_dir, local_files_only=True)
-        model = transformers.AutoModelForImageTextToText.from_pretrained(
-            model_dir, dtype=torch.bfloat16, local_files_only=True)
-        model.eval()
-        self.device_map = placement(model)
-        self.model = dispatch_model(model, device_map=self.device_map,
-                                    main_device="cpu")
+        if precision == "nf4":
+            model = transformers.AutoModelForImageTextToText.from_pretrained(
+                model_dir, dtype=torch.bfloat16, local_files_only=True,
+                device_map={"": 0},
+                quantization_config=transformers.BitsAndBytesConfig(
+                    load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16))
+            model.eval()
+            self.device_map = {"": 0}
+            self.model = model
+        else:
+            model = transformers.AutoModelForImageTextToText.from_pretrained(
+                model_dir, dtype=torch.bfloat16, local_files_only=True)
+            model.eval()
+            self.device_map = placement(model)
+            self.model = dispatch_model(model, device_map=self.device_map,
+                                        main_device="cpu")
         text = getattr(model.config, "text_config", model.config)
         if decoder != "xgrammar":
             raise LoadError("backend_failed")
@@ -229,11 +251,15 @@ class Engine:
         self.info = {
             "protocol": PROTOCOL_VERSION, "engine": "transformers",
             "repository": repository, "revision": revision,
-            "dtype": "bfloat16", "device": torch.cuda.get_device_name(0),
+            "precision": precision,
+            "dtype": "bfloat16" if precision == "bf16-mixed"
+            else "nf4 with bfloat16 compute",
+            "device": torch.cuda.get_device_name(0),
             "gpu_total_bytes": total,
             "gpu_weights_bytes": torch.cuda.memory_allocated(),
             "load_seconds": round(time.monotonic() - started, 1),
-            "gpu_modules": sorted(name for name, device in
+            "gpu_modules": sorted(name or "(the whole model)"
+                                  for name, device in
                                   self.device_map.items() if device != "cpu"),
             "cpu_modules": sorted(name for name, device in
                                   self.device_map.items() if device == "cpu"),
@@ -343,6 +369,8 @@ def main(argv=None):
     parser.add_argument("--decoder", choices=DECODERS, default="xgrammar")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--minimum-free-gpu-mib", type=int, default=0)
+    parser.add_argument("--precision", choices=PRECISIONS,
+                        default="bf16-mixed")
     parser.add_argument("--fake", choices=FAKES)
     args = parser.parse_args(argv)
     for stream in (sys.stdin, sys.stdout, sys.stderr):
@@ -360,7 +388,7 @@ def main(argv=None):
         engine = (FakeEngine(args.fake) if args.fake else
                   Engine(args.model_dir, args.repository, args.revision,
                          args.decoder, args.seed,
-                         args.minimum_free_gpu_mib))
+                         args.minimum_free_gpu_mib, args.precision))
     except LoadError as error:
         reply({"op": "failed", "error": error.reason})
         return 1

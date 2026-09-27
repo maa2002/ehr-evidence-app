@@ -81,9 +81,42 @@ class ShapeTests(unittest.TestCase):
         document = shape.document_of(template)
         numbers = sorted({visit.visit_number
                           for visit in context.bundle.visits})
-        document["items"][0]["visits"] = list(reversed(numbers))
+        document["items"][0][shape.LIST_ROW.index("visits")] = list(
+            reversed(numbers))
         made = shape.candidate(context, document)
         self.assertEqual(made.statements[1].slots.visits, tuple(numbers))
+
+    def test_lists_are_compact(self):
+        """A list keeps every condition, as a row under one shared
+        wording; statements that do not share one cannot be written
+        compactly."""
+        context, template = first("condition_list", "answer")
+        document = shape.document_of(template)
+        items = [item for item in template.statements
+                 if item.kind == "list_item"]
+        self.assertEqual(len(document["items"]), len(items))
+        self.assertEqual(document["item_wording"], items[0].wording)
+        if len(items) > 1:
+            varied = list(template.statements)
+            index = varied.index(items[1])
+            varied[index] = items[1].model_copy(update={
+                "wording": "{visits}: {condition}, {count}"})
+            with self.assertRaisesRegex(shape.ShapeError, "wordings_differ"):
+                shape.document_of(template.model_copy(update={
+                    "statements": tuple(varied)}))
+
+    def test_explanations_state_the_drivers_not_described(self):
+        """With fewer drivers described than eligible, the document states
+        how many more there are."""
+        context, template = next(
+            (context, template) for context, template in PAIRS
+            if context.task == "prediction_explanation"
+            and context.limit == 1)
+        document = shape.document_of(template)
+        self.assertEqual(len(document["drivers"]), 1)
+        self.assertIn("drivers_omitted", document["notices"])
+        self.assertEqual(document["omitted"], shape.omitted_drivers(context))
+        self.assertEqual(shape.candidate(context, document), template)
 
     def test_schema_refuses_faults(self):
         """Extra fields, refused outcomes, missing codes, references
@@ -97,11 +130,19 @@ class ShapeTests(unittest.TestCase):
     def test_references_are_the_bundles(self):
         """An item may cite and be named by the bundle's records only."""
         context, _ = first("condition_list", "answer")
-        item = shape.schema(context)["anyOf"][0]["properties"]["items"][
-            "items"]["properties"]
+        columns = shape.values_of(shape.LIST_ROW, shape.schema(context)[
+            "properties"]["items"]["items"]["prefixItems"])
+        condition, cited = columns["condition"], columns["refs"]
         refs = sorted(event.ref for event in context.bundle.events)
-        self.assertEqual(sorted(item["refs"]["items"]["enum"]), refs)
-        self.assertEqual(sorted(item["condition"]["enum"]), refs)
+        self.assertEqual(sorted(cited["items"]["enum"]), refs)
+        self.assertEqual(sorted(condition["enum"]), refs)
+
+    def test_tuples(self):
+        """A row has exactly its parts, each of its own kind."""
+        rules = shape.row({"enum": ["E1"]}, shape.integer(1, 9))
+        self.assertEqual(shape.violations(["E1", 2], rules), [])
+        for value in (["E1"], ["E1", 2, 3], ["E2", 2], ["E1", "2"]):
+            self.assertTrue(shape.violations(value, rules), value)
 
     def test_empty_scopes_admit_only_not_recorded(self):
         """A scope with no records cannot be listed."""
@@ -112,10 +153,12 @@ class ShapeTests(unittest.TestCase):
 
     def test_wordings(self):
         """A wording holds no digit and each of its kind's placeholders
-        exactly once, in any order, on one line."""
+        exactly once, on one line, beginning with its subject and the
+        others in any order; an empty list's has no subject."""
         rules = shape.wording("list_item")
         for text, allowed in (("{condition}: {count} in {visits}", True),
-                              ("{count} in {visits} for {condition}", True),
+                              ("{condition}: {visits}, {count}", True),
+                              ("{count} in {visits} for {condition}", False),
                               ("{condition}: 3 in {visits}", False),
                               ("{condition}: {count}", False),
                               ("{condition}: {count} in {visits} {count}",
@@ -125,6 +168,9 @@ class ShapeTests(unittest.TestCase):
                               ("", False)):
             self.assertEqual(not shape.violations(text, rules), allowed,
                              text)
+        self.assertFalse(shape.violations(
+            "No conditions are recorded within {scope}.",
+            shape.wording("list_empty")))
 
     def test_violations(self):
         """Booleans never stand for numbers, an alternative must match,

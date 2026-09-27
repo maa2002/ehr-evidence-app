@@ -254,6 +254,20 @@
           "default": null,
           "title": "Names"
         },
+        "omitted": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Omitted"
+        },
         "rank": {
           "anyOf": [
             {
@@ -421,6 +435,7 @@
                 "two_tasks",
                 "not_understood",
                 "drivers",
+                "drivers_omitted",
                 "attribution_meaning",
                 "score_meaning",
                 "batch_sensitive",
@@ -461,6 +476,7 @@
             "match": null,
             "matches": null,
             "names": null,
+            "omitted": null,
             "rank": null,
             "records": null,
             "requested": null,
@@ -570,7 +586,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "1.0",
+      "const": "1.1",
       "title": "Schema Version",
       "type": "string"
     },

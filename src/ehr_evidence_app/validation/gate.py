@@ -43,10 +43,11 @@ def concept_namer(vocab):
     return name
 
 
-def required_checks(candidate):
+def required_checks(candidate, drivers=None):
     """Return the (name, check) pairs a candidate's answer requires after
     its structure; each check takes (candidate, bundle, vocab) and returns
-    reason codes."""
+    reason codes. drivers is how many drivers an explanation describes
+    (the configured number when None)."""
     # Imported here: validation.explanation releases through this gate.
     from ehr_evidence_app.validation import explanation
     checks = []
@@ -54,8 +55,8 @@ def required_checks(candidate):
         checks.append(("support", support.check))
     if candidate.task == "prediction_explanation":
         checks.append(("explanation",
-                       lambda item, bundle, _: explanation.check(item,
-                                                                 bundle)))
+                       lambda item, bundle, _: explanation.check(
+                           item, bundle, drivers)))
     checks.append(("language", lambda item, *_: language.check(item)))
     return checks
 
@@ -68,15 +69,17 @@ def withheld(candidate, request_id, case, scope, outcome, reasons):
 
 
 def release(candidate, request_id, case, scope, bundle=None,
-            bundle_sha256=None, vocab=None, checks=None, condition=None):
+            bundle_sha256=None, vocab=None, checks=None, condition=None,
+            drivers=None):
     """Return the Response of a candidate for the request (request_id,
     case, scope): rendered from it when every required check passes, a
     validation rejection when any finds a problem, an operational error
     when one fails to run.
 
     bundle is the bundle bound to the request, if any; condition is the
-    ConditionName a presence question was resolved to. checks replaces
-    the required checks after structure (for tests).
+    ConditionName a presence question was resolved to; drivers is how many
+    drivers an explanation describes (the configured number when None).
+    checks replaces the required checks after structure (for tests).
     """
     concept_name = concept_namer(vocab)
     try:
@@ -84,8 +87,8 @@ def release(candidate, request_id, case, scope, bundle=None,
                                        bundle, bundle_sha256, concept_name,
                                        condition))
         if not problems:
-            for _, check in (required_checks(candidate) if checks is None
-                             else checks):
+            for _, check in (required_checks(candidate, drivers)
+                             if checks is None else checks):
                 problems.update(check(candidate, bundle, vocab))
         if not problems:
             response = candidates.response(candidate, bundle, concept_name)

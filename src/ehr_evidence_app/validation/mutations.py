@@ -45,6 +45,13 @@ cannot, since in Phase 7 the model writes the candidates:
   wording and counts in words (prohibited_wording), and recency
   (date_unsupported).
 
+Version 3 adds the mistakes of driver selection and of a statement's
+polarity: a driver not selected described (attribution_altered), the
+drivers not described miscounted or unstated (claim_unsupported), a
+statement that something is recorded worded as a negation, and a
+statement that something is not recorded worded as a record
+(prohibited_wording).
+
 The default mode uses invented fixtures. The operator mode uses the
 development case sets and prints aggregate counts only; the evaluation case
 set is never used.
@@ -60,6 +67,7 @@ from __future__ import annotations
 import argparse
 import collections
 import dataclasses
+import re
 import sys
 
 from pydantic import ValidationError
@@ -70,9 +78,9 @@ from ehr_evidence_app.gnn import mapping
 from ehr_evidence_app.qa import answer, resolve, suite, templates
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import evidence, explanation, gate, \
-    structure
+    language, structure
 
-SUITE_VERSION = "validation-mutations-v2"
+SUITE_VERSION = "validation-mutations-v3"
 REJECTION = "validation_rejection"
 # Phrases added to a statement's wording, by error class.
 WORDINGS = {
@@ -100,6 +108,8 @@ DATE_CLASSES = ("date_wording", "recurrence_wording", "recency_wording")
 FOREIGN_NOTICES = {"answer": "absence", "not_recorded": "list_complete",
                    "explanation": "absence"}
 CONTROL = ", which does not mean causation"
+RECORDED = re.compile(r"\brecorded\b")
+NEGATION = re.compile(r"\b(?:not|no) ", re.IGNORECASE)
 
 
 class MutationError(Exception):
@@ -109,7 +119,9 @@ class MutationError(Exception):
 @dataclasses.dataclass(frozen=True)
 class Sample:
     """A correct candidate, the request it answers and its bundle; for a
-    presence check, the condition the question was resolved to."""
+    presence check, the condition the question was resolved to; for an
+    explanation, how many drivers it describes (None: the configured
+    number)."""
 
     candidate: candidates.Candidate
     request: contracts.Request | None
@@ -119,6 +131,7 @@ class Sample:
     digest: str | None = None
     vocab: object = None
     condition: candidates.ConditionName | None = None
+    drivers: int | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -304,16 +317,11 @@ def presence_mutants(sample):
 def explanation_mutants(sample):
     """Return mutants of an explanation's preservation (38)."""
     good, bundle = sample.candidate, sample.bundle
-    faults = explanation.synthetic_faults(good, bundle)
-    names = {0: "altered_score", 1: "altered_label",
-             2: "altered_attribution_score", 3: "omitted_driver",
-             4: "reordered_drivers", 5: "zero_score_driver_described",
-             6: "restriction_misdisclosed",
-             8: "history_under_another_driver"}
-    found = [Mutant(names[index], REJECTION, expected, fault,
-                    bundle=faulty)
-             for index, (expected, fault, faulty) in enumerate(faults)
-             if index in names]
+    # A missing meaning notice is the missing_notice class of every answer.
+    found = [Mutant(name, REJECTION, expected, fault, bundle=faulty)
+             for name, expected, fault, faulty in
+             explanation.synthetic_faults(good, bundle)
+             if name != "missing_meaning_notice"]
     context = {event.ref for event in bundle.final_admission_context}
     for index in indices(good, "driver_history"):
         driver = next(item for item in bundle.attributions
@@ -451,6 +459,30 @@ def record_mutants(good):
     return found
 
 
+def polarity_mutants(good):
+    """Return a statement worded against its kind (version 3): the first
+    statement that something is recorded negated, and the statement that
+    something is not recorded worded as a record."""
+    found = []
+    facts = [index for index, item in enumerate(good.statements)
+             if item.kind in language.AFFIRMATIVE]
+    if facts:
+        wording = good.statements[facts[0]].wording
+        negated = (RECORDED.sub("not recorded", wording, count=1)
+                   if RECORDED.search(wording)
+                   else wording + ", not recorded")
+        found.append(Mutant("negated_fact", REJECTION, "prohibited_wording",
+                            replace(good, facts[0], wording=negated)))
+    absences = [index for index, item in enumerate(good.statements)
+                if item.kind in language.ABSENT]
+    if absences:
+        wording = NEGATION.sub("", good.statements[absences[0]].wording)
+        found.append(Mutant("absence_worded_as_record", REJECTION,
+                            "prohibited_wording",
+                            replace(good, absences[0], wording=wording)))
+    return found
+
+
 def model_mutants(sample):
     """Return the mistakes a language model can make and a template
     cannot, on an answer or explanation (version 2)."""
@@ -462,6 +494,7 @@ def model_mutants(sample):
                         "statements": (candidates.notice(
                             "coverage_incomplete"),)}))]
     found += notice_mutants(good) + record_mutants(good)
+    found += polarity_mutants(good)
     if good.task == "condition_list" and good.outcome == "answer":
         found.append(Mutant("empty_list_for_recorded_scope", REJECTION,
                             "claim_unsupported", good.model_copy(update={
@@ -520,7 +553,8 @@ def released(sample, candidate, bundle=None, checks=None):
                             sample.scope,
                             (bundle or sample.bundle) if bound else None,
                             sample.digest, sample.vocab, checks,
-                            condition=sample.condition)
+                            condition=sample.condition,
+                            drivers=sample.drivers)
     return response.outcome, response.reason_codes
 
 
@@ -632,13 +666,15 @@ def qa_samples(case_set, bundle_set, vocab, requested):
     return found
 
 
-def explanation_samples(pairs):
-    """Return explanation samples of (request, bundle, digest) triples."""
+def explanation_samples(pairs, drivers=None):
+    """Return explanation samples of (request, bundle, digest) triples,
+    describing drivers drivers (None: the configured number)."""
     found = []
     for request, bundle, digest in pairs:
-        _, candidate = explanation.explain(request, bundle, digest)
+        _, candidate = explanation.explain(request, bundle, digest,
+                                           limit=drivers)
         found.append(Sample(candidate, request, request.case, request.scope,
-                            bundle, digest))
+                            bundle, digest, drivers=drivers))
     return found
 
 
@@ -656,8 +692,9 @@ def synthetic_samples():
                        [(1, history, question) for question in QUESTIONS])
     _, explanations, _ = bundles.run_synthetic()
     bundle = explanations[0]
-    found += explanation_samples([(evidence.explanation_request(bundle),
-                                   bundle, "5" * 64)])
+    pairs = [(evidence.explanation_request(bundle), bundle, "5" * 64)]
+    # One driver only, so that the drivers not described are sampled too.
+    found += explanation_samples(pairs) + explanation_samples(pairs, 1)
     return found
 
 

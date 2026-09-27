@@ -112,7 +112,7 @@ class AdapterTests(unittest.TestCase):
         reasons, and the template's response is released."""
         context, template = first("condition_list", "answer")
         document = shape.document_of(template)
-        document["items"][0]["count"] += 1
+        document["items"][0][shape.LIST_ROW.index("count")] += 1
         written = adapter.write(adapter.Writer(adapter.ScriptedBackend(
             writes(document)), LIMITS), context, template,
             release_of(context))
@@ -125,6 +125,21 @@ class AdapterTests(unittest.TestCase):
         """A backend failure names one of the known reasons."""
         with self.assertRaises(ValueError):
             adapter.BackendError("unknown")
+
+    def test_fallback_categories(self):
+        """Every fallback has a category; requests over a limit are
+        limit_exceeded, never insufficient evidence."""
+        self.assertEqual(set(adapter.FALLBACK_CATEGORIES),
+                         set(adapter.FALLBACKS))
+        for reason in ("prompt_over_budget", "output_over_budget",
+                       "truncated"):
+            self.assertEqual(adapter.FALLBACK_CATEGORIES[reason],
+                             "limit_exceeded")
+        self.assertNotIn("evidence_insufficient",
+                         set(adapter.FALLBACK_CATEGORIES.values()))
+        context, template = PAIRS[0]
+        written = adapter.write(None, context, template, release_of(context))
+        self.assertEqual(written.category, "unavailable")
 
     def test_answers_are_written_through_the_adapter(self):
         """With a writer, the model's list and presence answers are
@@ -158,7 +173,7 @@ class AdapterTests(unittest.TestCase):
             refusal = ask("What medications is she on?", writer)
             self.assertIsNone(refusal.written)
             self.assertEqual(writer.backend.calls, 1)
-        self.assertIn("count as it", seen[1])
+        self.assertIn('"counts_as"', seen[1])
 
     def test_explanations_are_written_through_the_adapter(self):
         """With a writer, the model's explanation is released as its own;

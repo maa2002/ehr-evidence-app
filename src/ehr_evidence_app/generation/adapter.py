@@ -49,6 +49,19 @@ from ehr_evidence_app.validation import candidate as candidates
 FALLBACKS = ("no_model", "busy", "prompt_over_budget", "output_over_budget",
              "timeout", "resource_exhausted", "backend_failed", "truncated",
              "malformed", "schema_violated", "gate_rejected")
+# The category of each fallback, for records and Phase 9: every one is a
+# failure of the model, never its success, and a request over a limit is an
+# operational limit_exceeded case, never insufficient evidence (ADR 0013).
+FALLBACK_CATEGORIES = {"no_model": "unavailable", "busy": "unavailable",
+                       "prompt_over_budget": "limit_exceeded",
+                       "output_over_budget": "limit_exceeded",
+                       "truncated": "limit_exceeded",
+                       "timeout": "timeout",
+                       "resource_exhausted": "resource_exhausted",
+                       "backend_failed": "backend_failed",
+                       "malformed": "invalid_output",
+                       "schema_violated": "invalid_output",
+                       "gate_rejected": "validation_rejection"}
 BACKEND_FAILURES = ("timeout", "resource_exhausted", "backend_failed")
 WITHHELD = ("validation_rejection", "operational_error")
 
@@ -96,6 +109,12 @@ class Written:
     gate_reasons: tuple = ()
     model_candidate: candidates.Candidate | None = None
     output: Output | None = None
+
+    @property
+    def category(self):
+        """Return the fallback's category, or None when the model's
+        candidate was released or the model never writes this answer."""
+        return FALLBACK_CATEGORIES.get(self.fallback)
 
 
 class Writer:
@@ -350,7 +369,8 @@ def gate_release(context, vocabulary=None):
                             request.scope, context.bundle,
                             context.bundle_sha256, vocabulary,
                             condition=context.asked.name
-                            if context.asked else None)
+                            if context.asked else None,
+                            drivers=context.limit)
     return release
 
 

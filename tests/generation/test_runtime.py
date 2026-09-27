@@ -39,6 +39,11 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(SETTINGS.model.repository,
                          "google/medgemma-1.5-4b-it")
         self.assertEqual(len(SETTINGS.model.revision), 40)
+        self.assertEqual(SETTINGS.worker.precision, "bf16-mixed")
+        backend = runtime.WorkerBackend(SETTINGS, precision="nf4")
+        command = backend.command()
+        self.assertEqual(command[command.index("--precision") + 1], "nf4")
+        self.assertEqual(backend.describe()["precision"], "nf4")
         self.assertTrue(any(item.path.endswith(".safetensors")
                             for item in SETTINGS.model.files))
         output = io.StringIO()

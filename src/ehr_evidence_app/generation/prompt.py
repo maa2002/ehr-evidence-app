@@ -1,16 +1,13 @@
 """The prompt of a model-written candidate (work item 41).
 
 messages() returns the two chat messages of one request: the rules every
-answer follows, then the task, the shape of the reply, one worked example
-on invented data, the request and its complete evidence bundle as JSON.
-The bundle is never trimmed; a request whose prompt is over its budget
-falls back to the template (generation.adapter).
-
-For a presence question the prompt also states which of the bundle's
-concepts count as the condition asked about, and how: vocabulary facts
-(more specific concepts, ICD descriptions) the bundle does not carry and
-the model could not know. The model still finds, groups, counts and cites
-the records.
+answer follows, then one worked example on invented data, and the
+request's task, the shape of its reply and its evidence as the compact
+projection of generation.projection (prompt-v3, ADR 0013). The canonical
+bundle is not sent: the projection drops only serialization redundancy
+and what the task does not use, and holds everything a correct answer
+needs. A request whose prompt is over its budget falls back to the
+template (generation.adapter).
 
 The prompt is versioned; a change of wording is a new version, measured
 again on the development cases. Prompts hold patient records and are
@@ -26,29 +23,30 @@ import argparse
 import functools
 import sys
 
-from ehr_evidence_app.generation import shape
+from ehr_evidence_app.generation import projection, shape
 from ehr_evidence_app.validation import candidate as candidates
 
-PROMPT_VERSION = "prompt-v1"
+PROMPT_VERSION = "prompt-v3"
 RULES = """\
 You write the responses of a research application that answers questions \
 about one patient's recorded conditions, and explains a model's \
-prediction, from an evidence bundle. You receive one request, its \
-complete evidence bundle as JSON and the shape of your reply. Reply with \
+prediction, from the patient's evidence. You receive one request, its \
+evidence as a compact JSON view and the shape of your reply. Reply with \
 one JSON document in that shape and nothing else.
 
 Rules for every reply:
-1. State only what the bundle records. Add no knowledge, interpretation, \
-advice or opinion.
+1. State only what the evidence records. Add no knowledge, \
+interpretation, advice or opinion.
 2. Every fact goes in its own field: record references (E1, E2, ...), \
 visit numbers, counts, match kinds, labels, scores and ranks. A \
 "wording" holds no fact: no digits, no dates and no numbers in words.
 3. A wording is one short line of plain words around its placeholders: \
 each placeholder listed for it, written as {name}, exactly once, and no \
-other. When the answer is shown, each placeholder is replaced by the text \
-of its fact (a condition's name, a count such as "3 records", visits such \
-as "visits 1 and 2", the scope's name), so the words around the \
-placeholders never state those facts again.
+other, beginning with the placeholder it is said to begin with. When the \
+answer is shown, each placeholder is replaced by the text of its fact (a \
+condition's name, a count such as "3 records", visits such as "visits 1 \
+and 2", the scope's name), so the words around the placeholders never \
+state those facts again. One wording serves every item of its kind.
 4. Say what is recorded, never what the patient has or does not have. \
 "Not recorded" never means clinically absent.
 5. Do not hedge, rank, judge severity or course, or say when or how \
@@ -57,97 +55,104 @@ often something happened.
 SCOPES = {"pre_target_history": "the pre-target history (the visits "
                                 "before the final admission)",
           "case_visits": "all case visits, including the final admission"}
+RECORDS = """\
+The view lists the scope's records as rows of its "columns": ref, visit \
+(the record's visit number), concept_id (its standard concept; 0 when it \
+has none) and source (its ICD source code)."""
 LIST_TASK = """\
-Task: list every condition recorded within {scope}.
+Task: list every condition recorded within {scope}."""
+LIST_ANSWER = RECORDS + """ A condition is one concept_id, or, for records \
+whose concept_id is 0, one source. Records with the same concept_id are \
+one condition, even when their sources differ.
 
-A condition is one standard concept (the concept_id of a record's \
-"concept"), or, for a record whose concept_id is 0, one ICD source code \
-(its "source_concept" code). Records with the same concept_id are one \
-condition, even when their source codes differ. The records are the \
-bundle's "events"; a record's visit is the entry of "visits" whose ref is \
-its visit_ref.
+Reply shape: {{"outcome": "answer", "reason_codes": [...], \
+"item_wording": ..., "items": [...], "summary": {{"wording": ..., \
+"groups": ..., "records": ...}}, "unmapped": ..., "notices": \
+["list_complete"]}}.
+- items: one per condition, in the order of its first record: [the ref of \
+its first record, the refs of all its records, their visit numbers \
+ascending and each once, their number].
+- item_wording, used for every item: begins with {{condition}} and also \
+has {{count}} and {{visits}}.
+- summary: groups is the number of items and records the number of refs \
+in all items; its wording begins with {{groups}} and also has {{scope}} \
+and {{records}}.
+- unmapped: null, or when records_without_standard_concept is above \
+zero, {{"wording": ..., "unmapped": that number}}; its wording begins \
+with {{unmapped}}."""
+LIST_EMPTY = """\
+The view has no records within the scope.
 
-Reply shape:
-- If the bundle has no events: {{"outcome": "not_recorded", \
-"reason_codes": [], "empty": {{"wording": ...}}, "notices": \
-["absence"]}}. The wording has the placeholder {{scope}}.
-- Otherwise: {{"outcome": "answer", "reason_codes": [...], "summary": \
-{{"wording": ..., "groups": the number of conditions, "records": the \
-number of records}}, "items": [...], "unmapped": ..., "notices": \
-["list_complete"]}}. The summary wording has {{groups}}, {{scope}} and \
-{{records}}.
-- items: one per condition, in the order of its first record: \
-{{"wording": ..., "condition": the reference of its first record, \
-"count": its number of records, "visits": the visit numbers of its \
-records' visits, ascending, each once, "refs": the references of all its \
-records}}. The wording has {{condition}}, {{count}} and {{visits}}.
-- unmapped: null, or when coverage.unmapped_events_in_scope is above \
-zero, {{"wording": ..., "unmapped": that number}}; the wording has \
-{{unmapped}}.
-- reason_codes: ["unmapped_records_in_scope"] when \
-coverage.unmapped_events_in_scope is above zero, otherwise []."""
+Reply shape: {{"outcome": "not_recorded", "reason_codes": [], "empty": \
+{{"wording": ...}}, "notices": ["absence"]}}. The wording has {{scope}} \
+and says that no conditions are recorded there."""
 PRESENCE_TASK = """\
 Task: say whether {label} is recorded within {scope}.
 
-{counts_as}
-
-Reply shape:
-- If no record matches: {{"outcome": "not_recorded", "reason_codes": \
-[...], "absent": {{"wording": ...}}, "unmapped": ..., "notices": \
-["absence"]}}. The wording has {{condition}} and {{scope}}.
-- Otherwise: {{"outcome": "answer", "reason_codes": [...], "summary": \
-{{"wording": ..., "matches": the number of matching records}}, "items": \
-[...]}}. The summary wording has {{condition}}, {{scope}} and \
-{{matches}}.
-- items: one per condition and match kind of the matching records, in \
-the order of its first record: {{"wording": ..., "condition": the \
-reference of its first record, "count": its number of records, \
-"visits": the visit numbers of its records' visits, ascending, each \
-once, "match": its match kind, "refs": the references of all its \
-records}}. A condition is one standard concept, or one ICD source code \
-for a record whose concept_id is 0; records with the same concept_id are \
-one condition, even when their source codes differ. The wording has \
-{{condition}}, {{count}}, {{visits}} and {{match}}.
-- unmapped: null, or when coverage.unmapped_events_in_scope is above \
-zero, {{"wording": ..., "unmapped": that number}}; the wording has \
-{{unmapped}}.
-- reason_codes: ["unmapped_records_in_scope"] when \
-coverage.unmapped_events_in_scope is above zero, otherwise []."""
+""" + RECORDS + """ Its "counts_as" rows say which concept_ids or sources \
+count as the condition, each with its match kind. When "matched_by" is \
+"concept", a record matches by its concept_id, or by its source when its \
+concept_id is 0; when it is "source_code", every record matches by its \
+source."""
+PRESENCE_ANSWER = """\
+Reply shape, if records match: {{"outcome": "answer", "reason_codes": \
+[...], "item_wording": ..., "items": [...], "summary": {{"wording": ..., \
+"matches": ...}}}}.
+- items: one per condition and match kind of the matching records, in the \
+order of its first record: [the ref of its first record, its match kind, \
+the refs of all its matching records, their visit numbers ascending and \
+each once, their number]. A condition is one concept_id, or one source \
+for records whose concept_id is 0.
+- item_wording, used for every item: begins with {{condition}} and also \
+has {{count}}, {{visits}} and {{match}}.
+- summary: matches is the number of refs in all items; its wording begins \
+with {{condition}} and also has {{scope}} and {{matches}}."""
+PRESENCE_ABSENT = """\
+Reply shape, if no record matches: {{"outcome": "not_recorded", \
+"reason_codes": [...], "absent": {{"wording": ...}}, "unmapped": ..., \
+"notices": ["absence"]}}.
+- absent: its wording begins with {{condition}}, also has {{scope}}, and \
+says that it is not recorded there.
+- unmapped: null, or when records_without_standard_concept is above \
+zero, {{"wording": ..., "unmapped": that number}}; its wording begins \
+with {{unmapped}}."""
+REASON_CODES = """\
+reason_codes: ["unmapped_records_in_scope"] when \
+records_without_standard_concept is above zero, otherwise []."""
 EXPLANATION_TASK = """\
-Task: explain the selected prediction through the recorded concepts the \
-model's output was sensitive to.
+Task: explain the selected prediction through the recorded concepts with \
+the highest attribution scores.
 
-The bundle's "prediction" (P1) is the selected label, one output of a \
-multi-label model. Its "attributions" are the recorded concepts in the \
-order the model lists them; only those whose narration_eligible is true \
-may be described. An attribution's linked_event_refs are its records: \
-those among "history_events" are its history (pre-target visits), those \
-among "final_admission_context" its final-admission context. A record's \
-visit is the entry of "visits" whose ref is its visit_ref.
+The view gives the prediction (its label, score and logit), the case's \
+restrictions, and the drivers to describe, highest score first, as rows of \
+its "columns": ref, score, history (the driver's records in visits before \
+the final admission, as [ref, visit number]) and context (its records in \
+the final admission, as refs); and how many other eligible drivers are not \
+described (drivers_not_described).
 
-Reply shape: {{"outcome": "explanation", "reason_codes": the bundle's \
-"restrictions", "prediction": {{...}}, "drivers": [...], "notices": \
-[...]}}.
-- prediction: {{"wording": ..., "label": prediction.concept.concept_id, \
-"score": prediction.score, "logit": prediction.logit}}. The wording has \
-{{label}}, {{score}} and {{logit}}.
-- drivers: every attribution that may be described, in the bundle's \
-order: {{"wording": ..., "driver": its ref, "rank": 1 for the first, \
-then 2, 3, ..., "score": its score, "history": ..., "context": ...}}. \
-The wording has {{rank}}, {{driver}} and {{score}}.
-- history: null when the driver has no history records, otherwise \
-{{"wording": ..., "count": their number, "visits": their visit numbers, \
-ascending, each once, "refs": their references}}. The wording has \
-{{driver}}, {{count}} and {{visits}}.
-- context: null when the driver has no final-admission records, \
-otherwise {{"wording": ..., "count": their number, "refs": their \
-references}}. The wording has {{driver}} and {{count}}.
-- notices: "drivers", "attribution_meaning" and "score_meaning", then \
-for each restriction its notice: batch_sensitive_prediction: \
+Reply shape: {{"outcome": "explanation", "reason_codes": the \
+restrictions, "prediction": {{"wording": ..., "label": ..., "score": ..., \
+"logit": ...}}, "driver_wording": ..., "history_wording": ..., \
+"context_wording": ..., "drivers": [...], "notices": [...], "omitted": \
+...}}.
+- The prediction wording begins with {{label}} and also has {{score}} and \
+{{logit}}; the driver wording, used for every driver, begins with \
+{{rank}} and also has {{driver}} and {{score}}; the history wording begins \
+with {{driver}} and also has {{count}} and {{visits}}; the context wording \
+begins with {{driver}} and also has {{count}}.
+- drivers: one per driver of the view, in its order: [its ref, its rank \
+(1, 2, ...), its score, its history, its context]. History is null when \
+the driver has no history records, otherwise [their refs, their visit \
+numbers ascending and each once, their number]; context is null when it \
+has none, otherwise [their refs, their number].
+- notices: "drivers", then "drivers_omitted" when drivers_not_described \
+is above zero, then "attribution_meaning" and "score_meaning", then for \
+each restriction its notice: batch_sensitive_prediction: \
 "batch_sensitive"; target_attached_drivers_present: "target_attached"; \
-target_outcome_entries_excluded: "target_excluded"."""
-TASKS = {"condition_list": LIST_TASK, "condition_presence": PRESENCE_TASK,
-         "prediction_explanation": EXPLANATION_TASK}
+target_outcome_entries_excluded: "target_excluded".
+- omitted: drivers_not_described when it is above zero, otherwise null."""
+# One explanation example describes two drivers and leaves one out.
+EXAMPLE_DRIVERS = 2
 
 
 def scope_text(scope):
@@ -155,90 +160,105 @@ def scope_text(scope):
     return SCOPES.get(scope.kind) or candidates.scope_words(scope)
 
 
-def counts_as_text(question):
-    """Return which concepts of the bundle count as the condition a
-    presence question asks about."""
-    if not question.counts_as:
-        return ("No concept of this bundle counts as it, so no record "
-                "matches.")
-    lines = ["These concepts of this bundle count as it, with their match "
-             "kinds; no other concept does:"]
-    for entry in question.counts_as:
-        if entry.by == "concept":
-            lines.append("- a record whose concept_id is %d: %s"
-                         % (entry.concept_id, entry.match))
-        else:
-            lines.append("- a record whose source_concept code is %s (%s): "
-                         "%s" % (entry.code, entry.vocabulary_id,
-                                 entry.match))
-    return "\n".join(lines)
+def worded_kinds(context):
+    """Return the statement kinds whose wordings a request's reply may
+    hold: a list of a scope with records is an answer, one without is
+    empty, and a presence check of a scope without records is "not
+    recorded"."""
+    if context.task == "condition_list":
+        return (("list_item", "list_summary", "list_unmapped")
+                if context.bundle.events else ("list_empty",))
+    if context.task == "condition_presence" and not context.bundle.events:
+        return ("presence_absent", "presence_unmapped")
+    return shape.WORDED[context.task]
 
 
-def bundle_text(bundle):
-    """Return a bundle as compact JSON; absent values are left out,
-    which loses nothing."""
-    return bundle.model_dump_json(exclude_none=True)
-
-
-def example_wordings(task):
-    """Return the templates' wordings of a task's statements, as examples
-    the model may follow or vary."""
-    # Imported here: qa and validation write through this package.
-    from ehr_evidence_app.qa import templates
-    from ehr_evidence_app.validation import explanation
-    found = dict(explanation.WORDINGS, **{
-        kind: templates.wording(kind, 2) for kind in templates.WORDINGS})
+def example_wordings(context):
+    """Return the templates' wordings of the statements a request's reply
+    may hold, as examples the model may follow or vary."""
     lines = ["Example wordings (others that follow the rules may be used):"]
-    lines += ['- %s: "%s"' % (kind, found[kind])
-              for kind in shape.WORDED[task]]
+    lines += ['- %s: "%s"' % (kind, shape.example_wording(kind))
+              for kind in worded_kinds(context)]
     return "\n".join(lines)
 
 
 def task_text(context):
     """Return the task, reply shape and example wordings of a request."""
     values = {"scope": scope_text(context.request.scope)}
-    if context.task == "condition_presence":
-        values.update(label=context.asked.label,
-                      counts_as=counts_as_text(context.asked))
-    return "\n\n".join((TASKS[context.task].format(**values),
-                        example_wordings(context.task)))
+    records = (context.task != "prediction_explanation"
+               and bool(context.bundle.events))
+    if context.task == "condition_list":
+        parts = [LIST_TASK] + ([LIST_ANSWER, REASON_CODES] if records
+                               else [LIST_EMPTY])
+    elif context.task == "condition_presence":
+        values["label"] = context.asked.label
+        parts = [PRESENCE_TASK] + ([PRESENCE_ANSWER] if records else []) + [
+            PRESENCE_ABSENT, REASON_CODES]
+    else:
+        parts = [EXPLANATION_TASK]
+    return "\n\n".join([part.format(**values) for part in parts]
+                       + [example_wordings(context)])
 
 
 @functools.lru_cache(maxsize=None)
 def examples():
-    """Return the worked example of each task, on invented data: the
-    smallest invented bundle with records for a list and a presence check
-    (a condition recorded there), and the invented explanation."""
+    """Return the worked examples, on invented data: for a list and a
+    presence check, the invented answer that groups the most records into
+    the most items (the smallest such); for an explanation, the invented
+    one describing two of its drivers and leaving one out (keyed True),
+    and describing all of them (keyed False)."""
+    from ehr_evidence_app.validation import explanation
     found = {}
     for context, template in shape.synthetic_contexts():
-        records = getattr(context.bundle, "events", None)
-        if records is not None and (not records or (
-                context.task == "condition_presence"
-                and template.outcome != "answer")):
+        if context.task == "prediction_explanation":
+            every = len(explanation.describable(context.bundle))
+            for limit in (EXAMPLE_DRIVERS, every):
+                key = (context.task, limit < every)
+                if key not in found:
+                    found[key] = (0, shape.Context(
+                        context.request, context.bundle,
+                        context.bundle_sha256, limit=limit),
+                        explanation.template(context.request, context.bundle,
+                                             context.bundle_sha256, limit))
             continue
-        size = len(bundle_text(context.bundle))
-        if context.task not in found or size < found[context.task][0]:
-            found[context.task] = (size, context, template)
-    return {task: (context, template)
-            for task, (_, context, template) in found.items()}
+        if template.outcome != "answer":
+            continue
+        items = [item for item in template.statements
+                 if item.kind in ("list_item", "presence_item")]
+        rank = (-len(items), -sum(len(item.refs) for item in items),
+                len(projection.text(projection.view(context))))
+        if context.task not in found or rank < found[context.task][0]:
+            found[context.task] = (rank, context, template)
+    return {key: (context, template)
+            for key, (_, context, template) in found.items()}
 
 
-def request_text(context, bundle_label):
-    """Return the task, shape and bundle of one request."""
-    return "\n\n".join((task_text(context), bundle_label + ":",
-                        bundle_text(context.bundle)))
+def example_of(context):
+    """Return the worked example of a request: its task's, and for an
+    explanation the one that leaves drivers out exactly when the request
+    does."""
+    if context.task == "prediction_explanation":
+        return examples()[(context.task,
+                           shape.omitted_drivers(context) > 0)]
+    return examples()[context.task]
+
+
+def request_text(context):
+    """Return the task, reply shape and evidence view of one request."""
+    return "\n\n".join((task_text(context), "Evidence view:",
+                        projection.text(projection.view(context))))
 
 
 def messages(context):
     """Return the chat messages of a request: the rules, then the worked
-    example, the request and its complete bundle."""
-    example, template = examples()[context.task]
+    example, the request and its evidence view."""
+    example, template = example_of(context)
     body = "\n\n".join((
         "Worked example, on invented data.",
-        request_text(example, "Evidence bundle"),
+        request_text(example),
         "Reply:", shape.text(shape.document_of(template)),
         "Now the request.",
-        request_text(context, "Evidence bundle"),
+        request_text(context),
         "Reply with the JSON document only."))
     return [{"role": "system", "content": RULES},
             {"role": "user", "content": body}]
@@ -247,7 +267,8 @@ def messages(context):
 def describe():
     """Return the versions a model-written candidate was produced with."""
     return {"prompt_version": PROMPT_VERSION,
-            "shape_version": shape.SHAPE_VERSION}
+            "shape_version": shape.SHAPE_VERSION,
+            "projection_version": projection.PROJECTION_VERSION}
 
 
 # --------------------------------------------------------------------------
@@ -263,12 +284,11 @@ def run_synthetic():
         text = "".join(message["content"] for message in found)
         built += 1
         longest = max(longest, len(text))
-        if not text.endswith(bundle_text(context.bundle)
+        if not text.endswith(projection.text(projection.view(context))
                              + "\n\nReply with the JSON document only."):
-            problems.append("a prompt does not end with its bundle")
-        if type(context.bundle).model_validate_json(
-                bundle_text(context.bundle)) != context.bundle:
-            problems.append("a bundle lost a value in the prompt")
+            problems.append("a prompt does not end with its evidence view")
+        if context.bundle.bundle_id in text:
+            problems.append("a prompt carries the canonical bundle")
     return built, longest, problems
 
 
@@ -280,7 +300,8 @@ def main(argv=None):
     for problem in problems:
         print("PROBLEM: %s" % problem)
     print("prompts built: %d; longest %d characters" % (built, longest))
-    print("prompt %s, shape %s" % (PROMPT_VERSION, shape.SHAPE_VERSION))
+    print("prompt %s, shape %s, projection %s" % (
+        PROMPT_VERSION, shape.SHAPE_VERSION, projection.PROJECTION_VERSION))
     print("RESULT: %s" % ("FAIL" if problems else "PASS"))
     return 1 if problems else 0
 

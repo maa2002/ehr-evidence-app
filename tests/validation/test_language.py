@@ -13,11 +13,11 @@ from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import explanation, language, structure
 
 
-def codes(wording, outcome=None):
-    """Return the reason codes a wording gets in a statement of an
-    outcome (under every rule when it is None)."""
+def codes(wording, outcome=None, kind=None):
+    """Return the reason codes a wording gets in a statement of a kind
+    and an outcome (under every rule when the outcome is None)."""
     return tuple(sorted({code for code, _ in language.findings(
-        wording, outcome)}))
+        wording, outcome, kind)}))
 
 
 class LanguageTests(unittest.TestCase):
@@ -31,17 +31,30 @@ class LanguageTests(unittest.TestCase):
     def test_own_wordings_pass(self):
         """Every template wording and approved notice passes in the
         outcomes it is used in."""
-        cases = [(entry, "answer")
-                 for value in templates.WORDINGS.values()
+        cases = [(entry, "answer", kind)
+                 for kind, value in templates.WORDINGS.items()
                  for entry in ((value,) if isinstance(value, str)
                                else value)]
-        cases += [(wording, "explanation")
-                  for wording in explanation.WORDINGS.values()]
-        cases += [(notice.text, outcome)
+        cases += [(wording, "explanation", kind)
+                  for kind, wording in explanation.WORDINGS.items()]
+        cases += [(notice.text, outcome, "notice")
                   for notice in candidates.NOTICES.values()
                   for outcome in notice.outcomes]
-        for wording, outcome in cases:
-            self.assertEqual(codes(wording, outcome), (), wording)
+        for wording, outcome, kind in cases:
+            self.assertEqual(codes(wording, outcome, kind), (), wording)
+
+    def test_statement_kinds(self):
+        """Version 4: a statement that something is recorded holds no
+        negation but one that denies a prohibited reading, and a statement
+        that something is not recorded negates every "recorded"."""
+        for kind, outcome, wording, expected in language.SYNTHETIC_KINDS:
+            self.assertEqual(codes(wording, outcome, kind), expected,
+                             (kind, wording))
+        self.assertEqual(codes("No conditions are recorded within "
+                               "{scope}.", "not_recorded", "list_summary"),
+                         ("prohibited_wording",))
+        self.assertEqual(codes("No conditions are recorded within "
+                               "{scope}.", "not_recorded"), ())
 
     def test_explanation_rules(self):
         """The score read as a risk, or the prediction as prospective,
@@ -131,6 +144,12 @@ class LanguageTests(unittest.TestCase):
         items[1] = item
         bad = good.model_copy(update={"statements": tuple(items)})
         self.assertEqual(language.check(bad), ("prohibited_wording",))
+        items[1] = good.statements[1]
+        items[0] = good.statements[0].model_copy(update={
+            "wording": "No conditions are recorded within {scope} "
+                       "({records}): {groups}"})
+        negated = good.model_copy(update={"statements": tuple(items)})
+        self.assertEqual(language.check(negated), ("prohibited_wording",))
 
     def test_command(self):
         """The default mode passes."""

@@ -4,33 +4,42 @@ In Phase 7 the language model writes the complete candidate of every
 response from evidence (ADR 0012): list and presence answers, "not
 recorded" included, and explanations. Clarifications, refusals and
 abstentions are settled before any evidence is read and stay approved
-notices. The model writes one JSON document in the shape of its answer:
+notices. The model writes one compact JSON document in the shape of its
+answer (candidate-shape-v3, ADR 0013), each row listing records before
+what is counted from them, and each summary after its items:
 
-* a list: its outcome, the summary, one item per condition (the record
-  that names it, its count, visits and records), the line on records
-  without a standard concept, the notices and the reason codes;
-* a presence check: its outcome, the summary or the "not recorded" line,
-  the items with their match kinds, the unmapped line, the notices and
-  the reason codes;
-* an explanation: the prediction with its label, score and logit, each
-  driver with its rank and score and the history and final-admission
-  context under it, the notices and the reason codes.
+* a list: its outcome, one wording for every item, and each condition as
+  [the record that names it, its records, their visits, their count];
+  the summary; the line on records without a standard concept, the
+  notices and the reason codes;
+* a presence check: the same, each item as [the record that names it,
+  its match kind, its records, their visits, their count], or the "not
+  recorded" line;
+* an explanation: the prediction with its label, score and logit; one
+  wording each for the driver, history and context lines; each selected
+  driver as [its reference, rank, score, history or null, context or
+  null], history as [records, visits, count] and context as [records,
+  count]; the notices, the number of drivers not described and the
+  reason codes.
 
-Every statement carries its wording, with the placeholders of its kind.
-What the request fixes (its identifiers, case, scope and bundle, and the
-condition a presence question asks about) is filled in by candidate(),
-which also puts each statement where its answer puts it.
+A list keeps every condition, and an explanation every selected driver:
+only the prose is shared. What the request fixes (its identifiers, case,
+scope and bundle, and the condition a presence question asks about) is
+filled in by candidate(), which also puts each statement where its answer
+puts it.
 
 schema() is the JSON Schema of one request's document, which the model
 runtime enforces while the model writes: references name records,
-visits and drivers of the bundle only, notices are those an answer of the
-task may hold, a statement that cites one prediction or driver states
-that reference's own values, and a wording holds no digit and each of its
-kind's placeholders exactly once. The schema admits every correct document,
-and many wrong ones: whether a document is right is decided by the
-release gate on the candidate it becomes. violations() checks a document
-against its schema again, since no document is trusted to have been
-constrained.
+visits and selected drivers of the bundle only; notices are those the
+answer may hold; a statement that cites the prediction or a driver states
+that reference's own values, and an explanation the number of drivers
+not described; a list of a scope with records is an answer; and a
+wording holds no digit and each of its kind's placeholders exactly once,
+led by its subject (the condition, the label, the driver). The schema
+admits every correct document in that style, and many wrong ones:
+whether a document is right is decided by the release gate on the
+candidate it becomes. violations() checks a document against its schema
+again, since no document is trusted to have been constrained.
 
 Usage:
     python -m ehr_evidence_app.generation.shape
@@ -50,15 +59,34 @@ from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.qa import resolve, templates
 from ehr_evidence_app.validation import candidate as candidates
 
-SHAPE_VERSION = "candidate-shape-v1"
+SHAPE_VERSION = "candidate-shape-v3"
 MAX_WORDING = 600
 # A wording's words: letters, spaces and plain punctuation. Runs are not
 # bounded here, since bounded runs make the grammar slow to compile; the
 # worker stops output that runs on (generation.worker).
 WORDS = r"[A-Za-z ,.;:()'/-]*"
+# The placeholder each wording begins with, its statement's subject; an
+# empty list has none.
+SUBJECTS = {"list_summary": "groups", "list_item": "condition",
+            "list_unmapped": "unmapped", "presence_summary": "condition",
+            "presence_item": "condition", "presence_absent": "condition",
+            "presence_unmapped": "unmapped", "prediction": "label",
+            "driver": "rank", "driver_history": "driver",
+            "driver_context": "driver"}
+# The columns of a document's rows, in the order they are written:
+# records first, then what is counted from them.
+LIST_ROW = ("condition", "refs", "visits", "count")
+PRESENCE_ROW = ("condition", "match", "refs", "visits", "count")
+DRIVER_ROW = ("driver", "rank", "score", "history", "context")
+HISTORY_ROW = ("refs", "visits", "count")
+CONTEXT_ROW = ("refs", "count")
+# How the model runtime writes JSON between values; a document's text is
+# written the same way.
+SEPARATORS = (", ", ": ")
 # The notice that introduces an explanation's drivers comes right after
 # its prediction; every other notice ends its answer.
 DRIVERS_NOTICE = "drivers"
+OMITTED_NOTICE = "drivers_omitted"
 
 
 class ShapeError(Exception):
@@ -84,22 +112,29 @@ class CountsAs:
 @dataclasses.dataclass(frozen=True)
 class Asked:
     """The condition a presence question asks about: its name, how it is
-    shown, and which concepts of the bundle count as it."""
+    shown, which concepts of the bundle count as it, and how records are
+    matched: by "source_code" for a question about an ICD code (every
+    record by its source code), by "concept" otherwise (a record by its
+    standard concept, or by its source code when it has none)."""
 
     name: candidates.ConditionName
     label: str
     counts_as: tuple = ()
+    by: str = "concept"
 
 
 @dataclasses.dataclass(frozen=True)
 class Context:
     """What a request fixes: the request, its verified bundle and digest,
-    and for a presence question the condition asked about."""
+    for a presence question the condition asked about, and for an
+    explanation how many drivers it describes (None: the configured
+    number)."""
 
     request: contracts.Request
     bundle: object
     bundle_sha256: str
     asked: Asked | None = None
+    limit: int | None = None
 
     @property
     def task(self):
@@ -132,7 +167,22 @@ def asked(resolution, bundle, vocabulary):
         found[key] = kind
     return Asked(name, label, tuple(CountsAs(*key, match)
                                     for key, match in sorted(
-                                        found.items(), key=str)))
+                                        found.items(), key=str)),
+                 "source_code" if resolution.rule == "icd_code"
+                 else "concept")
+
+
+def selected_drivers(context):
+    """Return the drivers an explanation request's answer describes."""
+    # Imported here: validation.explanation writes through this package.
+    from ehr_evidence_app.validation import explanation
+    return explanation.selected(context.bundle, context.limit)
+
+
+def omitted_drivers(context):
+    """Return how many eligible drivers the answer does not describe."""
+    from ehr_evidence_app.validation import explanation
+    return explanation.omitted(context.bundle, context.limit)
 
 
 # --------------------------------------------------------------------------
@@ -142,12 +192,26 @@ def asked(resolution, bundle, vocabulary):
 def wording(kind):
     """Return the schema of a wording of a statement kind: one line of
     letters, spaces and plain punctuation, holding each placeholder of the
-    kind's slots exactly once, in any order, and no other."""
-    orders = ["".join(WORDS + r"\{%s\}" % slot for slot in order) + WORDS
-              for order in itertools.permutations(
-                  candidates.KINDS[kind].slots)]
+    kind's slots exactly once and no other, beginning with its subject's
+    and the others in any order."""
+    subject = SUBJECTS.get(kind)
+    head = r"\{%s\}" % subject if subject else ""
+    rest = [slot for slot in candidates.KINDS[kind].slots
+            if slot != subject]
+    orders = [head + "".join(WORDS + r"\{%s\}" % slot for slot in order)
+              + WORDS for order in itertools.permutations(rest)]
     return {"type": "string", "minLength": 1, "maxLength": MAX_WORDING,
             "pattern": "^(?:%s)$" % "|".join(orders)}
+
+
+def row_of(columns, **values):
+    """Return a row of values in the order of its columns."""
+    return [values[column] for column in columns]
+
+
+def values_of(columns, row):
+    """Return the values of a row by column name."""
+    return dict(zip(columns, row))
 
 
 def worded(kind):
@@ -174,9 +238,21 @@ def fields(properties):
             "required": list(properties), "additionalProperties": False}
 
 
-def optional(schema):
+def row(*parts):
+    """Return the schema of a fixed-length array of these parts."""
+    return {"type": "array", "prefixItems": list(parts), "items": False,
+            "minItems": len(parts), "maxItems": len(parts)}
+
+
+def optional(schema_):
     """Return the schema of a value or null."""
-    return {"anyOf": [schema, {"type": "null"}]}
+    return {"anyOf": [schema_, {"type": "null"}]}
+
+
+def rows(item, most):
+    """Return the schema of a list of at least one row, at most most."""
+    return {"type": "array", "items": item, "minItems": 1,
+            "maxItems": max(most, 1)}
 
 
 def notice_ids(task, outcome):
@@ -197,41 +273,37 @@ def visit_numbers(visits):
 
 
 def list_schema(context):
-    """Return the schema of a list answer's document."""
+    """Return the schema of a list answer's document: an answer for a
+    scope with records, "not recorded" for one without."""
     bundle = context.bundle
     refs = [event.ref for event in bundle.events]
-    visits = visit_numbers(bundle.visits)
-    empty = fields({"outcome": {"const": "not_recorded"},
-                    "reason_codes": reason_codes("not_recorded"),
-                    "empty": fields({"wording": worded("list_empty")}),
-                    "notices": chosen(notice_ids(context.task,
-                                                 "not_recorded"), 0)})
     if not refs:
-        return empty
+        return fields({"outcome": {"const": "not_recorded"},
+                       "reason_codes": reason_codes("not_recorded"),
+                       "empty": fields({"wording": worded("list_empty")}),
+                       "notices": chosen(notice_ids(context.task,
+                                                    "not_recorded"), 0)})
     total = len(refs)
-    item = fields({"wording": worded("list_item"),
-                   "condition": {"enum": refs},
-                   "count": integer(1, total),
-                   "visits": chosen(visits), "refs": chosen(refs)})
-    answer = fields({
+    return fields({
         "outcome": {"const": "answer"},
         "reason_codes": reason_codes("answer"),
+        "item_wording": worded("list_item"),
+        "items": rows(row(*row_of(
+            LIST_ROW, condition={"enum": refs}, refs=chosen(refs),
+            visits=chosen(visit_numbers(bundle.visits)),
+            count=integer(1, total))), total),
         "summary": fields({"wording": worded("list_summary"),
                            "groups": integer(1, total),
                            "records": integer(1, total)}),
-        "items": {"type": "array", "items": item, "minItems": 1,
-                  "maxItems": total},
         "unmapped": optional(fields({"wording": worded("list_unmapped"),
                                      "unmapped": integer(1, total)})),
         "notices": chosen(notice_ids(context.task, "answer"), 0)})
-    return {"anyOf": [answer, empty]}
 
 
 def presence_schema(context):
     """Return the schema of a presence check's document."""
     bundle = context.bundle
     refs = [event.ref for event in bundle.events]
-    visits = visit_numbers(bundle.visits)
     total = max(len(refs), 1)
     absent = fields({
         "outcome": {"const": "not_recorded"},
@@ -242,40 +314,42 @@ def presence_schema(context):
         "notices": chosen(notice_ids(context.task, "not_recorded"), 0)})
     if not refs:
         return absent
-    item = fields({"wording": worded("presence_item"),
-                   "condition": {"enum": refs},
-                   "count": integer(1, total), "visits": chosen(visits),
-                   "match": {"enum": list(candidates.MATCH_WORDS)},
-                   "refs": chosen(refs)})
     answer = fields({
         "outcome": {"const": "answer"},
         "reason_codes": reason_codes("answer"),
+        "item_wording": worded("presence_item"),
+        "items": rows(row(*row_of(
+            PRESENCE_ROW, condition={"enum": refs},
+            match={"enum": list(candidates.MATCH_WORDS)},
+            refs=chosen(refs), visits=chosen(visit_numbers(bundle.visits)),
+            count=integer(1, total))), total),
         "summary": fields({"wording": worded("presence_summary"),
-                           "matches": integer(1, total)}),
-        "items": {"type": "array", "items": item, "minItems": 1,
-                  "maxItems": total}})
+                           "matches": integer(1, total)})})
     return {"anyOf": [answer, absent]}
 
 
 def explanation_schema(context):
-    """Return the schema of an explanation's document."""
+    """Return the schema of an explanation's document; the history and
+    context of a driver are defined once under $defs."""
     bundle = context.bundle
     prediction = bundle.prediction
     history = [event.ref for event in bundle.history_events]
     final = [event.ref for event in bundle.final_admission_context]
     past = visit_numbers(visit for visit in bundle.visits
                          if visit.role == "pre_target")
-    drivers = len(bundle.attributions)
+    drivers = selected_drivers(context)
     lines = {"history": {"type": "null"}, "context": {"type": "null"}}
     if history and past:
-        lines["history"] = optional(fields({
-            "wording": worded("driver_history"),
-            "count": integer(1, len(history)), "visits": chosen(past),
-            "refs": chosen(history)}))
+        lines["history"] = optional(row(*row_of(
+            HISTORY_ROW, refs=chosen(history), visits=chosen(past),
+            count=integer(1, len(history)))))
     if final:
-        lines["context"] = optional(fields({
-            "wording": worded("driver_context"),
-            "count": integer(1, len(final)), "refs": chosen(final)}))
+        lines["context"] = optional(row(*row_of(
+            CONTEXT_ROW, refs=chosen(final), count=integer(1, len(final)))))
+    left = omitted_drivers(context)
+    notices = [notice_id
+               for notice_id in notice_ids(context.task, "explanation")
+               if left or notice_id != OMITTED_NOTICE]
     document = fields({
         "outcome": {"const": "explanation"},
         "reason_codes": reason_codes("explanation"),
@@ -284,16 +358,17 @@ def explanation_schema(context):
                                         .concept_id},
                               "score": {"const": prediction.score},
                               "logit": {"const": prediction.logit}}),
-        "drivers": {"type": "array", "minItems": 1, "maxItems": drivers,
-                    "items": {"anyOf": [fields({
-                        "wording": worded("driver"),
-                        "driver": {"const": item.ref},
-                        "rank": integer(1, drivers),
-                        "score": {"const": item.score},
-                        "history": {"$ref": "#/$defs/history"},
-                        "context": {"$ref": "#/$defs/context"}})
-                        for item in bundle.attributions]}},
-        "notices": chosen(notice_ids(context.task, "explanation"), 0)})
+        "driver_wording": worded("driver"),
+        "history_wording": worded("driver_history"),
+        "context_wording": worded("driver_context"),
+        "drivers": rows({"anyOf": [row(*row_of(
+            DRIVER_ROW, driver={"const": item.ref},
+            rank=integer(1, len(drivers)), score={"const": item.score},
+            history={"$ref": "#/$defs/history"},
+            context={"$ref": "#/$defs/context"})) for item in drivers]},
+            len(drivers)),
+        "notices": chosen(notices, 0),
+        "omitted": {"const": left} if left else {"type": "null"}})
     return dict(document, **{"$defs": lines})
 
 
@@ -328,9 +403,9 @@ TYPES = {"object": dict, "array": list, "string": str, "null": type(None),
          "boolean": bool}
 KEYWORDS = frozenset(("anyOf", "const", "enum", "type", "properties",
                       "required", "additionalProperties", "items",
-                      "minItems", "maxItems", "uniqueItems", "minLength",
-                      "maxLength", "pattern", "minimum", "maximum", "$ref",
-                      "$defs"))
+                      "prefixItems", "minItems", "maxItems", "uniqueItems",
+                      "minLength", "maxLength", "pattern", "minimum",
+                      "maximum", "$ref", "$defs"))
 DEFINITION = re.compile(r"^#/\$defs/([A-Za-z0-9_]+)$")
 
 
@@ -353,6 +428,28 @@ def typed(value, name):
         return isinstance(value, (int, float)) and not isinstance(value,
                                                                   bool)
     return isinstance(value, TYPES[name])
+
+
+def array_violations(value, schema_, path, root):
+    """Return where a JSON array breaks its schema: its length, repeated
+    items, and each item against prefixItems and items."""
+    found = []
+    if len(value) < schema_.get("minItems", 0) or len(value) > schema_.get(
+            "maxItems", len(value)):
+        found.append(path + ": wrong number of items")
+    if schema_.get("uniqueItems") and len({json.dumps(
+            item, sort_keys=True) for item in value}) != len(value):
+        found.append(path + ": repeated items")
+    prefix = schema_.get("prefixItems", [])
+    for index, item in enumerate(value):
+        where = "%s[%d]" % (path, index)
+        if index < len(prefix):
+            found += violations(item, prefix[index], where, root)
+        elif schema_.get("items") is False:
+            found.append(where + ": no item allowed here")
+        elif isinstance(schema_.get("items"), dict):
+            found += violations(item, schema_["items"], where, root)
+    return found
 
 
 def violations(value, schema_, path="$", root=None):
@@ -393,16 +490,7 @@ def violations(value, schema_, path="$", root=None):
                 found += violations(item, properties[name],
                                     path + "." + name, root)
     if isinstance(value, list):
-        if len(value) < schema_.get("minItems", 0) or len(value) > schema_.get(
-                "maxItems", len(value)):
-            found.append(path + ": wrong number of items")
-        if schema_.get("uniqueItems") and len({json.dumps(
-                item, sort_keys=True) for item in value}) != len(value):
-            found.append(path + ": repeated items")
-        if "items" in schema_:
-            for index, item in enumerate(value):
-                found += violations(item, schema_["items"],
-                                    "%s[%d]" % (path, index), root)
+        found += array_violations(value, schema_, path, root)
     if isinstance(value, str):
         if not schema_.get("minLength", 0) <= len(value) <= schema_.get(
                 "maxLength", len(value)):
@@ -420,22 +508,16 @@ def violations(value, schema_, path="$", root=None):
 # Documents and candidates
 # --------------------------------------------------------------------------
 
-def statement(kind, part, refs=(), **slots):
-    """Return a statement of a kind from a document's part."""
-    return candidates.Statement(kind=kind, wording=part["wording"],
+def statement(kind, wording_, refs=(), **slots):
+    """Return a statement of a kind with a wording, facts and references."""
+    return candidates.Statement(kind=kind, wording=wording_,
                                 slots=candidates.Slots(**slots),
                                 refs=tuple(refs))
 
 
-def visits(part):
-    """Return the visit numbers of a part, which are a set, in order."""
-    return tuple(sorted(part["visits"]))
-
-
-def item_slots(part):
-    """Return the slots of a list or presence item's part."""
-    return {"condition": candidates.ConditionName(event=part["condition"]),
-            "count": part["count"], "visits": visits(part)}
+def visits(numbers):
+    """Return visit numbers, which are a set, in order."""
+    return tuple(sorted(numbers))
 
 
 def qa_statements(context, document):
@@ -444,52 +526,82 @@ def qa_statements(context, document):
     unmapped = document.get("unmapped")
     kind = ("list_unmapped" if context.task == "condition_list"
             else "presence_unmapped")
-    tail = ([statement(kind, unmapped, ("C1",),
+    tail = ([statement(kind, unmapped["wording"], ("C1",),
                        unmapped=unmapped["unmapped"])]
             if unmapped else [])
     if context.task == "condition_list":
         if document["outcome"] == "not_recorded":
-            return [statement("list_empty", document["empty"], ("C1",),
-                              scope=scope)]
+            return [statement("list_empty", document["empty"]["wording"],
+                              ("C1",), scope=scope)]
         summary = document["summary"]
-        return [statement("list_summary", summary, groups=summary["groups"],
-                          scope=scope, records=summary["records"])] + [
-            statement("list_item", part, part["refs"], **item_slots(part))
-            for part in document["items"]] + tail
+        items = [values_of(LIST_ROW, row) for row in document["items"]]
+        return [statement("list_summary", summary["wording"],
+                          groups=summary["groups"], scope=scope,
+                          records=summary["records"])] + [
+            statement("list_item", document["item_wording"], item["refs"],
+                      condition=candidates.ConditionName(
+                          event=item["condition"]),
+                      count=item["count"], visits=visits(item["visits"]))
+            for item in items] + tail
     name = context.asked.name
     if document["outcome"] == "not_recorded":
-        return [statement("presence_absent", document["absent"], ("C1",),
-                          condition=name, scope=scope)] + tail
+        return [statement("presence_absent", document["absent"]["wording"],
+                          ("C1",), condition=name, scope=scope)] + tail
     summary = document["summary"]
-    return [statement("presence_summary", summary, condition=name,
+    items = [values_of(PRESENCE_ROW, row) for row in document["items"]]
+    return [statement("presence_summary", summary["wording"], condition=name,
                       scope=scope, matches=summary["matches"])] + [
-        statement("presence_item", part, part["refs"], match=part["match"],
-                  **item_slots(part)) for part in document["items"]]
+        statement("presence_item", document["item_wording"], item["refs"],
+                  condition=candidates.ConditionName(event=item["condition"]),
+                  count=item["count"], visits=visits(item["visits"]),
+                  match=item["match"])
+        for item in items]
 
 
 def explanation_statements(document):
     """Return the statements of an explanation document, before its
-    notices."""
+    closing notices."""
     part = document["prediction"]
-    found = [statement("prediction", part, ("P1",), label=part["label"],
-                       score=part["score"], logit=part["logit"])]
+    found = [statement("prediction", part["wording"], ("P1",),
+                       label=part["label"], score=part["score"],
+                       logit=part["logit"])]
     if DRIVERS_NOTICE in document["notices"]:
         found.append(candidates.notice(DRIVERS_NOTICE))
-    for driver in document["drivers"]:
-        found.append(statement("driver", driver, (driver["driver"],),
-                               rank=driver["rank"], driver=driver["driver"],
-                               score=driver["score"]))
-        history = driver.get("history")
-        if history:
-            found.append(statement("driver_history", history,
-                                   history["refs"], driver=driver["driver"],
+    for row in document["drivers"]:
+        item = values_of(DRIVER_ROW, row)
+        driver = item["driver"]
+        found.append(statement("driver", document["driver_wording"],
+                               (driver,), rank=item["rank"], driver=driver,
+                               score=item["score"]))
+        if item["history"]:
+            history = values_of(HISTORY_ROW, item["history"])
+            found.append(statement("driver_history",
+                                   document["history_wording"],
+                                   history["refs"], driver=driver,
                                    count=history["count"],
-                                   visits=visits(history)))
-        final = driver.get("context")
-        if final:
-            found.append(statement("driver_context", final, final["refs"],
-                                   driver=driver["driver"],
+                                   visits=visits(history["visits"])))
+        if item["context"]:
+            final = values_of(CONTEXT_ROW, item["context"])
+            found.append(statement("driver_context",
+                                   document["context_wording"],
+                                   final["refs"], driver=driver,
                                    count=final["count"]))
+    return found
+
+
+def closing_notices(context, document):
+    """Return the notices that end an answer, in the document's order; the
+    notice on drivers not described states the document's number."""
+    found = []
+    for notice_id in document.get("notices", ()):
+        if context.task == "prediction_explanation" and (
+                notice_id == DRIVERS_NOTICE):
+            continue
+        if notice_id == OMITTED_NOTICE:
+            found.append(candidates.notice(notice_id,
+                                           omitted=document.get("omitted")))
+        else:
+            found.append(candidates.notice(notice_id))
     return found
 
 
@@ -501,10 +613,7 @@ def candidate(context, document):
             statements = explanation_statements(document)
         else:
             statements = qa_statements(context, document)
-        statements += [candidates.notice(notice_id)
-                       for notice_id in document.get("notices", ())
-                       if notice_id != DRIVERS_NOTICE or (
-                           context.task != "prediction_explanation")]
+        statements += closing_notices(context, document)
         request = context.request
         return candidates.Candidate(
             schema_version=candidates.CANDIDATE_VERSION,
@@ -520,22 +629,19 @@ def candidate(context, document):
         raise ShapeError("document_malformed") from None
 
 
-def part(statement_, **values):
-    """Return the document part of a statement: its wording and values."""
-    return dict({"wording": statement_.wording}, **values)
-
-
-def item_part(statement_, **values):
-    """Return the document part of a list or presence item."""
-    slots = statement_.slots
-    return part(statement_, condition=slots.condition.event,
-                count=slots.count, visits=list(slots.visits),
-                refs=list(statement_.refs), **values)
+def shared_wording(items):
+    """Return the one wording some statements share; raises ShapeError
+    when they differ, since a compact document holds one per kind."""
+    wordings = {item.wording for item in items}
+    if len(wordings) > 1:
+        raise ShapeError("wordings_differ")
+    return wordings.pop() if wordings else None
 
 
 def document_of(candidate_):
-    """Return the document a candidate is written as; the inverse of
-    candidate() for a candidate in its answer's order."""
+    """Return the compact document a candidate is written as; the inverse
+    of candidate() for a candidate in its answer's order whose statements
+    of one kind share their wording."""
     by_kind = {}
     for item in candidate_.statements:
         by_kind.setdefault(item.kind, []).append(item)
@@ -545,56 +651,98 @@ def document_of(candidate_):
     unmapped = (by_kind.get("list_unmapped")
                 or by_kind.get("presence_unmapped"))
     if candidate_.task == "prediction_explanation":
-        prediction = by_kind["prediction"][0]
-        drivers = []
-        for item in by_kind["driver"]:
-            lines = {line.kind: line for line in candidate_.statements
-                     if line.kind in ("driver_history", "driver_context")
-                     and line.slots.driver == item.slots.driver}
-            history = lines.get("driver_history")
-            final = lines.get("driver_context")
-            drivers.append(part(
-                item, driver=item.slots.driver, rank=item.slots.rank,
-                score=item.slots.score,
-                history=part(history, count=history.slots.count,
-                             visits=list(history.slots.visits),
-                             refs=list(history.refs)) if history else None,
-                context=part(final, count=final.slots.count,
-                             refs=list(final.refs)) if final else None))
-        document.update(prediction=part(
-            prediction, label=prediction.slots.label,
-            score=prediction.slots.score, logit=prediction.slots.logit),
-            drivers=drivers, notices=notices)
-        return document
+        return explanation_document(candidate_, by_kind, notices, document)
     if candidate_.outcome == "not_recorded":
         if candidate_.task == "condition_list":
-            document["empty"] = part(by_kind["list_empty"][0])
+            document["empty"] = {"wording": by_kind["list_empty"][0].wording}
         else:
-            document["absent"] = part(by_kind["presence_absent"][0])
-            document["unmapped"] = part(
-                unmapped[0], unmapped=unmapped[0].slots.unmapped) \
-                if unmapped else None
+            document["absent"] = {
+                "wording": by_kind["presence_absent"][0].wording}
+            document["unmapped"] = {
+                "wording": unmapped[0].wording,
+                "unmapped": unmapped[0].slots.unmapped} if unmapped else None
         document["notices"] = notices
         return document
     if candidate_.task == "condition_list":
         summary = by_kind["list_summary"][0]
+        items = by_kind["list_item"]
         document.update(
-            summary=part(summary, groups=summary.slots.groups,
-                         records=summary.slots.records),
-            items=[item_part(item) for item in by_kind["list_item"]],
-            unmapped=part(unmapped[0], unmapped=unmapped[0].slots.unmapped)
+            item_wording=shared_wording(items),
+            items=[row_of(LIST_ROW, condition=item.slots.condition.event,
+                          refs=list(item.refs),
+                          visits=list(item.slots.visits),
+                          count=item.slots.count) for item in items],
+            summary={"wording": summary.wording,
+                     "groups": summary.slots.groups,
+                     "records": summary.slots.records},
+            unmapped={"wording": unmapped[0].wording,
+                      "unmapped": unmapped[0].slots.unmapped}
             if unmapped else None, notices=notices)
         return document
     summary = by_kind["presence_summary"][0]
-    document.update(summary=part(summary, matches=summary.slots.matches),
-                    items=[item_part(item, match=item.slots.match)
-                           for item in by_kind["presence_item"]])
+    items = by_kind["presence_item"]
+    document.update(
+        item_wording=shared_wording(items),
+        items=[row_of(PRESENCE_ROW, condition=item.slots.condition.event,
+                      match=item.slots.match, refs=list(item.refs),
+                      visits=list(item.slots.visits),
+                      count=item.slots.count) for item in items],
+        summary={"wording": summary.wording,
+                 "matches": summary.slots.matches})
     return document
 
 
+def explanation_document(candidate_, by_kind, notices, document):
+    """Return the compact document of an explanation candidate."""
+    prediction = by_kind["prediction"][0]
+    lines = {}
+    for item in candidate_.statements:
+        if item.kind in ("driver_history", "driver_context"):
+            lines[(item.kind, item.slots.driver)] = item
+    drivers = []
+    for item in by_kind["driver"]:
+        history = lines.get(("driver_history", item.slots.driver))
+        final = lines.get(("driver_context", item.slots.driver))
+        drivers.append(row_of(
+            DRIVER_ROW, driver=item.slots.driver, rank=item.slots.rank,
+            score=item.slots.score,
+            history=row_of(HISTORY_ROW, refs=list(history.refs),
+                           visits=list(history.slots.visits),
+                           count=history.slots.count) if history else None,
+            context=row_of(CONTEXT_ROW, refs=list(final.refs),
+                           count=final.slots.count) if final else None))
+    templates_ = {kind: shared_wording(by_kind.get(kind, ()))
+                  for kind in ("driver", "driver_history", "driver_context")}
+    omitted = [item.slots.omitted for item in by_kind.get("notice", ())
+               if item.notice == OMITTED_NOTICE]
+    document.update(
+        prediction={"wording": prediction.wording,
+                    "label": prediction.slots.label,
+                    "score": prediction.slots.score,
+                    "logit": prediction.slots.logit},
+        driver_wording=templates_["driver"],
+        history_wording=templates_["driver_history"]
+        or example_wording("driver_history"),
+        context_wording=templates_["driver_context"]
+        or example_wording("driver_context"),
+        drivers=drivers, notices=notices,
+        omitted=omitted[0] if omitted else None)
+    return document
+
+
+def example_wording(kind):
+    """Return the template's wording of a statement kind."""
+    # Imported here: validation.explanation writes through this package.
+    from ehr_evidence_app.validation import explanation
+    found = dict(explanation.WORDINGS)
+    found.update({name: templates.wording(name, 2)
+                  for name in templates.WORDINGS})
+    return found[kind]
+
+
 def text(document):
-    """Return a document as compact JSON text, as a writer emits it."""
-    return json.dumps(document, separators=(",", ":"), ensure_ascii=False)
+    """Return a document as JSON text, as the model runtime writes it."""
+    return json.dumps(document, separators=SEPARATORS, ensure_ascii=False)
 
 
 # --------------------------------------------------------------------------
@@ -648,8 +796,10 @@ def synthetic_contexts():
     _, explanations, _ = bundles.run_synthetic()
     bundle = explanations[0]
     request = evidence.explanation_request(bundle)
-    template = explanation.template(request, bundle, "5" * 64)
-    found.append((Context(request, bundle, "5" * 64), template))
+    for limit in (None, 1):
+        template = explanation.template(request, bundle, "5" * 64, limit)
+        found.append((Context(request, bundle, "5" * 64, limit=limit),
+                      template))
     return found
 
 
@@ -660,15 +810,16 @@ def synthetic_faults(document):
               {key: value for key, value in document.items()
                if key != "reason_codes"}]
     if document.get("items"):
-        item = dict(document["items"][0], refs=["E99999"])
-        faults.append(dict(document, items=[item] + document["items"][1:]))
-        worded = dict(document["items"][0],
-                      wording="{condition}: 3 records in {visits}")
-        faults.append(dict(document, items=[worded]
+        first = list(document["items"][0])
+        faults.append(dict(document, items=[first[:1] + ["x"] + first[2:]]
                            + document["items"][1:]))
+        faults.append(dict(document, items=[first + ["extra"]]
+                           + document["items"][1:]))
+        faults.append(dict(document,
+                           item_wording="{condition}: 3 records in {visits}"))
     if document.get("drivers"):
-        driver = dict(document["drivers"][0],
-                      score=document["drivers"][0]["score"] + 1.0)
+        driver = list(document["drivers"][0])
+        driver[2] = driver[2] + 1.0
         faults.append(dict(document, drivers=[driver]
                            + document["drivers"][1:]))
     return faults

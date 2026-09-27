@@ -2,17 +2,22 @@
 
 In Phase 7 the language model writes the explanation when a writer is
 given (explain_written, generation.adapter), and the template explanation
-is released in its place when the model's is not. The template
-explanation (ADR 0011, decision 5) is built from an explanation bundle
-alone, without a model:
+is released in its place when the model's is not. An explanation
+describes the drivers selected by config/explanation.json (ADR 0013): the
+eligible attributions with the highest scores, highest first, ties in the
+bundle's order, at most the configured limit. Every attribution stays in
+the evidence bundle. The template explanation (explanation-template-v2) is
+built from an explanation bundle alone, without a model:
 
 * the selected label, as one output of the model's multi-label prediction,
   with its uncalibrated score and logit (citing P1);
-* every driver that may be described, in the order the model lists them,
-  with its attribution score (citing its attribution);
+* the selected drivers, highest score first, each with its attribution
+  score (citing its attribution);
 * under each driver, how many of its concept's records lie in which
   pre-target visits, citing its linked history events, and its records in
   the final admission as context, citing those;
+* when more drivers were eligible, a notice that states how many are kept
+  in the evidence and not described;
 * notices on what attribution scores and the model's score mean, and one
   for each restriction of the case.
 
@@ -20,13 +25,13 @@ The checks apply to any explanation candidate, whoever wrote it:
 
 * prediction_altered: the explanation does not state the bundle's
   prediction once, with its label, score and logit;
-* attribution_altered: the drivers described are not exactly the bundle's
-  describable drivers, in its order and with its scores and ranks;
+* attribution_altered: the drivers described are not exactly the selected
+  drivers, in their order and with their scores and ranks;
 * claim_unsupported: a history statement cites other records than the
   driver's linked events in pre-target visits, a context statement other
   records than its final-admission ones, or either miscounts them or their
   visits; the restrictions disclosed, as reason codes or notices, are not
-  the case's;
+  the case's; the drivers not described are not stated, or miscounted;
 * structure_invalid: a notice on what the scores mean is missing.
 
 With the structure checks and the wording rules this enforces the evidence
@@ -45,18 +50,25 @@ from __future__ import annotations
 
 import argparse
 import collections
+import functools
 import json
 import os
 import sys
+from typing import Annotated, Literal
+
+from pydantic import Field, StringConstraints, ValidationError
 
 from ehr_evidence_app.casesets import registry
 from ehr_evidence_app.evidence import bundles, contracts, readers, schema
+from ehr_evidence_app.evidence.contracts import Frozen
 from ehr_evidence_app.generation import adapter, shape
 from ehr_evidence_app.gnn import mapping
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import evidence, gate
 
-TEMPLATE_VERSION = "explanation-template-v1"
+TEMPLATE_VERSION = "explanation-template-v2"
+SELECTION_PATH = os.path.join(contracts.REPO_ROOT, "config",
+                              "explanation.json")
 WORDINGS = {
     "prediction": "{label} is the label the model selected, one output of "
                   "its multi-label prediction; its uncalibrated score is "
@@ -77,9 +89,58 @@ class ExplanationError(Exception):
     """A fail-closed failure carrying a finding code only."""
 
 
+class DriverSelection(Frozen):
+    """Which drivers an explanation describes."""
+
+    selection: Literal["highest_eligible_attribution"]
+    limit: int = Field(ge=1, le=100)
+    frozen: bool
+
+
+class SelectionFile(Frozen):
+    """The committed explanation configuration."""
+
+    schema_version: Literal["1.0"]
+    purpose: Annotated[str, StringConstraints(min_length=1, max_length=600)]
+    drivers: DriverSelection
+
+
+def load_selection(path=SELECTION_PATH):
+    """Return the validated driver selection."""
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return SelectionFile.model_validate_json(handle.read()).drivers
+    except OSError:
+        raise ExplanationError("explanation_config_unreadable") from None
+    except ValidationError:
+        raise ExplanationError("explanation_config_invalid") from None
+
+
+@functools.lru_cache(maxsize=1)
+def configured_limit():
+    """Return the configured number of drivers an explanation describes."""
+    return load_selection().limit
+
+
 def describable(bundle):
-    """Return the drivers an explanation describes, in the bundle's order."""
+    """Return every driver that may be described, in the bundle's order."""
     return [item for item in bundle.attributions if item.narration_eligible]
+
+
+def selected(bundle, limit=None):
+    """Return the drivers an explanation describes: the eligible drivers
+    with the highest attribution scores, highest first, ties in the
+    bundle's order, at most limit (the configured limit when None)."""
+    limit = configured_limit() if limit is None else limit
+    ranked = sorted(enumerate(describable(bundle)),
+                    key=lambda pair: (-pair[1].score, pair[0]))
+    return [item for _, item in ranked[:limit]]
+
+
+def omitted(bundle, limit=None):
+    """Return how many eligible drivers an explanation does not
+    describe."""
+    return len(describable(bundle)) - len(selected(bundle, limit))
 
 
 def visits_of(bundle, refs):
@@ -96,8 +157,9 @@ def statement(kind, refs=(), **slots):
                                 refs=tuple(refs))
 
 
-def template(request, bundle, bundle_sha256):
-    """Return the template explanation candidate of an eligible bundle."""
+def template(request, bundle, bundle_sha256, limit=None):
+    """Return the template explanation candidate of an eligible bundle,
+    describing the selected drivers (limit as in selected())."""
     history = {event.ref for event in bundle.history_events}
     context = {event.ref for event in bundle.final_admission_context}
     prediction = bundle.prediction
@@ -105,7 +167,7 @@ def template(request, bundle, bundle_sha256):
                             label=prediction.concept.concept_id,
                             score=prediction.score, logit=prediction.logit),
                   candidates.notice("drivers")]
-    for rank, item in enumerate(describable(bundle), 1):
+    for rank, item in enumerate(selected(bundle, limit), 1):
         statements.append(statement("driver", refs=(item.ref,), rank=rank,
                                     driver=item.ref, score=item.score))
         linked = [ref for ref in item.linked_event_refs if ref in history]
@@ -117,6 +179,9 @@ def template(request, bundle, bundle_sha256):
         if final:
             statements.append(statement("driver_context", refs=final,
                                         driver=item.ref, count=len(final)))
+    left = omitted(bundle, limit)
+    if left:
+        statements.append(candidates.notice("drivers_omitted", omitted=left))
     statements += [candidates.notice("attribution_meaning"),
                    candidates.notice("score_meaning")]
     statements += [candidates.notice(candidates.RESTRICTION_NOTICES[code])
@@ -148,12 +213,13 @@ def prediction_problems(candidate, bundle):
     return set()
 
 
-def driver_problems(candidate, bundle):
-    """Return problems of the drivers an explanation describes."""
+def driver_problems(candidate, bundle, limit=None):
+    """Return problems of the drivers an explanation describes: exactly
+    the selected drivers, in their order, with their ranks and scores."""
     attributions = {item.ref: item for item in bundle.attributions}
     stated = of_kind(candidate, "driver")
     if [item.slots.driver for item in stated] != [
-            item.ref for item in describable(bundle)]:
+            item.ref for item in selected(bundle, limit)]:
         return {"attribution_altered"}
     for rank, item in enumerate(stated, 1):
         if (item.slots.rank != rank or item.slots.score
@@ -186,8 +252,10 @@ def record_problems(candidate, bundle):
     return set()
 
 
-def notice_problems(candidate, bundle):
-    """Return problems of the notices and disclosures of an explanation."""
+def notice_problems(candidate, bundle, limit=None):
+    """Return problems of the notices and disclosures of an explanation:
+    the meaning notices, the case's restrictions, and the drivers not
+    described, stated exactly when there are some, with their number."""
     notices = {item.notice for item in candidate.statements
                if item.kind == "notice"}
     if not set(MEANING_NOTICES) <= notices:
@@ -197,20 +265,25 @@ def notice_problems(candidate, bundle):
                                    for code in bundle.restrictions}
             or set(candidate.reason_codes) != set(bundle.restrictions)):
         return {"claim_unsupported"}
+    left = omitted(bundle, limit)
+    stated = [item.slots.omitted for item in candidate.statements
+              if item.notice == "drivers_omitted"]
+    if stated != ([left] if left else []):
+        return {"claim_unsupported"}
     return set()
 
 
-def check(candidate, bundle=None):
+def check(candidate, bundle=None, limit=None):
     """Return the reason codes of an explanation candidate that does not
-    preserve its bundle's prediction, drivers, records and restrictions;
-    empty when it passes. The candidate must have passed the structure
-    checks for this bundle."""
+    preserve its bundle's prediction, selected drivers, records and
+    restrictions; empty when it passes. The candidate must have passed the
+    structure checks for this bundle; limit is as in selected()."""
     if candidate.outcome != "explanation" or bundle is None:
         return ()
     problems = (prediction_problems(candidate, bundle)
-                | driver_problems(candidate, bundle)
+                | driver_problems(candidate, bundle, limit)
                 | record_problems(candidate, bundle)
-                | notice_problems(candidate, bundle))
+                | notice_problems(candidate, bundle, limit))
     return tuple(sorted(problems))
 
 
@@ -223,22 +296,24 @@ def rejected(request, reasons, outcome="validation_rejection"):
         scope=request.scope, outcome=outcome, reason_codes=tuple(reasons))
 
 
-def release(candidate, request, bundle=None, bundle_sha256=None):
+def release(candidate, request, bundle=None, bundle_sha256=None,
+            limit=None):
     """Return the Response of an explanation candidate for a request,
-    through the release gate."""
+    through the release gate (limit as in selected())."""
     return gate.release(candidate, request.request_id, request.case,
-                        request.scope, bundle, bundle_sha256)
+                        request.scope, bundle, bundle_sha256, drivers=limit)
 
 
-def explain(request, bundle, bundle_sha256, writer=None):
+def explain(request, bundle, bundle_sha256, writer=None, limit=None):
     """Return (Response, candidate or None) for an explanation request and
     its verified explanation bundle; explain_written() also says who
     wrote it."""
-    written = explain_written(request, bundle, bundle_sha256, writer)
+    written = explain_written(request, bundle, bundle_sha256, writer, limit)
     return written.response, written.candidate
 
 
-def explain_written(request, bundle, bundle_sha256, writer=None):
+def explain_written(request, bundle, bundle_sha256, writer=None,
+                    limit=None):
     """Return the generation.adapter.Written of an explanation request.
 
     A request the checks before generation stop is rejected, or abstains
@@ -260,10 +335,12 @@ def explain_written(request, bundle, bundle_sha256, writer=None):
                 ABSTENTIONS[stop.reasons[0]]),))
         return adapter.Written(release(candidate, request), candidate,
                                "template")
-    drafted = template(request, bundle, bundle_sha256)
+    limit = configured_limit() if limit is None else limit
+    drafted = template(request, bundle, bundle_sha256, limit)
     return adapter.write(
-        writer, shape.Context(request, bundle, bundle_sha256), drafted,
-        lambda candidate: release(candidate, request, bundle, bundle_sha256))
+        writer, shape.Context(request, bundle, bundle_sha256, limit=limit),
+        drafted, lambda candidate: release(candidate, request, bundle,
+                                           bundle_sha256, limit))
 
 
 # --------------------------------------------------------------------------
@@ -296,8 +373,8 @@ def ranked(block, rank):
 
 
 def synthetic_faults(good, bundle):
-    """Return (expected reason code, candidate, bundle) triples of invented
-    faults of a correct explanation."""
+    """Return (error class, expected reason code, candidate, bundle) of
+    invented faults of a correct explanation of a bundle."""
     def changed(kind, **slots):
         """Return the candidate with the first statement of a kind's slots
         changed."""
@@ -316,10 +393,10 @@ def synthetic_faults(good, bundle):
     head, blocks, tail = driver_blocks(good)
     first = blocks[0][0]
     # The drivers without the first, ranked again; the first two swapped.
-    omitted = assembled([ranked(block, rank)
+    dropped = assembled([ranked(block, rank)
                          for rank, block in enumerate(blocks[1:], 1)])
     swapped = assembled([ranked(blocks[1], 1), ranked(blocks[0], 2)]
-                        + blocks[2:])
+                        + blocks[2:]) if len(blocks) > 1 else None
     # The same explanation, for a bundle whose first driver scores zero.
     zeroed = bundle.model_copy(update={"attributions": tuple(
         item.model_copy(update={"score": 0.0, "score_class": "zero",
@@ -327,25 +404,29 @@ def synthetic_faults(good, bundle):
         if item.ref == first.slots.driver else item
         for item in bundle.attributions)})
     faults = [
-        ("prediction_altered", changed("prediction",
-                                       score=bundle.prediction.score / 2),
-         bundle),
-        ("prediction_altered", changed("prediction", logit=-1.0), bundle),
-        ("attribution_altered", changed("driver",
-                                        score=first.slots.score * 2), bundle),
-        ("attribution_altered", omitted, bundle),
-        ("attribution_altered", swapped, bundle),
-        ("attribution_altered", good, zeroed),
+        ("altered_score", "prediction_altered", changed(
+            "prediction", score=bundle.prediction.score / 2), bundle),
+        ("altered_label", "prediction_altered", changed(
+            "prediction", logit=-1.0), bundle),
+        ("altered_attribution_score", "attribution_altered", changed(
+            "driver", score=first.slots.score * 2), bundle),
+        ("zero_score_driver_described", "attribution_altered", good,
+         zeroed),
         # Restrictions disclosed that are not the case's: none for a case
         # that has some, one for a case that has none.
-        ("claim_unsupported", good.model_copy(update={
-            "reason_codes": () if bundle.restrictions
-            else ("batch_sensitive_prediction",)}), bundle),
-        ("structure_invalid", good.model_copy(update={
-            "statements": tuple(item for item in good.statements
-                                if item.notice != "attribution_meaning")}),
-         bundle),
+        ("restriction_misdisclosed", "claim_unsupported", good.model_copy(
+            update={"reason_codes": () if bundle.restrictions
+                    else ("batch_sensitive_prediction",)}), bundle),
+        ("missing_meaning_notice", "structure_invalid", good.model_copy(
+            update={"statements": tuple(
+                item for item in good.statements
+                if item.notice != "attribution_meaning")}), bundle),
     ]
+    if swapped is not None:
+        # With one driver described, leaving it out is a structural fault.
+        faults += [("omitted_driver", "attribution_altered", dropped, bundle),
+                   ("reordered_drivers", "attribution_altered", swapped,
+                    bundle)]
     lined = [index for index, block in enumerate(blocks) if len(block) > 1]
     if lined and len(blocks) > 1:
         # A driver's history and context under another driver.
@@ -354,24 +435,52 @@ def synthetic_faults(good, bundle):
         moved = [list(block) for block in blocks]
         moved[other] = moved[other] + moved[index][1:]
         moved[index] = moved[index][:1]
-        faults.append(("structure_invalid", assembled(moved), bundle))
+        faults.append(("history_under_another_driver", "structure_invalid",
+                       assembled(moved), bundle))
+    notices = [number for number, item in enumerate(good.statements)
+               if item.notice == "drivers_omitted"]
+    if notices:
+        # The drivers not described, miscounted or left unstated; one of
+        # them described as well.
+        extra = [item for item in describable(bundle) if item.ref not in {
+            block[0].slots.driver for block in blocks}][0]
+        described = assembled(blocks + [[statement(
+            "driver", refs=(extra.ref,), rank=len(blocks) + 1,
+            driver=extra.ref, score=extra.score)]])
+        miscount = list(good.statements)
+        notice = miscount[notices[0]]
+        miscount[notices[0]] = notice.model_copy(update={
+            "slots": notice.slots.model_copy(update={
+                "omitted": notice.slots.omitted + 1})})
+        faults += [
+            ("omitted_drivers_miscounted", "claim_unsupported",
+             good.model_copy(update={"statements": tuple(miscount)}),
+             bundle),
+            ("omitted_drivers_unstated", "claim_unsupported",
+             good.model_copy(update={"statements": tuple(
+                 item for number, item in enumerate(good.statements)
+                 if number != notices[0])}), bundle),
+            ("unselected_driver_described", "attribution_altered",
+             described, bundle)]
     return faults
 
 
 def run_synthetic():
-    """Return (explained, faults detected, faults) on invented data."""
+    """Return (explained, faults detected, faults) on invented data, for
+    the configured number of drivers and for one driver only."""
     _, explanations, _ = bundles.run_synthetic()
     bundle = explanations[0]
     request = evidence.explanation_request(bundle)
-    response, good = explain(request, bundle, "5" * 64)
-    explained = response.outcome == "explanation"
-    detected = 0
-    faults = synthetic_faults(good, bundle)
-    for expected, fault, faulty in faults:
-        found = release(fault, request, faulty, "5" * 64)
-        detected += (found.outcome == "validation_rejection"
-                     and expected in found.reason_codes)
-    return explained, detected, len(faults)
+    explained, detected, total = True, 0, 0
+    for limit in (None, 1):
+        response, good = explain(request, bundle, "5" * 64, limit=limit)
+        explained = explained and response.outcome == "explanation"
+        for _, expected, fault, faulty in synthetic_faults(good, bundle):
+            found = release(fault, request, faulty, "5" * 64, limit)
+            total += 1
+            detected += (found.outcome == "validation_rejection"
+                         and expected in found.reason_codes)
+    return explained, detected, total
 
 
 # --------------------------------------------------------------------------
@@ -446,6 +555,7 @@ def run_real(case_set):
             for item in candidate.statements:
                 counts["statements " + (item.notice or item.kind)] += 1
             counts["claims"] += len(response.claims)
+            counts["drivers not described"] += omitted(bundle)
     return dict(sorted(counts.items()))
 
 

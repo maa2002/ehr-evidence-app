@@ -48,7 +48,7 @@ from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.evidence.contracts import CaseRef, Frozen, \
     Identifier, ScopeRef
 
-CANDIDATE_VERSION = "1.0"
+CANDIDATE_VERSION = "1.1"
 MAX_REFS = 50
 MAX_CLAIMS = 200
 MAX_TEXT = 20000
@@ -62,7 +62,8 @@ MATCH_WORDS = {"exact": "exact concept",
 NOUNS = {"count": ("record", "records"),
          "records": ("record", "records"),
          "groups": ("distinct condition", "distinct conditions"),
-         "matches": ("matching record", "matching records")}
+         "matches": ("matching record", "matching records"),
+         "omitted": ("recorded concept", "recorded concepts")}
 PLACEHOLDER = re.compile(r"\{([a-z]+)\}")
 
 EventRef = Annotated[str, StringConstraints(pattern=r"^E[1-9][0-9]{0,5}$")]
@@ -230,9 +231,13 @@ NOTICES = {
                         "condition.", ("clarification",)),
     "not_understood": Notice("The question was not understood. " + ASK,
                              ("clarification",)),
-    "drivers": Notice("The recorded concepts the model's output was "
-                      "sensitive to, in the order the model lists them:",
-                      ("explanation",), "prediction_explanation"),
+    "drivers": Notice("The recorded concepts with the highest attribution "
+                      "scores for this prediction, in order of their "
+                      "scores:", ("explanation",), "prediction_explanation"),
+    "drivers_omitted": Notice("Not described here, and kept in the "
+                              "evidence: {omitted} with lower attribution "
+                              "scores.", ("explanation",),
+                              "prediction_explanation"),
     "attribution_meaning": Notice("Attribution scores are unsigned "
                                   "sensitivities of the model's output to "
                                   "recorded concepts; they do not show "
@@ -321,6 +326,7 @@ class Slots(Frozen):
     logit: Optional[Logit] = None
     driver: Optional[AttributionRef] = None
     rank: Optional[Rank] = None
+    omitted: Optional[Count] = None
 
     def filled(self):
         """Return the names of the slots that hold a value."""
@@ -345,7 +351,7 @@ class Statement(Frozen):
 class Candidate(Frozen):
     """A candidate response to one request, before any check."""
 
-    schema_version: Literal["1.0"]
+    schema_version: Literal["1.1"]
     request_id: Identifier
     task: Optional[vocab.Task] = None
     case: CaseRef
@@ -588,7 +594,7 @@ def synthetic_candidates():
     case = {"case_set": "synthetic-1-v1", "case_number": 1}
     history = {"kind": "pre_target_history"}
     valid = [
-        {"schema_version": "1.0", "request_id": "q-1",
+        {"schema_version": "1.1", "request_id": "q-1",
          "task": "condition_list", "case": case, "scope": history,
          "outcome": "not_recorded",
          "bundle": {"bundle_id": "qa-c01-history", "sha256": "5" * 64},
@@ -598,7 +604,7 @@ def synthetic_candidates():
               "slots": {"scope": history}, "refs": ["C1"]},
              {"kind": "notice", "wording": NOTICES["absence"].text,
               "notice": "absence"}]},
-        {"schema_version": "1.0", "request_id": "q-2", "case": case,
+        {"schema_version": "1.1", "request_id": "q-2", "case": case,
          "scope": history, "outcome": "clarification",
          "reason_codes": ["concept_unknown"],
          "statements": [
