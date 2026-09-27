@@ -5,8 +5,9 @@ response from evidence (ADR 0012): list and presence answers, "not
 recorded" included, and explanations. Clarifications, refusals and
 abstentions are settled before any evidence is read and stay approved
 notices. The model writes one compact JSON document in the shape of its
-answer (candidate-shape-v3, ADR 0013), each row listing records before
-what is counted from them, and each summary after its items:
+answer (candidate-shape-v4, ADR 0013 and ADR 0014), each row listing
+records before what is counted from them, and each summary after its
+items:
 
 * a list: its outcome, one wording for every item, and each condition as
   [the record that names it, its records, their visits, their count];
@@ -28,18 +29,24 @@ scope and bundle, and the condition a presence question asks about) is
 filled in by candidate(), which also puts each statement where its answer
 puts it.
 
-schema() is the JSON Schema of one request's document, which the model
-runtime enforces while the model writes: references name records,
-visits and selected drivers of the bundle only; notices are those the
-answer may hold; a statement that cites the prediction or a driver states
-that reference's own values, and an explanation the number of drivers
-not described; a list of a scope with records is an answer; and a
-wording holds no digit and each of its kind's placeholders exactly once,
-led by its subject (the condition, the label, the driver). The schema
-admits every correct document in that style, and many wrong ones:
-whether a document is right is decided by the release gate on the
-candidate it becomes. violations() checks a document against its schema
-again, since no document is trusted to have been constrained.
+schema() is the JSON Schema of a task's document, which the model
+runtime enforces while the model writes. It enforces the contract's
+syntax only, and nothing that depends on the evidence: the document's
+fields, types and rows; the contract's closed vocabularies (outcomes,
+reason codes, the notices an answer of the task may hold, match kinds);
+the formats and ranges of references, visit numbers, counts, ranks,
+scores and concepts, as validation.candidate defines them; and a wording
+of letters, spaces and plain punctuation holding each of its kind's
+placeholders exactly once, led by its subject (the condition, the
+number of conditions, the label, the rank or the driver). Which records,
+visits and drivers exist, the prediction's and drivers' values, and which
+outcome and notices a request calls for are left to the prompt's
+grounding rules and the release gate (ADR 0014), the same for every
+condition an experiment compares. The schema admits every correct
+document in that style, and many wrong ones: whether a document is right
+is decided by the release gate on the candidate it becomes. violations()
+checks a document against its schema again, since no document is trusted
+to have been constrained.
 
 Usage:
     python -m ehr_evidence_app.generation.shape
@@ -49,6 +56,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import functools
 import itertools
 import json
 import re
@@ -59,7 +67,7 @@ from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.qa import resolve, templates
 from ehr_evidence_app.validation import candidate as candidates
 
-SHAPE_VERSION = "candidate-shape-v3"
+SHAPE_VERSION = "candidate-shape-v4"
 MAX_WORDING = 600
 # A wording's words: letters, spaces and plain punctuation. Runs are not
 # bounded here, since bounded runs make the grammar slow to compile; the
@@ -220,13 +228,45 @@ def worded(kind):
     return {"$ref": "#/$defs/%s" % kind}
 
 
-def integer(least, most):
-    """Return the schema of a whole number in a range."""
-    return {"type": "integer", "minimum": least, "maximum": most}
+def contract_type(model, name):
+    """Return the JSON Schema of a field of a contract model, without its
+    null: the syntax its value has whatever the evidence holds."""
+    return _contract_type(model, name)
+
+
+@functools.lru_cache(maxsize=None)
+def _contract_type(model, name):
+    """Return the cached JSON Schema of a contract model's field."""
+    entry = model.model_json_schema()["properties"][name]
+    (branch,) = [item for item in entry.get("anyOf", [entry])
+                 if item.get("type") != "null"]
+    return clean(branch)
+
+
+def clean(schema_):
+    """Return a schema with only the keywords this module writes."""
+    return {key: clean(value) if isinstance(value, dict) else value
+            for key, value in schema_.items() if key in KEYWORDS}
+
+
+def slot(name):
+    """Return the syntax of a candidate slot's value."""
+    return contract_type(candidates.Slots, name)
+
+
+def event_ref():
+    """Return the syntax of a record's reference."""
+    return contract_type(candidates.ConditionName, "event")
+
+
+def distinct(item):
+    """Return the schema of one or more distinct values of one kind."""
+    return {"type": "array", "items": item, "minItems": 1,
+            "uniqueItems": True}
 
 
 def chosen(values, least=1):
-    """Return the schema of distinct values chosen from a list."""
+    """Return the schema of distinct values chosen from a closed list."""
     return {"type": "array", "items": {"enum": list(values)},
             "minItems": least, "maxItems": max(len(values), least),
             "uniqueItems": True}
@@ -249,10 +289,9 @@ def optional(schema_):
     return {"anyOf": [schema_, {"type": "null"}]}
 
 
-def rows(item, most):
-    """Return the schema of a list of at least one row, at most most."""
-    return {"type": "array", "items": item, "minItems": 1,
-            "maxItems": max(most, 1)}
+def rows(item):
+    """Return the schema of a list of at least one row."""
+    return {"type": "array", "items": item, "minItems": 1}
 
 
 def notice_ids(task, outcome):
@@ -267,108 +306,83 @@ def reason_codes(outcome):
     return chosen(vocab.REASONS_BY_OUTCOME[outcome], least=0)
 
 
-def visit_numbers(visits):
-    """Return the visit numbers of some visits, in order."""
-    return sorted({visit.visit_number for visit in visits})
+def visits_of():
+    """Return the schema of distinct visit numbers."""
+    return distinct(slot("visits")["items"])
 
 
 def list_schema(context):
-    """Return the schema of a list answer's document: an answer for a
-    scope with records, "not recorded" for one without."""
-    bundle = context.bundle
-    refs = [event.ref for event in bundle.events]
-    if not refs:
-        return fields({"outcome": {"const": "not_recorded"},
-                       "reason_codes": reason_codes("not_recorded"),
-                       "empty": fields({"wording": worded("list_empty")}),
-                       "notices": chosen(notice_ids(context.task,
-                                                    "not_recorded"), 0)})
-    total = len(refs)
-    return fields({
+    """Return the schema of a list answer's document: an answer or "not
+    recorded"."""
+    answer = fields({
         "outcome": {"const": "answer"},
         "reason_codes": reason_codes("answer"),
         "item_wording": worded("list_item"),
         "items": rows(row(*row_of(
-            LIST_ROW, condition={"enum": refs}, refs=chosen(refs),
-            visits=chosen(visit_numbers(bundle.visits)),
-            count=integer(1, total))), total),
+            LIST_ROW, condition=event_ref(), refs=distinct(event_ref()),
+            visits=visits_of(), count=slot("count")))),
         "summary": fields({"wording": worded("list_summary"),
-                           "groups": integer(1, total),
-                           "records": integer(1, total)}),
+                           "groups": slot("groups"),
+                           "records": slot("records")}),
         "unmapped": optional(fields({"wording": worded("list_unmapped"),
-                                     "unmapped": integer(1, total)})),
+                                     "unmapped": slot("unmapped")})),
         "notices": chosen(notice_ids(context.task, "answer"), 0)})
+    empty = fields({"outcome": {"const": "not_recorded"},
+                    "reason_codes": reason_codes("not_recorded"),
+                    "empty": fields({"wording": worded("list_empty")}),
+                    "notices": chosen(notice_ids(context.task,
+                                                 "not_recorded"), 0)})
+    return {"anyOf": [answer, empty]}
 
 
 def presence_schema(context):
-    """Return the schema of a presence check's document."""
-    bundle = context.bundle
-    refs = [event.ref for event in bundle.events]
-    total = max(len(refs), 1)
-    absent = fields({
-        "outcome": {"const": "not_recorded"},
-        "reason_codes": reason_codes("not_recorded"),
-        "absent": fields({"wording": worded("presence_absent")}),
-        "unmapped": optional(fields({"wording": worded("presence_unmapped"),
-                                     "unmapped": integer(1, total)})),
-        "notices": chosen(notice_ids(context.task, "not_recorded"), 0)})
-    if not refs:
-        return absent
+    """Return the schema of a presence check's document: an answer or
+    "not recorded"."""
     answer = fields({
         "outcome": {"const": "answer"},
         "reason_codes": reason_codes("answer"),
         "item_wording": worded("presence_item"),
         "items": rows(row(*row_of(
-            PRESENCE_ROW, condition={"enum": refs},
-            match={"enum": list(candidates.MATCH_WORDS)},
-            refs=chosen(refs), visits=chosen(visit_numbers(bundle.visits)),
-            count=integer(1, total))), total),
+            PRESENCE_ROW, condition=event_ref(), match=slot("match"),
+            refs=distinct(event_ref()), visits=visits_of(),
+            count=slot("count")))),
         "summary": fields({"wording": worded("presence_summary"),
-                           "matches": integer(1, total)})})
+                           "matches": slot("matches")})})
+    absent = fields({
+        "outcome": {"const": "not_recorded"},
+        "reason_codes": reason_codes("not_recorded"),
+        "absent": fields({"wording": worded("presence_absent")}),
+        "unmapped": optional(fields({"wording": worded("presence_unmapped"),
+                                     "unmapped": slot("unmapped")})),
+        "notices": chosen(notice_ids(context.task, "not_recorded"), 0)})
     return {"anyOf": [answer, absent]}
 
 
 def explanation_schema(context):
     """Return the schema of an explanation's document; the history and
     context of a driver are defined once under $defs."""
-    bundle = context.bundle
-    prediction = bundle.prediction
-    history = [event.ref for event in bundle.history_events]
-    final = [event.ref for event in bundle.final_admission_context]
-    past = visit_numbers(visit for visit in bundle.visits
-                         if visit.role == "pre_target")
-    drivers = selected_drivers(context)
-    lines = {"history": {"type": "null"}, "context": {"type": "null"}}
-    if history and past:
-        lines["history"] = optional(row(*row_of(
-            HISTORY_ROW, refs=chosen(history), visits=chosen(past),
-            count=integer(1, len(history)))))
-    if final:
-        lines["context"] = optional(row(*row_of(
-            CONTEXT_ROW, refs=chosen(final), count=integer(1, len(final)))))
-    left = omitted_drivers(context)
-    notices = [notice_id
-               for notice_id in notice_ids(context.task, "explanation")
-               if left or notice_id != OMITTED_NOTICE]
+    lines = {"history": optional(row(*row_of(
+                 HISTORY_ROW, refs=distinct(event_ref()), visits=visits_of(),
+                 count=slot("count")))),
+             "context": optional(row(*row_of(
+                 CONTEXT_ROW, refs=distinct(event_ref()),
+                 count=slot("count"))))}
     document = fields({
         "outcome": {"const": "explanation"},
         "reason_codes": reason_codes("explanation"),
         "prediction": fields({"wording": worded("prediction"),
-                              "label": {"const": prediction.concept
-                                        .concept_id},
-                              "score": {"const": prediction.score},
-                              "logit": {"const": prediction.logit}}),
+                              "label": slot("label"),
+                              "score": slot("score"),
+                              "logit": slot("logit")}),
         "driver_wording": worded("driver"),
         "history_wording": worded("driver_history"),
         "context_wording": worded("driver_context"),
-        "drivers": rows({"anyOf": [row(*row_of(
-            DRIVER_ROW, driver={"const": item.ref},
-            rank=integer(1, len(drivers)), score={"const": item.score},
-            history={"$ref": "#/$defs/history"},
-            context={"$ref": "#/$defs/context"})) for item in drivers]},
-            len(drivers)),
-        "notices": chosen(notices, 0),
-        "omitted": {"const": left} if left else {"type": "null"}})
+        "drivers": rows(row(*row_of(
+            DRIVER_ROW, driver=slot("driver"), rank=slot("rank"),
+            score=slot("score"), history={"$ref": "#/$defs/history"},
+            context={"$ref": "#/$defs/context"}))),
+        "notices": chosen(notice_ids(context.task, "explanation"), 0),
+        "omitted": optional(slot("omitted"))})
     return dict(document, **{"$defs": lines})
 
 
@@ -804,7 +818,9 @@ def synthetic_contexts():
 
 
 def synthetic_faults(document):
-    """Return invented documents that break their schema."""
+    """Return invented documents that break their schema's syntax: an
+    extra field, an outcome the task cannot have, a missing field, a value
+    of the wrong type or format, an extra column, a digit in a wording."""
     faults = [dict(document, extra="field"),
               dict(document, outcome="abstention"),
               {key: value for key, value in document.items()
@@ -819,7 +835,7 @@ def synthetic_faults(document):
                            item_wording="{condition}: 3 records in {visits}"))
     if document.get("drivers"):
         driver = list(document["drivers"][0])
-        driver[2] = driver[2] + 1.0
+        driver[0] = "D" + driver[0][1:]
         faults.append(dict(document, drivers=[driver]
                            + document["drivers"][1:]))
     return faults

@@ -58,17 +58,15 @@ class PromptTests(unittest.TestCase):
             self.assertEqual("drivers_omitted" in notices,
                              shape.omitted_drivers(context) > 0)
 
-    def test_presence_prompts_carry_what_counts(self):
-        """A presence prompt names the condition, and its view says which
-        concepts or sources count as it, and how records are matched."""
+    def test_presence_prompts_carry_the_matching_records(self):
+        """A presence prompt names the condition, and its view lists the
+        records that count as it."""
         context = next(context for context, _ in PAIRS
                        if context.task == "condition_presence"
                        and context.asked.counts_as)
         self.assertIn(context.asked.label, prompt.task_text(context))
-        view = projection.view(context)
-        self.assertEqual(view["matched_by"], context.asked.by)
-        self.assertEqual(len(view["counts_as"]),
-                         len(context.asked.counts_as))
+        body = prompt.messages(context)[1]["content"]
+        self.assertIn('"matching":[{', body[body.index("Now the request."):])
 
     def test_tasks_name_their_placeholders(self):
         """Each request's task names the placeholders of every statement
@@ -83,19 +81,18 @@ class PromptTests(unittest.TestCase):
                     self.assertIn("begins with {%s}" % subject, text,
                                   (context.task, kind))
 
-    def test_replies_offered_are_the_admissible(self):
-        """A list of a scope with records is offered as an answer only,
-        with the answer's example wordings; one without, as empty."""
+    def test_every_reply_is_offered(self):
+        """A list or presence check is offered both of its replies, each
+        with the condition on the view that calls for it, and the example
+        wordings of both, whatever its evidence."""
         for context, template in PAIRS:
-            if context.task != "condition_list":
+            if context.task == "prediction_explanation":
                 continue
             text = prompt.task_text(context)
-            if context.bundle.events:
-                self.assertNotIn('"outcome": "not_recorded"', text)
-                self.assertNotIn("list_empty:", text)
-            else:
-                self.assertNotIn('"outcome": "answer"', text)
-                self.assertIn("list_empty:", text)
+            self.assertIn('"outcome": "answer"', text)
+            self.assertIn('"outcome": "not_recorded"', text)
+            for kind in shape.WORDED[context.task]:
+                self.assertIn("- %s:" % kind, text)
 
     def test_versions(self):
         """The prompt, shape and projection versions are recorded with

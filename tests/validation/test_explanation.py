@@ -90,17 +90,49 @@ class CheckTests(unittest.TestCase):
         self.assertLessEqual({"omitted_drivers_miscounted",
                               "omitted_drivers_unstated",
                               "unselected_driver_described",
-                              "omitted_driver_history",
-                              "omitted_driver_context"}, names)
+                              "score_wrong_as_shown",
+                              "attribution_score_wrong_as_shown"}, names)
 
-    def test_history_and_context_are_stated(self):
-        """A driver described with history or final-admission records
-        states them; leaving either line out is unsupported."""
+    def test_controls_are_released(self):
+        """A driver's history or context left out, and scores stated to
+        the figures a response shows, are released."""
+        names = set()
+        for limit in (None, 1):
+            _, good = explanation.explain(REQUEST, BUNDLE, DIGEST,
+                                          limit=limit)
+            for name, control, bundle in explanation.synthetic_controls(
+                    good, BUNDLE):
+                names.add(name)
+                response = explanation.release(control, REQUEST, bundle,
+                                               DIGEST, limit)
+                self.assertEqual(response.outcome, "explanation", name)
+        self.assertEqual(names, {"driver_history_left_out",
+                                 "driver_context_left_out",
+                                 "score_as_shown",
+                                 "attribution_score_as_shown"})
+
+    def test_history_and_context_may_be_left_out(self):
+        """No driver must state its history or context; one that is
+        stated cites all of its records."""
         for kind in ("driver_history", "driver_context"):
-            fault = GOOD.model_copy(update={"statements": tuple(
+            left_out = GOOD.model_copy(update={"statements": tuple(
                 item for item in GOOD.statements if item.kind != kind)})
-            self.assertEqual(explanation.check(fault, BUNDLE),
-                             ("claim_unsupported",), kind)
+            self.assertEqual(explanation.check(left_out, BUNDLE), (), kind)
+
+    def test_scores_are_checked_as_shown(self):
+        """A score is right when it reads as the evidence's in a response,
+        and wrong when its last shown figure differs."""
+        score = BUNDLE.prediction.score
+        self.assertTrue(explanation.shown_equal(
+            float(candidates.shown(score)), score))
+        wrong = explanation.next_shown(score)
+        self.assertNotEqual(candidates.shown(wrong), candidates.shown(score))
+        self.assertFalse(explanation.shown_equal(wrong, score))
+        self.assertFalse(explanation.shown_equal(None, score))
+        for value in (0.9996, 0.99949, 1e-05, 0.0, 12.345, 0.1):
+            self.assertNotEqual(
+                candidates.shown(explanation.next_shown(value)),
+                candidates.shown(value), value)
 
     def test_history_must_be_the_drivers_linked_events(self):
         """A history statement citing another driver's records is

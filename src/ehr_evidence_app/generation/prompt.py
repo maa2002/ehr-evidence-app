@@ -3,11 +3,11 @@
 messages() returns the two chat messages of one request: the rules every
 answer follows, then one worked example on invented data, and the
 request's task, the shape of its reply and its evidence as the compact
-projection of generation.projection (prompt-v3, ADR 0013). The canonical
-bundle is not sent: the projection drops only serialization redundancy
-and what the task does not use, and holds everything a correct answer
-needs. A request whose prompt is over its budget falls back to the
-template (generation.adapter).
+projection of generation.projection (prompt-v4, ADR 0014). The canonical
+bundle is not sent: the projection, structured for its task, leaves out
+serialization redundancy and what the task does not use, and holds
+everything a correct answer needs. A request whose prompt is over its
+budget falls back to the template (generation.adapter).
 
 The prompt is versioned; a change of wording is a new version, measured
 again on the development cases. Prompts hold patient records and are
@@ -26,7 +26,7 @@ import sys
 from ehr_evidence_app.generation import projection, shape
 from ehr_evidence_app.validation import candidate as candidates
 
-PROMPT_VERSION = "prompt-v3"
+PROMPT_VERSION = "prompt-v4"
 RULES = """\
 You write the responses of a research application that answers questions \
 about one patient's recorded conditions, and explains a model's \
@@ -55,23 +55,24 @@ often something happened.
 SCOPES = {"pre_target_history": "the pre-target history (the visits "
                                 "before the final admission)",
           "case_visits": "all case visits, including the final admission"}
-RECORDS = """\
-The view lists the scope's records as rows of its "columns": ref, visit \
-(the record's visit number), concept_id (its standard concept; 0 when it \
-has none) and source (its ICD source code)."""
+GROUPS = """\
+Each group names its condition, a standard concept (concept_id) or, for \
+records without one, an ICD source code (source), and lists its records \
+as [ref, visit], the visit being the record's visit number."""
 LIST_TASK = """\
 Task: list every condition recorded within {scope}."""
-LIST_ANSWER = RECORDS + """ A condition is one concept_id, or, for records \
-whose concept_id is 0, one source. Records with the same concept_id are \
-one condition, even when their sources differ.
-
-Reply shape: {{"outcome": "answer", "reason_codes": [...], \
+LIST_VIEW = """\
+The view groups the scope's records by condition ("conditions"), in the \
+order of each condition's first record. """ + GROUPS
+LIST_ANSWER = """\
+Reply shape, if "conditions" holds groups: {{"outcome": "answer", \
+"reason_codes": [...], \
 "item_wording": ..., "items": [...], "summary": {{"wording": ..., \
 "groups": ..., "records": ...}}, "unmapped": ..., "notices": \
 ["list_complete"]}}.
-- items: one per condition, in the order of its first record: [the ref of \
-its first record, the refs of all its records, their visit numbers \
-ascending and each once, their number].
+- items: one per group, in the view's order: [the ref of the group's \
+first record, the refs of all its records, their visit numbers ascending \
+and each once, their number].
 - item_wording, used for every item: begins with {{condition}} and also \
 has {{count}} and {{visits}}.
 - summary: groups is the number of items and records the number of refs \
@@ -81,28 +82,25 @@ and {{records}}.
 zero, {{"wording": ..., "unmapped": that number}}; its wording begins \
 with {{unmapped}}."""
 LIST_EMPTY = """\
-The view has no records within the scope.
-
-Reply shape: {{"outcome": "not_recorded", "reason_codes": [], "empty": \
-{{"wording": ...}}, "notices": ["absence"]}}. The wording has {{scope}} \
-and says that no conditions are recorded there."""
+Reply shape, if "conditions" is empty: {{"outcome": "not_recorded", \
+"reason_codes": [...], "empty": {{"wording": ...}}, "notices": \
+["absence"]}}. The wording has {{scope}} and says that no conditions are \
+recorded there."""
 PRESENCE_TASK = """\
 Task: say whether {label} is recorded within {scope}.
 
-""" + RECORDS + """ Its "counts_as" rows say which concept_ids or sources \
-count as the condition, each with its match kind. When "matched_by" is \
-"concept", a record matches by its concept_id, or by its source when its \
-concept_id is 0; when it is "source_code", every record matches by its \
-source."""
+The view lists the scope's records that count as the condition asked \
+about ("matching"), grouped by condition and match kind, in the order of \
+each group's first record. """ + GROUPS + """ Each group also states its \
+match kind (match). When "matching" is empty, no record within the scope \
+counts as the condition."""
 PRESENCE_ANSWER = """\
 Reply shape, if records match: {{"outcome": "answer", "reason_codes": \
 [...], "item_wording": ..., "items": [...], "summary": {{"wording": ..., \
 "matches": ...}}}}.
-- items: one per condition and match kind of the matching records, in the \
-order of its first record: [the ref of its first record, its match kind, \
-the refs of all its matching records, their visit numbers ascending and \
-each once, their number]. A condition is one concept_id, or one source \
-for records whose concept_id is 0.
+- items: one per group of "matching", in the view's order: [the ref of \
+the group's first record, its match kind, the refs of all its records, \
+their visit numbers ascending and each once, their number].
 - item_wording, used for every item: begins with {{condition}} and also \
 has {{count}}, {{visits}} and {{match}}.
 - summary: matches is the number of refs in all items; its wording begins \
@@ -124,11 +122,12 @@ Task: explain the selected prediction through the recorded concepts with \
 the highest attribution scores.
 
 The view gives the prediction (its label, score and logit), the case's \
-restrictions, and the drivers to describe, highest score first, as rows of \
-its "columns": ref, score, history (the driver's records in visits before \
-the final admission, as [ref, visit number]) and context (its records in \
-the final admission, as refs); and how many other eligible drivers are not \
-described (drivers_not_described).
+restrictions, and the drivers to describe, highest score first, each with \
+its rank, ref and attribution score, its history (its records in visits \
+before the final admission, as [ref, visit], the visit being the record's \
+visit number) and its context (its records in the final admission, as \
+refs); and how many other eligible drivers are not described \
+(drivers_not_described).
 
 Reply shape: {{"outcome": "explanation", "reason_codes": the \
 restrictions, "prediction": {{"wording": ..., "label": ..., "score": ..., \
@@ -140,11 +139,12 @@ restrictions, "prediction": {{"wording": ..., "label": ..., "score": ..., \
 {{rank}} and also has {{driver}} and {{score}}; the history wording begins \
 with {{driver}} and also has {{count}} and {{visits}}; the context wording \
 begins with {{driver}} and also has {{count}}.
-- drivers: one per driver of the view, in its order: [its ref, its rank \
-(1, 2, ...), its score, its history, its context]. History is null when \
-the driver has no history records, otherwise [their refs, their visit \
-numbers ascending and each once, their number]; context is null when it \
-has none, otherwise [their refs, their number].
+- drivers: one per driver of the view, in its order: [its ref, its rank, \
+its score, its history, its context]. History is null when the driver's \
+history is empty, otherwise [the refs of its history, their visit numbers \
+ascending and each once, their number]; context is null when the \
+driver's context is empty, otherwise [the refs of its context, their \
+number].
 - notices: "drivers", then "drivers_omitted" when drivers_not_described \
 is above zero, then "attribution_meaning" and "score_meaning", then for \
 each restriction its notice: batch_sensitive_prediction: \
@@ -161,15 +161,8 @@ def scope_text(scope):
 
 
 def worded_kinds(context):
-    """Return the statement kinds whose wordings a request's reply may
-    hold: a list of a scope with records is an answer, one without is
-    empty, and a presence check of a scope without records is "not
-    recorded"."""
-    if context.task == "condition_list":
-        return (("list_item", "list_summary", "list_unmapped")
-                if context.bundle.events else ("list_empty",))
-    if context.task == "condition_presence" and not context.bundle.events:
-        return ("presence_absent", "presence_unmapped")
+    """Return the statement kinds whose wordings a reply of the request's
+    task may hold, whatever its evidence."""
     return shape.WORDED[context.task]
 
 
@@ -185,15 +178,13 @@ def example_wordings(context):
 def task_text(context):
     """Return the task, reply shape and example wordings of a request."""
     values = {"scope": scope_text(context.request.scope)}
-    records = (context.task != "prediction_explanation"
-               and bool(context.bundle.events))
     if context.task == "condition_list":
-        parts = [LIST_TASK] + ([LIST_ANSWER, REASON_CODES] if records
-                               else [LIST_EMPTY])
+        parts = [LIST_TASK, LIST_VIEW, LIST_ANSWER, LIST_EMPTY,
+                 REASON_CODES]
     elif context.task == "condition_presence":
         values["label"] = context.asked.label
-        parts = [PRESENCE_TASK] + ([PRESENCE_ANSWER] if records else []) + [
-            PRESENCE_ABSENT, REASON_CODES]
+        parts = [PRESENCE_TASK, PRESENCE_ANSWER, PRESENCE_ABSENT,
+                 REASON_CODES]
     else:
         parts = [EXPLANATION_TASK]
     return "\n\n".join([part.format(**values) for part in parts]

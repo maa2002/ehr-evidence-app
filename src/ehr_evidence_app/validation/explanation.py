@@ -6,8 +6,9 @@ is released in its place when the model's is not. An explanation
 describes the drivers selected by config/explanation.json (ADR 0013): the
 eligible attributions with the highest scores, highest first, ties in the
 bundle's order, at most the configured limit. Every attribution stays in
-the evidence bundle. The template explanation (explanation-template-v2) is
-built from an explanation bundle alone, without a model:
+the evidence bundle. The template explanation (explanation-template-v3,
+with its checks) is built from an explanation bundle alone, without a
+model:
 
 * the selected label, as one output of the model's multi-label prediction,
   with its uncalibrated score and logit (citing P1);
@@ -24,23 +25,28 @@ built from an explanation bundle alone, without a model:
 The checks apply to any explanation candidate, whoever wrote it:
 
 * prediction_altered: the explanation does not state the bundle's
-  prediction once, with its label, score and logit;
+  prediction once, with its label, and its score and logit as a response
+  shows them (to three significant figures);
 * attribution_altered: the drivers described are not exactly the selected
-  drivers, in their order and with their scores and ranks;
+  drivers, in their order and with their ranks, and their scores as a
+  response shows them;
 * claim_unsupported: a history statement cites other records than the
   driver's linked events in pre-target visits, a context statement other
   records than its final-admission ones, or either miscounts them or their
-  visits; a driver described with such records leaves its history or
-  context out; the restrictions disclosed, as reason codes or notices, are
-  not the case's; the drivers not described are not stated, or
-  miscounted;
+  visits; the restrictions disclosed, as reason codes or notices, are not
+  the case's; the drivers not described are not stated, or miscounted;
 * structure_invalid: a notice on what the scores mean is missing.
 
 With the structure checks and the wording rules this enforces the evidence
 claim policy: no score is tied to a date, a visit or a recurrence (history
 statements carry no score, driver statements no visits), history cites
 linked events in pre-target visits only, final-admission records are
-context only, and zero-score drivers are never described.
+context only, and zero-score drivers are never described. A driver's
+history or context may be left out: a statement that is made cites all of
+its records, since it states their count, but none is required, and how
+complete an explanation is is measured apart from its release
+(generation.measure). A score or logit is the claim a response shows, so
+it is checked as shown; the template states the exact values.
 
 Usage:
     python -m ehr_evidence_app.validation.explanation
@@ -54,6 +60,7 @@ import argparse
 import collections
 import functools
 import json
+import math
 import os
 import sys
 from typing import Annotated, Literal
@@ -68,7 +75,7 @@ from ehr_evidence_app.gnn import mapping
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import evidence, gate
 
-TEMPLATE_VERSION = "explanation-template-v2"
+TEMPLATE_VERSION = "explanation-template-v3"
 SELECTION_PATH = os.path.join(contracts.REPO_ROOT, "config",
                               "explanation.json")
 WORDINGS = {
@@ -203,14 +210,21 @@ def of_kind(candidate, kind):
     return [item for item in candidate.statements if item.kind == kind]
 
 
+def shown_equal(stated, value):
+    """Return True when a stated score or logit reads as the evidence's
+    value in a response (to three significant figures)."""
+    return stated is not None and (candidates.shown(stated)
+                                   == candidates.shown(value))
+
+
 def prediction_problems(candidate, bundle):
     """Return problems of the prediction an explanation states."""
     stated = of_kind(candidate, "prediction")
     prediction = bundle.prediction
-    if len(stated) != 1 or (stated[0].slots.label, stated[0].slots.score,
-                            stated[0].slots.logit) != (
-            prediction.concept.concept_id, prediction.score,
-            prediction.logit):
+    if len(stated) != 1 or stated[0].slots.label != (
+            prediction.concept.concept_id) or not shown_equal(
+                stated[0].slots.score, prediction.score) or not shown_equal(
+                    stated[0].slots.logit, prediction.logit):
         return {"prediction_altered"}
     return set()
 
@@ -224,22 +238,21 @@ def driver_problems(candidate, bundle, limit=None):
             item.ref for item in selected(bundle, limit)]:
         return {"attribution_altered"}
     for rank, item in enumerate(stated, 1):
-        if (item.slots.rank != rank or item.slots.score
-                != attributions[item.slots.driver].score):
+        if item.slots.rank != rank or not shown_equal(
+                item.slots.score, attributions[item.slots.driver].score):
             return {"attribution_altered"}
     return set()
 
 
 def record_problems(candidate, bundle):
     """Return problems of the history and context an explanation states:
-    each driver described states them exactly when it has such records,
-    citing them all, with their count and, for history, their visits."""
+    each statement made cites all of its driver's such records, with their
+    count and, for history, their visits; none is required."""
     attributions = {item.ref: item for item in bundle.attributions}
     allowed = {"driver_history": {event.ref
                                   for event in bundle.history_events},
                "driver_context": {event.ref for event in
                                   bundle.final_admission_context}}
-    described = [item.slots.driver for item in of_kind(candidate, "driver")]
     for kind, refs in allowed.items():
         seen = set()
         for item in of_kind(candidate, kind):
@@ -253,11 +266,6 @@ def record_problems(candidate, bundle):
                     or item.slots.count != len(linked)
                     or (kind == "driver_history" and tuple(
                         item.slots.visits) != visits_of(bundle, linked))):
-                return {"claim_unsupported"}
-        for ref in described:
-            driver = attributions.get(ref)
-            if driver is not None and ref not in seen and any(
-                    event in refs for event in driver.linked_event_refs):
                 return {"claim_unsupported"}
     return set()
 
@@ -437,16 +445,13 @@ def synthetic_faults(good, bundle):
         faults += [("omitted_driver", "attribution_altered", dropped, bundle),
                    ("reordered_drivers", "attribution_altered", swapped,
                     bundle)]
-    for kind in ("driver_history", "driver_context"):
-        lines = [number for number, item in enumerate(good.statements)
-                 if item.kind == kind]
-        if lines:
-            # A driver's history or context left out.
-            faults.append(("omitted_" + kind, "claim_unsupported",
-                           good.model_copy(update={"statements": tuple(
-                               item for number, item in enumerate(
-                                   good.statements) if number != lines[0])}),
-                           bundle))
+    # A score shown wrong in its last figure.
+    faults += [("score_wrong_as_shown", "prediction_altered", changed(
+                    "prediction", score=next_shown(bundle.prediction.score)),
+                bundle),
+               ("attribution_score_wrong_as_shown", "attribution_altered",
+                changed("driver", score=next_shown(first.slots.score)),
+                bundle)]
     lined = [index for index, block in enumerate(blocks) if len(block) > 1]
     if lined and len(blocks) > 1:
         # A driver's history and context under another driver.
@@ -485,9 +490,51 @@ def synthetic_faults(good, bundle):
     return faults
 
 
+def next_shown(value):
+    """Return a value shown one unit apart from another in its last shown
+    figure, counted on the value as shown (0.9996 is shown as 1)."""
+    shown = float(candidates.shown(value))
+    exponent = math.floor(math.log10(abs(shown))) if shown else -3
+    return shown + 10.0 ** (exponent - 2)
+
+
+def synthetic_controls(good, bundle):
+    """Return (name, candidate, bundle) of invented variants of a correct
+    explanation that must be released: a driver's history or context left
+    out, and scores stated to the figures a response shows."""
+    def without(kind):
+        """Return the candidate without its first statement of a kind."""
+        index = next((number for number, item in enumerate(good.statements)
+                      if item.kind == kind), None)
+        if index is None:
+            return None
+        return good.model_copy(update={"statements": tuple(
+            item for number, item in enumerate(good.statements)
+            if number != index)})
+
+    def restated(kind, name):
+        """Return the candidate with a slot of its first statement of a
+        kind stated only to the figures shown."""
+        items = list(good.statements)
+        index = next(number for number, item in enumerate(items)
+                     if item.kind == kind)
+        value = float(candidates.shown(getattr(items[index].slots, name)))
+        items[index] = items[index].model_copy(update={
+            "slots": items[index].slots.model_copy(update={name: value})})
+        return good.model_copy(update={"statements": tuple(items)})
+
+    found = [("driver_history_left_out", without("driver_history")),
+             ("driver_context_left_out", without("driver_context")),
+             ("score_as_shown", restated("prediction", "score")),
+             ("attribution_score_as_shown", restated("driver", "score"))]
+    return [(name, candidate, bundle) for name, candidate in found
+            if candidate is not None]
+
+
 def run_synthetic():
-    """Return (explained, faults detected, faults) on invented data, for
-    the configured number of drivers and for one driver only."""
+    """Return (explained, faults and controls as expected, faults and
+    controls) on invented data, for the configured number of drivers and
+    for one driver only."""
     _, explanations, _ = bundles.run_synthetic()
     bundle = explanations[0]
     request = evidence.explanation_request(bundle)
@@ -500,6 +547,10 @@ def run_synthetic():
             total += 1
             detected += (found.outcome == "validation_rejection"
                          and expected in found.reason_codes)
+        for _, control, faulty in synthetic_controls(good, bundle):
+            found = release(control, request, faulty, "5" * 64, limit)
+            total += 1
+            detected += found.outcome == "explanation"
     return explained, detected, total
 
 
@@ -608,8 +659,8 @@ def main(argv=None):
     explained, detected, total = run_synthetic()
     print("template explanation released: %s" % ("yes" if explained
                                                  else "no"))
-    print("faults detected with their reason code: %d of %d" % (detected,
-                                                                total))
+    print("faults detected with their reason code, and controls "
+          "released: %d of %d" % (detected, total))
     ok = explained and detected == total
     print("RESULT: %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1

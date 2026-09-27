@@ -21,6 +21,14 @@ and print aggregate counts only:
   taken. --task keeps one task's requests, and --drivers has explanations
   describe another number of drivers than the configured one, so that
   candidate numbers are compared on the same requests.
+* --paired writes the same requests in BF16 with the mixed placement and
+  in NF4, reports each as --benchmark does, and compares them pair by
+  pair: how many requests either or both released, the difference in
+  release rate (NF4 minus BF16) with its 95% confidence interval for
+  paired proportions (Newcombe's method 10), the exact McNemar test, and
+  whether NF4 is non-inferior at the margin of ADR 0014 (the interval's
+  lower bound above minus 5 percentage points). A difference that is not
+  significant is not shown equivalence; only the margin decides.
 
 A request over a limit is a fallback, counted as a failure of the model,
 never as its success. The default mode checks the sampling and summary
@@ -34,6 +42,8 @@ Usage:
         --case-set dev-30-v1 --precision bf16-mixed --per-group 8
     python -m ehr_evidence_app.generation.measure --benchmark \\
         --case-set dev-30-v1 --task prediction_explanation --drivers 5
+    python -m ehr_evidence_app.generation.measure --paired \\
+        --case-set dev-30-v1 --per-group 1000
 """
 
 from __future__ import annotations
@@ -42,6 +52,7 @@ import argparse
 import collections
 import hashlib
 import json
+import math
 import re
 import statistics
 import sys
@@ -49,8 +60,13 @@ import time
 
 from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.generation import adapter, prompt, shape
+from ehr_evidence_app.validation import candidate as candidates
 
 CANDIDATE_LIMITS = (3, 5, 8, 10, 15)
+# The non-inferiority margin of NF4's release rate against BF16's, and the
+# normal quantile of a two-sided 95% interval (ADR 0014).
+MARGIN = 0.05
+Z95 = 1.959963984540054
 PRECISIONS = ("bf16-mixed", "nf4")
 PRECISION_LABELS = {"bf16-mixed": "BF16, mixed GPU/CPU placement (output "
                                   "layer and token embeddings on the "
@@ -60,6 +76,17 @@ PRECISION_LABELS = {"bf16-mixed": "BF16, mixed GPU/CPU placement (output "
 ROWS = {"condition_list": ("items", shape.LIST_ROW),
         "condition_presence": ("items", shape.PRESENCE_ROW),
         "prediction_explanation": ("drivers", shape.DRIVER_ROW)}
+# The parts of a driver's history and context rows.
+NESTED = {"history": shape.HISTORY_ROW, "context": shape.CONTEXT_ROW}
+# Findings that are counts or sets of visits only: what the view would
+# state if it carried them. A request withheld for these alone counts
+# towards the test of ADR 0014 for adding them to the view.
+BOOKKEEPING = frozenset(("items[count]", "items[visits]", "summary.groups",
+                         "summary.records", "summary.matches",
+                         "drivers[history.count]", "drivers[history.visits]",
+                         "drivers[context.count]"))
+# Values a response shows to three significant figures.
+SHOWN = frozenset(("score", "logit"))
 KEY = re.compile(r'"([a-z_]+)": ')
 PATH_TOKEN = re.compile(r"\$|\.[a-z_]+|\[\d+\]")
 
@@ -111,6 +138,16 @@ def with_limit(context, template, limit):
                                  context.bundle_sha256, limit))
 
 
+def same_value(name, value, expected):
+    """Return True when a stated value is the correct one: a score or
+    logit as a response shows it (ADR 0014), anything else as a set where
+    it is a list of plain values."""
+    if name in SHOWN and isinstance(value, (int, float)) and isinstance(
+            expected, (int, float)) and not isinstance(value, bool):
+        return candidates.shown(value) == candidates.shown(expected)
+    return normal(value) == normal(expected)
+
+
 def normal(value):
     """Return a JSON value with each list of plain values as a sorted set,
     since visits, references, notices and reason codes are read as sets."""
@@ -143,7 +180,18 @@ def row_differences(task, mine, theirs):
             continue
         places.append(at)
         for column, value, expected in zip(columns, row, theirs[at]):
-            if normal(value) != normal(expected):
+            if same_value(column, value, expected):
+                continue
+            if value is None or expected is None:
+                found.add("%s[%s] %s" % (name, column, "left out"
+                                         if value is None else "added"))
+            elif column in NESTED and isinstance(value, list) and len(
+                    value) == len(NESTED[column]):
+                found |= {"%s[%s.%s]" % (name, column, part)
+                          for part, stated, correct in zip(
+                              NESTED[column], value, expected)
+                          if normal(stated) != normal(correct)}
+            else:
                 found.add("%s[%s]" % (name, column))
     if len(set(places)) != len(places):
         found.add(name + ": repeated")
@@ -173,8 +221,8 @@ def differences(task, document, expected):
         elif isinstance(mine, dict) and isinstance(theirs, dict):
             found |= {"%s.%s" % (key, name)
                       for name in set(mine) | set(theirs)
-                      if name != "wording"
-                      and normal(mine.get(name)) != normal(theirs.get(name))}
+                      if name != "wording" and not same_value(
+                          name, mine.get(name), theirs.get(name))}
         elif normal(mine) != normal(theirs):
             found.add(key)
     return found
@@ -276,25 +324,60 @@ def chosen_requests(pairs, per_group, task=None, drivers=None):
             for context, template in sample(pairs, per_group)]
 
 
+def completeness(context, template, written):
+    """Return (history lines stated, history lines the evidence has,
+    context lines stated, context lines the evidence has) of a model's
+    explanation that stands for a candidate, or None. A driver's history
+    or context may be left out (ADR 0014); how often is measured here."""
+    if context.task != "prediction_explanation" or (
+            written.model_candidate is None):
+        return None
+    found = []
+    for kind in ("driver_history", "driver_context"):
+        available = {item.slots.driver for item in template.statements
+                     if item.kind == kind}
+        stated = {item.slots.driver
+                  for item in written.model_candidate.statements
+                  if item.kind == kind}
+        found += [len(stated & available), len(available)]
+    return tuple(found)
+
+
+def bookkeeping_only(written, names):
+    """Return True when a withheld document differs from the correct one
+    in counts or visits alone."""
+    return written.fallback == "gate_rejected" and bool(names) and (
+        set(names) <= BOOKKEEPING)
+
+
 def write_sample(pairs, release_of, writer, per_group, task=None,
                  drivers=None):
     """Write the sample of some requests through the adapter; return, by
-    stratum, each request's Written and what went wrong with it."""
+    stratum, each request's (Written, what went wrong with it, how
+    complete an explanation is)."""
     results = collections.defaultdict(list)
     for context, template in chosen_requests(pairs, per_group, task,
                                              drivers):
         written = adapter.write(writer, context, template,
                                 release_of(context))
         results[group_of(context, template)].append(
-            (written, findings(context, template, written)))
+            (written, findings(context, template, written),
+             completeness(context, template, written)))
     return results
+
+
+def completeness_text(entries):
+    """Return the history and context lines stated of the lines the
+    evidence has, summed over some explanations."""
+    sums = [sum(entry[index] for entry in entries) for index in range(4)]
+    return "history lines %d of %d, context lines %d of %d" % tuple(sums)
 
 
 def report(case_set, results, seconds):
     """Print, by stratum, the outcomes, what went wrong by name, and the
     tokens, seconds and memory; aggregates only."""
     for name, pairs in sorted(results.items()):
-        items = [item for item, _ in pairs]
+        items = [item for item, _, _ in pairs]
         outcomes = collections.Counter(
             "released as written" if item.author == "model"
             else "fallback " + item.fallback + (
@@ -306,9 +389,17 @@ def report(case_set, results, seconds):
             "; ".join("%s %d" % pair for pair in sorted(outcomes.items()))))
         found = collections.Counter(
             ("released" if item.fallback is None else item.fallback, finding)
-            for item, names in pairs for finding in names)
+            for item, names, _ in pairs for finding in names)
         for (reason, finding), count in sorted(found.items()):
             print("  %s: %s %d" % (reason, finding, count))
+        print("  withheld for counts or visits only: %d" % sum(
+            bookkeeping_only(item, names) for item, names, _ in pairs))
+        stated = [entry for _, _, entry in pairs if entry is not None]
+        if stated:
+            print("  stated by the model: %s; released: %s" % (
+                completeness_text(stated), completeness_text(
+                    [entry for item, _, entry in pairs
+                     if entry is not None and item.fallback is None])))
         if outputs:
             print("  prompt tokens %s" % summary(
                 [output.prompt_tokens for output in outputs]))
@@ -324,10 +415,14 @@ def report(case_set, results, seconds):
             if peaks:
                 print("  peak GPU MiB %s" % summary(peaks))
     released = sum(item.author == "model" for pairs in results.values()
-                   for item, _ in pairs)
+                   for item, _, _ in pairs)
+    bookkeeping = sum(bookkeeping_only(item, names)
+                      for pairs in results.values()
+                      for item, names, _ in pairs)
     total = sum(len(pairs) for pairs in results.values())
-    print("%s: released as the model wrote them %d of %d; %.0f s" % (
-        case_set, released, total, seconds))
+    print("%s: released as the model wrote them %d of %d; withheld for "
+          "counts or visits only %d; %.0f s" % (
+              case_set, released, total, bookkeeping, seconds))
 
 
 def benchmark(case_set, backend, per_group, limits, task=None,
@@ -339,6 +434,107 @@ def benchmark(case_set, backend, per_group, limits, task=None,
     results = write_sample(pairs, release_of, adapter.Writer(backend, limits),
                            per_group, task, drivers)
     report(case_set, results, time.monotonic() - started)
+
+
+def wilson(successes, total, z=Z95):
+    """Return the Wilson score interval of a proportion."""
+    if not total:
+        return 0.0, 1.0
+    rate = successes / total
+    centre = (rate + z * z / (2 * total)) / (1 + z * z / total)
+    half = z * math.sqrt(rate * (1 - rate) / total
+                         + z * z / (4 * total * total)) / (1 + z * z / total)
+    return centre - half, centre + half
+
+
+def paired_difference(both, first, second, neither, z=Z95):
+    """Return (difference, lower, upper) of the second condition's rate
+    minus the first's, for paired outcomes counted as both, first only,
+    second only and neither (Newcombe 1998, method 10)."""
+    total = both + first + second + neither
+    rate1, rate2 = (both + first) / total, (both + second) / total
+    low1, high1 = wilson(both + first, total, z)
+    low2, high2 = wilson(both + second, total, z)
+    margins = ((both + first) * (second + neither) * (both + second)
+               * (first + neither))
+    phi = (both * neither - first * second) / math.sqrt(margins) \
+        if margins else 0.0
+    difference = rate2 - rate1
+    lower = difference - math.sqrt(max(0.0, (rate2 - low2) ** 2 - 2 * phi * (
+        rate2 - low2) * (high1 - rate1) + (high1 - rate1) ** 2))
+    upper = difference + math.sqrt(max(0.0, (high2 - rate2) ** 2 - 2 * phi * (
+        high2 - rate2) * (rate1 - low1) + (rate1 - low1) ** 2))
+    return difference, lower, upper
+
+
+def mcnemar(first, second):
+    """Return the two-sided exact McNemar p-value of the discordant
+    pairs."""
+    discordant = first + second
+    if not discordant:
+        return 1.0
+    tail = sum(math.comb(discordant, k)
+               for k in range(min(first, second) + 1)) / 2 ** discordant
+    return min(1.0, 2 * tail)
+
+
+def paired_counts(first, second):
+    """Return (both, first only, second only, neither) released of two
+    runs of the same requests, stratum by stratum."""
+    counts = [0, 0, 0, 0]
+    for name in first:
+        for (one, _, _), (two, _, _) in zip(first[name], second[name]):
+            released = (one.author == "model", two.author == "model")
+            counts[{(True, True): 0, (True, False): 1, (False, True): 2,
+                    (False, False): 3}[released]] += 1
+    return tuple(counts)
+
+
+def paired_report(case_set, first, second):
+    """Print the pair-by-pair comparison of BF16 (first) and NF4 (second)
+    on the same requests, overall and by stratum; aggregates only."""
+    print("%s paired: BF16 with the mixed placement against NF4" % case_set)
+    rows = [(name, {name: first[name]}, {name: second[name]})
+            for name in sorted(first)] + [("all", first, second)]
+    for name, one, two in rows:
+        both, only_first, only_second, neither = paired_counts(one, two)
+        total = both + only_first + only_second + neither
+        difference, lower, upper = paired_difference(
+            both, only_first, only_second, neither)
+        print("  %s: %d requests; both released %d, BF16 only %d, NF4 only "
+              "%d, neither %d; release rate BF16 %.3f, NF4 %.3f; NF4 minus "
+              "BF16 %+.3f (95%% CI %+.3f to %+.3f); exact McNemar p %.3f" % (
+                  name, total, both, only_first, only_second, neither,
+                  (both + only_first) / total, (both + only_second) / total,
+                  difference, lower, upper,
+                  mcnemar(only_first, only_second)))
+    _, lower, _ = paired_difference(*paired_counts(first, second))
+    print("NF4 non-inferior at a margin of %d points: %s" % (
+        round(MARGIN * 100), "yes" if lower > -MARGIN else "no"))
+
+
+def paired(case_set, per_group, limits, task=None, drivers=None):
+    """Write the same sample in BF16 and in NF4, report each, and compare
+    them pair by pair."""
+    from ehr_evidence_app.generation import runtime
+    pairs, release_of = adapter.development_requests(case_set)
+    results = []
+    for precision in PRECISIONS:
+        print("precision: %s" % PRECISION_LABELS[precision])
+        print("limits: %d prompt tokens, %d output tokens, %d s" % (
+            limits.max_prompt_tokens, limits.max_output_tokens,
+            limits.max_request_seconds))
+        backend = runtime.WorkerBackend(verify=False, precision=precision)
+        started = time.monotonic()
+        try:
+            found = write_sample(pairs, release_of,
+                                 adapter.Writer(backend, limits), per_group,
+                                 task, drivers)
+        finally:
+            backend.stop()
+        report(case_set, found, time.monotonic() - started)
+        results.append(found)
+    paired_report(case_set, *results)
 
 
 def run_synthetic():
@@ -353,6 +549,12 @@ def run_synthetic():
         problems.append("a stratum is sampled twice")
     if summary([3, 1, 2]) != "n=3 min=1 median=2 p90=3 max=3":
         problems.append("the summary is wrong")
+    difference, lower, upper = paired_difference(10, 3, 1, 6)
+    if not lower < difference < upper or paired_difference(
+            10, 1, 3, 6) != (-difference, -upper, -lower):
+        problems.append("the paired interval is wrong")
+    if mcnemar(0, 6) != 2 / 64 or mcnemar(3, 3) != 1.0:
+        problems.append("the McNemar test is wrong")
     fewer = chosen_requests(pairs, 1, "prediction_explanation", 1)
     if not fewer or any(context.task != "prediction_explanation"
                         or context.limit != 1 for context, _ in fewer):
@@ -383,6 +585,9 @@ def main(argv=None):
                         help="count prompt and output tokens of a case set")
     parser.add_argument("--benchmark", action="store_true",
                         help="write a sample of a case set with the model")
+    parser.add_argument("--paired", action="store_true",
+                        help="write a sample in BF16 and in NF4 and compare "
+                             "them pair by pair")
     parser.add_argument("--case-set",
                         help="the development case set (dev-30-v1 or "
                              "pilot-10-v1)")
@@ -401,9 +606,9 @@ def main(argv=None):
                         help="drivers an explanation describes in the "
                              "benchmark (default: the configured number)")
     args = parser.parse_args(argv)
-    if (args.tokens or args.benchmark) != bool(args.case_set) or (
-            args.tokens and args.benchmark):
-        print("FAILED: give one of --tokens and --benchmark with "
+    modes = args.tokens + args.benchmark + args.paired
+    if bool(modes) != bool(args.case_set) or modes > 1:
+        print("FAILED: give one of --tokens, --benchmark and --paired with "
               "--case-set")
         return 2
     if args.drivers is not None and not 1 <= args.drivers <= 100:
@@ -417,6 +622,15 @@ def main(argv=None):
         return 1 if problems else 0
     from ehr_evidence_app.evidence import contracts
     from ehr_evidence_app.generation import runtime
+    if args.paired:
+        try:
+            paired(args.case_set, args.per_group, contracts.load_limits(),
+                   args.task, args.drivers)
+        except adapter.DevelopmentError as error:
+            print("FAILED: %s" % error)
+            return 1
+        print("RESULT: PASS")
+        return 0
     backend = runtime.WorkerBackend(verify=False, precision=args.precision)
     try:
         if args.tokens:

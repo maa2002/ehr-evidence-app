@@ -47,10 +47,14 @@ cannot, since in Phase 7 the model writes the candidates:
 
 Version 3 adds the mistakes of driver selection and of a statement's
 polarity: a driver not selected described (attribution_altered), the
-drivers not described miscounted or unstated, and a driver's history or
-context left out (claim_unsupported), a statement that something is
-recorded worded as a negation, and a statement that something is not
-recorded worded as a record (prohibited_wording).
+drivers not described miscounted or unstated (claim_unsupported), a
+statement that something is recorded worded as a negation, and a
+statement that something is not recorded worded as a record
+(prohibited_wording). Version 4 checks scores as a response shows them: a
+score wrong in its last shown figure (prediction_altered,
+attribution_altered); and it adds controls that must be released: a
+driver's history or context left out, and scores stated to the figures
+shown.
 
 The default mode uses invented fixtures. The operator mode uses the
 development case sets and prints aggregate counts only; the evaluation case
@@ -80,7 +84,7 @@ from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import evidence, explanation, gate, \
     language, structure
 
-SUITE_VERSION = "validation-mutations-v3"
+SUITE_VERSION = "validation-mutations-v4"
 REJECTION = "validation_rejection"
 # Phrases added to a statement's wording, by error class.
 WORDINGS = {
@@ -322,6 +326,10 @@ def explanation_mutants(sample):
              for name, expected, fault, faulty in
              explanation.synthetic_faults(good, bundle)
              if name != "missing_meaning_notice"]
+    found += [Mutant("control_" + name, good.outcome, "", control,
+                     bundle=faulty)
+              for name, control, faulty in
+              explanation.synthetic_controls(good, bundle)]
     context = {event.ref for event in bundle.final_admission_context}
     for index in indices(good, "driver_history"):
         driver = next(item for item in bundle.attributions

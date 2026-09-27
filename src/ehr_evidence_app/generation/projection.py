@@ -1,24 +1,34 @@
-"""The model's view of an evidence bundle (Phase 7; ADR 0013).
+"""The model's view of an evidence bundle (Phase 7; ADR 0013, ADR 0014).
 
 The model does not read the canonical bundle: it reads a compact,
-deterministic projection of it (projection-v1). The canonical bundle stays
-unchanged for provenance and validation, and the release gate checks the
-model's candidate against it. The projection removes only serialization
-redundancy and what the task does not use:
+deterministic projection of it, structured for its task (projection-v2).
+The canonical bundle stays unchanged for provenance and validation, and
+the release gate checks the model's candidate against it. The projection
+leaves out serialization redundancy and what the task does not use, and
+arranges the evidence without stating any count, set of visits or outcome
+of the answer:
 
-* a list or presence check: each record of the scope as a row of its
-  reference, visit number, standard concept (0 when it has none) and ICD
-  source code; the coverage status and the number of records without a
-  standard concept; for a presence check, which concepts or source codes
-  count as the condition asked about, and how. Names, dates, native
-  identifiers, visit and record metadata and provenance are left out: the
-  model refers to records by their reference, and every name and fact it
-  states is rendered from the canonical bundle;
+* a list: the coverage status, the number of records without a standard
+  concept, and the scope's records grouped by condition (a standard
+  concept, or the ICD source code of records without one), in the order
+  of each condition's first record, each record as [reference, visit
+  number];
+* a presence check: the coverage status, the number of records without a
+  standard concept, and the records that match the condition asked about,
+  grouped by condition and match kind in the same way; the set is empty
+  when no record matches. A record matches as the resolver matches it
+  (qa.resolve.match, through generation.shape.asked);
 * an explanation: the prediction's label, score and logit; the case's
-  restrictions; the selected drivers, highest score first, each with its
-  reference, score, and linked records in pre-target visits (reference
-  and visit number) and in the final admission (reference); and how many
-  eligible drivers are not described.
+  restrictions; each selected driver, highest score first, with its rank,
+  reference and attribution score, its linked records in pre-target
+  visits as [reference, visit number] and its records in the final
+  admission; and how many eligible drivers are not described.
+
+Names, dates, native identifiers, visit and record metadata and provenance
+are left out: the model refers to records by their reference, and every
+name a response shows is rendered from the canonical bundle. The model
+still writes the complete candidate: its outcome, the records each
+statement cites, the counts and visits, the notices and every wording.
 
 answer() writes the correct compact document from the projection alone.
 The default and operator modes compare it with the template's document for
@@ -40,9 +50,8 @@ import sys
 
 from ehr_evidence_app.generation import shape
 
-PROJECTION_VERSION = "projection-v1"
-RECORD_COLUMNS = ["ref", "visit", "concept_id", "source"]
-DRIVER_COLUMNS = ["ref", "score", "history", "context"]
+PROJECTION_VERSION = "projection-v2"
+RECORD_COLUMNS = ["ref", "visit"]
 
 
 def source_of(event):
@@ -58,6 +67,37 @@ def visit_numbers(bundle):
     return {visit.ref: visit.visit_number for visit in bundle.visits}
 
 
+def condition_of(event):
+    """Return the condition a record is of: its standard concept, or its
+    ICD source code when it has none."""
+    concept = event.concept.concept_id
+    return ("concept_id", concept) if concept else ("source",
+                                                     source_of(event))
+
+
+def match_of(event, asked):
+    """Return how a record matches the condition asked about, or None: by
+    its source code for a question about an ICD code; otherwise by its
+    standard concept, or by its source code when it has none."""
+    matches = {(entry.by, entry.concept_id if entry.by == "concept" else
+                "%s %s" % (entry.vocabulary_id, entry.code)
+                if entry.vocabulary_id else entry.code): entry.match
+               for entry in asked.counts_as}
+    if asked.by == "concept" and event.concept.concept_id:
+        return matches.get(("concept", event.concept.concept_id))
+    return matches.get(("source_code", source_of(event)))
+
+
+def grouped(keyed, numbers):
+    """Return records grouped by key, in the order of each group's first
+    record, as [{key fields..., "records": [[ref, visit], ...]}]."""
+    groups = collections.OrderedDict()
+    for key, event in keyed:
+        groups.setdefault(key, []).append(
+            [event.ref, numbers[event.visit_ref]])
+    return [dict(key, records=records) for key, records in groups.items()]
+
+
 def qa_view(context):
     """Return the projection of a list or presence request."""
     bundle = context.bundle
@@ -66,18 +106,17 @@ def qa_view(context):
             "coverage": bundle.coverage.status,
             "records_without_standard_concept":
                 bundle.coverage.unmapped_events_in_scope,
-            "columns": RECORD_COLUMNS,
-            "records": [[event.ref, numbers[event.visit_ref],
-                         event.concept.concept_id, source_of(event)]
-                        for event in bundle.events]}
-    if context.asked is not None:
-        view["matched_by"] = context.asked.by
-        view["counts_as"] = [
-            ["concept_id", entry.concept_id, entry.match]
-            if entry.by == "concept" else
-            ["source", "%s %s" % (entry.vocabulary_id, entry.code)
-             if entry.vocabulary_id else entry.code, entry.match]
-            for entry in context.asked.counts_as]
+            "record_columns": RECORD_COLUMNS}
+    if context.asked is None:
+        view["conditions"] = grouped(
+            (((condition_of(event),), event) for event in bundle.events),
+            numbers)
+        return view
+    matching = [(event, match_of(event, context.asked))
+                for event in bundle.events]
+    view["matching"] = grouped(
+        (((condition_of(event), ("match", match)), event)
+         for event, match in matching if match), numbers)
     return view
 
 
@@ -93,14 +132,14 @@ def explanation_view(context):
                            "score": prediction.score,
                            "logit": prediction.logit},
             "restrictions": list(bundle.restrictions),
-            "columns": DRIVER_COLUMNS,
-            "drivers": [[item.ref, item.score,
-                         [[ref, numbers[history[ref].visit_ref]]
-                          for ref in item.linked_event_refs
-                          if ref in history],
-                         [ref for ref in item.linked_event_refs
-                          if ref in final]]
-                        for item in shape.selected_drivers(context)],
+            "drivers": [{"rank": rank, "ref": item.ref, "score": item.score,
+                         "history": [[ref, numbers[history[ref].visit_ref]]
+                                     for ref in item.linked_event_refs
+                                     if ref in history],
+                         "context": [ref for ref in item.linked_event_refs
+                                     if ref in final]}
+                        for rank, item in enumerate(
+                            shape.selected_drivers(context), 1)],
             "drivers_not_described": shape.omitted_drivers(context)}
 
 
@@ -134,31 +173,18 @@ def wording(kind, number=None):
     return explanation.WORDINGS[kind]
 
 
-def condition_of(record):
-    """Return the condition a record is of: its standard concept, or its
-    source code when it has none."""
-    ref, _, concept, source = record
-    return ("concept", concept) if concept else ("source", source)
-
-
-def grouped(records):
-    """Return records grouped by key, in the order of their first record."""
-    groups = collections.OrderedDict()
-    for key, record in records:
-        groups.setdefault(key, []).append(record)
-    return groups
-
-
-def item(records, match=None):
-    """Return a compact item: its first record, for a presence check its
-    match kind, its records, their visits and their count."""
+def item(group):
+    """Return the compact item of a group of records: its first record, for
+    a presence check its match kind, its records, their visits and their
+    count."""
+    records = group["records"]
     values = {"condition": records[0][0],
               "refs": [record[0] for record in records],
               "visits": sorted({record[1] for record in records}),
               "count": len(records)}
-    if match is None:
+    if "match" not in group:
         return shape.row_of(shape.LIST_ROW, **values)
-    return shape.row_of(shape.PRESENCE_ROW, match=match, **values)
+    return shape.row_of(shape.PRESENCE_ROW, match=group["match"], **values)
 
 
 def unmapped_line(projection, kind):
@@ -168,67 +194,56 @@ def unmapped_line(projection, kind):
         if number else None
 
 
+def reason_codes(projection):
+    """Return the disclosure a scope's records without a standard concept
+    call for."""
+    return (["unmapped_records_in_scope"]
+            if projection["records_without_standard_concept"] else [])
+
+
 def list_answer(projection):
     """Return the correct list document of a projection."""
-    records = projection["records"]
-    codes = (["unmapped_records_in_scope"]
-             if projection["records_without_standard_concept"] else [])
-    if not records:
-        return {"outcome": "not_recorded", "reason_codes": codes,
+    groups = projection["conditions"]
+    if not groups:
+        return {"outcome": "not_recorded", "reason_codes":
+                reason_codes(projection),
                 "empty": {"wording": wording("list_empty")},
                 "notices": ["absence"]}
-    groups = grouped((condition_of(record), record) for record in records)
-    return {"outcome": "answer", "reason_codes": codes,
+    records = sum(len(group["records"]) for group in groups)
+    return {"outcome": "answer", "reason_codes": reason_codes(projection),
             "item_wording": wording("list_item"),
-            "items": [item(group) for group in groups.values()],
+            "items": [item(group) for group in groups],
             "summary": {"wording": wording("list_summary", len(groups)),
-                        "groups": len(groups), "records": len(records)},
+                        "groups": len(groups), "records": records},
             "unmapped": unmapped_line(projection, "list_unmapped"),
             "notices": ["list_complete"]}
 
 
-def match_of(record, counts_as, matched_by):
-    """Return how a record matches the condition asked about, or None: by
-    its source code for a question about an ICD code; otherwise by its
-    standard concept, or by its source code when it has none."""
-    _, _, concept, source = record
-    if matched_by == "concept" and concept:
-        return counts_as.get(("concept_id", concept))
-    return counts_as.get(("source", source))
-
-
 def presence_answer(projection):
     """Return the correct presence document of a projection."""
-    counts_as = {(by, value): match
-                 for by, value, match in projection["counts_as"]}
-    codes = (["unmapped_records_in_scope"]
-             if projection["records_without_standard_concept"] else [])
-    matching = [(record, match_of(record, counts_as,
-                                  projection["matched_by"]))
-                for record in projection["records"]]
-    matching = [(record, match) for record, match in matching if match]
-    if not matching:
-        return {"outcome": "not_recorded", "reason_codes": codes,
+    groups = projection["matching"]
+    if not groups:
+        return {"outcome": "not_recorded",
+                "reason_codes": reason_codes(projection),
                 "absent": {"wording": wording("presence_absent")},
                 "unmapped": unmapped_line(projection, "presence_unmapped"),
                 "notices": ["absence"]}
-    groups = grouped(((condition_of(record), match), record)
-                     for record, match in matching)
-    return {"outcome": "answer", "reason_codes": codes,
+    return {"outcome": "answer", "reason_codes": reason_codes(projection),
             "item_wording": wording("presence_item"),
-            "items": [item(records, match)
-                      for (_, match), records in groups.items()],
+            "items": [item(group) for group in groups],
             "summary": {"wording": wording("presence_summary"),
-                        "matches": len(matching)}}
+                        "matches": sum(len(group["records"])
+                                       for group in groups)}}
 
 
 def explanation_answer(projection):
     """Return the correct explanation document of a projection."""
     drivers = []
-    for rank, (ref, score, history, final) in enumerate(
-            projection["drivers"], 1):
+    for driver in projection["drivers"]:
+        history, final = driver["history"], driver["context"]
         drivers.append(shape.row_of(
-            shape.DRIVER_ROW, driver=ref, rank=rank, score=score,
+            shape.DRIVER_ROW, driver=driver["ref"], rank=driver["rank"],
+            score=driver["score"],
             history=shape.row_of(
                 shape.HISTORY_ROW, refs=[record for record, _ in history],
                 visits=sorted({number for _, number in history}),

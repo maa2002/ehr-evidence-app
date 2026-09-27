@@ -525,10 +525,16 @@ def slot_text(statement, name, lookup):
     if name == "driver":
         return driver_text(value, lookup)
     if name in ("score", "logit"):
-        return "%.3g" % value
+        return shown(value)
     if name in ("term", "rank"):
         return str(value)
     return counted(name, value)
+
+
+def shown(value):
+    """Return a score or logit as a response shows it: to three
+    significant figures."""
+    return "%.3g" % value
 
 
 def sentence(statement, lookup):

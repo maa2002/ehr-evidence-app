@@ -53,7 +53,7 @@ class MutationTests(unittest.TestCase):
                       "association_wording", "course_wording",
                       "certainty_wording", "recency_wording"):
             self.assertIn(error, classes)
-        self.assertEqual(mutations.SUITE_VERSION, "validation-mutations-v3")
+        self.assertEqual(mutations.SUITE_VERSION, "validation-mutations-v4")
 
     def test_selection_and_polarity_are_exercised(self):
         """Version 3: the mistakes of driver selection and of a
@@ -61,9 +61,13 @@ class MutationTests(unittest.TestCase):
         classes = set(COUNTS["classes"])
         for error in ("unselected_driver_described",
                       "omitted_drivers_miscounted",
-                      "omitted_drivers_unstated", "omitted_driver_history",
-                      "omitted_driver_context", "negated_fact",
-                      "absence_worded_as_record"):
+                      "omitted_drivers_unstated", "negated_fact",
+                      "absence_worded_as_record", "score_wrong_as_shown",
+                      "attribution_score_wrong_as_shown",
+                      "control_driver_history_left_out",
+                      "control_driver_context_left_out",
+                      "control_score_as_shown",
+                      "control_attribution_score_as_shown"):
             self.assertIn(error, classes)
 
     def test_samples_cover_every_outcome(self):

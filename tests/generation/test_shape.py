@@ -119,37 +119,61 @@ class ShapeTests(unittest.TestCase):
         self.assertEqual(shape.candidate(context, document), template)
 
     def test_schema_refuses_faults(self):
-        """Extra fields, refused outcomes, missing codes, references
-        outside the bundle, digits in wordings and a driver's score
-        changed all break their schema."""
+        """Extra fields, outcomes the task cannot have, missing fields,
+        values of the wrong type or format, extra columns and digits in
+        wordings all break their schema."""
         for context, template in PAIRS:
             rules = shape.schema(context)
             for fault in shape.synthetic_faults(shape.document_of(template)):
                 self.assertTrue(shape.violations(fault, rules))
 
-    def test_references_are_the_bundles(self):
-        """An item may cite and be named by the bundle's records only."""
+    def test_references_have_the_contracts_format(self):
+        """An item cites and is named by references in the contract's
+        record format, whether or not the bundle holds them; the gate
+        decides that."""
         context, _ = first("condition_list", "answer")
-        columns = shape.values_of(shape.LIST_ROW, shape.schema(context)[
-            "properties"]["items"]["items"]["prefixItems"])
-        condition, cited = columns["condition"], columns["refs"]
-        refs = sorted(event.ref for event in context.bundle.events)
-        self.assertEqual(sorted(cited["items"]["enum"]), refs)
-        self.assertEqual(sorted(condition["enum"]), refs)
+        answer = shape.schema(context)["anyOf"][0]
+        columns = shape.values_of(shape.LIST_ROW, answer["properties"][
+            "items"]["items"]["prefixItems"])
+        self.assertEqual(columns["condition"], shape.event_ref())
+        self.assertEqual(columns["refs"]["items"], shape.event_ref())
+        self.assertEqual(shape.violations("E999999", shape.event_ref()), [])
+        self.assertTrue(shape.violations("X1", shape.event_ref()))
+
+    def test_schemas_hold_no_evidence(self):
+        """Every request of a task has the same schema, whatever its
+        bundle holds, and every outcome of the task is admitted."""
+        by_task = {}
+        for context, _ in PAIRS:
+            by_task.setdefault(context.task, set()).add(
+                json.dumps(shape.schema(context), sort_keys=True))
+        self.assertEqual({task: len(texts) for task, texts
+                          in by_task.items()},
+                         {task: 1 for task in by_task})
+        context, _ = first("condition_list", "not_recorded")
+        self.assertEqual({branch["properties"]["outcome"]["const"]
+                          for branch in shape.schema(context)["anyOf"]},
+                         {"answer", "not_recorded"})
+
+    def test_slot_types_are_the_contracts(self):
+        """Counts, ranks, scores and references have the ranges and
+        formats of the candidate contract."""
+        self.assertEqual(shape.slot("count"),
+                         {"type": "integer", "minimum": 0,
+                          "maximum": 1000000})
+        self.assertEqual(shape.slot("score"),
+                         {"type": "number", "minimum": 0.0})
+        self.assertEqual(shape.slot("driver")["pattern"],
+                         "^A[1-9][0-9]{0,5}$")
+        self.assertEqual(shape.event_ref()["pattern"], "^E[1-9][0-9]{0,5}$")
 
     def test_tuples(self):
         """A row has exactly its parts, each of its own kind."""
-        rules = shape.row({"enum": ["E1"]}, shape.integer(1, 9))
+        rules = shape.row({"enum": ["E1"]},
+                          {"type": "integer", "minimum": 1, "maximum": 9})
         self.assertEqual(shape.violations(["E1", 2], rules), [])
         for value in (["E1"], ["E1", 2, 3], ["E2", 2], ["E1", "2"]):
             self.assertTrue(shape.violations(value, rules), value)
-
-    def test_empty_scopes_admit_only_not_recorded(self):
-        """A scope with no records cannot be listed."""
-        context, _ = first("condition_list", "not_recorded")
-        rules = shape.schema(context)
-        self.assertEqual(rules["properties"]["outcome"],
-                         {"const": "not_recorded"})
 
     def test_wordings(self):
         """A wording holds no digit and each of its kind's placeholders
@@ -183,7 +207,8 @@ class ShapeTests(unittest.TestCase):
         self.assertTrue(shape.violations([1, 1], {"type": "array",
                                                   "uniqueItems": True}))
         self.assertTrue(shape.violations({"a": 1}, shape.fields({})))
-        self.assertTrue(shape.violations(0, shape.integer(1, 5)))
+        self.assertTrue(shape.violations(
+            0, {"type": "integer", "minimum": 1, "maximum": 5}))
         with self.assertRaises(ValueError):
             shape.violations(1, {"format": "date"})
 

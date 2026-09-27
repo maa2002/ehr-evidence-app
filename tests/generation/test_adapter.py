@@ -173,7 +173,7 @@ class AdapterTests(unittest.TestCase):
             refusal = ask("What medications is she on?", writer)
             self.assertIsNone(refusal.written)
             self.assertEqual(writer.backend.calls, 1)
-        self.assertIn('"counts_as"', seen[1])
+        self.assertIn('"matching"', seen[1])
 
     def test_explanations_are_written_through_the_adapter(self):
         """With a writer, the model's explanation is released as its own;

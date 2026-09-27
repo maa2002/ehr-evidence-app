@@ -98,6 +98,41 @@ class MeasureTests(unittest.TestCase):
         self.assertEqual(measure.differences(context.task, empty, expected),
                          {"outcome not_recorded instead of answer"})
 
+    def test_scores_compare_as_shown(self):
+        """A score rounded to the figures a response shows is no
+        difference; one wrong in its last shown figure is."""
+        expected = {"outcome": "explanation",
+                    "prediction": {"label": 9, "score": 0.8175744761936437,
+                                   "logit": 1.5}}
+        rounded = {"outcome": "explanation",
+                   "prediction": {"label": 9, "score": 0.818, "logit": 1.5}}
+        wrong = {"outcome": "explanation",
+                 "prediction": {"label": 9, "score": 0.819, "logit": 1.5}}
+        task = "prediction_explanation"
+        self.assertEqual(measure.differences(task, rounded, expected), set())
+        self.assertEqual(measure.differences(task, wrong, expected),
+                         {"prediction.score"})
+
+    def test_history_findings_name_their_part(self):
+        """A driver's history or context row is named by the part that
+        differs, or as left out; counts and visits alone are
+        bookkeeping."""
+        correct = [["A1", 1, 0.5, [["E1", "E2"], [1, 3], 2], None]]
+        miscounted = [["A1", 1, 0.5, [["E1", "E2"], [1, 3], 3], None]]
+        left_out = [["A1", 1, 0.5, None, None]]
+        task = "prediction_explanation"
+        self.assertEqual(measure.row_differences(task, miscounted, correct),
+                         {"drivers[history.count]"})
+        self.assertEqual(measure.row_differences(task, left_out, correct),
+                         {"drivers[history] left out"})
+        rejected = adapter.Written(response=None, candidate=None,
+                                   author="template",
+                                   fallback="gate_rejected")
+        self.assertTrue(measure.bookkeeping_only(
+            rejected, {"drivers[history.count]", "summary.records"}))
+        self.assertFalse(measure.bookkeeping_only(
+            rejected, {"drivers[history.count]", "items: missing"}))
+
     def test_findings_of_written_documents(self):
         """Output cut off is placed by its last key; a document that
         breaks its schema is named by the rule it breaks."""
@@ -141,16 +176,40 @@ class MeasureTests(unittest.TestCase):
         writer = adapter.Writer(adapter.ScriptedBackend(script),
                                 adapter.scripted_limits())
         results = measure.write_sample(PAIRS, release_of, writer, 100)
-        items = [item for pairs in results.values() for item, _ in pairs]
+        items = [item for pairs in results.values() for item, _, _ in pairs]
         self.assertEqual(len(items), len(PAIRS))
         self.assertEqual({item.author for item in items}, {"model"})
         self.assertEqual({name for pairs in results.values()
-                          for _, names in pairs for name in names}, set())
+                          for _, names, _ in pairs for name in names}, set())
+        entries = [entry for pairs in results.values()
+                   for _, _, entry in pairs if entry is not None]
+        self.assertTrue(entries)
+        for stated_history, history, stated_context, context in entries:
+            self.assertEqual((stated_history, stated_context),
+                             (history, context))
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             measure.report("synthetic-1-v1", results, 0.0)
         self.assertIn("released as the model wrote them %d of %d"
                       % (len(PAIRS), len(PAIRS)), output.getvalue())
+
+    def test_paired_comparison(self):
+        """The paired interval holds its difference, turns over with the
+        conditions, and narrows as the pairs agree; the exact McNemar test
+        counts the discordant pairs only."""
+        difference, lower, upper = measure.paired_difference(10, 3, 1, 6)
+        self.assertAlmostEqual(difference, -2 / 20)
+        self.assertTrue(lower < difference < upper)
+        self.assertEqual(measure.paired_difference(10, 1, 3, 6),
+                         (-difference, -upper, -lower))
+        wide = measure.paired_difference(10, 3, 1, 6)
+        narrow = measure.paired_difference(100, 30, 10, 60)
+        self.assertLess(narrow[2] - narrow[1], wide[2] - wide[1])
+        self.assertEqual(measure.mcnemar(0, 6), 2 / 64)
+        self.assertEqual(measure.mcnemar(3, 3), 1.0)
+        self.assertEqual(measure.mcnemar(0, 0), 1.0)
+        low, high = measure.wilson(5, 10)
+        self.assertAlmostEqual(low + high, 1.0)
 
     def test_labels_name_the_placement(self):
         """The BF16 configuration is never called GPU-resident."""
