@@ -27,16 +27,18 @@ task, and the templates are its fallback.
   evidence, a deterministic projection structured for its task: a list's
   records grouped by condition, a presence check's matching records with
   the coverage status, and one block per selected driver, each with the
-  counts and visits derived from its records, the notice of each of the
-  case's restrictions, and no outcome or name (`generation.projection`,
-  `projection-v4`), from which the correct
+  counts and visits derived from its records, a driver's history and
+  context as the reply states them, the notice of each of the case's
+  restrictions, and no outcome or name (`generation.projection`,
+  `projection-v5`), from which the correct
   answer of every development request is derived; the prompt with the
   rules, worked examples on invented data that group records and
   disclose a record without a standard concept exactly when the
   request's view has one, a presence check's in an answer and in "not
   recorded", every reply the task can have and the request's projection
-  (`generation.prompt`, `prompt-v8`;
-  [ADR 0015](docs/decisions/0015-generation-configuration.md));
+  (`generation.prompt`, `prompt-v9`;
+  [ADR 0015](docs/decisions/0015-generation-configuration.md),
+  [ADR 0017](docs/decisions/0017-bounded-prompt-pass.md));
   the
   adapter, the one path from a writer's output to a release, under the
   prompt, output, time, attempt and concurrency
@@ -109,9 +111,12 @@ task, and the templates are its fallback.
   within the 768-token limit is not ended by time at BF16's slowest
   measured rate; the prompt, output and time limits and the number of
   drivers an explanation describes are frozen for the final evaluation
-  ([ADR 0015](docs/decisions/0015-generation-configuration.md)). With
-  this configuration the model's candidates are released for 377 of the
-  430 requests of `dev-30-v1` and 157 of the 182 of `pilot-10-v1`.
+  ([ADR 0015](docs/decisions/0015-generation-configuration.md)). After
+  one bounded pass on the prompt, which kept a new view of explanations
+  and not one of lists
+  ([ADR 0017](docs/decisions/0017-bounded-prompt-pass.md)), the model's
+  candidates are released for 385 of the 430 requests of `dev-30-v1` and
+  161 of the 182 of `pilot-10-v1`.
 - Candidate contract version 1.1: the `drivers_omitted` notice and its
   `omitted` slot; the notice introducing the drivers names them as those
   with the highest attribution scores, in order of their scores.

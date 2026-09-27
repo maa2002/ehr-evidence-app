@@ -72,14 +72,14 @@ every other notice at the end. Visit numbers are read as a set.
 
 The model does not read the canonical bundle. It reads a deterministic
 projection of it, structured for its task (`generation.projection`,
-`projection-v4`), which holds all the evidence the request needs without
+`projection-v5`), which holds all the evidence the request needs without
 serialization redundancy or unrelated fields:
 
 | Task | The projection holds |
 | --- | --- |
 | Lists | The coverage status, the number of records without a standard concept, the numbers of conditions and records, and the scope's records grouped by condition (a standard concept, or the ICD source code of records without one), in the order of each condition's first record, each record as `[ref, visit]`, each group with its number of records and visit numbers |
 | Presence checks | The coverage status, the number of records without a standard concept, the number of matching records, and the records that match the condition asked about, as the resolver matches them (`qa.resolve.match`), grouped by condition and match kind in the same way, with their numbers and visit numbers; an empty set when none matches |
-| Explanations | The prediction's label, score and logit; the case's restrictions, with the approved notice that discloses each; one block per selected driver, highest score first, with its rank, reference and attribution score, its own linked records in pre-target visits as `[ref, visit]` with their number and visit numbers, and its records in the final admission with their number; how many eligible drivers are not described |
+| Explanations | The prediction's label, score and logit; the case's restrictions, with the approved notice that discloses each; one block per selected driver, highest score first, with its rank, reference and attribution score, its history (its own linked records in pre-target visits: their references, visit numbers and number) and its context (its records in the final admission: their references and number), each null when it has none, as the reply states them; how many eligible drivers are not described |
 
 Names, dates, native identifiers, visit and record metadata and provenance
 are left out: the model refers to records by their references, and every
@@ -165,7 +165,7 @@ same way.
 
 ## The prompt
 
-The prompt (`prompt-v8`) is two chat messages: the rules every reply
+The prompt (`prompt-v9`) is two chat messages: the rules every reply
 follows, then worked examples on invented data, the task with the shape
 of its reply, and the request's projection as JSON. The rules ask
 for facts in their fields only, wordings without facts that begin with
@@ -184,7 +184,10 @@ examples whatever its evidence, the answer and a "not recorded" for a
 condition none of the records match. An explanation's example leaves
 drivers out exactly when the request does. Until `prompt-v8` every list
 and presence example disclosed such a record, and the model disclosed
-one in every "not recorded" it wrote.
+one in every "not recorded" it wrote. Since `prompt-v9` the explanation
+task describes a driver's history and context as the view gives them,
+the reply stating each as it stands and null when the driver has none
+(ADR 0017).
 
 Prompts and model output hold patient records; they are never logged.
 
@@ -644,6 +647,62 @@ a second, 768 tokens take 160 seconds, within the time limit. Medians in
 this run: lists 48.9 seconds, presence checks 15.8 to 16.6, explanations
 66.5; peak GPU memory 6,480 to 6,905 MiB, with no request out of
 memory.
+
+### The bounded prompt pass
+
+One pass on the prompt was made before the lock, by rules fixed first
+(ADR 0017): explanations, then lists; the precision, K and the limits
+frozen; every presence prompt unchanged; diagnosis and at most two
+candidates per task on `dev-30-v1` only; a candidate kept only if it
+releases more of its task on `dev-30-v1` than `prompt-v8` and, run once
+on `pilot-10-v1`, at least as many there.
+
+The benchmark now scores every document against the correct one: the
+conditions (a group of the correct document, named by any of its
+records) and the records cited for them, the drivers and their history
+and context lines, each as precision, recall and F1 summed over the
+stratum, a request without a document stating nothing. For the documents
+not released it names what their rows are. At `prompt-v8`, on
+`dev-30-v1`:
+
+- explanations: history lines F1 0.784 (precision 0.845, recall 0.732)
+  and context lines F1 0.797 (0.716, 0.898); in the withheld ones, a
+  context line stated for a driver that has none 18 times, 12 of them
+  with the driver's own history records, and 7 history lines citing part
+  of their records. The view gave an empty context as `[]` and a history
+  as `[reference, visit number]` pairs;
+- lists: conditions F1 0.783 (0.949, 0.666) and records F1 0.733 (0.964,
+  0.592), recall low above all because 14 lists end at the output limit
+  and state nothing (the 10 whose correct document exceeds it, and 4
+  that run on); in the withheld ones, 75 rows held a
+  condition's records of one visit of several, 76 repeated a condition,
+  and 51 conditions were never named.
+
+| Candidate (`dev-30-v1`) | Released | Scores |
+| --- | --- | --- |
+| Explanations, `prompt-v8` | 13 of 26 | drivers F1 0.973; history lines 0.784; context lines 0.797 |
+| Explanations, a driver's history and context as the reply states them, null when it has none | 21 of 26 | drivers 1.000; history lines 0.943; context lines 0.911 |
+| Lists, `prompt-v8` | 98 of 134 | conditions F1 0.783; records 0.733 |
+| Lists, groups as references, visits and number, one item per group whatever its visits | 94 of 134 | conditions 0.830; records 0.792 |
+
+The explanation candidate was kept (`projection-v5`, `prompt-v9`): on
+`pilot-10-v1`, run once, its explanations were released for 8 of 10
+against 4 (drivers F1 1.000, history lines 0.986, context lines 0.929).
+The list candidate was not: it named more conditions (3 left unnamed)
+and cited records more exactly, but it still split conditions by visit
+(66 rows) and misstated the number of records without a standard
+concept in 12 lists, and released fewer. Lists whose scope has records
+without a standard concept are also the longer ones (median 16 items
+against 8 on `dev-30-v1`, 17 against 4 on `pilot-10-v1`), so their lower
+release rate may come from their length rather than from those records.
+
+With the configuration kept, the model's candidates are released for
+385 of the 430 requests of `dev-30-v1` (89.5%, 95% CI 86.3 to 92.1) and
+161 of the 182 of `pilot-10-v1` (88.5%, 83.0 to 92.3): lists 98 and 39,
+empty lists 1 and 2, presence checks of a recorded condition 130 and 54,
+of a condition recorded elsewhere 135 and 58, explanations 21 and 8.
+Every list and presence prompt is the same as under `prompt-v8`, so
+their outputs, and these counts, are those measured before.
 
 ## Commands
 

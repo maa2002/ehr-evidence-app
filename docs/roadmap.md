@@ -98,13 +98,16 @@ Described in [generation.md](generation.md) and decided in
 [ADR 0015](decisions/0015-generation-configuration.md). In progress: the
 language model writes the complete candidate of every response from
 evidence, from a deterministic view of the evidence structured for its
-task, and the templates are its fallback. On the whole development set
-BF16 with the mixed placement released 314 of 430 requests and NF4 172,
-so the precision stays BF16. With `prompt-v8`, K = 5 and the limits
-frozen by ADR 0015 (16,384 prompt tokens, 768 output tokens, 180
-seconds), the model's candidates are released for 377 of the 430
-development requests and 157 of the 182 pilot requests; milestone 3
-closes on the project owner's review.
+task, and the templates are its fallback. Milestone 3 is complete: on
+the whole development set BF16 with the mixed placement released 314 of
+430 requests and NF4 172, so the precision stays BF16; K = 5 and the
+limits (16,384 prompt tokens, 768 output tokens, 180 seconds) are frozen
+(ADR 0015); and after one bounded pass on the prompt (ADR 0017) the
+model's candidates are released for 385 of the 430 development requests
+and 161 of the 182 pilot requests. Milestone 4 adds the protected
+runtime records, the tracker aggregates and the log audit, and releases
+0.9.0; [ADR 0016](decisions/0016-evaluation-metrics.md) proposes the
+metrics of Phase 9.
 
 - 41 Define the generation adapter (done: `generation.shape`,
   `generation.projection`, `generation.prompt` and `generation.adapter`;
@@ -117,17 +120,15 @@ closes on the project owner's review.
   the GPU; both benchmarked on development requests)
 - 43 Enforce execution limits (done: prompt, output, time, attempt and
   concurrency limits and the fallback, each reason with its category)
-- 44 Complete controlled QA (in progress: the model writes list and
-  presence answers through the adapter; measured on the development case
-  sets; closes with milestone 3)
-- 45 Complete controlled explanations (in progress: the model writes
-  explanations of the 5 selected drivers through the adapter, the number
-  frozen; closes with milestone 3)
-- 46 Add protected runtime records
-- 46.1 Measure the model on the development case sets (in progress:
-  token distributions, the benchmark, the paired precision comparison
-  and the configuration frozen for the final evaluation; closes with
-  milestone 3)
+- 44 Complete controlled QA (done: the model writes list and presence
+  answers through the adapter; measured on the development case sets)
+- 45 Complete controlled explanations (done: the model writes
+  explanations of the 5 selected drivers through the adapter)
+- 46 Add protected runtime records (in progress, milestone 4)
+- 46.1 Measure the model on the development case sets (done: token
+  distributions, the benchmark with its scores, the paired precision
+  comparison, the configuration frozen for the final evaluation and the
+  bounded prompt pass)
 
 ## Phase 8. API and interface
 

@@ -2,6 +2,10 @@
 
 Status: accepted (2026-09-28). Amends
 [ADR 0014](0014-structured-evidence.md), decision 3: the worked examples.
+Amended by [ADR 0017](0017-bounded-prompt-pass.md): explanations read
+`projection-v5` with `prompt-v9`, and the configuration's candidates are
+then released for 385 of the 430 development requests and 161 of the
+182 pilot requests.
 
 ## Context
 
