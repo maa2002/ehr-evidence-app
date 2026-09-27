@@ -244,6 +244,91 @@ class MeasureTests(unittest.TestCase):
                          len(PAIRS)), output.getvalue())
         self.assertIn("released, with records without a standard concept "
                       "in scope: ", output.getvalue())
+        for key in ("records", "drivers", "history lines"):
+            self.assertIn("%s: precision 1.000, recall 1.000, F1 1.000"
+                          % key, output.getvalue())
+        self.assertIn("outcome right: ", output.getvalue())
+        self.assertNotIn("withheld documents", output.getvalue())
+
+    def test_scores_of_lists(self):
+        """A condition is a group of the correct list, named by any of its
+        records: a repeat or a row naming none is a false positive, and a
+        record counts only for its own group. No document states
+        nothing."""
+        expected = {"outcome": "answer", "items": [
+            ["E1", ["E1", "E2"], [1, 2], 2], ["E3", ["E3"], [1], 1]]}
+        stated = {"outcome": "answer", "items": [
+            ["E1", ["E1"], [1], 1], ["E2", ["E2"], [2], 1],
+            ["E9", ["E9"], [1], 1]]}
+        scores = measure.task_scores("condition_list", stated, expected)
+        self.assertEqual(scores, {"conditions": (1, 2, 1),
+                                  "records": (2, 1, 1), "outcome": 1})
+        self.assertEqual(measure.task_scores("condition_list", None,
+                                             expected),
+                         {"conditions": (0, 0, 2), "records": (0, 0, 3),
+                          "outcome": 0})
+        self.assertEqual(measure.rates(1, 2, 1),
+                         "precision 0.333, recall 0.500, F1 0.400 "
+                         "(TP 1, FP 2, FN 1)")
+        self.assertEqual(measure.rates(0, 0, 0),
+                         "precision n/a, recall n/a, F1 n/a "
+                         "(TP 0, FP 0, FN 0)")
+
+    def test_scores_of_explanations(self):
+        """A driver is named by its reference; a line is right when its
+        records, visits and number are, and a line stated for a driver
+        that has none is a false positive, named with whose records it
+        cites."""
+        expected = {"outcome": "explanation", "drivers": [
+            ["D1", 1, 0.5, [["E1", "E2"], [1, 2], 2], None],
+            ["D2", 2, 0.3, None, [["E5"], 1]]]}
+        stated = {"outcome": "explanation", "drivers": [
+            ["D1", 1, 0.5, [["E1", "E2"], [1, 2], 2], [["E7"], 1]],
+            ["D2", 2, 0.3, [["E1"], [1], 1], [["E5"], 1]],
+            ["D9", 3, 0.1, None, None]]}
+        self.assertEqual(measure.task_scores("prediction_explanation",
+                                             stated, expected),
+                         {"drivers": (2, 1, 0), "history lines": (1, 1, 0),
+                          "context lines": (1, 1, 0)})
+        self.assertEqual(measure.line_kinds(stated, expected), {
+            "history right": 1, "context right": 1,
+            "context added, with other records": 1,
+            "history added, with another driver's records": 1,
+            "rows for no selected driver": 1})
+
+    def test_rows_of_a_withheld_list(self):
+        """The rows of a withheld list are named by what they cite."""
+        context, template = next(
+            pair for pair in PAIRS if pair[0].task == "condition_list"
+            and any(len(row[1]) > 1 for row in shape.document_of(
+                pair[1]).get("items") or []))
+        expected = shape.document_of(template)
+        stated = json.loads(json.dumps(expected))
+        at = next(index for index, row in enumerate(stated["items"])
+                  if len(row[1]) > 1)
+        stated["items"][at][1] = stated["items"][at][1][:1]
+        stated["items"].append(expected["items"][at])
+        stated["items"].append(["E999", ["E999"], [1], 1])
+        kinds = measure.row_kinds(context, stated, expected)
+        self.assertEqual(kinds["rows with part of their records"], 1)
+        self.assertEqual(kinds["rows repeating a condition"], 1)
+        self.assertEqual(kinds["rows naming no condition"], 1)
+        self.assertEqual(kinds["rows with their records exactly"],
+                         len(expected["items"]))
+        self.assertNotIn("conditions not named", kinds)
+
+    def test_model_documents(self):
+        """Only a finished output that parses as a JSON object is the
+        model's document."""
+        for text, finished, found in (('{"outcome": "answer"}', True, True),
+                                      ('{"outcome": "answer"}', False, False),
+                                      ("{", True, False),
+                                      ("[]", True, False)):
+            written = adapter.Written(response=None, candidate=None,
+                                      author="template", fallback="malformed",
+                                      output=adapter.output(text, finished))
+            self.assertEqual(measure.model_document(written) is not None,
+                             found)
 
     def test_released_within_lower_limits(self):
         """A released candidate counts within a lower limit only when its

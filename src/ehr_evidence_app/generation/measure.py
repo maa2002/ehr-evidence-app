@@ -16,7 +16,18 @@ and print aggregate counts only:
   output was cut off, how it broke its schema or shape, or which fields
   differ from the template's document (the correct answer; wordings are
   the model's own and are not compared), and whether a field, notice or
-  reason code was added or left out. --within also counts the requests
+  reason code was added or left out. It scores every document against
+  the correct one, summed over each stratum: for lists and presence
+  checks the conditions (a group of the correct document, named by any
+  of its records) and the records cited for them, as precision, recall
+  and F1, and how many chose the right outcome; for explanations the
+  drivers and their history and context lines. A request without a
+  document states nothing, so it counts against recall. For the
+  documents not released it names what their rows are: a condition's
+  records exactly, part of them (in one visit of several), another
+  condition's, other records, a condition repeated or none named; a
+  driver's line right, left out, added (with whose records), or with
+  part of, more than or other records than its own. --within also counts the requests
   that would be released under a lower output and time limit: greedy
   decoding writes the same tokens under any output limit they fit, so
   one run at the higher limits answers for the lower ones.
@@ -67,7 +78,7 @@ import time
 import typing
 
 from ehr_evidence_app.evidence import vocabulary as vocab
-from ehr_evidence_app.generation import adapter, prompt, shape
+from ehr_evidence_app.generation import adapter, projection, prompt, shape
 from ehr_evidence_app.validation import candidate as candidates
 
 CANDIDATE_LIMITS = (3, 5, 8, 10, 15)
@@ -102,14 +113,18 @@ PATH_TOKEN = re.compile(r"\$|\.[a-z_]+|\[\d+\]")
 class Result(typing.NamedTuple):
     """One written request of a benchmark: its Written, what went wrong
     with it by name, how complete an explanation is, the output tokens of
-    its template document, and whether its view has records without a
-    standard concept (None for an explanation)."""
+    its template document, whether its view has records without a
+    standard concept (None for an explanation), its scores against the
+    correct document (task_scores) and, when it was not released, what
+    its rows are (row_kinds)."""
 
     written: adapter.Written
     names: set
     stated: tuple | None
     needed: int
     unmapped: bool | None
+    scores: dict
+    kinds: collections.Counter
 
 
 def summary(values):
@@ -392,14 +407,223 @@ def write_sample(pairs, release_of, writer, per_group, task=None,
                                              drivers):
         written = adapter.write(writer, context, template,
                                 release_of(context))
+        document, expected = model_document(written), shape.document_of(
+            template)
         results[group_of(context, template)].append(Result(
             written, findings(context, template, written),
             completeness(context, template, written),
-            writer.backend.text_tokens(shape.text(shape.document_of(
-                template))),
+            writer.backend.text_tokens(shape.text(expected)),
             None if context.task == "prediction_explanation"
-            else context.bundle.coverage.unmapped_events_in_scope > 0))
+            else context.bundle.coverage.unmapped_events_in_scope > 0,
+            task_scores(context.task, document, expected),
+            collections.Counter() if written.author == "model"
+            else row_kinds(context, document, expected)))
     return results
+
+
+def model_document(written):
+    """Return the document the model wrote, when it finished one that
+    parses as a JSON object, else None."""
+    output = written.output
+    if output is None or not output.finished:
+        return None
+    try:
+        document = json.loads(output.text)
+    except ValueError:
+        return None
+    return document if isinstance(document, dict) else None
+
+
+def refs_in(value, at=0):
+    """Return the references in one column of a row as a set; empty when
+    the row is not shaped as its schema has it."""
+    if not isinstance(value, list) or len(value) <= at or not isinstance(
+            value[at], list):
+        return set()
+    return {ref for ref in value[at] if isinstance(ref, str)}
+
+
+def rows_of(document, name):
+    """Return a document's rows of one name that are lists, in order."""
+    rows = (document or {}).get(name)
+    return [row for row in rows if isinstance(row, list) and row] if (
+        isinstance(rows, list)) else []
+
+
+def group_scores(task, document, expected):
+    """Return the conditions and records of a list or presence document
+    against the correct one, as (true positives, false positives, false
+    negatives). A condition is a group of the correct document, named by
+    any of its records: a row naming none, or one already named, is a
+    false positive. A record is right when cited for its own group; one
+    cited for another group, or by a row naming none, is a false
+    positive, and each record of a group not cited for it a false
+    negative. With no document nothing is stated."""
+    name, columns = ROWS[task]
+    cited = columns.index("refs")
+    theirs = [set(row[cited]) for row in expected.get(name) or []]
+    owner = {ref: at for at, refs in enumerate(theirs) for ref in refs}
+    mine = rows_of(document, name)
+    citing, stray = collections.defaultdict(set), 0
+    for row in mine:
+        at = owner.get(row[0]) if isinstance(row[0], str) else None
+        if at is None:
+            stray += len(refs_in(row, cited))
+        else:
+            citing[at] |= refs_in(row, cited)
+    named = len(citing)
+    return {"conditions": (named, len(mine) - named, len(theirs) - named),
+            "records": (
+                sum(len(citing[at] & refs) for at, refs in enumerate(theirs)),
+                stray + sum(len(citing[at] - refs)
+                            for at, refs in enumerate(theirs)),
+                sum(len(refs - citing[at])
+                    for at, refs in enumerate(theirs)))}
+
+
+def driver_scores(document, expected):
+    """Return the drivers, history lines and context lines of an
+    explanation document against the correct one, as (true positives,
+    false positives, false negatives). A driver is named by its
+    reference; a second row for it, or a row for a driver not selected,
+    is a false positive. A line is right when its records, visits and
+    number all are: a line stated and not right is a false positive, and
+    a line of the evidence not stated right a false negative."""
+    theirs = {row[0]: row for row in expected.get("drivers") or []}
+    places = {"history": shape.DRIVER_ROW.index("history"),
+              "context": shape.DRIVER_ROW.index("context")}
+    lines = {kind: [0, 0, 0] for kind in places}
+    seen = set()
+    for row in rows_of(document, "drivers"):
+        driver = row[0] if isinstance(row[0], str) else None
+        stated = {kind: row[at] if len(row) > at else None
+                  for kind, at in places.items()}
+        if driver not in theirs or driver in seen:
+            for kind, line in stated.items():
+                lines[kind][1] += line is not None
+            continue
+        seen.add(driver)
+        for kind, at in places.items():
+            right, line = theirs[driver][at], stated[kind]
+            good = line is not None and right is not None and (
+                normal(line) == normal(right))
+            lines[kind][0] += good
+            lines[kind][1] += line is not None and not good
+            lines[kind][2] += right is not None and not good
+    for driver, row in theirs.items():
+        if driver not in seen:
+            for kind, at in places.items():
+                lines[kind][2] += row[at] is not None
+    return {"drivers": (len(seen), len(rows_of(document, "drivers"))
+                        - len(seen), len(theirs) - len(seen)),
+            "history lines": tuple(lines["history"]),
+            "context lines": tuple(lines["context"])}
+
+
+def task_scores(task, document, expected):
+    """Return a document's scores against the correct one: for a list or
+    presence check its conditions and records, and whether it chose the
+    right outcome; for an explanation its drivers and lines."""
+    if task == "prediction_explanation":
+        return driver_scores(document, expected)
+    found = group_scores(task, document, expected)
+    found["outcome"] = int(document is not None and document.get(
+        "outcome") == expected.get("outcome"))
+    return found
+
+
+def row_kinds(context, document, expected):
+    """Return what the rows of a withheld document are against the correct
+    one, by kind and without any value: for a list or presence check,
+    rows with their condition's records exactly, part of them (and
+    whether in one visit of several), with another condition's records,
+    with other records, repeating a condition or naming none; for an
+    explanation, each history and context line right, left out, added for
+    a driver that has none (with whose records), or with part of, more
+    than or other records than its own, or its own with a wrong number or
+    visits."""
+    found = collections.Counter()
+    if document is None:
+        return found
+    if context.task == "prediction_explanation":
+        return line_kinds(document, expected)
+    name, columns = ROWS[context.task]
+    cited = columns.index("refs")
+    view = projection.view(context)
+    visits = {ref: visit for group in view.get("conditions") or view.get(
+        "matching") or [] for ref, visit in group["records"]}
+    theirs = [set(row[cited]) for row in expected.get(name) or []]
+    owner = {ref: at for at, refs in enumerate(theirs) for ref in refs}
+    named = set()
+    for row in rows_of(document, name):
+        at = owner.get(row[0]) if isinstance(row[0], str) else None
+        if at is None:
+            found["rows naming no condition"] += 1
+            continue
+        if at in named:
+            found["rows repeating a condition"] += 1
+        named.add(at)
+        refs, group = refs_in(row, cited), theirs[at]
+        extra = refs - group
+        if refs == group:
+            found["rows with their records exactly"] += 1
+        elif not extra:
+            found["rows with part of their records"] += 1
+            if len({visits.get(ref) for ref in refs}) == 1 and len(
+                    {visits.get(ref) for ref in group}) > 1:
+                found["rows with part: one visit of several"] += 1
+        elif all(ref in owner for ref in extra):
+            found["rows with another condition's records"] += 1
+        else:
+            found["rows with other records"] += 1
+    if len(theirs) > len(named):
+        found["conditions not named"] += len(theirs) - len(named)
+    return found
+
+
+def line_kinds(document, expected):
+    """Return what each history and context line of an explanation
+    document is against the correct one (see row_kinds)."""
+    theirs = {row[0]: row for row in expected.get("drivers") or []}
+    at = {"history": shape.DRIVER_ROW.index("history"),
+          "context": shape.DRIVER_ROW.index("context")}
+    found = collections.Counter()
+    for row in rows_of(document, "drivers"):
+        if not isinstance(row[0], str) or row[0] not in theirs or len(
+                row) != len(shape.DRIVER_ROW):
+            found["rows for no selected driver"] += 1
+            continue
+        right_row = theirs[row[0]]
+        for kind, other in (("history", "context"), ("context", "history")):
+            line, right = row[at[kind]], right_row[at[kind]]
+            if line is None:
+                found["%s %s" % (kind, "left out" if right is not None
+                                 else "none, rightly")] += 1
+                continue
+            refs = refs_in(line)
+            if right is None:
+                own = refs_in(right_row[at[other]])
+                others = set()
+                for driver, correct in theirs.items():
+                    if driver != row[0]:
+                        others |= refs_in(correct[at["history"]]) | refs_in(
+                            correct[at["context"]])
+                source = ("the driver's %s" % other if refs and refs <= own
+                          else "another driver's" if refs and refs <= others
+                          else "other")
+                found["%s added, with %s records" % (kind, source)] += 1
+            elif normal(line) == normal(right):
+                found["%s right" % kind] += 1
+            elif refs == refs_in(right):
+                found["%s with its records, a wrong number or visits"
+                      % kind] += 1
+            elif refs < refs_in(right):
+                found["%s with part of its records" % kind] += 1
+            elif refs > refs_in(right):
+                found["%s with more than its records" % kind] += 1
+            else:
+                found["%s with other records" % kind] += 1
+    return found
 
 
 def released_within(item, needed, tokens, seconds):
@@ -412,6 +636,53 @@ def released_within(item, needed, tokens, seconds):
     return item.author == "model" and output is not None and (
         needed <= tokens and output.output_tokens <= tokens
         and output.seconds <= seconds)
+
+
+def rates(true, false, missed):
+    """Return precision, recall and F1 of some counts as text, n/a where a
+    denominator is zero, with the counts."""
+    precision = true / (true + false) if true + false else None
+    recall = true / (true + missed) if true + missed else None
+    f1 = None if precision is None or recall is None else (
+        2 * precision * recall / (precision + recall)
+        if precision + recall else 0.0)
+
+    def shown(value):
+        """Return a rate to three decimals, or n/a."""
+        return "n/a" if value is None else "%.3f" % value
+    return "precision %s, recall %s, F1 %s (TP %d, FP %d, FN %d)" % (
+        shown(precision), shown(recall), shown(f1), true, false, missed)
+
+
+SCORED = ("conditions", "records", "drivers", "history lines",
+          "context lines")
+
+
+def score_lines(pairs):
+    """Return the lines reporting a stratum's scores, summed over its
+    requests (micro-averaged; a request without a document states
+    nothing), how many chose the right outcome, and what the rows of its
+    withheld documents are."""
+    totals = collections.defaultdict(lambda: [0, 0, 0])
+    outcomes = []
+    for result in pairs:
+        for key, value in result.scores.items():
+            if key == "outcome":
+                outcomes.append(value)
+            else:
+                totals[key] = [a + b for a, b in zip(totals[key], value)]
+    lines = ["%s: %s" % (key, rates(*totals[key]))
+             for key in SCORED if key in totals]
+    if outcomes:
+        lines.append("outcome right: %d of %d" % (sum(outcomes),
+                                                  len(outcomes)))
+    kinds = collections.Counter()
+    for result in pairs:
+        kinds.update(result.kinds)
+    if kinds:
+        lines.append("withheld documents: %s" % "; ".join(
+            "%s %d" % pair for pair in sorted(kinds.items())))
+    return lines
 
 
 def completeness_text(entries):
@@ -467,6 +738,8 @@ def report(case_set, results, seconds, within=()):
                     [result.stated for result in pairs
                      if result.stated is not None
                      and result.written.fallback is None])))
+        for line in score_lines(pairs):
+            print("  " + line)
         if outputs:
             print("  prompt tokens %s" % summary(
                 [output.prompt_tokens for output in outputs]))
