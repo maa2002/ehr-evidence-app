@@ -3,7 +3,7 @@
 messages() returns the two chat messages of one request: the rules every
 answer follows, then worked examples on invented data, and the request's
 task, the shape of its reply and its evidence as the compact projection
-of generation.projection (prompt-v8, ADR 0015). The examples match the
+of generation.projection (prompt-v9, ADR 0017). The examples match the
 request where its evidence decides the shape of every correct reply: they
 disclose a record without a standard concept exactly when the request's
 view has one, and an explanation's leaves drivers out exactly when the
@@ -30,7 +30,7 @@ import sys
 from ehr_evidence_app.generation import projection, shape
 from ehr_evidence_app.validation import candidate as candidates
 
-PROMPT_VERSION = "prompt-v8"
+PROMPT_VERSION = "prompt-v9"
 RULES = """\
 You write the responses of a research application that answers questions \
 about one patient's recorded conditions, and explains a model's \
@@ -64,22 +64,26 @@ Each group names its condition, a standard concept (concept_id) or, for \
 records without one, an ICD source code (source), lists its records as \
 [ref, visit], the visit being the record's visit number, and gives their \
 number (count) and their visit numbers (visits)."""
+LIST_GROUPS = """\
+Each group names its condition, a standard concept (concept_id) or, for \
+records without one, an ICD source code (source), and gives its records' \
+refs (refs), their visit numbers (visits) and their number (count)."""
 LIST_TASK = """\
 Task: list every condition recorded within {scope}."""
 LIST_VIEW = """\
 The view gives the number of conditions (condition_count) and of \
 records (record_count) within the scope, and groups the scope's records by \
 condition ("conditions"), in the order of each condition's first record. \
-""" + GROUPS
+""" + LIST_GROUPS
 LIST_ANSWER = """\
 Reply shape, if "conditions" holds groups: {{"outcome": "answer", \
 "reason_codes": [...], \
 "item_wording": ..., "items": [...], "summary": {{"wording": ..., \
 "groups": ..., "records": ...}}, "unmapped": ..., "notices": \
 ["list_complete"]}}.
-- items: one per group, in the view's order: [the ref of the group's \
-first record, the refs of all its records, their visit numbers ascending \
-and each once, their number].
+- items: one per group, in the view's order: [the first of its refs, its \
+refs, its visits, its count]. A group is one item however many visits \
+its records lie in.
 - item_wording, used for every item: begins with {{condition}} and also \
 has {{count}} and {{visits}}.
 - summary: groups is the number of items and records the number of refs \
@@ -131,13 +135,12 @@ the highest attribution scores.
 
 The view gives the prediction (its label, score and logit), the case's \
 restrictions and the notice of each (restriction_notices), and the drivers \
-to describe, highest score first, each with \
-its rank, ref and attribution score, its history (its records in visits \
-before the final admission, as [ref, visit], the visit being the record's \
-visit number), with their number (history_count) and visit numbers \
-(history_visits), and its context (its records in the final admission, as \
-refs), with their number (context_count); and how many other eligible \
-drivers are not described (drivers_not_described).
+to describe, highest score first, each with its rank, ref and attribution \
+score, its history (its records in visits before the final admission: \
+their refs, their visit numbers and their number) and its context (its \
+records in the final admission: their refs and their number), each null \
+when the driver has none; and how many other eligible drivers are not \
+described (drivers_not_described).
 
 Reply shape: {{"outcome": "explanation", "reason_codes": the \
 restrictions, "prediction": {{"wording": ..., "label": ..., "score": ..., \
@@ -151,10 +154,9 @@ with {{driver}} and also has {{count}} and {{visits}}; the context wording \
 begins with {{driver}} and also has {{count}}.
 - drivers: one per driver of the view, in its order: [its ref, its rank, \
 its score, its history, its context]. History is null when the driver's \
-history is empty, otherwise [the refs of its history, their visit numbers \
-ascending and each once, their number]; context is null when the \
-driver's context is empty, otherwise [the refs of its context, their \
-number].
+history is null, otherwise [its refs, its visits, its count]; context is \
+null when the driver's context is null, otherwise [its refs, its count]. \
+Each driver's history and context are its own, as the view gives them.
 - notices: "drivers", then "drivers_omitted" when drivers_not_described \
 is above zero, then "attribution_meaning" and "score_meaning", then the \
 notices in restriction_notices.

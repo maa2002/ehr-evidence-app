@@ -55,8 +55,8 @@ class ProjectionTests(unittest.TestCase):
             self.assertEqual([driver["rank"] for driver in view["drivers"]],
                              list(range(1, len(selected) + 1)))
             for driver, item in zip(view["drivers"], selected):
-                cited = [ref for ref, _ in driver["history"]]
-                cited += driver["context"]
+                cited = [ref for part in ("history", "context")
+                         for ref in (driver[part] or {}).get("refs", [])]
                 self.assertLessEqual(set(cited), set(item.linked_event_refs))
             self.assertEqual(view["drivers_not_described"],
                              shape.omitted_drivers(context))
@@ -71,14 +71,14 @@ class ProjectionTests(unittest.TestCase):
                 continue
             view = projection.view(context)
             refs = [ref for group in view["conditions"]
-                    for ref, _ in group["records"]]
+                    for ref in group["refs"]]
             self.assertEqual(sorted(refs), sorted(
                 event.ref for event in context.bundle.events))
             items = [item for item in template.statements
                      if item.kind == "list_item"]
-            self.assertEqual([[ref for ref, _ in group["records"]]
-                              for group in view["conditions"]],
+            self.assertEqual([group["refs"] for group in view["conditions"]],
                              [list(item.refs) for item in items])
+            self.assertNotIn("record_columns", view)
 
     def test_presence_views_hold_the_matching_records(self):
         """A presence check's view holds exactly the records that match
@@ -104,15 +104,26 @@ class ProjectionTests(unittest.TestCase):
             view = projection.view(context)
             self.assertNotIn('"outcome"', projection.text(view))
             groups = view.get("conditions", view.get("matching", []))
+            if groups:
+                numbers = projection.visit_numbers(context.bundle)
+                visits = {event.ref: numbers[event.visit_ref]
+                          for event in context.bundle.events}
             for group in groups:
-                self.assertEqual(group["count"], len(group["records"]))
+                refs = group["refs"] if "refs" in group else [
+                    ref for ref, _ in group["records"]]
+                self.assertEqual(group["count"], len(refs))
                 self.assertEqual(group["visits"], sorted(
-                    {visit for _, visit in group["records"]}))
+                    {visits[ref] for ref in refs}))
             for driver in view.get("drivers", []):
-                self.assertEqual(driver["history_count"],
-                                 len(driver["history"]))
-                self.assertEqual(driver["context_count"],
-                                 len(driver["context"]))
+                for part in ("history", "context"):
+                    block = driver[part]
+                    if block is None:
+                        continue
+                    self.assertTrue(block["refs"])
+                    self.assertEqual(block["count"], len(block["refs"]))
+                if driver["history"] is not None:
+                    self.assertEqual(driver["history"]["visits"], sorted(
+                        set(driver["history"]["visits"])))
 
     def test_command(self):
         """The default mode passes; the real mode needs a case set and

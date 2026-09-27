@@ -549,9 +549,9 @@ def row_kinds(context, document, expected):
         return line_kinds(document, expected)
     name, columns = ROWS[context.task]
     cited = columns.index("refs")
-    view = projection.view(context)
-    visits = {ref: visit for group in view.get("conditions") or view.get(
-        "matching") or [] for ref, visit in group["records"]}
+    numbers = projection.visit_numbers(context.bundle)
+    visits = {event.ref: numbers[event.visit_ref]
+              for event in context.bundle.events}
     theirs = [set(row[cited]) for row in expected.get(name) or []]
     owner = {ref: at for at, refs in enumerate(theirs) for ref in refs}
     named = set()
