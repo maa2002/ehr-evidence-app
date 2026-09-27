@@ -62,18 +62,22 @@ A condition is named by a recorded event (its label comes from the bundle),
 by vocabulary concepts (their names come from the vocabulary) or by an ICD
 code. A notice is one of a fixed list of approved texts
 (`validation.candidate.NOTICES`): that "not recorded" is not a statement
-of clinical absence, that a list is complete, what attribution scores
+of clinical absence, that a list is complete, which drivers an
+explanation describes and how many it does not, what attribution scores
 and the model's score mean, each restriction of an explanation, each
-refusal and each clarifying question. A notice's wording must be its approved text
-exactly; its slots (the user's term, suggested names, scopes) are filled in
-like any other.
+refusal and each clarifying question. A notice's wording must be its
+approved text exactly; its slots (the user's term, suggested names,
+scopes, the number of drivers not described) are filled in like any
+other.
 
 The released text and claims are rendered from the statements only: each
 statement is one line, list items led by "- " and items under them by
 "  - ", and each statement that cites evidence is also a claim with the
 same text, split into claims of at most 50 references. Scores are shown
-to three significant figures; their slots hold the exact values. So no sentence reaches the user that is not a
-statement of the candidate. The contract's JSON Schema is committed as
+to three significant figures; their slots hold the exact values. So no
+sentence reaches the user that is not a statement of the candidate. The
+contract is version 1.1, which added the notice on the drivers not
+described and its slot; its JSON Schema is committed as
 [schemas/candidate.schema.json](schemas/candidate.schema.json).
 
 ## Checks before generation
@@ -143,7 +147,7 @@ to support.
 released outcome: answers, refusals and clarifying questions. It reads
 only the writer's words: each slot is replaced by a neutral token first,
 so a condition named "Pneumonia caused by a virus" never trips a rule.
-Rules version `wording-rules-v3`:
+Rules version `wording-rules-v4`:
 
 | Rule | Examples | Reason code |
 | --- | --- | --- |
@@ -160,6 +164,8 @@ Rules version `wording-rules-v3`:
 | In answers and explanations, hedged facts | "possibly", "may", "seems to" | `prohibited_wording` |
 | In answers and explanations, rankings | "the main", "most important", "key" | `prohibited_wording` |
 | In answers and explanations, counts or quantities in words | "three", "several", "most" | `prohibited_wording` |
+| A statement that something is recorded (a summary or item of an answer, the prediction, a driver, its history and context), negated | "No conditions are recorded" above a list | `prohibited_wording` |
+| A statement that something is not recorded (an empty list, a condition not recorded) without a negated "recorded" wherever it says "recorded" | "{condition} is recorded within {scope}" for an absence | `prohibited_wording` |
 | Dates, recurrence, frequency and recency typed into a wording | a date, a month, "again", "recurs", "often", "every visit", "recently", "the last admission" | `date_unsupported` |
 
 A negation shortly before a causal, diagnostic or risk word, in the same
@@ -172,12 +178,18 @@ clause only. Version 3 adds the phrasings a language model writes around
 facts and a template never does; every fact of an answer or explanation
 is certain, unranked and stated by a slot, so hedges, rankings and counts
 in words are prohibited there, while refusals and clarifying questions
-may use them. How often and in which
-visits a driver's concept was recorded is stated only through the slots
-of a statement that cites the driver's linked events, as the evidence
-claim policy allows; QA answers state it only as the records they cite.
+may use them. Version 4 reads a wording with its statement's kind, after
+a language model worded a list's summary "No conditions are recorded
+..." on invented data and the gate released it: a statement that
+something is recorded may hold a negation only where it denies a
+causal, diagnostic or risk reading, and a statement that something is
+not recorded must negate every "recorded" it holds. How often and in
+which visits a driver's concept was recorded is stated only through the
+slots of a statement that cites the driver's linked events, as the
+evidence claim policy allows; QA answers state it only as the records
+they cite.
 Every template wording and approved notice passes the rules in the
-outcomes it is used in, and a test keeps it so.
+outcomes and statement kinds it is used in, and a test keeps it so.
 
 The rules are patterns: a sentence that says something prohibited in
 words no pattern knows is not caught. A gap found later becomes a new
@@ -185,17 +197,24 @@ rules version, measured again.
 
 ## Explanations
 
-`validation.explanation` builds the template explanation of a selected
-prediction from its explanation bundle alone (`explanation-template-v1`):
+An explanation describes the selected drivers: the eligible drivers with
+the highest attribution scores, highest first, ties in the bundle's
+order, at most the number configured in `config/explanation.json`
+(ADR 0013). Every attribution stays in the evidence bundle for
+inspection. `validation.explanation` builds the template explanation of a
+selected prediction from its explanation bundle alone
+(`explanation-template-v2`):
 
 1. the selected label, as one output of the model's multi-label
    prediction, with its uncalibrated score and logit;
-2. every driver that may be described, in the order the model lists
-   them, with its attribution score;
+2. the selected drivers, highest score first, each with its attribution
+   score;
 3. under each driver, how many of its concept's records lie in which
    pre-target visits, citing its linked history events, and its
    final-admission records as context, citing those;
-4. notices on what attribution scores and the model's score mean, and one
+4. when more drivers are eligible, a notice that states how many are not
+   described and are kept in the evidence;
+5. notices on what attribution scores and the model's score mean, and one
    for each restriction of the case.
 
 Its checks apply to any explanation candidate, whoever wrote it:
@@ -203,8 +222,8 @@ Its checks apply to any explanation candidate, whoever wrote it:
 | Finding | Reason code |
 | --- | --- |
 | The prediction is not stated once, with the bundle's label, score and logit | `prediction_altered` |
-| The drivers described are not exactly the bundle's describable drivers, in its order, with its scores and ranks; a zero-score driver is described | `attribution_altered` |
-| A history statement cites other records than the driver's linked events in pre-target visits, or a context statement other records than its final-admission ones, or either miscounts them or their visits; the restrictions disclosed, as reason codes or notices, are not the case's | `claim_unsupported` |
+| The drivers described are not exactly the selected drivers, in their order, with their scores and ranks; a zero-score driver, or a driver not selected, is described | `attribution_altered` |
+| A history statement cites other records than the driver's linked events in pre-target visits, or a context statement other records than its final-admission ones, or either miscounts them or their visits; a driver described with such records leaves its history or context out; the restrictions disclosed, as reason codes or notices, are not the case's; the drivers not described are not stated, or are miscounted | `claim_unsupported` |
 | A notice on what the scores mean is missing | `structure_invalid` |
 
 With the structure checks and the wording rules this enforces the
@@ -215,13 +234,17 @@ only; final-admission records are context only; zero-score drivers are
 never described; the label is one output, never the only diagnosis; the
 score is never a clinical risk.
 
-Every case of the development case sets gets its template explanation,
-and every one passes all checks:
+Every case of the development case sets gets its template explanation
+with the configured number of drivers, 10, and every one passes all
+checks:
 
-| Case set | Explanations | Drivers | History statements | Context statements | Claims | Restrictions disclosed (batch-sensitive, final-admission drivers, excluded outcome entries) |
-| --- | --- | --- | --- | --- | --- | --- |
-| `dev-30-v1` | 26 of 26 | 578 | 404 | 250 | 1,258 | 6, 26, 10 |
-| `pilot-10-v1` | 10 of 10 | 188 | 142 | 71 | 412 | 2, 9, 3 |
+| Case set | Explanations | Drivers described | Drivers not described | History statements | Context statements | Claims | Restrictions disclosed (batch-sensitive, final-admission drivers, excluded outcome entries) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `dev-30-v1` | 26 of 26 | 259 | 319 | 179 | 106 | 570 | 6, 26, 10 |
+| `pilot-10-v1` | 10 of 10 | 92 | 96 | 70 | 28 | 201 | 2, 9, 3 |
+
+Version 1 described every eligible driver in the model's order: 578
+drivers on `dev-30-v1` and 188 on `pilot-10-v1`.
 
 ## Release gate
 
@@ -251,13 +274,15 @@ through the gate (see [qa.md](qa.md#development-suite)).
 ## Mutation suite
 
 `validation.mutations` tests the checks by breaking correct responses
-(`validation-mutations-v2`). Correct candidates are built by the
+(`validation-mutations-v3`). Correct candidates are built by the
 templates: for every scope bundle of every case, the list and presence
 checks of a recorded condition and of one recorded elsewhere; refusals
 and clarifying questions; and every case's template explanation. Every
 error class is applied to them, or to the bundles they come from, and
 checked for the request each answers, with its bundle bound. Version 2
-adds the mistakes a language model can make and a template cannot:
+added the mistakes a language model can make and a template cannot, and
+version 3 the mistakes of driver selection, of an explanation's
+completeness and of a statement's polarity:
 
 | Item | Error classes | Expected |
 | --- | --- | --- |
@@ -278,6 +303,10 @@ adds the mistakes a language model can make and a template cannot:
 | Model (v2) | an empty list for a scope with records; a fact or the name of another record | `claim_unsupported` |
 | Model (v2) | hedged, ranking, interpretive, association, course and certainty wording; a count in words | `prohibited_wording` |
 | Model (v2) | recency typed into a wording | `date_unsupported` |
+| Selection (v3) | a driver not selected described | `attribution_altered` |
+| Selection (v3) | the drivers not described miscounted, or not stated | `claim_unsupported` |
+| Completeness (v3) | a driver's history or context left out | `claim_unsupported` |
+| Polarity (v3) | a statement that something is recorded negated; a statement that something is not recorded worded as a record | `prohibited_wording` |
 
 A mutant is detected when it ends in its class's outcome with its class's
 reason code. Every original must be released unchanged, and so must a
@@ -286,17 +315,17 @@ added to an answer. Results, with the evaluation case set untouched:
 
 | Samples | Originals released unchanged | Controls passed | Mutants detected | Error classes |
 | --- | --- | --- | --- | --- |
-| Invented fixtures | 17 of 17 | 13 of 13 | 522 of 522 | 57 |
-| `dev-30-v1` | 434 of 434 | 430 of 430 | 16,869 of 16,869 | 58 |
-| `pilot-10-v1` | 186 of 186 | 182 of 182 | 7,130 of 7,130 | 58 |
+| Invented fixtures | 18 of 18 | 14 of 14 | 583 of 583 | 64 |
+| `dev-30-v1` | 434 of 434 | 430 of 430 | 17,416 of 17,416 | 65 |
+| `pilot-10-v1` | 186 of 186 | 182 of 182 | 7,356 of 7,356 | 65 |
 
 Version 1 detected all 15,558 mutants of its 40 classes on the
-development case sets. The suite found one gap on its first run, in
-wording rules version 1 (see [Wording](#wording)), which version 2
-closes. It measures the
-defined error classes; a statement that says something prohibited in
-words no rule knows is outside what it can show, which is why the facts
-stay in slots that no writer types.
+development case sets, and version 2 all 23,999 of its 58. The suite
+found one gap on its first run, in wording rules version 1 (see
+[Wording](#wording)), which version 2 closes. It measures the defined
+error classes; a statement that says something prohibited in words no
+rule knows is outside what it can show, which is why the facts stay in
+slots that no writer types.
 
 ## Commands
 

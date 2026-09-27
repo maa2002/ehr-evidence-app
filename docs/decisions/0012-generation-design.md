@@ -1,6 +1,9 @@
 # 0012. Generation design (Phase 7)
 
-Status: accepted (2026-09-27).
+Status: accepted (2026-09-27); amended by
+[ADR 0013](0013-compact-generation.md): the model reads a compact
+projection of the bundle, and an explanation describes the selected
+drivers.
 
 ## Context
 

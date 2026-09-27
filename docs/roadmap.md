@@ -92,24 +92,31 @@ Described in [validation.md](validation.md) and decided in
 ## Phase 7. LLM and operations
 
 Described in [generation.md](generation.md) and decided in
-[ADR 0012](decisions/0012-generation-design.md). In progress: the
+[ADR 0012](decisions/0012-generation-design.md) and
+[ADR 0013](decisions/0013-compact-generation.md). In progress: the
 language model writes the complete candidate of every response from
-evidence, and the templates are its fallback.
+evidence, from a compact view of the evidence, and the templates are its
+fallback.
 
 - 41 Define the generation adapter (done: `generation.shape`,
-  `generation.prompt` and `generation.adapter`; the release gate refuses
-  the mistakes a model can make, shown by mutation suite version 2)
+  `generation.projection`, `generation.prompt` and `generation.adapter`;
+  the compact document and view of the evidence; the release gate refuses
+  the mistakes a model can make, shown by mutation suite version 3)
 - 42 Implement the initial LLM runtime (done: `generation.runtime` and
-  `generation.worker`; MedGemma 1.5 4B IT, verified on G:, runs in full
-  precision in its own environment, measured at about eight tokens a
-  second)
+  `generation.worker`; MedGemma 1.5 4B IT, verified on G:, runs in its own
+  environment in BF16 with a mixed GPU/CPU placement, or in 4-bit NF4 on
+  the GPU; both benchmarked on development requests)
 - 43 Enforce execution limits (done: prompt, output, time, attempt and
-  concurrency limits and the fallback)
-- 44 Complete controlled QA (the path is in place; the model follows)
-- 45 Complete controlled explanations (the path is in place; the model
-  follows)
+  concurrency limits and the fallback, each reason with its category)
+- 44 Complete controlled QA (the model writes list and presence answers
+  through the adapter; measured on development requests)
+- 45 Complete controlled explanations (the model writes explanations of
+  the selected drivers through the adapter; the number of drivers is
+  frozen before the final evaluation)
 - 46 Add protected runtime records
-- 46.1 Measure the model on the development case sets
+- 46.1 Measure the model on the development case sets (done: token
+  distributions of the compact representation and the precision
+  benchmark)
 
 ## Phase 8. API and interface
 

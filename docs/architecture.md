@@ -62,8 +62,8 @@ attribution.
 | Inherited GNN integration | implemented and closed for the 10-person development pilot |
 | Evidence contracts, records, event linkage and bundles | implemented for the development pilot and the development and evaluation case sets |
 | Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out and written wording tests done |
-| Validation and the release gate | implemented; mutation suite version 2 covers model-written candidates |
-| LLM generation | in progress: the output shape, prompt, adapter, limits and fallback, and the pinned model's worker in its own environment are implemented; controlled QA and explanations measured with the model, and runtime records, follow |
+| Validation and the release gate | implemented; mutation suite version 3 covers model-written candidates and driver selection |
+| LLM generation | in progress: the compact output shape, the model's view of the evidence, the prompt, adapter, limits and fallback, and the pinned model's worker in its own environment are implemented; QA answers and explanations are measured with the model on development requests; runtime records follow |
 | API, interface and evaluation | planned |
 
 See [roadmap.md](roadmap.md) for the planned work.
@@ -82,7 +82,7 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `casesets` | Case-set registry, seeded case-set selection, case-set preparation | `registry`, `selection`, `prepare` |
 | `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, template candidates, scoped answers, development suite, held-out and written wording tests | `vocabulary`, `resolve`, `interpret`, `scope`, `templates`, `answer`, `suite`, `heldout`, `written` |
 | `validation` | Candidate contract, checks before generation, structure and reference checks, support of QA statements, wording rules, template explanation and its preservation checks, release gate, mutation suite | `candidate`, `evidence`, `structure`, `support`, `language`, `explanation`, `gate`, `mutations` |
-| `generation` | Candidates written by the language model: the document shape and its schema, the prompt, the adapter with its limits and the template fallback, the pinned model's runtime and its worker (which runs in the model environment) | `shape`, `prompt`, `adapter`, `runtime`, `worker` |
+| `generation` | Candidates written by the language model: the document shape and its schema, the model's compact view of the evidence, the prompt, the adapter with its limits and the template fallback, the pinned model's runtime and its worker (which runs in the model environment), development measurement | `shape`, `projection`, `prompt`, `adapter`, `runtime`, `worker`, `measure` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
@@ -108,7 +108,8 @@ fixed roots and allowlists live in code.
 | `phase3_closure.json` | `gnn.admission` | Closure policy: admission scope, label layers, driver tags, claim policy, superseded flags |
 | `evidence_policy.json` | `evidence.policy`, `evidence.bundles` | Evidence claim policy extending the closure policy for linked events |
 | `execution_limits.json` | `evidence.contracts`, `evidence.bundles` | Request, bundle and generation execution limits, within fixed ceilings |
-| `generation.json` | `generation.runtime` | The pinned language model (repository, revision, every file's size and SHA-256) and its worker's settings |
+| `generation.json` | `generation.runtime` | The pinned language model (repository, revision, every file's size and SHA-256) and its worker's settings, precision included |
+| `explanation.json` | `validation.explanation` | How an explanation selects the drivers it describes, and how many |
 | `case_sets.json` | `casesets.registry`, `casesets.selection`, `sources.pilot` | Case-set purposes, partitions, sizes, seeds, eligibility and draw rule |
 | `clearml_policy.json` | `tracking.policy` | Tracker payload and storage policy |
 | `clearml_connection.json` | `tracking.connection` | Hosted ClearML declaration |

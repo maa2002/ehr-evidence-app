@@ -9,40 +9,64 @@ change interfaces.
 
 LLM and operations (Phase 7, work items 41 to 46.1), in progress: the
 language model writes the complete candidate of every response from
-evidence, and the templates are its fallback.
+evidence, from a compact view of that evidence, and the templates are its
+fallback.
 
 ### Added
 
 - `generation` package (Phase 7, work items 41 and 43;
   [ADR 0012](docs/decisions/0012-generation-design.md),
-  [docs/generation.md](docs/generation.md)): the JSON document a
-  candidate is written as and each request's JSON Schema
-  (`generation.shape`, `candidate-shape-v1`); the prompt with the rules,
-  a worked example on invented data and the complete bundle
-  (`generation.prompt`, `prompt-v1`); the adapter, the one path from a
-  writer's output to a release, under the prompt, output, time, attempt
-  and concurrency limits, which releases the template candidate with one
-  of eleven recorded fallback reasons whenever the model's is not
+  [ADR 0013](docs/decisions/0013-compact-generation.md),
+  [docs/generation.md](docs/generation.md)): the compact JSON document a
+  candidate is written as, each item a row under one wording for its
+  kind, records listed before what is counted from them and every
+  wording led by its subject, and each request's JSON Schema, which
+  admits only the replies the request can have (`generation.shape`,
+  `candidate-shape-v3`); the model's view of the evidence, a
+  deterministic projection of the canonical bundle without serialization
+  redundancy or fields its task does not use (`generation.projection`,
+  `projection-v1`), from which the correct answer of every development
+  request is derived; the prompt with the rules, a worked example on
+  invented data that groups records, the replies the request admits and
+  its projection (`generation.prompt`, `prompt-v3`); the adapter, the one
+  path from a writer's output to a
+  release, under the prompt, output, time, attempt and concurrency
+  limits, which releases the template candidate with one of eleven
+  recorded fallback reasons whenever the model's is not, each reason with
+  its category (`limit_exceeded` for a prompt or output over its limit)
   (`generation.adapter`), with a scripted backend and scripted runs on
   the invented fixtures and the development case sets.
 - `max_prompt_tokens` in the execution limits (ceiling 131,072;
-  configured 16,384 until the model is measured).
+  configured 16,384).
 - The model runtime (work item 42): `config/generation.json` pins
   MedGemma 1.5 4B IT at revision `91850547` with every file's size and
   SHA-256, checked before the worker starts (`generation.runtime`); the
-  worker runs in its own environment on G:, loads the model once in full
-  precision (language layers on the GPU, image encoder and tied token
-  embedding table in system memory), decodes greedily under each
-  request's schema with xgrammar, and answers one request at a time over
-  its standard input and output, offline (`generation.worker`); the
-  operator check loads it, writes the invented requests and counts the
-  prompt tokens of a development case set.
+  worker runs in its own environment on G:, loads the model once in one
+  of two precisions, BF16 with a mixed GPU/CPU placement (language layers
+  on the GPU, image encoder and tied token embedding table in system
+  memory) or 4-bit NF4 on the GPU (`worker.precision`), decodes greedily
+  under each request's schema with xgrammar, and answers one request at a
+  time over its standard input and output, offline (`generation.worker`);
+  the operator check loads it, writes the invented requests and counts
+  the prompt tokens of a development case set.
 - The model environment: `requirements/llm.txt` and the hashed
-  `requirements/llm.lock.txt` (44 packages; PyTorch 2.14.0 with CUDA 13.0,
-  Transformers 5.17.0, xgrammar 0.2.8, llguidance 1.8.0) on a uv-managed
-  Python 3.12.13; the storage policy routes the model environment
-  (`llm_env`), managed interpreters (`UV_PYTHON_INSTALL_DIR`) and CUDA's
-  compute cache (`CUDA_CACHE_PATH`) to the runtime root.
+  `requirements/llm.lock.txt` (45 packages; PyTorch 2.14.0 with CUDA 13.0,
+  Transformers 5.17.0, xgrammar 0.2.8, llguidance 1.8.0, bitsandbytes
+  0.50.2) on a uv-managed Python 3.12.13; the storage policy routes the
+  model environment (`llm_env`), managed interpreters
+  (`UV_PYTHON_INSTALL_DIR`) and CUDA's compute cache (`CUDA_CACHE_PATH`)
+  to the runtime root.
+- Driver selection for explanations (`config/explanation.json`): an
+  explanation describes the eligible drivers with the highest attribution
+  scores, highest first, at most a configured number (10, to be frozen
+  before the final evaluation), and a new approved notice states how many
+  more are kept in the evidence; the gate requires exactly the selected
+  drivers and that number.
+- Development measurement (`generation.measure`, work item 46.1): the
+  prompt and output token distributions of a development case set with
+  the model's tokenizer, for each candidate number of drivers, and a
+  benchmark of the model at one precision on a deterministic, stratified
+  sample of development requests.
 - Release-gate checks for the mistakes a language model can make and a
   template cannot: a refusal of a request whose bundle is bound, a
   presence answer about another condition than the one asked about
@@ -52,14 +76,28 @@ evidence, and the templates are its fallback.
 
 ### Changed
 
+- Candidate contract version 1.1: the `drivers_omitted` notice and its
+  `omitted` slot; the notice introducing the drivers names them as those
+  with the highest attribution scores, in order of their scores.
+- Template explanation version 2 (`explanation-template-v2`): the
+  selected drivers in order of their scores, and the notice on the
+  drivers not described. The gate withholds an explanation that leaves
+  out a described driver's history or context.
 - Wording rules version 3 (`wording-rules-v3`): association,
   complication, interpretive, disease-course, certainty and recency
   wording everywhere, and hedged, ranked or counted facts in answers and
-  explanations.
-- Mutation suite version 2 (`validation-mutations-v2`): 18 classes of
-  model-style mistakes; on the development case sets it detects all
-  23,999 mutants in 58 classes, and every original and control is
-  released unchanged.
+  explanations. Version 4 (`wording-rules-v4`) reads a wording with its
+  statement's kind: a statement that something is recorded may not be
+  negated but to deny a causal, diagnostic or risk reading, and a
+  statement that something is not recorded must negate every
+  "recorded"; the model negated a list's summary on invented data and the
+  gate released it.
+- Mutation suite version 3 (`validation-mutations-v3`): version 2 added
+  18 classes of model-style mistakes, version 3 the classes of driver
+  selection, of an explanation's completeness and of a statement's
+  polarity; on the development case sets
+  it detects all 24,772 mutants in 65 classes, and every original and
+  control is released unchanged.
 - `qa.answer.answer` and `validation.explanation.explain` take a writer;
   without one every answer from evidence is the template's, recorded as a
   `no_model` fallback, and responses are unchanged.

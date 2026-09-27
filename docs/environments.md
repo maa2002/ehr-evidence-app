@@ -82,9 +82,9 @@ environment ([generation.md](generation.md)):
   (`UV_PYTHON_INSTALL_DIR`), with no executables placed on the user's path
   and no registry entries;
 - `requirements/llm.txt` names the direct dependencies, and
-  `requirements/llm.lock.txt` pins 44 packages exactly, with SHA-256
+  `requirements/llm.lock.txt` pins 45 packages exactly, with SHA-256
   hashes, for Windows x86-64 and Python 3.12.13 (lock SHA-256
-  `977BD242440105E00A47A3385BBDF8B648B1EB21348D3B32FE31E2962459D29A`);
+  `0981449E80B35299BFD4594AC7727104F3259F7CA47C1F107407A9A3C5862AD4`);
 - CUDA's compute cache is routed to the runtime root (`CUDA_CACHE_PATH`),
   and the worker runs with Hugging Face offline, without telemetry, and
   with every cache, home and temporary directory under the runtime root.
@@ -99,6 +99,7 @@ environment ([generation.md](generation.md)):
 | xgrammar | 0.2.8 |
 | llguidance | 1.8.0 |
 | Jinja2 | 3.1.6 |
+| bitsandbytes (for the 4-bit NF4 precision) | 0.50.2 |
 
 Create or recreate it from the lock; the Python download is the only
 network access besides the packages:
