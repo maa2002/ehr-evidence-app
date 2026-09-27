@@ -1,34 +1,39 @@
 """The model's view of an evidence bundle (Phase 7; ADR 0013, ADR 0014).
 
 The model does not read the canonical bundle: it reads a compact,
-deterministic projection of it, structured for its task (projection-v2).
+deterministic projection of it, structured for its task (projection-v3).
 The canonical bundle stays unchanged for provenance and validation, and
 the release gate checks the model's candidate against it. The projection
 leaves out serialization redundancy and what the task does not use, and
-arranges the evidence without stating any count, set of visits or outcome
-of the answer:
+arranges the evidence with the counts and visits derived from it, but
+without the outcome of the answer:
 
 * a list: the coverage status, the number of records without a standard
-  concept, and the scope's records grouped by condition (a standard
-  concept, or the ICD source code of records without one), in the order
-  of each condition's first record, each record as [reference, visit
-  number];
+  concept, the numbers of conditions and records, and the scope's records
+  grouped by condition (a standard concept, or the ICD source code of
+  records without one), in the order of each condition's first record,
+  each record as [reference, visit number], each group with its number of
+  records and its visit numbers;
 * a presence check: the coverage status, the number of records without a
-  standard concept, and the records that match the condition asked about,
-  grouped by condition and match kind in the same way; the set is empty
-  when no record matches. A record matches as the resolver matches it
-  (qa.resolve.match, through generation.shape.asked);
+  standard concept, the number of matching records, and the records that
+  match the condition asked about, grouped by condition and match kind in
+  the same way; the set is empty when no record matches. A record matches
+  as the resolver matches it (qa.resolve.match, through
+  generation.shape.asked);
 * an explanation: the prediction's label, score and logit; the case's
   restrictions; each selected driver, highest score first, with its rank,
   reference and attribution score, its linked records in pre-target
-  visits as [reference, visit number] and its records in the final
-  admission; and how many eligible drivers are not described.
+  visits as [reference, visit number] with their number and visit
+  numbers, and its records in the final admission with their number; and
+  how many eligible drivers are not described.
 
 Names, dates, native identifiers, visit and record metadata and provenance
 are left out: the model refers to records by their reference, and every
 name a response shows is rendered from the canonical bundle. The model
 still writes the complete candidate: its outcome, the records each
-statement cites, the counts and visits, the notices and every wording.
+statement cites, the counts and visits it states, the notices and every
+wording. Version 2 gave no counts or visits; the model was withheld for
+them alone often enough to meet the test of ADR 0014 (decision 2).
 
 answer() writes the correct compact document from the projection alone.
 The default and operator modes compare it with the template's document for
@@ -50,7 +55,7 @@ import sys
 
 from ehr_evidence_app.generation import shape
 
-PROJECTION_VERSION = "projection-v2"
+PROJECTION_VERSION = "projection-v3"
 RECORD_COLUMNS = ["ref", "visit"]
 
 
@@ -90,12 +95,15 @@ def match_of(event, asked):
 
 def grouped(keyed, numbers):
     """Return records grouped by key, in the order of each group's first
-    record, as [{key fields..., "records": [[ref, visit], ...]}]."""
+    record, as [{key fields..., "records": [[ref, visit], ...], "count":
+    their number, "visits": their visit numbers}]."""
     groups = collections.OrderedDict()
     for key, event in keyed:
         groups.setdefault(key, []).append(
             [event.ref, numbers[event.visit_ref]])
-    return [dict(key, records=records) for key, records in groups.items()]
+    return [dict(key, records=records, count=len(records),
+                 visits=sorted({visit for _, visit in records}))
+            for key, records in groups.items()]
 
 
 def qa_view(context):
@@ -108,16 +116,33 @@ def qa_view(context):
                 bundle.coverage.unmapped_events_in_scope,
             "record_columns": RECORD_COLUMNS}
     if context.asked is None:
-        view["conditions"] = grouped(
+        groups = grouped(
             (((condition_of(event),), event) for event in bundle.events),
             numbers)
+        view.update(condition_count=len(groups),
+                    record_count=len(bundle.events), conditions=groups)
         return view
     matching = [(event, match_of(event, context.asked))
                 for event in bundle.events]
-    view["matching"] = grouped(
+    groups = grouped(
         (((condition_of(event), ("match", match)), event)
          for event, match in matching if match), numbers)
+    view.update(matching_count=sum(group["count"] for group in groups),
+                matching=groups)
     return view
+
+
+def driver_block(rank, item, history, final, numbers):
+    """Return a selected driver's block: its rank, reference and score,
+    its linked records in pre-target visits with their number and visit
+    numbers, and its records in the final admission with their number."""
+    past = [[ref, numbers[history[ref].visit_ref]]
+            for ref in item.linked_event_refs if ref in history]
+    context = [ref for ref in item.linked_event_refs if ref in final]
+    return {"rank": rank, "ref": item.ref, "score": item.score,
+            "history": past, "history_count": len(past),
+            "history_visits": sorted({visit for _, visit in past}),
+            "context": context, "context_count": len(context)}
 
 
 def explanation_view(context):
@@ -132,12 +157,7 @@ def explanation_view(context):
                            "score": prediction.score,
                            "logit": prediction.logit},
             "restrictions": list(bundle.restrictions),
-            "drivers": [{"rank": rank, "ref": item.ref, "score": item.score,
-                         "history": [[ref, numbers[history[ref].visit_ref]]
-                                     for ref in item.linked_event_refs
-                                     if ref in history],
-                         "context": [ref for ref in item.linked_event_refs
-                                     if ref in final]}
+            "drivers": [driver_block(rank, item, history, final, numbers)
                         for rank, item in enumerate(
                             shape.selected_drivers(context), 1)],
             "drivers_not_described": shape.omitted_drivers(context)}
@@ -175,13 +195,12 @@ def wording(kind, number=None):
 
 def item(group):
     """Return the compact item of a group of records: its first record, for
-    a presence check its match kind, its records, their visits and their
-    count."""
+    a presence check its match kind, its records, and the visits and count
+    the view gives."""
     records = group["records"]
     values = {"condition": records[0][0],
               "refs": [record[0] for record in records],
-              "visits": sorted({record[1] for record in records}),
-              "count": len(records)}
+              "visits": group["visits"], "count": group["count"]}
     if "match" not in group:
         return shape.row_of(shape.LIST_ROW, **values)
     return shape.row_of(shape.PRESENCE_ROW, match=group["match"], **values)
@@ -209,12 +228,13 @@ def list_answer(projection):
                 reason_codes(projection),
                 "empty": {"wording": wording("list_empty")},
                 "notices": ["absence"]}
-    records = sum(len(group["records"]) for group in groups)
     return {"outcome": "answer", "reason_codes": reason_codes(projection),
             "item_wording": wording("list_item"),
             "items": [item(group) for group in groups],
-            "summary": {"wording": wording("list_summary", len(groups)),
-                        "groups": len(groups), "records": records},
+            "summary": {"wording": wording("list_summary",
+                                           projection["condition_count"]),
+                        "groups": projection["condition_count"],
+                        "records": projection["record_count"]},
             "unmapped": unmapped_line(projection, "list_unmapped"),
             "notices": ["list_complete"]}
 
@@ -232,8 +252,7 @@ def presence_answer(projection):
             "item_wording": wording("presence_item"),
             "items": [item(group) for group in groups],
             "summary": {"wording": wording("presence_summary"),
-                        "matches": sum(len(group["records"])
-                                       for group in groups)}}
+                        "matches": projection["matching_count"]}}
 
 
 def explanation_answer(projection):
@@ -246,10 +265,11 @@ def explanation_answer(projection):
             score=driver["score"],
             history=shape.row_of(
                 shape.HISTORY_ROW, refs=[record for record, _ in history],
-                visits=sorted({number for _, number in history}),
-                count=len(history)) if history else None,
+                visits=driver["history_visits"],
+                count=driver["history_count"]) if history else None,
             context=shape.row_of(shape.CONTEXT_ROW, refs=list(final),
-                                 count=len(final)) if final else None))
+                                 count=driver["context_count"])
+            if final else None))
     left = projection["drivers_not_described"]
     prediction = projection["prediction"]
     return {"outcome": "explanation",

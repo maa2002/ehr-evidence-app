@@ -3,7 +3,7 @@
 messages() returns the two chat messages of one request: the rules every
 answer follows, then one worked example on invented data, and the
 request's task, the shape of its reply and its evidence as the compact
-projection of generation.projection (prompt-v4, ADR 0014). The canonical
+projection of generation.projection (prompt-v5, ADR 0014). The canonical
 bundle is not sent: the projection, structured for its task, leaves out
 serialization redundancy and what the task does not use, and holds
 everything a correct answer needs. A request whose prompt is over its
@@ -26,7 +26,7 @@ import sys
 from ehr_evidence_app.generation import projection, shape
 from ehr_evidence_app.validation import candidate as candidates
 
-PROMPT_VERSION = "prompt-v4"
+PROMPT_VERSION = "prompt-v5"
 RULES = """\
 You write the responses of a research application that answers questions \
 about one patient's recorded conditions, and explains a model's \
@@ -57,13 +57,16 @@ SCOPES = {"pre_target_history": "the pre-target history (the visits "
           "case_visits": "all case visits, including the final admission"}
 GROUPS = """\
 Each group names its condition, a standard concept (concept_id) or, for \
-records without one, an ICD source code (source), and lists its records \
-as [ref, visit], the visit being the record's visit number."""
+records without one, an ICD source code (source), lists its records as \
+[ref, visit], the visit being the record's visit number, and gives their \
+number (count) and their visit numbers (visits)."""
 LIST_TASK = """\
 Task: list every condition recorded within {scope}."""
 LIST_VIEW = """\
-The view groups the scope's records by condition ("conditions"), in the \
-order of each condition's first record. """ + GROUPS
+The view gives the number of conditions (condition_count) and of \
+records (record_count) within the scope, and groups the scope's records by \
+condition ("conditions"), in the order of each condition's first record. \
+""" + GROUPS
 LIST_ANSWER = """\
 Reply shape, if "conditions" holds groups: {{"outcome": "answer", \
 "reason_codes": [...], \
@@ -89,11 +92,12 @@ recorded there."""
 PRESENCE_TASK = """\
 Task: say whether {label} is recorded within {scope}.
 
-The view lists the scope's records that count as the condition asked \
-about ("matching"), grouped by condition and match kind, in the order of \
-each group's first record. """ + GROUPS + """ Each group also states its \
-match kind (match). When "matching" is empty, no record within the scope \
-counts as the condition."""
+The view gives the number of the scope's records that count as the \
+condition asked about (matching_count) and lists them ("matching"), \
+grouped by condition and match kind, in the order of each group's first \
+record. """ + GROUPS + """ Each group also states its match kind (match). \
+When "matching" is empty, no record within the scope counts as the \
+condition."""
 PRESENCE_ANSWER = """\
 Reply shape, if records match: {{"outcome": "answer", "reason_codes": \
 [...], "item_wording": ..., "items": [...], "summary": {{"wording": ..., \
@@ -125,9 +129,10 @@ The view gives the prediction (its label, score and logit), the case's \
 restrictions, and the drivers to describe, highest score first, each with \
 its rank, ref and attribution score, its history (its records in visits \
 before the final admission, as [ref, visit], the visit being the record's \
-visit number) and its context (its records in the final admission, as \
-refs); and how many other eligible drivers are not described \
-(drivers_not_described).
+visit number), with their number (history_count) and visit numbers \
+(history_visits), and its context (its records in the final admission, as \
+refs), with their number (context_count); and how many other eligible \
+drivers are not described (drivers_not_described).
 
 Reply shape: {{"outcome": "explanation", "reason_codes": the \
 restrictions, "prediction": {{"wording": ..., "label": ..., "score": ..., \

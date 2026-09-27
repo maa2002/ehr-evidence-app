@@ -95,13 +95,22 @@ class ProjectionTests(unittest.TestCase):
                               for item in items])
             self.assertNotIn("counts_as", view)
 
-    def test_views_state_no_answer(self):
-        """No view states a count, a set of visits or an outcome."""
+    def test_views_count_their_records_but_state_no_outcome(self):
+        """Each group and driver block gives the number and visits of the
+        records it lists; no view states an outcome."""
         for context, _ in PAIRS:
-            text = projection.text(projection.view(context))
-            for key in ('"count"', '"visits"', '"groups"', '"matches"',
-                        '"outcome"'):
-                self.assertNotIn(key, text, context.task)
+            view = projection.view(context)
+            self.assertNotIn('"outcome"', projection.text(view))
+            groups = view.get("conditions", view.get("matching", []))
+            for group in groups:
+                self.assertEqual(group["count"], len(group["records"]))
+                self.assertEqual(group["visits"], sorted(
+                    {visit for _, visit in group["records"]}))
+            for driver in view.get("drivers", []):
+                self.assertEqual(driver["history_count"],
+                                 len(driver["history"]))
+                self.assertEqual(driver["context_count"],
+                                 len(driver["context"]))
 
     def test_command(self):
         """The default mode passes; the real mode needs a case set and
