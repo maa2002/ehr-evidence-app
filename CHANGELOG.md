@@ -84,7 +84,10 @@ task, and the templates are its fallback.
   benchmark names a field, notice or reason code as added or left out,
   splits lists and presence checks by whether their scope has records
   without a standard concept, and counts the same outputs under lower
-  output and time limits (`--within`). On all 430 requests of
+  output and time limits (`--within`). It scores every document against
+  the correct one with precision, recall and F1 of conditions, records,
+  drivers and history and context lines, counts the right outcomes, and
+  names what the rows of a withheld document are. On all 430 requests of
   `dev-30-v1` BF16 with the mixed placement released 314 and NF4 172
   (NF4 minus BF16 -33.0 points, 95% interval -37.4 to -28.4), so the
   precision stays BF16.
@@ -94,6 +97,11 @@ task, and the templates are its fallback.
   (`scope_violated`), a notice stated twice and statements out of their
   answer's order (`structure_invalid`), and a condition named twice for
   one match kind in a presence answer (`claim_unsupported`).
+
+- The metrics of the final evaluation, with their denominators and
+  empty-set conventions, a prose rubric and the paired comparison, are
+  proposed for agreement before Phase 9
+  ([ADR 0016](docs/decisions/0016-evaluation-metrics.md)).
 
 ### Changed
 

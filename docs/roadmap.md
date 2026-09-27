@@ -140,6 +140,11 @@ closes on the project owner's review.
 
 ## Phase 9. Evaluation
 
+The metrics, their denominators and empty-set conventions, the prose
+rubric and the paired comparison are proposed in
+[ADR 0016](decisions/0016-evaluation-metrics.md) for the project owner's
+agreement, and frozen before any request of `eval-100-v1` is written.
+
 - 53 Partition downstream cases
 - 54 Prepare independent QA references
 - 55 Prepare explanation expectations and challenges
