@@ -3,7 +3,7 @@
 messages() returns the two chat messages of one request: the rules every
 answer follows, then one worked example on invented data, and the
 request's task, the shape of its reply and its evidence as the compact
-projection of generation.projection (prompt-v5, ADR 0014). The canonical
+projection of generation.projection (prompt-v6, ADR 0014). The canonical
 bundle is not sent: the projection, structured for its task, leaves out
 serialization redundancy and what the task does not use, and holds
 everything a correct answer needs. A request whose prompt is over its
@@ -26,7 +26,7 @@ import sys
 from ehr_evidence_app.generation import projection, shape
 from ehr_evidence_app.validation import candidate as candidates
 
-PROMPT_VERSION = "prompt-v5"
+PROMPT_VERSION = "prompt-v6"
 RULES = """\
 You write the responses of a research application that answers questions \
 about one patient's recorded conditions, and explains a model's \
@@ -196,13 +196,47 @@ def task_text(context):
                        + [example_wordings(context)])
 
 
+def without_standard_concept(context):
+    """Return an invented request whose last record has lost its standard
+    concept, with its template: the list or presence example then shows
+    how records without one are grouped by their ICD code and disclosed."""
+    from ehr_evidence_app.evidence import contracts, schema
+    from ehr_evidence_app.qa import answer, resolve, suite, templates
+    bundle = context.bundle
+    last = bundle.events[-1]
+    code = last.source_concept.code if last.source_concept else "SYN"
+    events = bundle.events[:-1] + (last.model_copy(update={
+        "concept": schema.Concept(concept_id=0, name_status="unmapped",
+                                  source_code=code)}),)
+    bundle = bundle.model_copy(update={
+        "events": events, "coverage": bundle.coverage.model_copy(update={
+            "unmapped_events_in_scope": sum(
+                event.concept.concept_id == 0 for event in events)})})
+    request = context.request
+    ref = contracts.BundleRef(bundle_id=bundle.bundle_id,
+                              sha256=context.bundle_sha256)
+    if context.task == "condition_list":
+        template, _ = templates.list_candidate(
+            request.request_id, request.case, request.scope, bundle, ref)
+        return shape.Context(request, bundle, context.bundle_sha256), template
+    vocabulary = suite.synthetic_vocabulary()
+    resolution = resolve.Resolution("", "resolved", "concepts",
+                                    concepts=context.asked.name.concepts)
+    template = templates.presence_candidate(
+        request.request_id, request.case, request.scope, bundle, ref,
+        resolution, answer.record_matches(bundle, resolution, vocabulary))
+    return shape.Context(request, bundle, context.bundle_sha256, shape.asked(
+        resolution, bundle, vocabulary)), template
+
+
 @functools.lru_cache(maxsize=None)
 def examples():
     """Return the worked examples, on invented data: for a list and a
     presence check, the invented answer that groups the most records into
-    the most items (the smallest such); for an explanation, the invented
-    one describing two of its drivers and leaving one out (keyed True),
-    and describing all of them (keyed False)."""
+    the most items (the smallest such), with its last record's standard
+    concept removed so that the example discloses it; for an explanation,
+    the invented one describing two of its drivers and leaving one out
+    (keyed True), and describing all of them (keyed False)."""
     from ehr_evidence_app.validation import explanation
     found = {}
     for context, template in shape.synthetic_contexts():
@@ -225,6 +259,9 @@ def examples():
                 len(projection.text(projection.view(context))))
         if context.task not in found or rank < found[context.task][0]:
             found[context.task] = (rank, context, template)
+    for task in ("condition_list", "condition_presence"):
+        rank, context, _ = found[task]
+        found[task] = (rank,) + without_standard_concept(context)
     return {key: (context, template)
             for key, (_, context, template) in found.items()}
 

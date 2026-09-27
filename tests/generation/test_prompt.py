@@ -49,6 +49,11 @@ class PromptTests(unittest.TestCase):
                 self.assertGreater(max(len(item.refs)
                                        for item in template.statements
                                        if item.kind.endswith("_item")), 1)
+                # Each discloses a record without a standard concept.
+                self.assertEqual(template.reason_codes,
+                                 ("unmapped_records_in_scope",))
+                self.assertEqual(projection.view(context)[
+                    "records_without_standard_concept"], 1)
         for context, _ in PAIRS:
             if context.task != "prediction_explanation":
                 continue
