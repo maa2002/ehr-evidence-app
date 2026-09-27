@@ -64,26 +64,22 @@ Each group names its condition, a standard concept (concept_id) or, for \
 records without one, an ICD source code (source), lists its records as \
 [ref, visit], the visit being the record's visit number, and gives their \
 number (count) and their visit numbers (visits)."""
-LIST_GROUPS = """\
-Each group names its condition, a standard concept (concept_id) or, for \
-records without one, an ICD source code (source), and gives its records' \
-refs (refs), their visit numbers (visits) and their number (count)."""
 LIST_TASK = """\
 Task: list every condition recorded within {scope}."""
 LIST_VIEW = """\
 The view gives the number of conditions (condition_count) and of \
 records (record_count) within the scope, and groups the scope's records by \
 condition ("conditions"), in the order of each condition's first record. \
-""" + LIST_GROUPS
+""" + GROUPS
 LIST_ANSWER = """\
 Reply shape, if "conditions" holds groups: {{"outcome": "answer", \
 "reason_codes": [...], \
 "item_wording": ..., "items": [...], "summary": {{"wording": ..., \
 "groups": ..., "records": ...}}, "unmapped": ..., "notices": \
 ["list_complete"]}}.
-- items: one per group, in the view's order: [the first of its refs, its \
-refs, its visits, its count]. A group is one item however many visits \
-its records lie in.
+- items: one per group, in the view's order: [the ref of the group's \
+first record, the refs of all its records, their visit numbers ascending \
+and each once, their number].
 - item_wording, used for every item: begins with {{condition}} and also \
 has {{count}} and {{visits}}.
 - summary: groups is the number of items and records the number of refs \

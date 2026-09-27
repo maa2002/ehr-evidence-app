@@ -71,14 +71,14 @@ class ProjectionTests(unittest.TestCase):
                 continue
             view = projection.view(context)
             refs = [ref for group in view["conditions"]
-                    for ref in group["refs"]]
+                    for ref, _ in group["records"]]
             self.assertEqual(sorted(refs), sorted(
                 event.ref for event in context.bundle.events))
             items = [item for item in template.statements
                      if item.kind == "list_item"]
-            self.assertEqual([group["refs"] for group in view["conditions"]],
+            self.assertEqual([[ref for ref, _ in group["records"]]
+                              for group in view["conditions"]],
                              [list(item.refs) for item in items])
-            self.assertNotIn("record_columns", view)
 
     def test_presence_views_hold_the_matching_records(self):
         """A presence check's view holds exactly the records that match
@@ -104,16 +104,10 @@ class ProjectionTests(unittest.TestCase):
             view = projection.view(context)
             self.assertNotIn('"outcome"', projection.text(view))
             groups = view.get("conditions", view.get("matching", []))
-            if groups:
-                numbers = projection.visit_numbers(context.bundle)
-                visits = {event.ref: numbers[event.visit_ref]
-                          for event in context.bundle.events}
             for group in groups:
-                refs = group["refs"] if "refs" in group else [
-                    ref for ref, _ in group["records"]]
-                self.assertEqual(group["count"], len(refs))
+                self.assertEqual(group["count"], len(group["records"]))
                 self.assertEqual(group["visits"], sorted(
-                    {visits[ref] for ref in refs}))
+                    {visit for _, visit in group["records"]}))
             for driver in view.get("drivers", []):
                 for part in ("history", "context"):
                     block = driver[part]

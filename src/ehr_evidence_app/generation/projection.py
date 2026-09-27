@@ -12,14 +12,12 @@ without the outcome of the answer:
   concept, the numbers of conditions and records, and the scope's records
   grouped by condition (a standard concept, or the ICD source code of
   records without one), in the order of each condition's first record,
-  each group with its records' references, their visit numbers and their
-  number;
+  each record as [reference, visit number], each group with its number of
+  records and its visit numbers;
 * a presence check: the coverage status, the number of records without a
   standard concept, the number of matching records, and the records that
   match the condition asked about, grouped by condition and match kind in
-  the same order, each record as [reference, visit number], each group
-  with its number of records and its visit numbers; the set is empty
-  when no record matches. A record matches
+  the same way; the set is empty when no record matches. A record matches
   as the resolver matches it (qa.resolve.match, through
   generation.shape.asked);
 * an explanation: the prediction's label, score and logit; the case's
@@ -44,10 +42,8 @@ history and context as the reply states them, and null when there are
 none: with an empty context given as [], the model wrote a context line
 for drivers that have none, most often with the driver's history
 records, and it cited part of a history given as [reference, visit
-number] pairs. It also gives a list's groups as their references, visit
-numbers and number: with records given as [reference, visit number]
-pairs, the model wrote a condition's records of each visit as an item of
-its own.
+number] pairs. A list's groups given the same way, as references, visit
+numbers and number, were tried and not kept (ADR 0017).
 
 answer() writes the correct compact document from the projection alone.
 The default and operator modes compare it with the template's document for
@@ -120,16 +116,6 @@ def grouped(keyed, numbers):
             for key, records in groups.items()]
 
 
-def flat(group):
-    """Return a list's group with its records as references: its
-    condition, its records' references, their visit numbers and their
-    number, in the order an item states them."""
-    key = {name: value for name, value in group.items()
-           if name not in ("records", "count", "visits")}
-    return dict(key, refs=[ref for ref, _ in group["records"]],
-                visits=group["visits"], count=group["count"])
-
-
 def qa_view(context):
     """Return the projection of a list or presence request."""
     bundle = context.bundle
@@ -137,15 +123,15 @@ def qa_view(context):
     view = {"task": context.task,
             "coverage": bundle.coverage.status,
             "records_without_standard_concept":
-                bundle.coverage.unmapped_events_in_scope}
+                bundle.coverage.unmapped_events_in_scope,
+            "record_columns": RECORD_COLUMNS}
     if context.asked is None:
-        groups = [flat(group) for group in grouped(
+        groups = grouped(
             (((condition_of(event),), event) for event in bundle.events),
-            numbers)]
+            numbers)
         view.update(condition_count=len(groups),
                     record_count=len(bundle.events), conditions=groups)
         return view
-    view["record_columns"] = RECORD_COLUMNS
     matching = [(event, match_of(event, context.asked))
                 for event in bundle.events]
     groups = grouped(
@@ -225,9 +211,9 @@ def item(group):
     """Return the compact item of a group of records: its first record, for
     a presence check its match kind, its records, and the visits and count
     the view gives."""
-    refs = group["refs"] if "refs" in group else [
-        record[0] for record in group["records"]]
-    values = {"condition": refs[0], "refs": list(refs),
+    records = group["records"]
+    values = {"condition": records[0][0],
+              "refs": [record[0] for record in records],
               "visits": group["visits"], "count": group["count"]}
     if "match" not in group:
         return shape.row_of(shape.LIST_ROW, **values)
