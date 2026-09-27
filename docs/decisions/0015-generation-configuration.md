@@ -1,8 +1,6 @@
 # 0015. The generation configuration (Phase 7)
 
-Status: proposed (2026-09-27): decisions 1 and 2 are in force; the limits
-are set, and K and the limits frozen, by the rules of decisions 3 and 4
-once the rerun they name is measured. Amends
+Status: accepted (2026-09-28). Amends
 [ADR 0014](0014-structured-evidence.md), decision 3: the worked examples.
 
 ## Context
@@ -25,10 +23,10 @@ The run showed two more things.
   have such records within their scope and 55 have none; both precisions
   released exactly the 80, and every "not recorded" either wrote was 86
   to 88 tokens long, the length of the reply with the disclosure (the
-  shortest correct one is 46). The model disclosed unmapped records
-  whether the scope had any or not, as every worked example it was shown
-  did. The earlier reading of the 33 sampled requests, that such replies
-  left their disclosure out, had the direction wrong.
+  shortest correct presence reply is 46). The model disclosed unmapped
+  records whether the scope had any or not, as every worked example it
+  was shown did. The earlier reading of the 33 sampled requests, that
+  such replies left their disclosure out, had the direction wrong.
 - **Fifteen BF16 requests fell back at a limit.** 10 lists whose correct
   document alone exceeds 768 tokens were never written, 4 lists were cut
   off at 768 tokens and 1 explanation ran past 120 seconds. Measured again
@@ -86,10 +84,41 @@ The run showed two more things.
 
 ## Consequences
 
-- The precision is settled for Phase 9. NF4 was no faster on the whole
-  set for lists (median 33.0 seconds against 32.9) and slower for
-  presence checks (12.7 against 11.3), faster for explanations only (50.9
-  against 64.8), and used 3.6 to 3.8 GiB of GPU memory against 6.3 to 6.6.
-- The rerun's results, the limits the rule gives and the frozen
-  configuration are recorded here when it is measured; until then the
-  configured limits and the configuration of K are unchanged.
+- The rerun at `f54a152` released 378 of the 430 requests of `dev-30-v1`
+  as the model wrote them under 2,048 tokens and 300 seconds; counted on
+  the same outputs, 377 within 768 tokens and 180 seconds, and 377 within
+  768 tokens and 120 seconds. The larger output limit adds 1 request, 0.2
+  points against the 2 required, so the output limit stays at 768 tokens
+  and the time limit becomes 180 seconds. Five lists ran past 300 seconds
+  at that run's speed; had all five been released, the gain would still
+  have been 1.4 points.
+- Frozen for the final evaluation: BF16 with the mixed placement, K = 5
+  (`config/explanation.json`) and the limits of 16,384 prompt tokens, 768
+  output tokens and 180 seconds (`config/execution_limits.json`). The
+  prompt, the projection, the document's shape and the validator are
+  locked with them before the final evaluation (ADR 0014, decision 6).
+- With this configuration the model's candidates are released for 377 of
+  the 430 requests of `dev-30-v1` (87.7%, 95% interval 84.2 to 90.5) and
+  157 of the 182 of `pilot-10-v1` (86.3%, 80.5 to 90.5), which was not
+  used to tune the generation. By stratum, `dev-30-v1` then
+  `pilot-10-v1`: lists 98 of 134 and 39 of 56; empty lists 1 of 1 and 2
+  of 2; presence checks of a recorded condition 130 of 134 and 54 of 56,
+  of a condition recorded elsewhere 135 of 135 and 58 of 58;
+  explanations 13 of 26 and 4 of 10.
+- Every "not recorded" is now released, whether or not its scope has
+  records without a standard concept. The explanations, whose prompts
+  did not change, gave the same outcomes, findings and output tokens as
+  in the paired run: greedy decoding reproduces its output.
+- What is left is lists, withheld mostly for items repeated, out of order
+  or left out and their records, counts and visits, with the longest at
+  the output limit; explanations, for context rows stated for drivers
+  that have none and history rows that miscount or cite other records;
+  and 4 presence answers with an item repeated.
+- BF16's speed follows the processor, which runs its output layer and the
+  grammar: the rerun wrote every task at 5.0 to 5.6 tokens a second
+  (median), where the paired run wrote lists and presence checks at 8.0
+  to 8.7. At the slowest rate measured, 4.8 tokens a second, 768 tokens
+  take 160 seconds. NF4 was no faster on the whole development set for
+  lists (median 33.0 seconds against 32.9) and slower for presence checks
+  (12.7 against 11.3), faster for explanations only (50.9 against 64.8),
+  and used 3.6 to 3.8 GiB of GPU memory against 6.3 to 6.6.

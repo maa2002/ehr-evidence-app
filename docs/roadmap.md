@@ -100,9 +100,11 @@ language model writes the complete candidate of every response from
 evidence, from a deterministic view of the evidence structured for its
 task, and the templates are its fallback. On the whole development set
 BF16 with the mixed placement released 314 of 430 requests and NF4 172,
-so the precision stays BF16. Milestone 3 stays open until the rerun with
-`prompt-v8` is measured and K and the limits are frozen by the rules of
-ADR 0015.
+so the precision stays BF16. With `prompt-v8`, K = 5 and the limits
+frozen by ADR 0015 (16,384 prompt tokens, 768 output tokens, 180
+seconds), the model's candidates are released for 377 of the 430
+development requests and 157 of the 182 pilot requests; milestone 3
+closes on the project owner's review.
 
 - 41 Define the generation adapter (done: `generation.shape`,
   `generation.projection`, `generation.prompt` and `generation.adapter`;
@@ -116,15 +118,16 @@ ADR 0015.
 - 43 Enforce execution limits (done: prompt, output, time, attempt and
   concurrency limits and the fallback, each reason with its category)
 - 44 Complete controlled QA (in progress: the model writes list and
-  presence answers through the adapter; measured on development
-  requests)
+  presence answers through the adapter; measured on the development case
+  sets; closes with milestone 3)
 - 45 Complete controlled explanations (in progress: the model writes
-  explanations of the selected drivers through the adapter; the number
-  of drivers is frozen before the final evaluation)
+  explanations of the 5 selected drivers through the adapter, the number
+  frozen; closes with milestone 3)
 - 46 Add protected runtime records
 - 46.1 Measure the model on the development case sets (in progress:
-  token distributions, the benchmark and the paired precision
-  comparison)
+  token distributions, the benchmark, the paired precision comparison
+  and the configuration frozen for the final evaluation; closes with
+  milestone 3)
 
 ## Phase 8. API and interface
 

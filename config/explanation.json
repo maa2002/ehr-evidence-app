@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "purpose": "How an explanation selects the drivers it describes (Phase 7; ADR 0013). Read by ehr_evidence_app.validation.explanation. The eligible attributions with the highest scores are described, highest first, ties in the bundle's order, at most the limit; every attribution stays in the evidence bundle for inspection. The limit is measured on the development case sets and frozen before the final evaluation.",
+  "purpose": "How an explanation selects the drivers it describes (Phase 7; ADR 0013). Read by ehr_evidence_app.validation.explanation. The eligible attributions with the highest scores are described, highest first, ties in the bundle's order, at most the limit; every attribution stays in the evidence bundle for inspection. The limit was chosen on the development case sets and is frozen for the final evaluation (ADR 0015).",
   "drivers": {
     "selection": "highest_eligible_attribution",
     "limit": 5,
-    "frozen": false
+    "frozen": true
   }
 }

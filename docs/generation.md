@@ -116,8 +116,8 @@ eligible drivers are not described and kept in the evidence, and every
 attribution stays in the evidence bundle for inspection. The number is
 measured over candidate values on the development case sets (see
 [below](#measurement-on-this-laptop)) and frozen before the final
-evaluation, without the evaluation case set; until then it is 5, marked
-not frozen (ADR 0014).
+evaluation, without the evaluation case set: it is 5, frozen since
+ADR 0015.
 
 ## The schema
 
@@ -234,13 +234,16 @@ may lower them (see [evidence.md](evidence.md#contracts)):
 | --- | --- | --- | --- |
 | `max_prompt_tokens` | 16,384 | 131,072 | A longer prompt falls back |
 | `max_output_tokens` | 768 | 4,096 | Output cut off here is never read |
-| `max_request_seconds` | 120 | 600 | Later output is not read |
+| `max_request_seconds` | 180 | 600 | Later output is not read |
 | `max_generation_attempts` | 1 | 3 | Only a failed backend is tried again |
 | `max_concurrent_requests` | 1 | 8 | A further request falls back as busy |
 
 The limits change only after the token distributions are measured on the
-representation the model reads (ADR 0013), and by the project owner's
-decision; the measurements are below.
+representation the model reads (ADR 0013). They were set on the
+development case sets by the rule of ADR 0015 and are frozen for the
+final evaluation, with the time limit raised from 120 seconds so that
+output within the output limit is not ended by time at BF16's slowest
+measured rate; the measurements are below.
 
 ## Scripted runs
 
@@ -437,9 +440,8 @@ so their timings are not used:
 
 These runs used `candidate-shape-v3` and `prompt-v3`. Fewer drivers were
 released more often, but the numbers are too small to choose K by. With
-K = 5 or fewer every development explanation fits the output limit, and
-K is 5, marked not frozen, until it is chosen and frozen before the
-final evaluation (ADR 0014).
+K = 5 or fewer every development explanation fits the output limit; K = 5
+was frozen with the limits (ADR 0015).
 
 ### Structured evidence
 
@@ -577,6 +579,71 @@ BF16 15 requests; the rule that sets them is fixed in ADR 0015
 request of `dev-30-v1` again with `prompt-v8` under 2,048 output tokens
 and 300 seconds, and the same outputs are counted under 768 tokens and
 180 seconds.
+
+### The configuration for the final evaluation
+
+BF16 wrote every request of `dev-30-v1` and `pilot-10-v1` again at
+`f54a152` (`prompt-v8`) under 2,048 output tokens and 300 seconds, and the
+same outputs were counted under 768 tokens with 180 and with 120 seconds
+(`--within`). `pilot-10-v1` was not used to tune the generation, so its
+rates are the less optimistic ones:
+
+| Requests | `dev-30-v1`, 2,048 tokens and 300 s | 768 tokens and 180 s | `pilot-10-v1`, 2,048 tokens and 300 s | 768 tokens and 180 s |
+| --- | --- | --- | --- | --- |
+| Lists | 99 of 134 | 98 | 40 of 56 | 39 |
+| Empty lists | 1 of 1 | 1 | 2 of 2 | 2 |
+| Presence, recorded | 130 of 134 | 130 | 54 of 56 | 54 |
+| Presence, recorded elsewhere | 135 of 135 | 135 | 58 of 58 | 58 |
+| Explanations | 13 of 26 | 13 | 4 of 10 | 4 |
+| All | 378 of 430 | 377 (87.7%; 95% CI 84.2 to 90.5) | 158 of 182 | 157 (86.3%; 80.5 to 90.5) |
+
+768 tokens with 120 seconds released the same as with 180. The larger
+output limit adds 1 request of `dev-30-v1`, 0.2 points against the 2 the
+rule of ADR 0015 (decision 3) requires, so the output limit stays at 768
+tokens and the time limit is 180 seconds; five lists ran past 300 seconds
+at this run's speed, and had all five been released the gain would still
+have been 1.4 points. Frozen for the final evaluation: BF16 with the
+mixed placement, K = 5 and the limits of 16,384 prompt tokens, 768
+output tokens and 180 seconds. The prompt, the projection, the shape and
+the validator are locked with them before the final evaluation (ADR
+0014, decision 6); a change before then is a new version, measured again.
+
+With `prompt-v8` every presence check answered "not recorded" was
+released: the 80 of `dev-30-v1` with records without a standard concept
+in scope, as before, and the 55 without, none of which had been. Within
+768 tokens and 120 seconds, lists rose from 93 to 98 and presence checks
+of a recorded condition from 127 to 130. Split by whether the scope has
+records without a standard concept: lists 51 of 80 with and 48 of 54
+without in `dev-30-v1` (16 of 31 and 24 of 25 in `pilot-10-v1`), presence
+checks of a recorded condition 80 of 80 and 50 of 54 (31 of 31 and 23 of
+25). The explanations, whose prompts did not change, gave the same
+outcomes, findings and output tokens as in the paired run: greedy
+decoding reproduces its output.
+
+What the configuration does not release on `dev-30-v1` (53 requests):
+
+- lists (36): at 2,048 tokens, 22 withheld for items repeated, out of
+  order or left out and their records, counts and visits, 3 repeating an
+  item against their schema, 1 citing a record the bundle does not hold,
+  5 over 300 seconds and 4 running to the output limit; at 768 tokens,
+  one more whose reply is longer;
+- presence checks of a recorded condition (4): an item repeated, with
+  records, counts and visits that do not agree;
+- explanations (13): 12 withheld, above all for context rows stated for
+  drivers that have none (7) and history rows that miscount or cite
+  other records, and 1 that runs on.
+
+On `pilot-10-v1` the explanations stated 21 of the 36 available history
+lines and 11 of 14 context lines, and those released 13 of 13 and 4 of 5.
+
+This run wrote every task at 5.0 to 5.6 tokens a second (median), where
+the paired run's BF16 wrote lists and presence checks at 8.0 to 8.7:
+BF16's output layer and the grammar run on the processor, and its speed
+follows the processor's state. At the slowest rate measured, 4.8 tokens
+a second, 768 tokens take 160 seconds, within the time limit. Medians in
+this run: lists 48.9 seconds, presence checks 15.8 to 16.6, explanations
+66.5; peak GPU memory 6,480 to 6,905 MiB, with no request out of
+memory.
 
 ## Commands
 

@@ -67,8 +67,8 @@ task, and the templates are its fallback.
   to the runtime root.
 - Driver selection for explanations (`config/explanation.json`): an
   explanation describes the eligible drivers with the highest attribution
-  scores, highest first, at most a configured number (5 until it is
-  frozen before the final evaluation), and a new approved notice states
+  scores, highest first, at most a configured number (5, frozen for the
+  final evaluation), and a new approved notice states
   how many more are kept in the evidence; the gate requires exactly the
   selected drivers and that number.
 - Development measurement (`generation.measure`, work item 46.1): the
@@ -97,6 +97,13 @@ task, and the templates are its fallback.
 
 ### Changed
 
+- Execution limits: `max_request_seconds` is 180 (was 120), so that output
+  within the 768-token limit is not ended by time at BF16's slowest
+  measured rate; the prompt, output and time limits and the number of
+  drivers an explanation describes are frozen for the final evaluation
+  ([ADR 0015](docs/decisions/0015-generation-configuration.md)). With
+  this configuration the model's candidates are released for 377 of the
+  430 requests of `dev-30-v1` and 157 of the 182 of `pilot-10-v1`.
 - Candidate contract version 1.1: the `drivers_omitted` notice and its
   `omitted` slot; the notice introducing the drivers names them as those
   with the highest attribution scores, in order of their scores.
