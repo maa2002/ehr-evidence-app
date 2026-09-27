@@ -93,13 +93,16 @@ Described in [validation.md](validation.md) and decided in
 
 Described in [generation.md](generation.md) and decided in
 [ADR 0012](decisions/0012-generation-design.md),
-[ADR 0013](decisions/0013-compact-generation.md) and
-[ADR 0014](decisions/0014-structured-evidence.md). In progress: the
+[ADR 0013](decisions/0013-compact-generation.md),
+[ADR 0014](decisions/0014-structured-evidence.md) and
+[ADR 0015](decisions/0015-generation-configuration.md). In progress: the
 language model writes the complete candidate of every response from
 evidence, from a deterministic view of the evidence structured for its
-task, and the templates are its fallback. Milestone 3 stays open until
-the paired development measurement is satisfactory and precision, K and
-the limits are frozen.
+task, and the templates are its fallback. On the whole development set
+BF16 with the mixed placement released 314 of 430 requests and NF4 172,
+so the precision stays BF16. Milestone 3 stays open until the rerun with
+`prompt-v8` is measured and K and the limits are frozen by the rules of
+ADR 0015.
 
 - 41 Define the generation adapter (done: `generation.shape`,
   `generation.projection`, `generation.prompt` and `generation.adapter`;

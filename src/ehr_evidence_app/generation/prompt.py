@@ -1,9 +1,13 @@
 """The prompt of a model-written candidate (work item 41).
 
 messages() returns the two chat messages of one request: the rules every
-answer follows, then one worked example on invented data, and the
-request's task, the shape of its reply and its evidence as the compact
-projection of generation.projection (prompt-v7, ADR 0014). The canonical
+answer follows, then worked examples on invented data, and the request's
+task, the shape of its reply and its evidence as the compact projection
+of generation.projection (prompt-v8, ADR 0015). The examples match the
+request where its evidence decides the shape of every correct reply: they
+disclose a record without a standard concept exactly when the request's
+view has one, and an explanation's leaves drivers out exactly when the
+request does. The canonical
 bundle is not sent: the projection, structured for its task, leaves out
 serialization redundancy and what the task does not use, and holds
 everything a correct answer needs. A request whose prompt is over its
@@ -26,7 +30,7 @@ import sys
 from ehr_evidence_app.generation import projection, shape
 from ehr_evidence_app.validation import candidate as candidates
 
-PROMPT_VERSION = "prompt-v7"
+PROMPT_VERSION = "prompt-v8"
 RULES = """\
 You write the responses of a research application that answers questions \
 about one patient's recorded conditions, and explains a model's \
@@ -195,24 +199,26 @@ def task_text(context):
                        + [example_wordings(context)])
 
 
-def without_standard_concept(context, unmatched=False):
-    """Return an invented request whose last record has lost its standard
-    concept, with its template: the list or presence example then shows
-    how records without one are grouped by their ICD code and disclosed.
-    With unmatched, the presence question asks about a condition none of
-    the records match, so that "not recorded" is disclosed too."""
+def variant(context, unmapped=False, unmatched=False):
+    """Return an invented request made from a worked example's, with its
+    template. With unmapped, its last record has lost its standard
+    concept, so that the example shows how records without one are
+    grouped by their ICD code and disclosed; with unmatched, the presence
+    question asks about a condition none of the records match, so that
+    the example answers "not recorded"."""
     from ehr_evidence_app.evidence import contracts, schema
     from ehr_evidence_app.qa import answer, resolve, suite, templates
     bundle = context.bundle
-    last = bundle.events[-1]
-    code = last.source_concept.code if last.source_concept else "SYN"
-    events = bundle.events[:-1] + (last.model_copy(update={
-        "concept": schema.Concept(concept_id=0, name_status="unmapped",
-                                  source_code=code)}),)
-    bundle = bundle.model_copy(update={
-        "events": events, "coverage": bundle.coverage.model_copy(update={
-            "unmapped_events_in_scope": sum(
-                event.concept.concept_id == 0 for event in events)})})
+    if unmapped:
+        last = bundle.events[-1]
+        code = last.source_concept.code if last.source_concept else "SYN"
+        events = bundle.events[:-1] + (last.model_copy(update={
+            "concept": schema.Concept(concept_id=0, name_status="unmapped",
+                                      source_code=code)}),)
+        bundle = bundle.model_copy(update={
+            "events": events, "coverage": bundle.coverage.model_copy(update={
+                "unmapped_events_in_scope": sum(
+                    event.concept.concept_id == 0 for event in events)})})
     request = context.request
     ref = contracts.BundleRef(bundle_id=bundle.bundle_id,
                               sha256=context.bundle_sha256)
@@ -238,14 +244,15 @@ def without_standard_concept(context, unmatched=False):
 
 @functools.lru_cache(maxsize=None)
 def examples():
-    """Return the worked examples, on invented data: for a list and a
+    """Return the worked examples, on invented data. For a list and a
     presence check, the invented answer that groups the most records into
-    the most items (the smallest such), with its last record's standard
-    concept removed so that the example discloses it, and for a presence
-    check also its "not recorded" for a condition none of the records
-    match (keyed ("condition_presence", False)); for an explanation, the
-    invented one describing two of its drivers and leaving one out (keyed
-    True), and describing all of them (keyed False)."""
+    the most items (the smallest such), keyed (task, "answer", unmapped),
+    and for a presence check also its "not recorded" for a condition none
+    of the records match, keyed (task, "not_recorded", unmapped); with
+    unmapped, its last record's standard concept is removed so that the
+    example discloses it. For an explanation, the invented one describing
+    two of its drivers and leaving one out (keyed True), and describing
+    all of them (keyed False)."""
     from ehr_evidence_app.validation import explanation
     found = {}
     for context, template in shape.synthetic_contexts():
@@ -269,26 +276,35 @@ def examples():
         if context.task not in found or rank < found[context.task][0]:
             found[context.task] = (rank, context, template)
     for task in ("condition_list", "condition_presence"):
-        rank, context, _ = found[task]
-        found[task] = (rank,) + without_standard_concept(context)
-    found[("condition_presence", False)] = (0,) + without_standard_concept(
-        found["condition_presence"][1], unmatched=True)
+        _, context, _ = found.pop(task)
+        for unmapped in (False, True):
+            for outcome in replies(task):
+                found[(task, outcome, unmapped)] = (0,) + variant(
+                    context, unmapped, outcome == "not_recorded")
     return {key: (context, template)
             for key, (_, context, template) in found.items()}
 
 
+def replies(task):
+    """Return the outcomes of a list or presence check's worked examples:
+    a presence check is shown both its answer and its "not recorded",
+    whatever the evidence."""
+    return ("answer", "not_recorded") if task == "condition_presence" else (
+        "answer",)
+
+
 def examples_of(context):
-    """Return the worked examples of a request: its task's; for a presence
-    check both its answer and its "not recorded", whatever the evidence;
-    for an explanation the one that leaves drivers out exactly when the
+    """Return the worked examples of a request: its task's, disclosing a
+    record without a standard concept exactly when the request's view has
+    one; for a presence check both its answer and its "not recorded"; for
+    an explanation the one that leaves drivers out exactly when the
     request does."""
     if context.task == "prediction_explanation":
         return [examples()[(context.task,
                             shape.omitted_drivers(context) > 0)]]
-    if context.task == "condition_presence":
-        return [examples()[context.task],
-                examples()[(context.task, False)]]
-    return [examples()[context.task]]
+    unmapped = context.bundle.coverage.unmapped_events_in_scope > 0
+    return [examples()[(context.task, outcome, unmapped)]
+            for outcome in replies(context.task)]
 
 
 def request_text(context):
@@ -299,7 +315,7 @@ def request_text(context):
 
 def messages(context):
     """Return the chat messages of a request: the rules, then the worked
-    example, the request and its evidence view."""
+    examples, the request and its evidence view."""
     parts = []
     for example, template in examples_of(context):
         parts += ["Worked example, on invented data.", request_text(example),

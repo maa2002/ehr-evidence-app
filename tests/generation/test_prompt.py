@@ -33,45 +33,78 @@ class PromptTests(unittest.TestCase):
 
     def test_examples_are_invented(self):
         """Each task's worked examples use the invented fixtures; the list
-        and presence answers group several records into one item; every
-        list and presence example discloses a record without a standard
-        concept, a presence check's "not recorded" too; an explanation's
-        example leaves drivers out exactly when its request does."""
+        and presence answers group several records into one item; a list
+        or presence example discloses a record without a standard concept
+        exactly when its key says so, a presence check's "not recorded"
+        too, and otherwise the two are the same invented request."""
         examples = prompt.examples()
         self.assertEqual(set(examples), {
-            "condition_list", "condition_presence",
-            ("condition_presence", False),
+            (task, outcome, unmapped)
+            for task in ("condition_list", "condition_presence")
+            for outcome in prompt.replies(task)
+            for unmapped in (False, True)} | {
             ("prediction_explanation", True),
             ("prediction_explanation", False)})
+        self.assertEqual(prompt.replies("condition_presence"),
+                         ("answer", "not_recorded"))
         for key, (context, template) in examples.items():
             self.assertTrue(context.request.case.case_set.startswith(
                 "synthetic-"))
             if context.task == "prediction_explanation":
                 continue
+            task, outcome, unmapped = key
+            self.assertEqual(template.outcome, outcome)
             self.assertEqual(template.reason_codes,
-                             ("unmapped_records_in_scope",))
+                             ("unmapped_records_in_scope",) if unmapped
+                             else ())
             self.assertEqual(projection.view(context)[
-                "records_without_standard_concept"], 1)
-            if template.outcome == "answer":
+                "records_without_standard_concept"], int(unmapped))
+            if (task, outcome) != ("condition_presence", "answer"):
+                # A presence answer discloses by its reason code alone.
+                self.assertEqual(any(item.kind.endswith("_unmapped")
+                                     for item in template.statements),
+                                 unmapped)
+            if outcome == "answer":
                 self.assertGreater(max(len(item.refs)
                                        for item in template.statements
                                        if item.kind.endswith("_item")), 1)
-        absent = examples[("condition_presence", False)][1]
-        self.assertEqual(absent.outcome, "not_recorded")
-        self.assertIn("presence_unmapped",
-                      {item.kind for item in absent.statements})
-        for context, _ in PAIRS:
+            if unmapped:
+                plain = examples[(task, outcome, False)][0].bundle
+                self.assertEqual(context.bundle.events[:-1],
+                                 plain.events[:-1])
+                self.assertNotEqual(context.bundle.events[-1],
+                                    plain.events[-1])
+
+    def test_examples_match_the_request(self):
+        """A list or presence request is shown the examples that disclose
+        a record without a standard concept exactly when its own view has
+        one, a presence check both its answer and its "not recorded"; an
+        explanation the example that leaves drivers out exactly when it
+        does."""
+        requests = [context for context, _ in PAIRS] + [
+            context for context, _ in prompt.examples().values()]
+        shown = set()
+        for context in requests:
             chosen = prompt.examples_of(context)
-            if context.task == "condition_presence":
-                self.assertEqual({template.outcome for _, template in chosen},
-                                 {"answer", "not_recorded"})
-            if context.task != "prediction_explanation":
+            if context.task == "prediction_explanation":
+                (example, template), = chosen
+                notices = json.loads(shape.text(shape.document_of(
+                    template)))["notices"]
+                self.assertEqual("drivers_omitted" in notices,
+                                 shape.omitted_drivers(context) > 0)
                 continue
-            (example, template), = chosen
-            notices = json.loads(shape.text(shape.document_of(template)))[
-                "notices"]
-            self.assertEqual("drivers_omitted" in notices,
-                             shape.omitted_drivers(context) > 0)
+            unmapped = projection.view(context)[
+                "records_without_standard_concept"] > 0
+            shown.add((context.task, unmapped))
+            self.assertEqual(tuple(template.outcome for _, template in chosen),
+                             prompt.replies(context.task))
+            for example, _ in chosen:
+                self.assertEqual(projection.view(example)[
+                    "records_without_standard_concept"] > 0, unmapped)
+        self.assertEqual(shown, {(task, unmapped)
+                                 for task in ("condition_list",
+                                              "condition_presence")
+                                 for unmapped in (False, True)})
 
     def test_presence_prompts_carry_the_matching_records(self):
         """A presence prompt names the condition, and its view lists the

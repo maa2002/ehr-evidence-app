@@ -5,6 +5,7 @@ runs and no real record is read.
 """
 
 import contextlib
+import dataclasses
 import io
 import json
 import unittest
@@ -124,6 +125,25 @@ class MeasureTests(unittest.TestCase):
                          {"notices: target_attached missing",
                           "notices: target_excluded added"})
 
+    def test_additions_are_named(self):
+        """A disclosure or reason code added where the correct answer has
+        none, or left out where it has one, is named with its
+        direction."""
+        expected = {"outcome": "not_recorded", "reason_codes": [],
+                    "absent": {"wording": "{condition} is not recorded "
+                                          "within {scope}."},
+                    "unmapped": None, "notices": ["absence"]}
+        stated = dict(expected, reason_codes=["unmapped_records_in_scope"],
+                      unmapped={"wording": "{unmapped} have no standard "
+                                           "concept.", "unmapped": 2})
+        task = "condition_presence"
+        self.assertEqual(measure.differences(task, stated, expected),
+                         {"reason_codes: unmapped_records_in_scope added",
+                          "unmapped added"})
+        self.assertEqual(measure.differences(task, expected, stated),
+                         {"reason_codes: unmapped_records_in_scope missing",
+                          "unmapped left out"})
+
     def test_history_findings_name_their_part(self):
         """A driver's history or context row is named by the part that
         differs, or as left out; counts and visits alone are
@@ -187,22 +207,60 @@ class MeasureTests(unittest.TestCase):
         writer = adapter.Writer(adapter.ScriptedBackend(script),
                                 adapter.scripted_limits())
         results = measure.write_sample(PAIRS, release_of, writer, 100)
-        items = [item for pairs in results.values() for item, _, _ in pairs]
+        items = [item for pairs in results.values() for item, *_ in pairs]
         self.assertEqual(len(items), len(PAIRS))
         self.assertEqual({item.author for item in items}, {"model"})
         self.assertEqual({name for pairs in results.values()
-                          for _, names, _ in pairs for name in names}, set())
-        entries = [entry for pairs in results.values()
-                   for _, _, entry in pairs if entry is not None]
+                          for _, names, *_ in pairs for name in names}, set())
+        entries = [result.stated for pairs in results.values()
+                   for result in pairs if result.stated is not None]
         self.assertTrue(entries)
         for stated_history, history, stated_context, context in entries:
             self.assertEqual((stated_history, stated_context),
                              (history, context))
+        self.assertEqual(
+            sorted((result.unmapped for pairs in results.values()
+                    for result in pairs), key=str),
+            sorted((None if context.task == "prediction_explanation"
+                    else context.bundle.coverage.unmapped_events_in_scope > 0
+                    for context, _ in PAIRS), key=str))
+        needs = sorted(result.needed for pairs in results.values()
+                       for result in pairs)
+        self.assertEqual(needs, sorted(
+            adapter.ScriptedBackend.count(shape.text(shape.document_of(
+                template))) for _, template in PAIRS))
+        middle = needs[len(needs) // 2]
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            measure.report("synthetic-1-v1", results, 0.0)
+            measure.report("synthetic-1-v1", results, 0.0,
+                           [(needs[-1], 1), (middle, 1)])
         self.assertIn("released as the model wrote them %d of %d"
                       % (len(PAIRS), len(PAIRS)), output.getvalue())
+        self.assertIn("released within %d output tokens and 1 s %d of %d"
+                      % (needs[-1], len(PAIRS), len(PAIRS)),
+                      output.getvalue())
+        self.assertIn("released within %d output tokens and 1 s %d of %d"
+                      % (middle, sum(need <= middle for need in needs),
+                         len(PAIRS)), output.getvalue())
+        self.assertIn("released, with records without a standard concept "
+                      "in scope: ", output.getvalue())
+
+    def test_released_within_lower_limits(self):
+        """A released candidate counts within a lower limit only when its
+        template document and its output fit the tokens and it took no
+        longer than the seconds; a fallback never counts."""
+        output = adapter.Output(text="{}", prompt_tokens=10,
+                                output_tokens=100, finished=True,
+                                seconds=50.0)
+        released = adapter.Written(response=None, candidate=None,
+                                   author="model", output=output)
+        self.assertTrue(measure.released_within(released, 100, 100, 50))
+        self.assertFalse(measure.released_within(released, 101, 100, 50))
+        self.assertFalse(measure.released_within(released, 90, 99, 50))
+        self.assertFalse(measure.released_within(released, 90, 100, 49))
+        withheld = dataclasses.replace(released, author="template",
+                                       fallback="gate_rejected")
+        self.assertFalse(measure.released_within(withheld, 90, 100, 50))
 
     def test_paired_comparison(self):
         """The paired interval holds its difference, turns over with the
@@ -240,6 +298,9 @@ class MeasureTests(unittest.TestCase):
             self.assertEqual(measure.main(["--benchmark", "--case-set",
                                            "dev-30-v1", "--drivers", "0"]),
                              2)
+            self.assertEqual(measure.main(["--tokens", "--case-set",
+                                           "dev-30-v1", "--within", "768",
+                                           "120"]), 2)
         self.assertIn("RESULT: PASS", output.getvalue())
 
 

@@ -15,7 +15,11 @@ and print aggregate counts only:
   For each document it names, without any value, what went wrong: where
   output was cut off, how it broke its schema or shape, or which fields
   differ from the template's document (the correct answer; wordings are
-  the model's own and are not compared).
+  the model's own and are not compared), and whether a field, notice or
+  reason code was added or left out. --within also counts the requests
+  that would be released under a lower output and time limit: greedy
+  decoding writes the same tokens under any output limit they fit, so
+  one run at the higher limits answers for the lower ones.
   The sample is drawn deterministically: for each task and outcome, the
   requests are ordered by a digest of their identifiers and the first are
   taken. --task keeps one task's requests, and --drivers has explanations
@@ -42,6 +46,9 @@ Usage:
         --case-set dev-30-v1 --precision bf16-mixed --per-group 8
     python -m ehr_evidence_app.generation.measure --benchmark \\
         --case-set dev-30-v1 --task prediction_explanation --drivers 5
+    python -m ehr_evidence_app.generation.measure --benchmark \\
+        --case-set dev-30-v1 --per-group 1000 --output-tokens 2048 \\
+        --seconds 300 --within 768 120
     python -m ehr_evidence_app.generation.measure --paired \\
         --case-set dev-30-v1 --per-group 1000
 """
@@ -57,6 +64,7 @@ import re
 import statistics
 import sys
 import time
+import typing
 
 from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.generation import adapter, prompt, shape
@@ -89,6 +97,19 @@ BOOKKEEPING = frozenset(("items[count]", "items[visits]", "summary.groups",
 SHOWN = frozenset(("score", "logit"))
 KEY = re.compile(r'"([a-z_]+)": ')
 PATH_TOKEN = re.compile(r"\$|\.[a-z_]+|\[\d+\]")
+
+
+class Result(typing.NamedTuple):
+    """One written request of a benchmark: its Written, what went wrong
+    with it by name, how complete an explanation is, the output tokens of
+    its template document, and whether its view has records without a
+    standard concept (None for an explanation)."""
+
+    written: adapter.Written
+    names: set
+    stated: tuple | None
+    needed: int
+    unmapped: bool | None
 
 
 def summary(values):
@@ -204,8 +225,8 @@ def row_differences(task, mine, theirs):
 
 def differences(task, document, expected):
     """Return the fields in which a model's document differs from the
-    template's, by name only; wordings, which are the model's own, are not
-    compared."""
+    template's, by name only, and whether a field or code was added or
+    left out; wordings, which are the model's own, are not compared."""
     if document.get("outcome") != expected.get("outcome"):
         return {"outcome %s instead of %s" % (document.get("outcome"),
                                               expected.get("outcome"))}
@@ -218,14 +239,18 @@ def differences(task, document, expected):
         if key == rows and isinstance(mine, list) and isinstance(theirs,
                                                                  list):
             found |= row_differences(task, mine, theirs)
-        elif key == "notices" and isinstance(mine, list) and isinstance(
-                theirs, list):
-            # Notices are named by their approved identifiers.
-            found |= {"notices: %s missing" % notice
-                      for notice in set(theirs) - set(mine)}
-            found |= {"notices: %s added" % notice
-                      for notice in set(mine) - set(theirs)
-                      if isinstance(notice, str)}
+        elif key in ("notices", "reason_codes") and isinstance(
+                mine, list) and isinstance(theirs, list):
+            # Notices and reason codes are named by their approved
+            # identifiers.
+            found |= {"%s: %s missing" % (key, code)
+                      for code in set(theirs) - set(mine)}
+            found |= {"%s: %s added" % (key, code)
+                      for code in set(mine) - set(theirs)
+                      if isinstance(code, str)}
+        elif (mine is None) != (theirs is None):
+            found.add("%s %s" % (key, "left out" if mine is None
+                                 else "added"))
         elif isinstance(mine, dict) and isinstance(theirs, dict):
             found |= {"%s.%s" % (key, name)
                       for name in set(mine) | set(theirs)
@@ -361,17 +386,32 @@ def bookkeeping_only(written, names):
 def write_sample(pairs, release_of, writer, per_group, task=None,
                  drivers=None):
     """Write the sample of some requests through the adapter; return, by
-    stratum, each request's (Written, what went wrong with it, how
-    complete an explanation is)."""
+    stratum, each request's Result."""
     results = collections.defaultdict(list)
     for context, template in chosen_requests(pairs, per_group, task,
                                              drivers):
         written = adapter.write(writer, context, template,
                                 release_of(context))
-        results[group_of(context, template)].append(
-            (written, findings(context, template, written),
-             completeness(context, template, written)))
+        results[group_of(context, template)].append(Result(
+            written, findings(context, template, written),
+            completeness(context, template, written),
+            writer.backend.text_tokens(shape.text(shape.document_of(
+                template))),
+            None if context.task == "prediction_explanation"
+            else context.bundle.coverage.unmapped_events_in_scope > 0))
     return results
+
+
+def released_within(item, needed, tokens, seconds):
+    """Return True when a released candidate would also be released under
+    a lower output and time limit: its template document and its output,
+    the end of text included, fit the output limit, and it took no longer
+    than the time limit. Greedy decoding writes the same tokens under any
+    output limit they fit, so the same run answers for both limits."""
+    output = item.output
+    return item.author == "model" and output is not None and (
+        needed <= tokens and output.output_tokens <= tokens
+        and output.seconds <= seconds)
 
 
 def completeness_text(entries):
@@ -381,11 +421,13 @@ def completeness_text(entries):
     return "history lines %d of %d, context lines %d of %d" % tuple(sums)
 
 
-def report(case_set, results, seconds):
+def report(case_set, results, seconds, within=()):
     """Print, by stratum, the outcomes, what went wrong by name, and the
-    tokens, seconds and memory; aggregates only."""
+    tokens, seconds and memory, and how many would be released within
+    each lower (output tokens, seconds) limit of within; aggregates
+    only."""
     for name, pairs in sorted(results.items()):
-        items = [item for item, _, _ in pairs]
+        items = [item for item, *_ in pairs]
         outcomes = collections.Counter(
             "released as written" if item.author == "model"
             else "fallback " + item.fallback + (
@@ -397,17 +439,34 @@ def report(case_set, results, seconds):
             "; ".join("%s %d" % pair for pair in sorted(outcomes.items()))))
         found = collections.Counter(
             ("released" if item.fallback is None else item.fallback, finding)
-            for item, names, _ in pairs for finding in names)
+            for item, names, *_ in pairs for finding in names)
         for (reason, finding), count in sorted(found.items()):
             print("  %s: %s %d" % (reason, finding, count))
         print("  withheld for counts or visits only: %d" % sum(
-            bookkeeping_only(item, names) for item, names, _ in pairs))
-        stated = [entry for _, _, entry in pairs if entry is not None]
+            bookkeeping_only(item, names) for item, names, *_ in pairs))
+        for tokens, limit in within:
+            print("  released within %d output tokens and %d s: %d" % (
+                tokens, limit, sum(
+                    released_within(result.written, result.needed, tokens,
+                                    limit) for result in pairs)))
+        split = [result for result in pairs if result.unmapped is not None]
+        if split:
+            print("  released, with records without a standard concept in "
+                  "scope: %s; without: %s" % tuple(
+                      "%d of %d" % (
+                          sum(result.written.author == "model"
+                              for result in split
+                              if result.unmapped == flag),
+                          sum(result.unmapped == flag for result in split))
+                      for flag in (True, False)))
+        stated = [result.stated for result in pairs
+                  if result.stated is not None]
         if stated:
             print("  stated by the model: %s; released: %s" % (
                 completeness_text(stated), completeness_text(
-                    [entry for item, _, entry in pairs
-                     if entry is not None and item.fallback is None])))
+                    [result.stated for result in pairs
+                     if result.stated is not None
+                     and result.written.fallback is None])))
         if outputs:
             print("  prompt tokens %s" % summary(
                 [output.prompt_tokens for output in outputs]))
@@ -423,25 +482,31 @@ def report(case_set, results, seconds):
             if peaks:
                 print("  peak GPU MiB %s" % summary(peaks))
     released = sum(item.author == "model" for pairs in results.values()
-                   for item, _, _ in pairs)
+                   for item, *_ in pairs)
     bookkeeping = sum(bookkeeping_only(item, names)
                       for pairs in results.values()
-                      for item, names, _ in pairs)
+                      for item, names, *_ in pairs)
     total = sum(len(pairs) for pairs in results.values())
     print("%s: released as the model wrote them %d of %d; withheld for "
           "counts or visits only %d; %.0f s" % (
               case_set, released, total, bookkeeping, seconds))
+    for tokens, limit in within:
+        print("%s: released within %d output tokens and %d s %d of %d" % (
+            case_set, tokens, limit, sum(
+                released_within(result.written, result.needed, tokens, limit)
+                for pairs in results.values() for result in pairs), total))
 
 
 def benchmark(case_set, backend, per_group, limits, task=None,
-              drivers=None):
+              drivers=None, within=()):
     """Write a sample of a case set's requests with the model; print, by
-    stratum, the outcomes and the timings."""
+    stratum, the outcomes and the timings, and the requests released
+    within each lower limit of within."""
     pairs, release_of = adapter.development_requests(case_set)
     started = time.monotonic()
     results = write_sample(pairs, release_of, adapter.Writer(backend, limits),
                            per_group, task, drivers)
-    report(case_set, results, time.monotonic() - started)
+    report(case_set, results, time.monotonic() - started, within)
 
 
 def wilson(successes, total, z=Z95):
@@ -491,7 +556,7 @@ def paired_counts(first, second):
     runs of the same requests, stratum by stratum."""
     counts = [0, 0, 0, 0]
     for name in first:
-        for (one, _, _), (two, _, _) in zip(first[name], second[name]):
+        for (one, *_), (two, *_) in zip(first[name], second[name]):
             released = (one.author == "model", two.author == "model")
             counts[{(True, True): 0, (True, False): 1, (False, True): 2,
                     (False, False): 3}[released]] += 1
@@ -613,6 +678,11 @@ def main(argv=None):
     parser.add_argument("--drivers", type=int, default=None,
                         help="drivers an explanation describes in the "
                              "benchmark (default: the configured number)")
+    parser.add_argument("--within", type=int, nargs=2, action="append",
+                        default=[], metavar=("TOKENS", "SECONDS"),
+                        help="also count the requests the benchmark would "
+                             "release within a lower output and time limit; "
+                             "may be repeated")
     args = parser.parse_args(argv)
     modes = args.tokens + args.benchmark + args.paired
     if bool(modes) != bool(args.case_set) or modes > 1:
@@ -621,6 +691,9 @@ def main(argv=None):
         return 2
     if args.drivers is not None and not 1 <= args.drivers <= 100:
         print("FAILED: --drivers is a number from 1 to 100")
+        return 2
+    if args.within and not args.benchmark:
+        print("FAILED: --within counts a benchmark's requests")
         return 2
     if not args.case_set:
         problems = run_synthetic()
@@ -651,6 +724,12 @@ def main(argv=None):
             if args.output_tokens:
                 changes["max_output_tokens"] = args.output_tokens
             limits = limits.model_copy(update=changes)
+            if any(not (1 <= tokens <= limits.max_output_tokens
+                        and 1 <= limit <= limits.max_request_seconds)
+                   for tokens, limit in args.within):
+                print("FAILED: --within gives limits no higher than the "
+                      "benchmark's")
+                return 2
             print("precision: %s" % PRECISION_LABELS[args.precision])
             print("limits: %d prompt tokens, %d output tokens, %d s" % (
                 limits.max_prompt_tokens, limits.max_output_tokens,
@@ -659,7 +738,7 @@ def main(argv=None):
                 print("drivers an explanation describes: %d"
                       % args.drivers)
             benchmark(args.case_set, backend, args.per_group, limits,
-                      args.task, args.drivers)
+                      args.task, args.drivers, args.within)
     except adapter.DevelopmentError as error:
         print("FAILED: %s" % error)
         return 1

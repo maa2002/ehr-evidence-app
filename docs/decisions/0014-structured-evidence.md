@@ -2,7 +2,9 @@
 
 Status: accepted (2026-09-27). Amends [ADR 0012](0012-generation-design.md),
 decision 1, and [ADR 0013](0013-compact-generation.md), decisions 1, 6
-and 7.
+and 7. Amended by [ADR 0015](0015-generation-configuration.md): the
+worked examples disclose a record without a standard concept exactly when
+the request's view has one (decision 3).
 
 ## Context
 

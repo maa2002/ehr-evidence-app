@@ -32,9 +32,11 @@ task, and the templates are its fallback.
   `projection-v4`), from which the correct
   answer of every development request is derived; the prompt with the
   rules, worked examples on invented data that group records and
-  disclose a record without a standard concept, in an answer and in "not
+  disclose a record without a standard concept exactly when the
+  request's view has one, a presence check's in an answer and in "not
   recorded", every reply the task can have and the request's projection
-  (`generation.prompt`, `prompt-v7`);
+  (`generation.prompt`, `prompt-v8`;
+  [ADR 0015](docs/decisions/0015-generation-configuration.md));
   the
   adapter, the one path from a writer's output to a release, under the
   prompt, output, time, attempt and concurrency
@@ -78,7 +80,14 @@ task, and the templates are its fallback.
   how many of the available history and context lines an explanation
   states; and a paired comparison of BF16 and NF4 on the same requests,
   with Newcombe's interval for the paired difference in release rate, the
-  exact McNemar test and non-inferiority at a margin of 5 points.
+  exact McNemar test and non-inferiority at a margin of 5 points. The
+  benchmark names a field, notice or reason code as added or left out,
+  splits lists and presence checks by whether their scope has records
+  without a standard concept, and counts the same outputs under lower
+  output and time limits (`--within`). On all 430 requests of
+  `dev-30-v1` BF16 with the mixed placement released 314 and NF4 172
+  (NF4 minus BF16 -33.0 points, 95% interval -37.4 to -28.4), so the
+  precision stays BF16.
 - Release-gate checks for the mistakes a language model can make and a
   template cannot: a refusal of a request whose bundle is bound, a
   presence answer about another condition than the one asked about

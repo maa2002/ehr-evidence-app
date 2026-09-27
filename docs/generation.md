@@ -16,8 +16,11 @@ The design is recorded in
 representation and the selection of drivers in
 [ADR 0013](decisions/0013-compact-generation.md); and the structured
 evidence, syntax-only decoding, the parity of the Phase 9 conditions and
-the precision decision in
-[ADR 0014](decisions/0014-structured-evidence.md). Command examples assume
+the rule for the precision in
+[ADR 0014](decisions/0014-structured-evidence.md); the precision, the
+examples that match the request, and the rules that set the limits and
+freeze K in [ADR 0015](decisions/0015-generation-configuration.md).
+Command examples assume
 the session set-up in [development.md](development.md#session-set-up).
 
 ## Work items
@@ -162,9 +165,9 @@ same way.
 
 ## The prompt
 
-The prompt (`prompt-v7`) is two chat messages: the rules every reply
-follows, then one worked example on invented data, the task with the
-shape of its reply, and the request's projection as JSON. The rules ask
+The prompt (`prompt-v8`) is two chat messages: the rules every reply
+follows, then worked examples on invented data, the task with the shape
+of its reply, and the request's projection as JSON. The rules ask
 for facts in their fields only, wordings without facts that begin with
 the placeholder named for them, one wording for every item of its kind,
 and nothing the evidence does not record. The task offers every reply the
@@ -172,12 +175,16 @@ task can have, each with the condition on the view that calls for it (a
 list whose "conditions" hold groups is an answer, one whose "conditions"
 are empty is "not recorded"), and the example wordings of each. The list
 and presence examples group several records of one concept into one
-item, and each includes a record without a standard concept, which its
-reply discloses: they are built from invented bundles whose last record
-has lost its standard concept. A presence check is shown two examples
-whatever its evidence, the answer and a "not recorded" for a condition
-none of the records match. An explanation's example leaves drivers out
-exactly when the request does.
+item. They match the request where its evidence decides the shape of
+every correct reply (ADR 0015): when the request's view has records
+without a standard concept, the example has one too, which its reply
+discloses (the invented bundle's last record has lost its standard
+concept), and otherwise it has none. A presence check is shown two
+examples whatever its evidence, the answer and a "not recorded" for a
+condition none of the records match. An explanation's example leaves
+drivers out exactly when the request does. Until `prompt-v8` every list
+and presence example disclosed such a record, and the model disclosed
+one in every "not recorded" it wrote.
 
 Prompts and model output hold patient records; they are never logged.
 
@@ -466,17 +473,19 @@ worked example had shown; `prompt-v6` showed it in an answer and
 `prompt-v7` in a "not recorded" too. Half the explanations stated the
 wrong notices for their restrictions until `projection-v4` gave the
 notice of each. With BF16 at `20e02a0`, what is left is one list item
-miscounted, one presence answer without its disclosure, three "not
-recorded" without theirs, and two explanations with an added driver or a
-history row that cites other records; the model stated 14 of the 19
+miscounted, one presence answer with a wrong reason code, three "not
+recorded" that disclose records without a standard concept their scope
+does not have (read at first as disclosures left out; see below), and
+two explanations with an added driver or a history row that cites other
+records; the model stated 14 of the 19
 available history lines and 24 of 24 context lines, and every released
 explanation all of its own.
 
 As the task became feasible the precisions parted: at `20e02a0` BF16
 released every request NF4 did and 9 more. NF4 repeated visits and
-notices, stated notices of restrictions the case does not have, left out
-disclosures and answered an empty list with records the bundle does not
-hold. Latency and memory at `20e02a0`:
+notices, stated notices of restrictions the case does not have, stated
+wrong reason codes and answered an empty list with records the bundle
+does not hold. Latency and memory at `20e02a0`:
 
 | Precision | Seconds, median (largest): lists, presence checks, explanations | Peak GPU memory |
 | --- | --- | --- |
@@ -486,6 +495,88 @@ hold. Latency and memory at `20e02a0`:
 These versions were tuned on these 33 requests, so their last rates are
 optimistic. The precision, K and the limits are decided on the whole of
 `dev-30-v1` (ADR 0014, decision 9); `eval-100-v1` is not used.
+
+### The whole development set
+
+All 430 requests of `dev-30-v1` were written in both precisions at
+`20e02a0` (`prompt-v7`, K = 5) under the configured limits and compared
+pair by pair, as ADR 0014 (decision 9) set out:
+
+| Requests | BF16 released | NF4 released | NF4 minus BF16, 95% CI; exact McNemar p |
+| --- | --- | --- | --- |
+| Lists (134) | 93 | 32 | -45.5 points, -53.4 to -36.2; below 0.001 |
+| Empty list (1) | 1 | 0 | -100 points, -100 to +12.2; 1.000 |
+| Presence, recorded (134) | 127 | 55 | -53.7, -61.6 to -44.7; below 0.001 |
+| Presence, recorded elsewhere (135) | 80 | 80 | 0.0, the same 80 requests; 1.000 |
+| Explanations (26) | 13 | 5 | -30.8, -48.8 to -9.0; 0.021 |
+| All (430) | 314 (73.0%) | 172 (40.0%) | -33.0, -37.4 to -28.4; below 0.001 |
+
+BF16 released 144 requests that NF4 did not, and NF4 2 that BF16 did not.
+NF4 is not non-inferior, so BF16 with the mixed placement stays
+(ADR 0015, decision 1). Latency and memory:
+
+| Precision | Seconds, median (largest): lists, presence checks, explanations | Tokens a second, median: lists, presence checks, explanations | Peak GPU memory | Whole run |
+| --- | --- | --- | --- | --- |
+| BF16, mixed placement | 32.9 (87.4); 10.9 to 11.3 (18.7); 64.8 (111.1, and one over the 120-second limit) | 8.7; 8.0; 5.6 | 6,489 to 6,720 MiB | 9,081 s |
+| NF4, GPU-resident | 33.0 (104.8); 12.2 to 12.7 (15.0); 50.9 (104.5) | 7.5; 7.1; 7.4 | 3,645 to 3,864 MiB | 10,014 s |
+
+On the whole set NF4 was no faster for lists and slower for presence
+checks than BF16, and faster for explanations only. The processor runs
+BF16's output layer, and the grammar for either precision, so timings
+vary with its load: on the 33 requests at `20e02a0` BF16 took 42.4
+seconds for a list at the median.
+
+What BF16 did not release, by what the benchmark names:
+
+- lists (41): 24 withheld for facts their records do not support (items
+  left out, repeated or out of order, their records, counts and visits,
+  and the disclosure of records without a standard concept), 1 citing a
+  record the bundle does not hold, 2 repeating an item against their
+  schema, and 14 at the output limit: 10 whose correct document alone
+  exceeds 768 tokens, never written, and 4 cut off at 768;
+- presence checks of a recorded condition (7): a wrong reason code;
+- presence checks of a condition recorded elsewhere (55): the disclosure
+  of records without a standard concept, stated where the scope has none;
+- explanations (13): 12 withheld, above all for context rows stated for
+  drivers that have none and history rows miscounted or citing other
+  records (the benchmark also names rows left out, which the gate
+  allows), and 1 over 120 seconds. The model stated 69 of the 79
+  available history lines and 56 of 57 context lines, and every
+  released explanation all of its own.
+
+The 55 were the same in both precisions. Of the 135 checks answered "not
+recorded", 80 have records without a standard concept within their
+scope and 55 have none; both precisions released exactly the 80, and
+every "not recorded" either wrote was 86 to 88 tokens long, the length
+of the reply with the disclosure (the shortest correct presence reply is
+46). The model disclosed unmapped records whether the scope had any or
+not, as every worked example it was shown did. The earlier reading of
+the three such failures on the 33 requests as disclosures left out had
+the direction wrong; the benchmark now names a field, notice or reason
+code as added or left out. `prompt-v8` shows a disclosure in the
+examples exactly when the request's view has records without a standard
+concept (ADR 0015, decision 2); the prompts of the 240 requests that
+have them are unchanged byte for byte, and those of the other 164 lists
+and presence checks change.
+
+The token distributions measured again at `93762df`, the template
+documents written as the runtime writes JSON:
+
+| Requests | Prompt tokens: median, 90th percentile, largest | Template document tokens: median, 90th percentile, largest |
+| --- | --- | --- |
+| `dev-30-v1` lists (135) | 2,095; 2,732; 4,695 | 292; 652; 1,950 |
+| presence checks (269) | 2,401; 2,430; 2,541 | 85; 91; 154 |
+| explanations (26), K = 5 | 2,332; 2,356; 2,499 | 436; 460; 580 |
+| `pilot-10-v1` lists (58) | 2,049; 2,642; 3,409 | 266; 608; 1,124 |
+| presence checks (114) | 2,405; 2,433; 2,457 | 85; 91; 108 |
+| explanations (10), K = 5 | 2,330; 2,356; 2,535 | 437; 455; 637 |
+
+Every prompt fits 16,384 tokens by far. The output and time limits cost
+BF16 15 requests; the rule that sets them is fixed in ADR 0015
+(decision 3) before the rerun that applies it: BF16 writes every
+request of `dev-30-v1` again with `prompt-v8` under 2,048 output tokens
+and 300 seconds, and the same outputs are counted under 768 tokens and
+180 seconds.
 
 ## Commands
 
@@ -525,5 +616,10 @@ with the model at one precision:
 & $AppPython -m ehr_evidence_app.generation.measure --benchmark --case-set dev-30-v1 --precision bf16-mixed --per-group 8
 & $AppPython -m ehr_evidence_app.generation.measure --benchmark --case-set dev-30-v1 --precision nf4 --per-group 8
 & $AppPython -m ehr_evidence_app.generation.measure --benchmark --case-set dev-30-v1 --task prediction_explanation --drivers 5
+& $AppPython -m ehr_evidence_app.generation.measure --benchmark --case-set dev-30-v1 --per-group 1000 --output-tokens 2048 --seconds 300 --within 768 120 --within 768 180
 & $AppPython -m ehr_evidence_app.generation.measure --paired --case-set dev-30-v1 --per-group 1000
 ```
+
+`--within` counts the same outputs under lower output and time limits:
+greedy decoding writes the same tokens under any output limit they fit,
+so one run at the higher limits answers for the lower ones.
