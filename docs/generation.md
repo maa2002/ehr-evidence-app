@@ -737,7 +737,26 @@ With the configuration kept, the model's candidates are released for
 empty lists 1 and 2, presence checks of a recorded condition 130 and 54,
 of a condition recorded elsewhere 135 and 58, explanations 21 and 8.
 Every list and presence prompt is the same as under `prompt-v8`, so
-their outputs, and these counts, are those measured before.
+their outputs, and these counts, are those measured before; the runs
+that scored them reproduced every count. The configuration's scores,
+summed over each stratum:
+
+| Requests | `dev-30-v1` | `pilot-10-v1` |
+| --- | --- | --- |
+| Lists: conditions | F1 0.783 (precision 0.949, recall 0.666) | F1 0.753 (0.953, 0.622) |
+| Lists: records | F1 0.733 (0.964, 0.592) | F1 0.672 (0.933, 0.524) |
+| Lists and empty lists: outcome right | 121 of 135 | 51 of 58 |
+| Presence, recorded: conditions | F1 0.979 (0.959, 1.000) | F1 0.983 (0.966, 1.000) |
+| Presence, recorded: records | F1 1.000 | F1 1.000 |
+| Presence: outcome right | 269 of 269 | 114 of 114 |
+| Explanations: drivers | F1 1.000 | F1 1.000 |
+| Explanations: history lines | F1 0.943 (0.974, 0.915) | F1 0.986 (1.000, 0.972) |
+| Explanations: context lines | F1 0.911 (0.875, 0.949) | F1 0.929 (0.929, 0.929) |
+
+A list's recall is lowest because the lists that end at the output limit
+state nothing. Every presence check chose the right outcome, recorded or
+not, and cited exactly the right records; the 6 presence answers withheld
+split a condition's records by visit, as the lists do.
 
 ## Commands
 
