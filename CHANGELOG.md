@@ -100,6 +100,17 @@ task, and the templates are its fallback.
   answer's order (`structure_invalid`), and a condition named twice for
   one match kind in a presence answer (`claim_unsupported`).
 
+- Protected runtime records (`generation.records`, work item 46):
+  `qa.answer.answer` and `validation.explanation.explain` take a recorder
+  that writes one record per response under the workspace's
+  `protected-data\runtime-records`, never overwritten: the request, the
+  evidence's digest, the versions and configuration digests, the
+  response and its digest, and for a response written from evidence who
+  wrote it, the fallback and its category, the measures and the model's
+  output and candidate. Aggregates count requests, outcomes, authors and
+  fallbacks only. The log audit names, by rule, secrets, user paths,
+  patient identifiers and the content of prompts, views, documents,
+  bundles and records found in the routine logs.
 - The metrics of the final evaluation, with their denominators and
   empty-set conventions, a prose rubric and the paired comparison, are
   proposed for agreement before Phase 9

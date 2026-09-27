@@ -322,11 +322,16 @@ def release(candidate, request, bundle=None, bundle_sha256=None,
                         request.scope, bundle, bundle_sha256, drivers=limit)
 
 
-def explain(request, bundle, bundle_sha256, writer=None, limit=None):
+def explain(request, bundle, bundle_sha256, writer=None, limit=None,
+            recorder=None):
     """Return (Response, candidate or None) for an explanation request and
     its verified explanation bundle; explain_written() also says who
-    wrote it."""
+    wrote it. recorder (a generation.records.Recorder), when given, writes
+    the protected record of the response."""
     written = explain_written(request, bundle, bundle_sha256, writer, limit)
+    if recorder is not None:
+        recorder.record(written.response, request,
+                        bundle_sha256=bundle_sha256, written=written)
     return written.response, written.candidate
 
 

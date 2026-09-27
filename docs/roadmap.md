@@ -124,7 +124,9 @@ metrics of Phase 9.
   answers through the adapter; measured on the development case sets)
 - 45 Complete controlled explanations (done: the model writes
   explanations of the 5 selected drivers through the adapter)
-- 46 Add protected runtime records (in progress, milestone 4)
+- 46 Add protected runtime records (in progress, milestone 4: one
+  protected record per response, and the log audit; the tracker
+  aggregates and release 0.9.0 to follow)
 - 46.1 Measure the model on the development case sets (done: token
   distributions, the benchmark with its scores, the paired precision
   comparison, the configuration frozen for the final evaluation and the

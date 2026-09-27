@@ -290,10 +290,24 @@ def record_matches(bundle, resolution, vocab):
 
 
 def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
-           request_id, limits, writer=None):
+           request_id, limits, writer=None, recorder=None):
     """Return the Result for one question about the active case and scope;
     writer (a generation.adapter.Writer) writes the answers from evidence,
-    and without one the templates do, each a "no_model" fallback."""
+    and without one the templates do, each a "no_model" fallback.
+    recorder (a generation.records.Recorder), when given, writes the
+    protected record of the response."""
+    result = result_of(question, case_set, case_number, active_scope,
+                       bundle_set, vocab, request_id, limits, writer)
+    if recorder is not None:
+        recorder.record(result.response, result.request, question=question,
+                        bundle_sha256=result.bundle_sha256,
+                        written=result.written)
+    return result
+
+
+def result_of(question, case_set, case_number, active_scope, bundle_set,
+              vocab, request_id, limits, writer=None):
+    """Return the Result for one question (see answer)."""
     case = contracts.CaseRef(case_set=case_set, case_number=case_number)
     if len(question or "") > limits.max_question_chars:
         return Result(respond(request_id, case, active_scope,

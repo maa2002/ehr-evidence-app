@@ -30,10 +30,10 @@ the session set-up in [development.md](development.md#session-set-up).
 | 41 | `generation.shape`, `generation.projection`, `generation.prompt`, `generation.adapter` | The document a candidate is written as and its schema; the model's view of the evidence; the prompt; the adapter between the application and a writer | done; structured evidence and syntax-only decoding since milestone 3 |
 | 42 | `generation.runtime`, `generation.worker` | The pinned model, the worker in its own environment on G:, and the backend that reaches it | done; two precisions measured |
 | 43 | `generation.adapter` | Prompt, output, time, attempt and concurrency limits; the fallback and its category | done |
-| 44 | `qa.answer` | Answers from evidence written through the adapter | in progress: measured on development requests |
-| 45 | `validation.explanation` | Explanations of the selected drivers written through the adapter | in progress: measured on development requests |
-| 46 | `generation.records` | Protected runtime records, tracker aggregates, the log audit | milestone 4 |
-| 46.1 | `generation.measure` | Development measurement: token distributions, the benchmark and the paired precision comparison | in progress |
+| 44 | `qa.answer` | Answers from evidence written through the adapter | done; measured on the development case sets |
+| 45 | `validation.explanation` | Explanations of the selected drivers written through the adapter | done; measured on the development case sets |
+| 46 | `generation.records` | Protected runtime records, tracker aggregates, the log audit | in progress (milestone 4): the records and the log audit done |
+| 46.1 | `generation.measure` | Development measurement: token distributions, the benchmark with its scores and the paired precision comparison | done |
 
 ## What the model writes
 
@@ -299,6 +299,41 @@ The 4,300,079,472 parameters are loaded in one of two precisions, set by
 | --- | --- |
 | `bf16-mixed` (configured) | BF16, full precision (ADR 0012, decision 2), with a mixed GPU/CPU placement: the language layers, final norm and rotary embeddings, 6,121 MiB, on the GPU; the image encoder (801 MiB), which a text request never runs, and the token embedding table (1,280 MiB), which Gemma also uses as its output layer, in system memory, run on the processor. The model is not GPU-resident. |
 | `nf4` | 4-bit NF4 weights with BF16 computation (bitsandbytes), the whole model on the GPU |
+
+## Runtime records
+
+Every response can be traced from one protected record
+(`generation.records`, ADR 0012, decision 5). When a recorder is given,
+`qa.answer.answer` and `validation.explanation.explain` write the record
+of each request they answer, whatever its outcome, under the workspace's
+`protected-data\runtime-records`, one JSON file per request in a
+directory per UTC day, written once and never overwritten. A record
+holds:
+
+| Part | What it holds |
+| --- | --- |
+| The request | Its identifier, task, case, scope and question, or the prediction an explanation is of |
+| The evidence | The bundle's identifier and SHA-256 |
+| The versions | The application, prompt, shape, projection, candidate contract, question interpretation, condition resolution, answer rules, explanation template and wording rules, and the SHA-256 of the execution limits, the driver selection and the model's configuration |
+| The response | The released response and its SHA-256 |
+| The generation, for a response written from evidence | Who wrote it (the model or the template), the fallback and its category, the gate's reasons, the backend, the prompt and output tokens, whether the output ended by itself, the seconds and peak GPU memory, and the model's output and candidate |
+
+A notice, or a request the checks before generation stop, records no
+generation. Records hold patient records: they are never logged, printed
+or committed, and a recorder refuses a directory outside the protected
+data. `--operator-real --aggregate` prints what the records add up to,
+counts and measures only: requests by task and outcome, the responses
+written from evidence and by the model, fallbacks by reason and category,
+and the tokens, seconds and peak memory of the model's attempts.
+
+Routine logs hold statuses and counts only. The log audit
+(`--operator-real --audit-logs`) reads every file under the workspace's
+`outputs\logs` and names, by rule and count, what does not belong there:
+the secrets, user paths and patient identifiers of the publication policy
+(`config/publishable_policy.json`), and the markers of a prompt, an
+evidence view, a candidate document, a bundle or a record; it never
+prints what a rule matched. The default mode checks both on invented
+requests and logs.
 
 ## Measurement on this laptop
 
@@ -715,7 +750,16 @@ configuration:
 & $AppPython -m ehr_evidence_app.generation.prompt
 & $AppPython -m ehr_evidence_app.generation.adapter
 & $AppPython -m ehr_evidence_app.generation.measure
+& $AppPython -m ehr_evidence_app.generation.records
 & $AppPython -m ehr_evidence_app.generation.runtime
+```
+
+The records' operator modes read the protected runtime records or the
+routine logs and print counts only:
+
+```powershell
+& $AppPython -m ehr_evidence_app.generation.records --operator-real --aggregate
+& $AppPython -m ehr_evidence_app.generation.records --operator-real --audit-logs
 ```
 
 The operator check verifies the model files, loads the model through the
