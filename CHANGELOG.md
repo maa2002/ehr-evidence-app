@@ -111,6 +111,13 @@ task, and the templates are its fallback.
   fallbacks only. The log audit names, by rule, secrets, user paths,
   patient identifiers and the content of prompts, views, documents,
   bundles and records found in the routine logs.
+- Tracker aggregates of the runtime records (`tracking.aggregates`): the
+  records of one case set, written under one configuration, are summed
+  into a deterministic manifest under `outputs\lineage` and described by a
+  controlled, metadata-only task with the application version, the
+  configuration fingerprints, the prompt and projection versions and four
+  aggregates; nothing else is uploaded. The controlled tracking
+  allowlist admits `requests`, `model_written_rate` and `fallback_rate`.
 - The metrics of the final evaluation, with their denominators and
   empty-set conventions, a prose rubric and the paired comparison, are
   fixed before Phase 9
@@ -162,6 +169,12 @@ task, and the templates are its fallback.
   placeholders are replaced by their facts' text, gives example wordings
   and states that records of one standard concept are one condition. All
   of these follow the model's first runs.
+
+### Fixed
+
+- Stopping the model worker joins the threads that read its output and
+  closes its pipes, so none is left for the collector (the runtime tests
+  raised `ResourceWarning` for them).
 
 ## [0.8.0] - 2026-09-26
 

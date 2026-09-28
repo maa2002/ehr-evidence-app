@@ -32,10 +32,12 @@ HYPERPARAMETERS = {
 }
 METRIC_NAMES = frozenset(("accuracy", "macro_f1", "micro_f1", "coverage",
                           "latency_ms", "macro_auroc", "macro_auprc",
-                          "best_epoch", "history_length"))
+                          "best_epoch", "history_length", "requests",
+                          "model_written_rate", "fallback_rate"))
 SCORE_METRICS = frozenset(("accuracy", "macro_f1", "micro_f1", "coverage",
-                           "macro_auroc", "macro_auprc"))
-COUNT_METRICS = frozenset(("best_epoch", "history_length"))
+                           "macro_auroc", "macro_auprc",
+                           "model_written_rate", "fallback_rate"))
+COUNT_METRICS = frozenset(("best_epoch", "history_length", "requests"))
 VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,79}$")
 SHA256 = re.compile(r"^[a-fA-F0-9]{64}$")
 SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")

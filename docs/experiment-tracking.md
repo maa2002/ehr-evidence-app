@@ -98,7 +98,11 @@ touch credentials.
   aggregate `evaluation_outputs`, `protected_reference` and
   `protected_checksum`. Fingerprints and checksums are SHA-256 hex strings.
 - **Evaluation outputs:** finite aggregates named `accuracy`, `macro_f1`,
-  `micro_f1`, `coverage` (bounded to 0..1) or `latency_ms` (bounded).
+  `micro_f1`, `coverage`, `macro_auroc`, `macro_auprc`,
+  `model_written_rate` or `fallback_rate` (bounded to 0..1), `best_epoch`,
+  `history_length` or `requests` (whole numbers) or `latency_ms`
+  (bounded). The runtime aggregates' three names were added with the
+  project owner's approval (2026-09-28).
 - **Protected references:** canonical absolute paths inside the workspace;
   traversal, alternate streams, device syntax, ambiguous or content-bearing
   components and over-long paths are rejected. References are never opened.
@@ -128,6 +132,33 @@ vocabulary or source file is uploaded.
 
 ```powershell
 & $AppPython -m ehr_evidence_app.tracking.registration
+```
+
+## Runtime aggregates
+
+`ehr_evidence_app.tracking.aggregates` describes the protected runtime
+records of one case set (`generation.records`) to the tracker as
+aggregates only. The records must all have been written under one
+configuration. Their counts and measures are written as a deterministic
+manifest, `outputs\lineage\runtime-aggregates-<digest>.json`, named by a
+digest of the case set and of the records' identities and responses: the
+same records give the same file, an identical one is left untouched and a
+different one is refused (`manifest_conflict`). The task names the
+application version, the case set, the fingerprints of the model's
+configuration (the model, the limits and the driver selection) and of the
+validators' versions, the prompt's version by its number and the
+projection's version, the manifest's path and checksum, and four
+aggregates: `requests`, `model_written_rate` and `fallback_rate` (of the
+responses written from evidence) and `latency_ms` (the median of the
+model's attempts). No record, prompt, response, identifier or file is
+uploaded. `--operator-real` writes the manifest and checks the task
+offline; `--operator-remote` also creates it, reads it back and archives
+it, as the registration does.
+
+```powershell
+& $AppPython -m ehr_evidence_app.tracking.aggregates
+& $AppPython -m ehr_evidence_app.tracking.aggregates --operator-real --case-set dev-30-v1
+& $AppPython -m ehr_evidence_app.tracking.aggregates --operator-remote --case-set dev-30-v1
 ```
 
 ## Lineage records

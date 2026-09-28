@@ -104,9 +104,9 @@ the whole development set BF16 with the mixed placement released 314 of
 limits (16,384 prompt tokens, 768 output tokens, 180 seconds) are frozen
 (ADR 0015); and after one bounded pass on the prompt (ADR 0017) the
 model's candidates are released for 385 of the 430 development requests
-and 161 of the 182 pilot requests. Milestone 4 adds the protected
-runtime records, the tracker aggregates and the log audit, and releases
-0.9.0; [ADR 0016](decisions/0016-evaluation-metrics.md) proposes the
+and 161 of the 182 pilot requests. Milestone 4 added the protected
+runtime records, the tracker aggregates and the log audit, and released
+0.9.0; [ADR 0016](decisions/0016-evaluation-metrics.md) fixes the
 metrics of Phase 9.
 
 - 41 Define the generation adapter (done: `generation.shape`,
@@ -124,9 +124,8 @@ metrics of Phase 9.
   answers through the adapter; measured on the development case sets)
 - 45 Complete controlled explanations (done: the model writes
   explanations of the 5 selected drivers through the adapter)
-- 46 Add protected runtime records (in progress, milestone 4: one
-  protected record per response, and the log audit; the tracker
-  aggregates and release 0.9.0 to follow)
+- 46 Add protected runtime records (done: one protected record per
+  response, the tracker aggregates and the log audit)
 - 46.1 Measure the model on the development case sets (done: token
   distributions, the benchmark with its scores, the paired precision
   comparison, the configuration frozen for the final evaluation and the

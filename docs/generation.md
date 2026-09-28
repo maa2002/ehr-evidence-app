@@ -32,7 +32,7 @@ the session set-up in [development.md](development.md#session-set-up).
 | 43 | `generation.adapter` | Prompt, output, time, attempt and concurrency limits; the fallback and its category | done |
 | 44 | `qa.answer` | Answers from evidence written through the adapter | done; measured on the development case sets |
 | 45 | `validation.explanation` | Explanations of the selected drivers written through the adapter | done; measured on the development case sets |
-| 46 | `generation.records` | Protected runtime records, tracker aggregates, the log audit | in progress (milestone 4): the records and the log audit done |
+| 46 | `generation.records`, `tracking.aggregates` | Protected runtime records, tracker aggregates, the log audit | done |
 | 46.1 | `generation.measure` | Development measurement: token distributions, the benchmark with its scores and the paired precision comparison | done |
 
 ## What the model writes
@@ -324,7 +324,12 @@ or committed, and a recorder refuses a directory outside the protected
 data. `--operator-real --aggregate` prints what the records add up to,
 counts and measures only: requests by task and outcome, the responses
 written from evidence and by the model, fallbacks by reason and category,
-and the tokens, seconds and peak memory of the model's attempts.
+and the tokens, seconds and peak memory of the model's attempts. The
+tracker receives them as aggregates only (`tracking.aggregates`; see
+[experiment-tracking.md](experiment-tracking.md#runtime-aggregates)): the
+requests, the shares of responses from evidence the model wrote and that
+fell back, and the median latency of its attempts, with the manifest
+that holds the counts.
 
 Routine logs hold statuses and counts only. The log audit
 (`--operator-real --audit-logs`) reads every file under the workspace's
