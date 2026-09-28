@@ -5,12 +5,17 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
-## [Unreleased]
+## [0.9.0] - 2026-09-28
 
-LLM and operations (Phase 7, work items 41 to 46.1), in progress: the
-language model writes the complete candidate of every response from
-evidence, from a deterministic view of that evidence structured for its
-task, and the templates are its fallback.
+LLM and operations (Phase 7, work items 41 to 46.1): MedGemma 1.5 4B IT
+writes the complete candidate of every response from evidence, from a
+deterministic view of that evidence structured for its task, and the
+templates are its fallback; the release gate checks every candidate. With
+BF16 on the development laptop, K = 5 and the frozen limits, the model's
+candidates are released for 385 of the 430 development requests and 161
+of the 182 pilot requests. Every response writes a protected runtime
+record, the tracker receives aggregates only, and the metrics of the
+final evaluation are fixed before it.
 
 ### Added
 
@@ -475,7 +480,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.8.0...HEAD
+[0.9.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.6.0...v0.7.0

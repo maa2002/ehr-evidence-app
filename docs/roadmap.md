@@ -95,10 +95,11 @@ Described in [generation.md](generation.md) and decided in
 [ADR 0012](decisions/0012-generation-design.md),
 [ADR 0013](decisions/0013-compact-generation.md),
 [ADR 0014](decisions/0014-structured-evidence.md) and
-[ADR 0015](decisions/0015-generation-configuration.md). In progress: the
-language model writes the complete candidate of every response from
-evidence, from a deterministic view of the evidence structured for its
-task, and the templates are its fallback. Milestone 3 is complete: on
+[ADR 0015](decisions/0015-generation-configuration.md). Complete in
+release 0.9.0: the language model writes the complete candidate of every
+response from evidence, from a deterministic view of the evidence
+structured for its task, and the templates are its fallback. In
+milestone 3, on
 the whole development set BF16 with the mixed placement released 314 of
 430 requests and NF4 172, so the precision stays BF16; K = 5 and the
 limits (16,384 prompt tokens, 768 output tokens, 180 seconds) are frozen
