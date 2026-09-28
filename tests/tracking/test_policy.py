@@ -288,6 +288,25 @@ class RejectionTests(unittest.TestCase):
         policy["step_10"]["sdk_configuration"] = "configured"
         self.assert_rejected(policy, "step_10_boundary_invalid")
 
+    def test_model_artefacts_stay_the_listed_pretrained_model(self):
+        """Model files stay forbidden, and the one exception is the listed
+        pretrained model: a model trained on the project's data, another
+        model, or dropping a never-uploaded kind is rejected."""
+        self.assertIn("model_files", approved_policy()["categories"][
+            "forbidden_tracker_payloads"])
+        policy = approved_policy()
+        policy["model_artefacts"]["listed_models"][0][
+            "trained_on_project_data"] = True
+        self.assert_rejected(policy, "model_artefacts_invalid")
+        policy = approved_policy()
+        policy["model_artefacts"]["listed_models"].append(dict(
+            policy["model_artefacts"]["listed_models"][0],
+            repository="inherited/gnn-checkpoint"))
+        self.assert_rejected(policy, "model_artefacts_invalid")
+        policy = approved_policy()
+        policy["model_artefacts"]["never_uploaded"].remove("gnn_checkpoints")
+        self.assert_rejected(policy, "model_artefacts_invalid")
+
     def test_malformed_values_do_not_crash(self):
         """Wrong JSON types produce findings, not exceptions."""
         for section in ("tracker", "remote_tracking", "categories",

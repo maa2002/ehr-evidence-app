@@ -44,6 +44,12 @@ and print aggregate counts only:
   whether NF4 is non-inferior at the margin of ADR 0014 (the interval's
   lower bound above minus 5 percentage points). A difference that is not
   significant is not shown equivalence; only the margin decides.
+* --record, with --benchmark or --paired, also keeps each run's
+  measurement as a record for the tracker (tracking.measurements; ADR
+  0018): its configuration and, by stratum, the counts, release rates,
+  scores and measures above, nothing of a request. The tracked files must
+  be as committed, before and after the run, so that the record names the
+  commit that ran.
 
 A request over a limit is a fallback, counted as a failure of the model,
 never as its success. The default mode checks the sampling and summary
@@ -62,15 +68,19 @@ Usage:
         --seconds 300 --within 768 120
     python -m ehr_evidence_app.generation.measure --paired \\
         --case-set dev-30-v1 --per-group 1000
+    python -m ehr_evidence_app.generation.measure --benchmark \\
+        --case-set dev-30-v1 --per-group 1000 --record
 """
 
 from __future__ import annotations
 
 import argparse
 import collections
+import datetime
 import hashlib
 import json
 import math
+import ntpath
 import re
 import statistics
 import sys
@@ -106,6 +116,15 @@ BOOKKEEPING = frozenset(("items[count]", "items[visits]", "summary.groups",
                          "drivers[context.count]"))
 # Values a response shows to three significant figures.
 SHOWN = frozenset(("score", "logit"))
+# The stratum of each task and template outcome, as a record names it, and
+# the unions of strata a record also counts.
+STRATA = {"condition_list answer": "lists",
+          "condition_list not_recorded": "empty lists",
+          "condition_presence answer": "presence recorded",
+          "condition_presence not_recorded": "presence not recorded",
+          "prediction_explanation explanation": "explanations"}
+UNIONS = (("all lists", ("lists", "empty lists")),
+          ("presence", ("presence recorded", "presence not recorded")))
 KEY = re.compile(r'"([a-z_]+)": ')
 PATH_TOKEN = re.compile(r"\$|\.[a-z_]+|\[\d+\]")
 
@@ -638,14 +657,21 @@ def released_within(item, needed, tokens, seconds):
         and output.seconds <= seconds)
 
 
-def rates(true, false, missed):
-    """Return precision, recall and F1 of some counts as text, n/a where a
-    denominator is zero, with the counts."""
+def figures(true, false, missed):
+    """Return (precision, recall, F1) of some counts, each None where its
+    denominator is zero."""
     precision = true / (true + false) if true + false else None
     recall = true / (true + missed) if true + missed else None
     f1 = None if precision is None or recall is None else (
         2 * precision * recall / (precision + recall)
         if precision + recall else 0.0)
+    return precision, recall, f1
+
+
+def rates(true, false, missed):
+    """Return precision, recall and F1 of some counts as text, n/a where a
+    denominator is zero, with the counts."""
+    precision, recall, f1 = figures(true, false, missed)
 
     def shown(value):
         """Return a rate to three decimals, or n/a."""
@@ -774,12 +800,15 @@ def benchmark(case_set, backend, per_group, limits, task=None,
               drivers=None, within=()):
     """Write a sample of a case set's requests with the model; print, by
     stratum, the outcomes and the timings, and the requests released
-    within each lower limit of within."""
+    within each lower limit of within. Return the results and the
+    seconds the run took."""
     pairs, release_of = adapter.development_requests(case_set)
     started = time.monotonic()
     results = write_sample(pairs, release_of, adapter.Writer(backend, limits),
                            per_group, task, drivers)
-    report(case_set, results, time.monotonic() - started, within)
+    seconds = time.monotonic() - started
+    report(case_set, results, seconds, within)
+    return results, seconds
 
 
 def wilson(successes, total, z=Z95):
@@ -861,7 +890,7 @@ def paired_report(case_set, first, second):
 
 def paired(case_set, per_group, limits, task=None, drivers=None):
     """Write the same sample in BF16 and in NF4, report each, and compare
-    them pair by pair."""
+    them pair by pair; return (precision, results, seconds) of each."""
     from ehr_evidence_app.generation import runtime
     pairs, release_of = adapter.development_requests(case_set)
     results = []
@@ -878,9 +907,134 @@ def paired(case_set, per_group, limits, task=None, drivers=None):
                                  task, drivers)
         finally:
             backend.stop()
-        report(case_set, found, time.monotonic() - started)
-        results.append(found)
-    paired_report(case_set, *results)
+        seconds = time.monotonic() - started
+        report(case_set, found, seconds)
+        results.append((precision, found, seconds))
+    paired_report(case_set, results[0][1], results[1][1])
+    return results
+
+
+# --------------------------------------------------------------------------
+# Records of the runs (--record)
+# --------------------------------------------------------------------------
+
+def distribution(values):
+    """Return the median, 90th percentile and largest of some numbers, as
+    summary() reports them."""
+    values = sorted(values)
+    return {"median": statistics.median(values),
+            "p90": values[min(len(values) - 1,
+                              int(round(0.9 * (len(values) - 1))))],
+            "largest": values[-1]}
+
+
+def measures(results):
+    """Return the measures of the model's attempts in some results, by
+    metric and part: seconds, output tokens and prompt tokens (median, 90th
+    percentile, largest), tokens a second (median) and peak GPU memory
+    (smallest, largest)."""
+    outputs = [result.written.output for result in results
+               if result.written.output]
+    if not outputs:
+        return {}
+    found = {"seconds": distribution([item.seconds for item in outputs]),
+             "output tokens": distribution([item.output_tokens
+                                            for item in outputs]),
+             "prompt tokens": distribution([item.prompt_tokens
+                                            for item in outputs])}
+    speeds = [item.output_tokens / item.seconds for item in outputs
+              if item.seconds]
+    if speeds:
+        found["tokens a second"] = {"median": statistics.median(speeds)}
+    peaks = [item.peak_memory_bytes / 2 ** 20 for item in outputs
+             if item.peak_memory_bytes]
+    if peaks:
+        found["peak GPU MiB"] = {"smallest": min(peaks),
+                                 "largest": max(peaks)}
+    return found
+
+
+def measurement_scalars(results, seconds, within=None):
+    """Return a run's scalars, by metric and series: for each stratum drawn,
+    each union of strata and all the requests, the requests, those
+    released as the model wrote them and, with within as (output tokens,
+    seconds), those released within that lower limit; for each stratum
+    and union with outcomes, how many chose the right one; for each
+    stratum, the precision, recall and F1 of each part it scores; for each
+    stratum and all, the measures of the model's attempts; and the
+    seconds of the whole run."""
+    scalars = collections.defaultdict(dict)
+    drawn = {STRATA[name]: pairs for name, pairs in results.items()}
+    groups = dict(drawn)
+    for union, parts in UNIONS:
+        if all(part in drawn for part in parts):
+            groups[union] = [result for part in parts
+                             for result in drawn[part]]
+    groups["all"] = [result for pairs in drawn.values() for result in pairs]
+    for series, pairs in groups.items():
+        scalars["requests"][series] = len(pairs)
+        scalars["released"][series] = sum(
+            result.written.author == "model" for result in pairs)
+        if within:
+            scalars["released within limits"][series] = sum(
+                released_within(result.written, result.needed, *within)
+                for result in pairs)
+        outcomes = [result.scores["outcome"] for result in pairs
+                    if "outcome" in result.scores]
+        if outcomes and series != "all":
+            scalars["outcome right"][series] = sum(outcomes)
+    for series, pairs in drawn.items():
+        totals = collections.defaultdict(lambda: [0, 0, 0])
+        for result in pairs:
+            for key, value in result.scores.items():
+                if key != "outcome":
+                    totals[key] = [a + b for a, b in zip(totals[key], value)]
+        for part in SCORED:
+            if part in totals:
+                for metric, value in zip(("precision", "recall", "F1"),
+                                         figures(*totals[part])):
+                    if value is not None:
+                        scalars[metric]["%s: %s" % (series, part)] = round(
+                            value, 6)
+    for series in list(drawn) + ["all"]:
+        for metric, parts in measures(groups[series]).items():
+            for part, value in parts.items():
+                scalars[metric]["%s: %s" % (series, part)] = round(value, 3)
+    scalars["seconds"]["all: total"] = round(seconds, 3)
+    return {metric: dict(values) for metric, values in scalars.items()}
+
+
+def run_configuration(case_set, precision, limits, per_group, drivers,
+                      within, commit, measured_on):
+    """Return the configuration fields of a run: the case set, the commit
+    and date, the model, its precision and decoder, the versions that write
+    and check a response, the drivers, the sample and the limits."""
+    from ehr_evidence_app.generation import records, runtime
+    from ehr_evidence_app.validation import explanation
+    versions = records.versions()
+    settings = runtime.load_settings()
+    found = {"case_set": case_set, "commit": commit,
+             "measured_on": measured_on, "precision": precision,
+             "decoder": settings.worker.decoder,
+             "model_repository": settings.model.repository,
+             "model_revision": settings.model.revision,
+             # The tracker refuses the word itself; the version is its
+             # number.
+             "prompt_version": versions["prompt_version"].split("-", 1)[-1],
+             "projection_version": versions["projection_version"],
+             "shape_version": versions["shape_version"],
+             "candidate_contract": versions["candidate_contract"],
+             "explanation_template": versions["explanation_template"],
+             "wording_rules": versions["wording_rules"],
+             "drivers": drivers or explanation.configured_limit(),
+             "per_group": per_group,
+             "max_prompt_tokens": limits.max_prompt_tokens,
+             "max_output_tokens": limits.max_output_tokens,
+             "max_request_seconds": limits.max_request_seconds}
+    if within:
+        found.update(within_output_tokens=within[0],
+                     within_seconds=within[1])
+    return found
 
 
 def run_synthetic():
@@ -923,6 +1077,37 @@ def run_synthetic():
     return problems
 
 
+def record_start(case_set, precisions, limits, per_group, drivers,
+                 within):
+    """Return what the records of a run start from: the commit, whose
+    tracked files must be as committed, and the date. Each record's
+    configuration is checked before the run, so that a record that could
+    not be kept is refused first."""
+    from ehr_evidence_app.tracking import measurements
+    commit = measurements.code_commit()
+    measured_on = datetime.date.today().isoformat()
+    for precision in precisions:
+        measurements.check_configuration(run_configuration(
+            case_set, precision, limits, per_group, drivers, within, commit,
+            measured_on))
+    return commit, measured_on
+
+
+def keep(case_set, precision, limits, per_group, drivers, within, start,
+         results, seconds):
+    """Write the record of one run, when the code is still the commit it
+    started at; return the record's file name."""
+    from ehr_evidence_app.tracking import measurements
+    commit, measured_on = start
+    if measurements.code_commit() != commit:
+        raise measurements.MeasurementError("working_tree_changed")
+    path = measurements.write_record(measurements.build_record(
+        run_configuration(case_set, precision, limits, per_group, drivers,
+                          within, commit, measured_on),
+        measurement_scalars(results, seconds, within)))
+    return ntpath.basename(path)
+
+
 def main(argv=None):
     """Run the default mode, or an operator mode on a development case
     set; prints aggregate counts only."""
@@ -956,6 +1141,9 @@ def main(argv=None):
                         help="also count the requests the benchmark would "
                              "release within a lower output and time limit; "
                              "may be repeated")
+    parser.add_argument("--record", action="store_true",
+                        help="also keep each run's measurement as a record "
+                             "for the tracker (ADR 0018)")
     args = parser.parse_args(argv)
     modes = args.tokens + args.benchmark + args.paired
     if bool(modes) != bool(args.case_set) or modes > 1:
@@ -968,6 +1156,13 @@ def main(argv=None):
     if args.within and not args.benchmark:
         print("FAILED: --within counts a benchmark's requests")
         return 2
+    if args.record and not (args.benchmark or args.paired):
+        print("FAILED: --record keeps the measurement of --benchmark or "
+              "--paired")
+        return 2
+    if args.record and len(args.within) > 1:
+        print("FAILED: --record keeps one --within")
+        return 2
     if not args.case_set:
         problems = run_synthetic()
         for problem in problems:
@@ -976,47 +1171,72 @@ def main(argv=None):
         return 1 if problems else 0
     from ehr_evidence_app.evidence import contracts
     from ehr_evidence_app.generation import runtime
-    if args.paired:
+    from ehr_evidence_app.tracking import measurements
+    limits = contracts.load_limits()
+    if args.benchmark:
+        changes = {}
+        if args.seconds:
+            changes["max_request_seconds"] = args.seconds
+        if args.output_tokens:
+            changes["max_output_tokens"] = args.output_tokens
+        limits = limits.model_copy(update=changes)
+        if any(not (1 <= tokens <= limits.max_output_tokens
+                    and 1 <= limit <= limits.max_request_seconds)
+               for tokens, limit in args.within):
+            print("FAILED: --within gives limits no higher than the "
+                  "benchmark's")
+            return 2
+    within = tuple(args.within[0]) if args.within else None
+    precisions = PRECISIONS if args.paired else (args.precision,)
+    start = None
+    if args.record:
         try:
-            paired(args.case_set, args.per_group, contracts.load_limits(),
-                   args.task, args.drivers)
-        except adapter.DevelopmentError as error:
+            start = record_start(args.case_set, precisions, limits,
+                                 args.per_group, args.drivers, within)
+        except measurements.MeasurementError as error:
             print("FAILED: %s" % error)
             return 1
-        print("RESULT: PASS")
-        return 0
-    backend = runtime.WorkerBackend(verify=False, precision=args.precision)
+    runs = []
     try:
-        if args.tokens:
-            tokens(args.case_set, backend)
+        if args.paired:
+            runs = paired(args.case_set, args.per_group, limits, args.task,
+                          args.drivers)
         else:
-            limits = contracts.load_limits()
-            changes = {}
-            if args.seconds:
-                changes["max_request_seconds"] = args.seconds
-            if args.output_tokens:
-                changes["max_output_tokens"] = args.output_tokens
-            limits = limits.model_copy(update=changes)
-            if any(not (1 <= tokens <= limits.max_output_tokens
-                        and 1 <= limit <= limits.max_request_seconds)
-                   for tokens, limit in args.within):
-                print("FAILED: --within gives limits no higher than the "
-                      "benchmark's")
-                return 2
-            print("precision: %s" % PRECISION_LABELS[args.precision])
-            print("limits: %d prompt tokens, %d output tokens, %d s" % (
-                limits.max_prompt_tokens, limits.max_output_tokens,
-                limits.max_request_seconds))
-            if args.drivers is not None:
-                print("drivers an explanation describes: %d"
-                      % args.drivers)
-            benchmark(args.case_set, backend, args.per_group, limits,
-                      args.task, args.drivers, args.within)
+            backend = runtime.WorkerBackend(verify=False,
+                                            precision=args.precision)
+            try:
+                if args.tokens:
+                    tokens(args.case_set, backend)
+                else:
+                    print("precision: %s" % PRECISION_LABELS[args.precision])
+                    print("limits: %d prompt tokens, %d output tokens, %d s"
+                          % (limits.max_prompt_tokens,
+                             limits.max_output_tokens,
+                             limits.max_request_seconds))
+                    if args.drivers is not None:
+                        print("drivers an explanation describes: %d"
+                              % args.drivers)
+                    results, seconds = benchmark(
+                        args.case_set, backend, args.per_group, limits,
+                        args.task, args.drivers, args.within)
+                    runs = [(args.precision, results, seconds)]
+            finally:
+                backend.stop()
     except adapter.DevelopmentError as error:
         print("FAILED: %s" % error)
         return 1
-    finally:
-        backend.stop()
+    if start is not None:
+        try:
+            for precision, results, seconds in runs:
+                print("measurement record: %s" % keep(
+                    args.case_set, precision, limits, args.per_group,
+                    args.drivers, within, start, results, seconds))
+        except measurements.MeasurementError as error:
+            print("FAILED: the record was not kept: %s" % error)
+            return 1
+        except measurements.RecordConflict:
+            print("FAILED: the record was not kept: record_conflict")
+            return 1
     print("RESULT: PASS")
     return 0
 

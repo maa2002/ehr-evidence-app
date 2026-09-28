@@ -1,0 +1,187 @@
+{
+  "schema_version": "1.0",
+  "purpose": "The generation measurements of Phase 7 since the structured evidence of ADR 0014, as aggregates only: each run's configuration and its counts, scores and timings, as the project's execution log and docs/generation.md record them. Read by ehr_evidence_app.tracking.measurements, which writes each run as a measurement record marked backfilled and sends it to the tracker (ADR 0018). A value the log does not give for one stratum, such as a median over two strata of presence checks, is left out; the release rates are derived from the counts. The runs of prompt-v2 and prompt-v3 and the sweep of the number of drivers are in docs/generation.md only.",
+  "defaults": {
+    "model_repository": "google/medgemma-1.5-4b-it",
+    "model_revision": "91850547d9f0b2fdd21aa7c5f4f3d1a8a52c243b",
+    "decoder": "xgrammar",
+    "shape_version": "candidate-shape-v4",
+    "drivers": 5,
+    "max_prompt_tokens": 16384,
+    "max_output_tokens": 768
+  },
+  "runs": [
+    {
+      "entry": "Paired sample at 7f14baf, BF16 (Phase 7 M3-1)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "7f14baf", "measured_on": "2026-09-27", "precision": "bf16-mixed", "prompt_version": "v4", "projection_version": "projection-v2", "per_group": 8, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 8, "empty lists": 1, "presence recorded": 8, "presence not recorded": 8, "explanations": 8, "all": 33},
+        "released": {"lists": 3, "empty lists": 1, "presence recorded": 2, "presence not recorded": 3, "explanations": 0, "all": 9}
+      }
+    },
+    {
+      "entry": "Paired sample at 7f14baf, NF4 (Phase 7 M3-1)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "7f14baf", "measured_on": "2026-09-27", "precision": "nf4", "prompt_version": "v4", "projection_version": "projection-v2", "per_group": 8, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 8, "empty lists": 1, "presence recorded": 8, "presence not recorded": 8, "explanations": 8, "all": 33},
+        "released": {"lists": 3, "empty lists": 0, "presence recorded": 2, "presence not recorded": 3, "explanations": 0, "all": 8}
+      }
+    },
+    {
+      "entry": "Paired sample at 96edab4, BF16 (Phase 7 M3-1)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "96edab4", "measured_on": "2026-09-27", "precision": "bf16-mixed", "prompt_version": "v5", "projection_version": "projection-v3", "per_group": 8, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 8, "empty lists": 1, "presence recorded": 8, "presence not recorded": 8, "explanations": 8, "all": 33},
+        "released": {"lists": 3, "empty lists": 1, "presence recorded": 2, "presence not recorded": 3, "explanations": 3, "all": 12}
+      }
+    },
+    {
+      "entry": "Paired sample at 96edab4, NF4 (Phase 7 M3-1)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "96edab4", "measured_on": "2026-09-27", "precision": "nf4", "prompt_version": "v5", "projection_version": "projection-v3", "per_group": 8, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 8, "empty lists": 1, "presence recorded": 8, "presence not recorded": 8, "explanations": 8, "all": 33},
+        "released": {"lists": 3, "empty lists": 0, "presence recorded": 2, "presence not recorded": 3, "explanations": 3, "all": 11}
+      }
+    },
+    {
+      "entry": "Paired sample at 42c9011, BF16 (Phase 7 M3-1)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "42c9011", "measured_on": "2026-09-27", "precision": "bf16-mixed", "prompt_version": "v6", "projection_version": "projection-v3", "per_group": 8, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 8, "empty lists": 1, "presence recorded": 8, "presence not recorded": 8, "explanations": 8, "all": 33},
+        "released": {"lists": 7, "empty lists": 1, "presence recorded": 7, "presence not recorded": 3, "explanations": 3, "all": 21}
+      }
+    },
+    {
+      "entry": "Paired sample at 42c9011, NF4 (Phase 7 M3-1)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "42c9011", "measured_on": "2026-09-27", "precision": "nf4", "prompt_version": "v6", "projection_version": "projection-v3", "per_group": 8, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 8, "empty lists": 1, "presence recorded": 8, "presence not recorded": 8, "explanations": 8, "all": 33},
+        "released": {"lists": 5, "empty lists": 0, "presence recorded": 7, "presence not recorded": 3, "explanations": 3, "all": 18}
+      }
+    },
+    {
+      "entry": "Paired sample at 20e02a0, BF16 (Phase 7 M3-1)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "20e02a0", "measured_on": "2026-09-27", "precision": "bf16-mixed", "prompt_version": "v7", "projection_version": "projection-v4", "per_group": 8, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 8, "empty lists": 1, "presence recorded": 8, "presence not recorded": 8, "explanations": 8, "all": 33},
+        "released": {"lists": 7, "empty lists": 1, "presence recorded": 7, "presence not recorded": 5, "explanations": 6, "all": 26},
+        "seconds": {"lists: median": 42.4, "lists: largest": 83.8, "presence: largest": 18.1, "explanations: median": 65.8, "explanations: largest": 73.6},
+        "peak GPU MiB": {"all: smallest": 6489, "all: largest": 6642}
+      }
+    },
+    {
+      "entry": "Paired sample at 20e02a0, NF4 (Phase 7 M3-1)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "20e02a0", "measured_on": "2026-09-27", "precision": "nf4", "prompt_version": "v7", "projection_version": "projection-v4", "per_group": 8, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 8, "empty lists": 1, "presence recorded": 8, "presence not recorded": 8, "explanations": 8, "all": 33},
+        "released": {"lists": 5, "empty lists": 0, "presence recorded": 5, "presence not recorded": 5, "explanations": 2, "all": 17},
+        "seconds": {"lists: median": 32.4, "lists: largest": 64.2, "presence: largest": 13.9, "explanations: median": 48.2, "explanations: largest": 51.8},
+        "peak GPU MiB": {"all: smallest": 3645, "all: largest": 3787}
+      }
+    },
+    {
+      "entry": "Full paired run at 93762df (the code of 20e02a0), BF16 (Phase 7 M3-2)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "93762df", "measured_on": "2026-09-27", "precision": "bf16-mixed", "prompt_version": "v7", "projection_version": "projection-v4", "per_group": 1000, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 134, "empty lists": 1, "presence recorded": 134, "presence not recorded": 135, "explanations": 26, "all": 430},
+        "released": {"lists": 93, "empty lists": 1, "presence recorded": 127, "presence not recorded": 80, "explanations": 13, "all": 314},
+        "seconds": {"lists: median": 32.9, "lists: largest": 87.4, "presence: largest": 18.7, "explanations: median": 64.8, "explanations: largest": 111.1, "all: total": 9081},
+        "tokens a second": {"lists: median": 8.7, "presence: median": 8.0, "explanations: median": 5.6},
+        "peak GPU MiB": {"all: smallest": 6489, "all: largest": 6720}
+      }
+    },
+    {
+      "entry": "Full paired run at 93762df (the code of 20e02a0), NF4 (Phase 7 M3-2)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "93762df", "measured_on": "2026-09-27", "precision": "nf4", "prompt_version": "v7", "projection_version": "projection-v4", "per_group": 1000, "max_request_seconds": 120},
+      "scalars": {
+        "requests": {"lists": 134, "empty lists": 1, "presence recorded": 134, "presence not recorded": 135, "explanations": 26, "all": 430},
+        "released": {"lists": 32, "empty lists": 0, "presence recorded": 55, "presence not recorded": 80, "explanations": 5, "all": 172},
+        "seconds": {"lists: median": 33.0, "lists: largest": 104.8, "presence: largest": 15.0, "explanations: median": 50.9, "explanations: largest": 104.5, "all: total": 10014},
+        "tokens a second": {"lists: median": 7.5, "presence: median": 7.1, "explanations: median": 7.4},
+        "peak GPU MiB": {"all: smallest": 3645, "all: largest": 3864}
+      }
+    },
+    {
+      "entry": "Rerun at f54a152, dev-30-v1, counted also within 768 tokens and 180 s (Phase 7 M3-3)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "f54a152", "measured_on": "2026-09-27", "precision": "bf16-mixed", "prompt_version": "v8", "projection_version": "projection-v4", "per_group": 1000, "max_output_tokens": 2048, "max_request_seconds": 300, "within_output_tokens": 768, "within_seconds": 180},
+      "scalars": {
+        "requests": {"lists": 134, "empty lists": 1, "presence recorded": 134, "presence not recorded": 135, "explanations": 26, "all": 430},
+        "released": {"lists": 99, "empty lists": 1, "presence recorded": 130, "presence not recorded": 135, "explanations": 13, "all": 378},
+        "released within limits": {"lists": 98, "empty lists": 1, "presence recorded": 130, "presence not recorded": 135, "explanations": 13, "all": 377},
+        "seconds": {"lists: median": 48.9, "lists: largest": 219.9, "explanations: median": 66.5, "explanations: largest": 111.4, "all: total": 15247}
+      }
+    },
+    {
+      "entry": "Rerun at f54a152, pilot-10-v1, counted also within 768 tokens and 180 s (Phase 7 M3-3)",
+      "configuration": {"case_set": "pilot-10-v1", "commit": "f54a152", "measured_on": "2026-09-28", "precision": "bf16-mixed", "prompt_version": "v8", "projection_version": "projection-v4", "per_group": 1000, "max_output_tokens": 2048, "max_request_seconds": 300, "within_output_tokens": 768, "within_seconds": 180},
+      "scalars": {
+        "requests": {"lists": 56, "empty lists": 2, "presence recorded": 56, "presence not recorded": 58, "explanations": 10, "all": 182},
+        "released": {"lists": 40, "empty lists": 2, "presence recorded": 54, "presence not recorded": 58, "explanations": 4, "all": 158},
+        "released within limits": {"lists": 39, "empty lists": 2, "presence recorded": 54, "presence not recorded": 58, "explanations": 4, "all": 157},
+        "seconds": {"all: total": 6188}
+      }
+    },
+    {
+      "entry": "Diagnosis at prompt-v8, a66dfd6, explanations and lists (Phase 7 M3-4)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "a66dfd6", "measured_on": "2026-09-28", "precision": "bf16-mixed", "prompt_version": "v8", "projection_version": "projection-v4", "per_group": 1000, "max_request_seconds": 180},
+      "scalars": {
+        "requests": {"lists": 134, "explanations": 26},
+        "released": {"lists": 98, "explanations": 13},
+        "outcome right": {"lists": 120},
+        "precision": {"lists: conditions": 0.949, "lists: records": 0.964, "explanations: drivers": 0.984, "explanations: history lines": 0.845, "explanations: context lines": 0.716},
+        "recall": {"lists: conditions": 0.666, "lists: records": 0.592, "explanations: drivers": 0.962, "explanations: history lines": 0.732, "explanations: context lines": 0.898},
+        "F1": {"lists: conditions": 0.783, "lists: records": 0.733, "explanations: drivers": 0.973, "explanations: history lines": 0.784, "explanations: context lines": 0.797}
+      }
+    },
+    {
+      "entry": "Candidate 1 at 18cccbd, explanations and lists (Phase 7 M3-4)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "18cccbd", "measured_on": "2026-09-28", "precision": "bf16-mixed", "prompt_version": "v9", "projection_version": "projection-v5", "per_group": 1000, "max_request_seconds": 180},
+      "scalars": {
+        "requests": {"lists": 134, "explanations": 26},
+        "released": {"lists": 94, "explanations": 21},
+        "precision": {"lists: conditions": 0.955, "lists: records": 0.996, "explanations: history lines": 0.974, "explanations: context lines": 0.875},
+        "recall": {"lists: conditions": 0.734, "lists: records": 0.657, "explanations: history lines": 0.915, "explanations: context lines": 0.949},
+        "F1": {"lists: conditions": 0.83, "lists: records": 0.792, "explanations: drivers": 1.0, "explanations: history lines": 0.943, "explanations: context lines": 0.911},
+        "seconds": {"explanations: median": 42.7},
+        "tokens a second": {"explanations: median": 8.7}
+      }
+    },
+    {
+      "entry": "The configuration on pilot-10-v1 at 87027bd: the pilot check and the scores of the unchanged tasks (Phase 7 M3-4)",
+      "configuration": {"case_set": "pilot-10-v1", "commit": "87027bd", "measured_on": "2026-09-28", "precision": "bf16-mixed", "prompt_version": "v9", "projection_version": "projection-v5", "per_group": 1000, "max_request_seconds": 180},
+      "scalars": {
+        "requests": {"lists": 56, "empty lists": 2, "all lists": 58, "presence recorded": 56, "presence not recorded": 58, "presence": 114, "explanations": 10, "all": 182},
+        "released": {"lists": 39, "empty lists": 2, "all lists": 41, "presence recorded": 54, "presence not recorded": 58, "presence": 112, "explanations": 8, "all": 161},
+        "outcome right": {"lists": 49, "all lists": 51, "presence": 114},
+        "precision": {"lists: conditions": 0.953, "lists: records": 0.933, "presence recorded: conditions": 0.966, "explanations: history lines": 1.0, "explanations: context lines": 0.929},
+        "recall": {"lists: conditions": 0.622, "lists: records": 0.524, "presence recorded: conditions": 1.0, "explanations: history lines": 0.972, "explanations: context lines": 0.929},
+        "F1": {"lists: conditions": 0.753, "lists: records": 0.672, "presence recorded: conditions": 0.983, "presence recorded: records": 1.0, "explanations: drivers": 1.0, "explanations: history lines": 0.986, "explanations: context lines": 0.929}
+      }
+    },
+    {
+      "entry": "Presence checks of dev-30-v1 at 87027bd, scored (Phase 7 M3-4)",
+      "configuration": {"case_set": "dev-30-v1", "commit": "87027bd", "measured_on": "2026-09-28", "precision": "bf16-mixed", "prompt_version": "v9", "projection_version": "projection-v5", "per_group": 1000, "max_request_seconds": 180},
+      "scalars": {
+        "requests": {"presence recorded": 134, "presence not recorded": 135, "presence": 269},
+        "released": {"presence recorded": 130, "presence not recorded": 135, "presence": 265},
+        "outcome right": {"presence": 269},
+        "precision": {"presence recorded: conditions": 0.959},
+        "recall": {"presence recorded: conditions": 1.0},
+        "F1": {"presence recorded: conditions": 0.979, "presence recorded: records": 1.0}
+      }
+    },
+    {
+      "entry": "The configuration on dev-30-v1, assembled from runs whose prompts are those of 87027bd byte for byte: lists at a66dfd6, the empty list at f54a152, presence checks at 87027bd, explanations at 18cccbd (Phase 7 M3-4)",
+      "assembled": true,
+      "configuration": {"case_set": "dev-30-v1", "commit": "87027bd", "measured_on": "2026-09-28", "precision": "bf16-mixed", "prompt_version": "v9", "projection_version": "projection-v5", "per_group": 1000, "max_request_seconds": 180},
+      "scalars": {
+        "requests": {"lists": 134, "empty lists": 1, "all lists": 135, "presence recorded": 134, "presence not recorded": 135, "presence": 269, "explanations": 26, "all": 430},
+        "released": {"lists": 98, "empty lists": 1, "all lists": 99, "presence recorded": 130, "presence not recorded": 135, "presence": 265, "explanations": 21, "all": 385},
+        "outcome right": {"lists": 120, "all lists": 121, "presence": 269},
+        "precision": {"lists: conditions": 0.949, "lists: records": 0.964, "presence recorded: conditions": 0.959, "explanations: history lines": 0.974, "explanations: context lines": 0.875},
+        "recall": {"lists: conditions": 0.666, "lists: records": 0.592, "presence recorded: conditions": 1.0, "explanations: history lines": 0.915, "explanations: context lines": 0.949},
+        "F1": {"lists: conditions": 0.783, "lists: records": 0.733, "presence recorded: conditions": 0.979, "presence recorded: records": 1.0, "explanations: drivers": 1.0, "explanations: history lines": 0.943, "explanations: context lines": 0.911}
+      }
+    }
+  ]
+}

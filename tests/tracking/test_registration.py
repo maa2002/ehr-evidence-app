@@ -42,7 +42,9 @@ TASK_ID = "d3" * 16
 CONFIG_PATH = "C:" + r"\Users\fixture\clearml.conf"
 CACHE_PATH = checker.guard.RUNTIME_ROOT + r"\cache\clearml"
 ALLOWED_ACTIONS = ["users.get_current_user", "projects.get_all",
-                   "tasks.create", "tasks.get_all", "tasks.archive"]
+                   "tasks.create", "tasks.get_all", "tasks.completed"]
+# The actions of a registration whose readback failed: it is not completed.
+READBACK_ACTIONS = ALLOWED_ACTIONS[:4]
 INHERITED_TAGS = {"provenance:inherited_reported",
                   "execution:not_executed_by_downstream"}
 
@@ -88,10 +90,14 @@ class FakeAdapter(object):
     """In-memory ClearML session stand-in recording every service action."""
 
     def __init__(self, readback=None,
-                 archive_response=(200, {"data": {"archived": 1}})):
-        """Configure optional readback and archive behaviour."""
+                 archive_response=(200, {"data": {"archived": 1}}),
+                 complete_response=(200, {"data": {"updated": 1,
+                                                   "fields": {}}})):
+        """Configure optional readback, archive and completion
+        behaviour."""
         self.readback = readback
         self.archive_response = archive_response
+        self.complete_response = complete_response
         self.calls = []
         self.created = None
         self.connected_to = None
@@ -138,11 +144,17 @@ class FakeAdapter(object):
                         execution={"test_split": 0, "artifacts": [],
                                    "dataviews": {}, "model_desc": "",
                                    "model_labels": [], "parameters": {}},
-                        output={}, configuration={}, hyperparams={})
+                        output={}, configuration={},
+                        hyperparams=copy.deepcopy(
+                            self.created.get("hyperparams", {})))
             return 200, {"data": {"tasks": [task]}}
         if action_key == "tasks.archive":
             return self.archive_response
-        raise AssertionError("unexpected service action " + key)
+        if action_key == "events.add":
+            return 200, {"data": {}}
+        if action_key == "tasks.completed":
+            return self.complete_response
+        raise AssertionError("unexpected service action " + action_key)
 
     def actions(self):
         """Return the ordered service action names."""
@@ -465,10 +477,12 @@ class MetricDomainTests(ScratchCase):
 
 
 class RemoteRegistrationTests(ScratchCase):
-    """In-memory operator remote mode: create, read back and archive."""
+    """In-memory operator remote mode: create and read back; the task
+    stays visible (ADR 0018)."""
 
-    def test_remote_create_readback_archive_success(self):
-        """One metadata-only task is created, read back and archived."""
+    def test_remote_create_and_readback_success(self):
+        """One metadata-only task is created and read back, and it is not
+        archived."""
         adapter = FakeAdapter()
         result = self.remote(adapter)
         self.assertEqual(result["status"], "PASS", result)
@@ -479,7 +493,9 @@ class RemoteRegistrationTests(ScratchCase):
         self.assertEqual(adapter.actions(), ALLOWED_ACTIONS)
         self.assertEqual(adapter.connected_to, checker.ENDPOINTS["api_server"])
         self.assertEqual(adapter.created["project"], PROJECT_ID)
-        self.assertEqual(adapter.calls[-1][1], {"tasks": [TASK_ID]})
+        self.assertEqual(adapter.created["name"],
+                         "Inherited input registration")
+        self.assertNotIn("tasks.archive", adapter.actions())
         self.assertTrue(os.path.isfile(self.registration_path))
 
     def test_payload_has_exact_inherited_tags(self):
@@ -519,8 +535,8 @@ class RemoteRegistrationTests(ScratchCase):
         self.assertNotIn("d" * 64, sent)
         self.assertNotIn("patient", sent.lower())
 
-    def test_readback_probe_failure_archives_and_fails(self):
-        """A readback mismatch still archives the task and fails."""
+    def test_readback_probe_failure_fails(self):
+        """A readback mismatch fails the registration."""
         def mismatch(query, created):
             """Return a task whose tags differ from the payload."""
             task = dict(created, id=TASK_ID, tags=["unexpected"])
@@ -531,10 +547,11 @@ class RemoteRegistrationTests(ScratchCase):
         self.assertEqual(result["status"], "FAIL")
         self.assertEqual(result["findings"], ["readback_mismatch"])
         self.assertEqual(result["task_id"], TASK_ID)
-        self.assertEqual(adapter.actions(), ALLOWED_ACTIONS)
+        self.assertEqual(adapter.actions(), READBACK_ACTIONS)
 
-    def test_readback_captured_field_archives_and_fails(self):
-        """Captured model/output fields on readback fail after archiving."""
+    def test_readback_captured_field_fails(self):
+        """Captured model/output fields on readback fail the
+        registration."""
         def captured(query, created):
             """Return a task with a captured output destination."""
             task = dict(created, id=TASK_ID, output={"destination": "files"})
@@ -544,10 +561,10 @@ class RemoteRegistrationTests(ScratchCase):
         result = self.remote(adapter)
         self.assertEqual(result["status"], "FAIL")
         self.assertIn("readback_mismatch", result["findings"])
-        self.assertEqual(adapter.actions().count("tasks.archive"), 1)
+        self.assertEqual(adapter.actions().count("tasks.archive"), 0)
 
-    def test_readback_arbitrary_exception_archives_and_fails(self):
-        """An unexpected readback exception archives and is sanitised."""
+    def test_readback_arbitrary_exception_fails(self):
+        """An unexpected readback exception fails and is sanitised."""
         def broken(query, created):
             """Raise an exception whose text must not be reported."""
             raise RuntimeError("fixture failure quoting token-value-xyz")
@@ -556,31 +573,41 @@ class RemoteRegistrationTests(ScratchCase):
         result = self.remote(adapter)
         self.assertEqual(result["status"], "FAIL")
         self.assertEqual(result["findings"], ["readback_failed"])
-        self.assertEqual(adapter.actions().count("tasks.archive"), 1)
+        self.assertEqual(adapter.actions().count("tasks.archive"), 0)
         self.assertNotIn("token-value-xyz", json.dumps(result))
 
-    def test_archive_failure_fails(self):
-        """A rejected or no-op archive is a failed registration."""
-        for response in ((403, {"meta": {"result_subcode": 14,
-                                         "result_msg": "fixture-key-hidden"}}),
+    def test_registration_is_never_archived(self):
+        """Whatever the tracker would answer to an archive, the
+        registration never asks for one."""
+        for response in ((403, {"meta": {"result_subcode": 14}}),
                          (200, {"data": {"archived": 0}})):
             adapter = FakeAdapter(archive_response=response)
             with self.subTest(response=response[0]):
-                result = self.remote(adapter)
-                self.assertEqual(result["status"], "FAIL")
-                self.assertEqual(result["findings"], ["archive_failed"])
-                self.assertNotIn("fixture-key-hidden", json.dumps(result))
+                self.assertEqual(self.remote(adapter)["status"], "PASS")
+                self.assertNotIn("tasks.archive", adapter.actions())
 
-    def test_readback_and_archive_failures_are_both_reported(self):
-        """Both findings are kept when readback and archive fail."""
+    def test_readback_failure_is_reported(self):
+        """A failed readback is the registration's finding."""
         def broken(query, created):
             """Raise during readback."""
             raise RuntimeError("fixture")
 
-        adapter = FakeAdapter(readback=broken, archive_response=(500, None))
+        adapter = FakeAdapter(readback=broken)
         result = self.remote(adapter)
         self.assertEqual(result["status"], "FAIL")
-        self.assertEqual(result["findings"], ["archive_failed", "readback_failed"])
+        self.assertEqual(result["findings"], ["readback_failed"])
+        self.assertNotIn("tasks.completed", adapter.actions())
+
+    def test_completion_failure_is_reported(self):
+        """A registration read back but not marked completed fails."""
+        for response in ((403, {"meta": {"result_subcode": 14}}),
+                         (200, {"data": {"updated": 0}})):
+            adapter = FakeAdapter(complete_response=response)
+            with self.subTest(response=response[0]):
+                result = self.remote(adapter)
+                self.assertEqual(result["status"], "FAIL")
+                self.assertIn(result["findings"][0], ("service_rejected",
+                                                      "complete_failed"))
 
     def test_noisy_sdk_output_is_sanitized(self):
         """SDK stdout, stderr and logging are discarded; the result is clean."""

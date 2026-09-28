@@ -1,9 +1,11 @@
 # Experiment tracking and lineage
 
-ClearML records run metadata; the protected workspace stays the authority
-for everything patient-bearing. Tracker payloads are metadata only, and every
-path into the tracker goes through a fixed allowlist. Command examples assume
-the session set-up in [development.md](development.md#session-set-up).
+ClearML is the project's experiment record; the protected workspace stays
+the authority for everything patient-bearing. Tracker payloads are metadata,
+aggregates and the files of the one listed pretrained model
+([ADR 0018](decisions/0018-tracker-as-experiment-record.md)), and every path
+into the tracker goes through a fixed allowlist. Command examples assume the
+session set-up in [development.md](development.md#session-set-up).
 
 ## Policy
 
@@ -17,7 +19,8 @@ checks it read-only, without importing the SDK or contacting a service.
 | Code, configuration, evidence-schema and asset fingerprints | Raw or derived clinical content |
 | Aggregate evaluation, validation and operational metrics | Prompts, model responses and attribution text |
 | References to protected workspace files and their checksums | Case-level outputs |
-| | Credentials, tokens, model files and data files |
+| The listed pretrained model's files, with its licence notice, agreement copy and manifest | Credentials, tokens and data files |
+| | Models trained on the project's data, such as the GNN checkpoints |
 
 A case-level item is represented in the tracker only by its protected
 workspace reference and checksum. Tracker metadata may be cached in the
@@ -39,9 +42,9 @@ The policy defines the lineage fields later records must carry:
 `config/clearml_connection.json` declares the hosted target: the web
 (`https://app.clear.ml`), API (`https://api.clear.ml`) and files
 (`https://files.clear.ml`) servers, the workspace and the project
-`ehr-evidence-app`. Remote payloads are metadata only and there is no
-offline fallback. The declaration holds no local path, account, key or
-configuration content.
+`ehr-evidence-app`. Remote payloads are metadata, save the listed model's
+files, and there is no offline fallback. The declaration holds no local
+path, account, key or configuration content.
 
 `ehr_evidence_app.tracking.connection` has four modes:
 
@@ -108,12 +111,36 @@ touch credentials.
   components and over-long paths are rejected. References are never opened.
 - **Hyperparameters:** `learning_rate`, `batch_size`, `epochs` and
   `weight_decay` only, as finite numeric scalars.
+- **Kinds:** a task is a probe, an inherited input registration, a set of
+  runtime aggregates or a generation measurement, each with a fixed name
+  and type. The aggregates and measurements are named after some of their
+  configuration fields, such as `Generation measurement: dev-30-v1,
+  bf16-mixed, prompt v9, 87027bd`. Only a probe is archived; a lineage
+  task is read back and marked completed, so it stays in view and cannot
+  be edited in the web application without a reset
+  ([ADR 0018](decisions/0018-tracker-as-experiment-record.md)).
+- **Configuration fields:** a section `Configuration` of fields from a
+  fixed list, each in one form: `case_set`, `commit`, `measured_on`,
+  `precision`, `decoder`, `model_repository`, `model_revision`,
+  `prompt_version` (its number, such as `v9`), `projection_version`,
+  `shape_version`, `candidate_contract`, `explanation_template`,
+  `wording_rules`, `drivers`, `per_group`, the limits and the lower limits
+  a run was also counted within.
+- **Scalars:** a fixed metric (`requests`, `released`, `released within
+  limits`, `outcome right`, `release rate`, `model written rate`,
+  `fallback rate`, `precision`, `recall`, `F1`, `seconds`, `output tokens`,
+  `prompt tokens`, `tokens a second`, `peak GPU MiB`) under a fixed series:
+  a stratum of the benchmark (`lists`, `empty lists`, `presence recorded`,
+  `presence not recorded`, `explanations`), a union (`all lists`,
+  `presence`, `all`), alone or with a part (`conditions`, `records`,
+  `drivers`, `history lines`, `context lines`, `median`, `p90`,
+  `smallest`, `largest`, `total`), such as `F1` / `lists: conditions`.
+  Values are bounded; counts are whole numbers and shares lie between 0
+  and 1.
 
 Unknown fields, free-text comments or tags, secrets, patient identifiers and
 content-like fields (prompts, responses, attributions, predictions,
-explanations) fail before any request. Model artefact upload is not enabled;
-it would need a policy amendment, a dedicated staging path and manifest, a
-privacy review and an explicit enablement gate.
+explanations) fail before any request.
 
 ## Inherited input registration
 
@@ -127,8 +154,8 @@ documented metrics stay `inherited_reported`. An identical existing manifest
 is left untouched and a different one is refused
 (`registration_conflict`). `--operator-remote` also creates one
 metadata-only task with protected references, checksums and aggregate
-metadata, reads it back and archives it. No model, graph, explanation,
-vocabulary or source file is uploaded.
+metadata, reads it back and marks it completed; the task stays in view. No
+model, graph, explanation, vocabulary or source file is uploaded.
 
 ```powershell
 & $AppPython -m ehr_evidence_app.tracking.registration
@@ -150,15 +177,101 @@ validators' versions, the prompt's version by its number and the
 projection's version, the manifest's path and checksum, and four
 aggregates: `requests`, `model_written_rate` and `fallback_rate` (of the
 responses written from evidence) and `latency_ms` (the median of the
-model's attempts). No record, prompt, response, identifier or file is
-uploaded. `--operator-real` writes the manifest and checks the task
-offline; `--operator-remote` also creates it, reads it back and archives
-it, as the registration does.
+model's attempts). The task, named by its case set and prompt version,
+also carries the versions as configuration fields and, as scalars, the
+requests by task, the two shares, and the median, 90th percentile and
+largest of the model's seconds, tokens and peak GPU memory. No record,
+prompt, response, identifier or file is uploaded. `--operator-real` writes
+the manifest and checks the task offline; `--operator-remote` also creates
+it, reads it back and marks it completed, as the registration does.
 
 ```powershell
 & $AppPython -m ehr_evidence_app.tracking.aggregates
 & $AppPython -m ehr_evidence_app.tracking.aggregates --operator-real --case-set dev-30-v1
 & $AppPython -m ehr_evidence_app.tracking.aggregates --operator-remote --case-set dev-30-v1
+```
+
+## Measurements
+
+Each benchmark run of the generation is kept as a measurement: a record in
+the workspace, `outputs\measurements\measurement-<digest>.json`, written
+once and named by a digest of its content, and a task of the kind
+`Generation measurement`. A record holds the run's configuration fields
+and, by stratum, the requests, those released as the model wrote them
+and their release rate, those released within a lower limit, how many
+chose the right outcome, the precision, recall and F1 of each part scored
+against the correct documents, and the seconds, tokens, tokens a second
+and peak GPU memory of the model's attempts; nothing of a request, a
+document or a response. `generation.measure --record` writes the record
+of a run ([generation.md](generation.md#commands)); the tracked files
+must be as committed, before and after the run, so that the record names
+the commit that ran.
+
+`config/measurement_history.json` holds the runs of Phase 7 since the
+structured evidence of [ADR 0014](decisions/0014-structured-evidence.md),
+as the execution log records them: 17 runs, each at its commit. They are
+written as records marked backfilled; the development result of the
+configuration, assembled from runs whose prompts are those of `87027bd`
+byte for byte, is also marked assembled. A value the log does not give
+for one stratum is left out, never inferred.
+
+`ehr_evidence_app.tracking.measurements` sends each record once. Its task
+carries the configuration fields and the scalars, tags marking it as a
+measurement and, where so, backfilled or assembled, and lineage tags
+naming the commit, the case set, fingerprints of the configuration, the
+record's path and checksum, and its requests, release rate and fallback
+rate. An index beside the records, `tracker-tasks.json`, keeps the task
+of each record, so a record is never sent twice; a correction is a new
+record and a new task. `--operator-real` writes the history's records and
+checks every task offline; `--operator-remote` also creates the tasks of
+the records not yet sent, reads each back and marks it completed, and
+stops at the first finding.
+
+```powershell
+& $AppPython -m ehr_evidence_app.tracking.measurements
+& $AppPython -m ehr_evidence_app.tracking.measurements --operator-real
+& $AppPython -m ehr_evidence_app.tracking.measurements --operator-remote
+```
+
+In the web application, the project's experiments table can show the
+configuration fields (such as `case_set`, `precision`, `prompt_version`
+and `commit`) and the last value of any scalar (such as `release rate` /
+`all`) as columns, and compares selected tasks side by side.
+
+## The model
+
+`ehr_evidence_app.tracking.models` keeps MedGemma 1.5 4B IT, the one model
+the policy lists, in the tracker. It is published pretrained by its
+developer and was never trained on the project's data; the laptop keeps
+running it from the runtime root, and the tracker's copy is the project's
+shared reference. Its licence, the Health AI Developer Foundations terms,
+requires a copy of the agreement and a notice to go with it.
+
+`--operator-real` checks every file of the model against its size and
+SHA-256 in `config/generation.json` and writes the staging directory
+`outputs\model-staging\google--medgemma-1.5-4b-it\<revision>`: a
+`NOTICE` with the licence's notice and that no file was modified, and a
+`MANIFEST.json` naming the model's repository, revision and licence and
+each file's name, kind, size, SHA-256 and provenance, with the
+confirmation that it holds nothing patient-derived or secret. The project
+owner first saves a copy of the agreement there, as one of
+`HAI-DEF-terms-of-use.pdf`, `.html` or `.txt`; without it nothing is
+staged. `--operator-remote` then uploads the model's files, the notice,
+the agreement and, last, the manifest to the files server under
+`ehr-evidence-app/models/medgemma-1.5-4b-it/<revision>/`, checking the
+size of each upload; a file already there at its size is not sent again.
+It registers the revision once in the project's model registry, as
+`MedGemma 1.5 4B IT` with the manifest's address, the tags `pretrained`,
+`licence:health-ai-developer-foundations` and `revision:<revision>`, and
+metadata (repository, revision, licence, files, size and the manifest's
+SHA-256), and reads it back. The upload is about 8.6 GB. The GNN
+checkpoints and anything else derived from patient data are never
+uploaded.
+
+```powershell
+& $AppPython -m ehr_evidence_app.tracking.models
+& $AppPython -m ehr_evidence_app.tracking.models --operator-real
+& $AppPython -m ehr_evidence_app.tracking.models --operator-remote
 ```
 
 ## Lineage records

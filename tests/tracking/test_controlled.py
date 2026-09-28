@@ -197,5 +197,114 @@ class PayloadTests(unittest.TestCase):
                 tracking.validate_readback(altered, expected)
 
 
+def valid_configuration():
+    """Return configuration fields in their permitted forms."""
+    return {"case_set": "dev-30-v1", "commit": "93762df",
+            "precision": "bf16-mixed", "prompt_version": "v9",
+            "projection_version": "projection-v5",
+            "shape_version": "candidate-shape-v4",
+            "explanation_template": "explanation-template-v3",
+            "drivers": 5, "max_output_tokens": 768,
+            "model_repository": "google/medgemma-1.5-4b-it",
+            "model_revision": "9" * 40}
+
+
+class KindConfigurationScalarTests(unittest.TestCase):
+    """Task kinds, configuration fields and scalars (ADR 0018)."""
+
+    def test_kinds_have_fixed_names_and_only_probes_archive(self):
+        """Every kind has its fixed name and type; lineage kinds stay
+        visible."""
+        for kind, fixed in tracking.TASK_KINDS.items():
+            payload = tracking.build_task_payload(
+                "project_123", valid_lineage(), {}, kind=kind)
+            self.assertEqual((payload["name"], payload["type"]),
+                             (fixed["name"], fixed["type"]))
+            self.assertEqual(fixed["archive"], kind == "probe")
+        with self.assertRaises(tracking.UnsafeMetadata):
+            tracking.build_task_payload("project_123", valid_lineage(), {},
+                                        kind="free text")
+
+    def test_names_hold_checked_configuration_only(self):
+        """A kind with a label is named after its configuration fields,
+        each in its permitted form; a field outside the allowlist never
+        reaches a name."""
+        self.assertEqual(
+            tracking.task_name("measurement", valid_configuration()),
+            "Generation measurement: dev-30-v1, bf16-mixed, prompt v9, "
+            "93762df")
+        self.assertEqual(tracking.task_name("runtime_aggregates", {
+            "case_set": "pilot-10-v1"}), "Runtime aggregates: pilot-10-v1")
+        self.assertEqual(tracking.task_name("registration",
+                                            valid_configuration()),
+                         "Inherited input registration")
+        for change in ({"commit": "HEAD"}, {"case_set": "Dev 30"}):
+            with self.subTest(change=change):
+                with self.assertRaises(tracking.UnsafeMetadata):
+                    tracking.task_name("measurement", dict(
+                        valid_configuration(), **change))
+
+    def test_configuration_fields_take_their_forms_only(self):
+        """Configuration becomes one hyper-parameter section; an unknown
+        field, free text or an out-of-range number is refused."""
+        payload = tracking.build_task_payload(
+            "project_123", valid_lineage(), {}, kind="measurement",
+            configuration=valid_configuration())
+        section = payload["hyperparams"][tracking.CONFIGURATION_SECTION]
+        self.assertEqual(section["drivers"],
+                         {"section": "Configuration", "name": "drivers",
+                          "value": "5", "type": "int"})
+        self.assertEqual(section["prompt_version"]["value"], "v9")
+        for change in ({"prompt_version": "prompt-v9"},
+                       {"case_set": "the patient's cases"},
+                       {"drivers": 0}, {"drivers": True},
+                       {"max_output_tokens": 5000},
+                       {"model_repository": "another/model"},
+                       {"notes": "free text"}):
+            with self.subTest(change=change):
+                with self.assertRaises(tracking.UnsafeMetadata):
+                    tracking.build_configuration(dict(
+                        valid_configuration(), **change))
+
+    def test_scalars_are_named_and_bounded(self):
+        """Scalars carry allowlisted names and bounded values, once
+        each."""
+        events = tracking.build_scalar_events("task_1", [
+            ("release rate", "lists", 0.73), ("released", "all", 385),
+            ("F1", "explanations: drivers", 1.0),
+            ("seconds", "lists: median", 32.9)])
+        self.assertEqual(events[0], {
+            "task": "task_1", "type": "training_stats_scalar",
+            "metric": "release rate", "variant": "lists", "value": 0.73,
+            "iter": 0})
+        for scalars in ([("release rate", "lists", 1.2)],
+                        [("released", "all", 2.5)],
+                        [("loss", "all", 0.1)],
+                        [("F1", "a patient's lists", 0.5)],
+                        [("F1", "all", float("nan"))],
+                        [("F1", "all", 0.5), ("F1", "all", 0.6)]):
+            with self.subTest(scalars=scalars):
+                with self.assertRaises(tracking.UnsafeMetadata):
+                    tracking.build_scalar_events("task_1", scalars)
+
+    def test_readback_accepts_exactly_the_configuration_sent(self):
+        """The configuration read back must be the one sent; any other
+        hyper-parameter is captured content."""
+        expected = tracking.build_task_payload(
+            "project_123", valid_lineage(), {}, kind="measurement",
+            configuration=valid_configuration())
+        task = dict(expected, id="task_1")
+        self.assertTrue(tracking.validate_readback(task, expected))
+        extra = dict(task, hyperparams={
+            **expected["hyperparams"], "Args": {"x": {
+                "section": "Args", "name": "x", "value": "1"}}})
+        with self.assertRaises(tracking.UnsafeMetadata):
+            tracking.validate_readback(extra, expected)
+        bare = tracking.build_task_payload("project_123", valid_lineage(),
+                                           {}, kind="measurement")
+        with self.assertRaises(tracking.UnsafeMetadata):
+            tracking.validate_readback(task, bare)
+
+
 if __name__ == "__main__":
     unittest.main()

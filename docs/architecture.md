@@ -82,8 +82,8 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `casesets` | Case-set registry, seeded case-set selection, case-set preparation | `registry`, `selection`, `prepare` |
 | `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, template candidates, scoped answers, development suite, held-out and written wording tests | `vocabulary`, `resolve`, `interpret`, `scope`, `templates`, `answer`, `suite`, `heldout`, `written` |
 | `validation` | Candidate contract, checks before generation, structure and reference checks, support of QA statements, wording rules, template explanation and its preservation checks, release gate, mutation suite | `candidate`, `evidence`, `structure`, `support`, `language`, `explanation`, `gate`, `mutations` |
-| `generation` | Candidates written by the language model: the document shape and its schema, the model's compact view of the evidence, the prompt, the adapter with its limits and the template fallback, the pinned model's runtime and its worker (which runs in the model environment), development measurement | `shape`, `projection`, `prompt`, `adapter`, `runtime`, `worker`, `measure` |
-| `tracking` | Tracker policy, ClearML connection checks, controlled metadata tracking, input registration, lineage records | `policy`, `connection`, `controlled`, `registration`, `lineage` |
+| `generation` | Candidates written by the language model: the document shape and its schema, the model's compact view of the evidence, the prompt, the adapter with its limits and the template fallback, the pinned model's runtime and its worker (which runs in the model environment), development measurement, protected runtime records | `shape`, `projection`, `prompt`, `adapter`, `runtime`, `worker`, `measure`, `records` |
+| `tracking` | Tracker policy, ClearML connection checks, controlled tracking, input registration, runtime aggregates, measurements, the pinned model in the tracker, lineage records | `policy`, `connection`, `controlled`, `registration`, `aggregates`, `measurements`, `models`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |
 
@@ -113,6 +113,7 @@ fixed roots and allowlists live in code.
 | `case_sets.json` | `casesets.registry`, `casesets.selection`, `sources.pilot` | Case-set purposes, partitions, sizes, seeds, eligibility and draw rule |
 | `clearml_policy.json` | `tracking.policy` | Tracker payload and storage policy |
 | `clearml_connection.json` | `tracking.connection` | Hosted ClearML declaration |
+| `measurement_history.json` | `tracking.measurements` | The Phase 7 generation measurements, as the aggregates the execution log records |
 | `lineage_schema.json` | `tracking.lineage` | Lineage chain schema |
 | `upstream_references.json` | `environment.app` | Logical upstream roles and paths |
 
@@ -149,7 +150,9 @@ the rules are in [data-handling.md](data-handling.md).
   fixtures. Reading protected data requires an explicit flag.
 - **Aggregate-only output.** Console output, logs and tracker payloads carry
   statuses, counts, hashes and finding codes only; unexpected exceptions
-  print their type name only.
+  print their type name only. The one other payload is the listed
+  pretrained model's files, with its licence
+  ([ADR 0018](decisions/0018-tracker-as-experiment-record.md)).
 
 ## Work-item identifiers
 

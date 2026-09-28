@@ -131,6 +131,12 @@ metrics of Phase 9.
   distributions, the benchmark with its scores, the paired precision
   comparison, the configuration frozen for the final evaluation and the
   bounded prompt pass)
+- 46.2 Keep the experiments in the tracker (done:
+  [ADR 0018](decisions/0018-tracker-as-experiment-record.md); lineage tasks
+  stay visible and completed, with configuration fields and scalars from
+  allowlists; each benchmark run is a measurement task, the Phase 7 runs
+  backfilled from the execution log; the pinned model uploaded with its
+  licence notice, agreement and manifest, and registered)
 
 ## Phase 8. API and interface
 

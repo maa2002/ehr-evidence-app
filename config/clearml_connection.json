@@ -6,7 +6,7 @@
     "Only this repository's config directory may supply this file.",
     "This declaration satisfies the Step 9 authorization gate (user_approved_step_10_configuration) for connection checks only; config/clearml_policy.json still governs which payload categories may ever reach the tracker.",
     "The configuration file stays at its existing untracked location and is named only through CLEARML_CONFIG_FILE in the probe process; its path is never recorded here.",
-    "No general tracking, lineage record, hyperparameter upload or model artefact upload is enabled by this declaration."
+    "ADR 0018 enables named lineage tasks with allowlisted configuration fields and aggregate scalars, and the files of the listed pretrained models through tracking.models; nothing patient-bearing is enabled."
   ],
   "tracker": {
     "name": "clearml",
@@ -57,17 +57,26 @@
     "upload_artifacts": false
   },
   "model_artefacts": {
-    "status": "not_enabled",
+    "status": "enabled_for_listed_models",
     "upload_in_step_10": false,
-    "enablement_gate": "separate_step_10_11_policy_amendment",
-    "hyperparameters": "later_explicit_allowlist_only",
-    "requirements": [
-      "policy_amendment",
-      "dedicated_staging_path",
-      "artefact_manifest",
-      "privacy_review",
-      "explicit_enablement_gate"
+    "enablement_gate": "project_owner_decision_adr_0018",
+    "hyperparameters": "controlled_configuration_allowlist",
+    "listed_models": [
+      "google/medgemma-1.5-4b-it"
     ],
+    "files_and_revision": "config/generation.json",
+    "requirements": {
+      "policy_amendment": "adr_0018",
+      "dedicated_staging_path": "workspace_outputs_model_staging",
+      "artefact_manifest": "manifest_fields",
+      "privacy_review": "pretrained_by_its_publisher_not_on_project_data",
+      "explicit_enablement_gate": "tracking_models_operator_upload"
+    },
+    "licence": {
+      "name": "health-ai-developer-foundations",
+      "notice_file_required": true,
+      "agreement_copy_required": true
+    },
     "manifest_fields": [
       "logical_name",
       "type",
@@ -89,7 +98,9 @@
       "traces",
       "arbitrary_training_directories",
       "automatic_environment_capture",
-      "automatic_source_capture"
+      "automatic_source_capture",
+      "patient_derived_models",
+      "gnn_checkpoints"
     ]
   }
 }

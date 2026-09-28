@@ -4,21 +4,24 @@
 The protected runtime records of one case set, all written under one
 configuration (generation.records), are summed into counts and measures
 and written as a deterministic manifest under the workspace's
-outputs\\lineage. A controlled, metadata-only tracker task then names the
-application version, the case set, the fingerprints of the model's and
-the validators' configuration, the prompt and projection versions, the
-manifest's path and checksum, and four aggregates: the requests, the
-share of responses written from evidence that the model wrote, the share
-that fell back, and the median seconds of the model's attempts as
-latency_ms. Nothing else leaves the workspace: no record, prompt,
-response, identifier or file.
+outputs\\lineage. A controlled, metadata-only tracker task, named "Runtime
+aggregates" and left visible (ADR 0018), then names the application
+version, the case set, the fingerprints of the model's and the
+validators' configuration, the prompt and projection versions and the
+manifest's path and checksum, and four aggregates: the requests, the share
+of responses written from evidence that the model wrote, the share that
+fell back, and the median seconds of the model's attempts as latency_ms.
+It also carries the versions as configuration fields and, as scalars, the
+requests by task, the two shares and the median, 90th percentile and
+largest of the model's seconds, tokens and GPU memory. Nothing else leaves
+the workspace: no record, prompt, response, identifier or file.
 
 The default mode builds the manifest and the task from invented records
 and checks them. --operator-real writes the manifest of one case set's
-records and checks its task offline. --operator-remote also creates,
-reads back and archives the task, as tracking.registration does; it needs
-the tracker's configuration in the process environment, which this
-module never reads or prints.
+records and checks its task offline. --operator-remote also creates the
+task and reads it back, as tracking.registration does; it needs the
+tracker's configuration in the process environment, which this module
+never reads or prints.
 
 Usage:
     python -m ehr_evidence_app.tracking.aggregates
@@ -163,13 +166,56 @@ def lineage_of(manifest, path, checksum, case_set_version=None):
     }
 
 
+def configuration_of(manifest, case_set_version=None):
+    """Return the configuration fields of a manifest's records: the case
+    set and the versions that wrote and checked their responses."""
+    versions = manifest["versions"]
+    return {"case_set": case_set_version or manifest["case_set"],
+            "prompt_version": versions["prompt_version"].split("-", 1)[-1],
+            "projection_version": versions["projection_version"],
+            "shape_version": versions["shape_version"],
+            "candidate_contract": versions["candidate_contract"],
+            "explanation_template": versions["explanation_template"],
+            "wording_rules": versions["wording_rules"]}
+
+
+TASK_STRATA = (("condition_list", "all lists"),
+               ("condition_presence", "presence"),
+               ("prediction_explanation", "explanations"))
+MEASURES = (("seconds", "seconds"), ("output_tokens", "output tokens"),
+            ("prompt_tokens", "prompt tokens"),
+            ("peak_gpu_mib", "peak GPU MiB"))
+
+
+def scalars_of(manifest):
+    """Return a manifest's scalars: the requests, overall and by task; the
+    shares the model wrote and that fell back; and the median, 90th
+    percentile and largest of the model's measures."""
+    totals = manifest["aggregates"]
+    scalars = [("requests", "all", totals["requests"])]
+    scalars += [("requests", stratum, totals["tasks"][task])
+                for task, stratum in TASK_STRATA if task in totals["tasks"]]
+    outputs = tracker_outputs(totals)
+    if "model_written_rate" in outputs:
+        scalars += [("model written rate", "all",
+                     outputs["model_written_rate"]),
+                    ("fallback rate", "all", outputs["fallback_rate"])]
+    for name, metric in MEASURES:
+        if totals[name]:
+            scalars += [(metric, "all: %s" % part, totals[name][part])
+                        for part in ("median", "p90", "largest")]
+    return scalars
+
+
 def build_payload(project_id, manifest, path, checksum,
                   case_set_version=None):
     """Return the controlled task of a manifest, checked by
-    tracking.controlled."""
+    tracking.controlled: a visible runtime aggregates task with its
+    configuration fields."""
     payload = tracking.build_task_payload(
         project_id, lineage_of(manifest, path, checksum, case_set_version),
-        {})
+        {}, kind="runtime_aggregates",
+        configuration=configuration_of(manifest, case_set_version))
     payload["tags"].append("provenance:runtime_aggregates")
     return payload
 
@@ -217,9 +263,10 @@ def offline_result(case_set, found=None, directory=LINEAGE_DIR):
 
 def remote_result(case_set, environ=None, adapter_factory=checker.SdkAdapter,
                   found=None, directory=LINEAGE_DIR, lstat=os.lstat):
-    """Create, read back and archive one metadata-only task describing a
-    case set's records; environ, adapter_factory, found, directory and
-    lstat are injectable for tests."""
+    """Create and read back one metadata-only task describing a case set's
+    records, with its configuration fields and scalars; it stays visible
+    (ADR 0018). environ, adapter_factory, found, directory and lstat are
+    injectable for tests."""
     env = os.environ if environ is None else environ
     started = time.monotonic()
     try:
@@ -229,40 +276,12 @@ def remote_result(case_set, environ=None, adapter_factory=checker.SdkAdapter,
         manifest, path, checksum = prepared(case_set, found, directory)
         with checker.quiet_sdk():
             adapter = adapter_factory()
-            findings = []
             try:
-                config = adapter.load_config()
-                if adapter.offline():
-                    raise checker.ProbeFailure("sdk", "offline_mode_set")
-                hosts = adapter.configured_hosts(config)
-                for role in checker.ENDPOINT_ROLES:
-                    if checker.normalise_url(hosts.get(role)) != (
-                            checker.ENDPOINTS[role]):
-                        raise checker.ProbeFailure("connection",
-                                                   "endpoint_mismatch", role)
-                adapter.connect(config, checker.ENDPOINTS["api_server"])
-                checker.confirm_workspace(adapter)
-                project_id = checker.find_project(adapter)
-                if project_id is None:
-                    raise checker.ProbeFailure("connection",
-                                               "project_missing")
+                project_id = checker.connect_project(adapter)
                 payload = build_payload(project_id, manifest, path, checksum)
-                created = checker.call_service(adapter, "tasks", "create",
-                                               payload)
-                task_id = checker.safe_id(created.get("id"))
-                if task_id is None:
-                    raise checker.ProbeFailure("task", "unexpected_task_id")
-                try:
-                    checker.verify_controlled_task(adapter, task_id,
-                                                   project_id, payload)
-                except checker.ProbeFailure as failure:
-                    findings.extend(item[1] for item in failure.findings)
-                except Exception:  # noqa: BLE001 - reported by code only
-                    findings.append("readback_failed")
-                try:
-                    checker.archive_controlled_task(adapter, task_id)
-                except checker.ProbeFailure as failure:
-                    findings.extend(item[1] for item in failure.findings)
+                task_id, findings = checker.create_controlled_task(
+                    adapter, project_id, payload, "runtime_aggregates",
+                    scalars_of(manifest))
                 if findings:
                     return {"status": "FAIL", "mode": "operator_remote",
                             "findings": sorted(set(findings)),
@@ -329,7 +348,7 @@ def run_synthetic():
     path = manifest_path(manifest)
     checksum = hashlib.sha256(manifest_bytes(manifest)).hexdigest()
     payload = build_payload("invented-project", manifest, path, checksum,
-                            case_set_version="invented-cases")
+                            case_set_version="invented-16-v1")
     outputs = tracker_outputs(manifest["aggregates"])
     if set(outputs) != {"requests", "model_written_rate", "fallback_rate",
                         "latency_ms"}:
@@ -347,7 +366,7 @@ def run_synthetic():
     for change in ({"prompt_version": "prompt-v9"},
                    {"evaluation_outputs": dict(outputs, rows=1)}):
         lineage = dict(lineage_of(manifest, path, checksum,
-                                  "invented-cases"), **change)
+                                  "invented-16-v1"), **change)
         try:
             tracking.build_task_payload("invented-project", lineage, {})
             problems.append("the tracker accepted %s" % sorted(change)[0])
@@ -369,7 +388,7 @@ def main(argv=None):
                         help="write the manifest of a case set's records "
                              "and check its task offline")
     parser.add_argument("--operator-remote", action="store_true",
-                        help="also create, read back and archive the task")
+                        help="also create the task and read it back")
     parser.add_argument("--case-set", help="the case set of the records")
     args = parser.parse_args(argv)
     modes = args.operator_real + args.operator_remote

@@ -60,7 +60,22 @@ EXIT_OPERATIONAL = 2
 TOP_REQUIRED = ("schema_version", "step", "purpose", "tracker",
                 "remote_tracking", "credential_handling", "categories",
                 "destinations", "local_server", "lineage_fields", "step_10")
-TOP_OPTIONAL = ("notes",)
+TOP_OPTIONAL = ("notes", "model_artefacts")
+# The one exception to the forbidden model_files: the listed pretrained
+# models, not trained on this project's data, whose files and revision are
+# pinned in config/generation.json (ADR 0018).
+MODEL_ARTEFACTS = {
+    "status": "listed_pretrained_models_only",
+    "decision": "adr_0018",
+    "listed_models": [{
+        "repository": "google/medgemma-1.5-4b-it",
+        "files_and_revision": "config/generation.json",
+        "trained_on_project_data": False,
+        "licence": "health-ai-developer-foundations"}],
+    "never_uploaded": ["patient_derived_models", "gnn_checkpoints",
+                       "model_outputs", "patient_records", "prompts",
+                       "llm_responses", "data_files"],
+}
 
 TRACKER = {
     "name": "clearml",
@@ -164,7 +179,7 @@ PATIENT_IDENTIFIER = re.compile(
 
 SECTIONS = ("schema", "tracker", "remote_tracking", "credential_handling",
             "secrets", "categories", "destinations", "local_server",
-            "lineage_fields", "step_10")
+            "lineage_fields", "step_10", "model_artefacts")
 
 
 class OperationalError(Exception):
@@ -490,6 +505,9 @@ def check_policy(policy):
     findings += check_lineage(policy.get("lineage_fields"))
     if not same_value(policy.get("step_10"), STEP_10):
         findings.append(("step_10", "step_10_boundary_invalid"))
+    if "model_artefacts" in policy and not same_value(
+            policy["model_artefacts"], MODEL_ARTEFACTS):
+        findings.append(("model_artefacts", "model_artefacts_invalid"))
     return sorted(findings, key=lambda item: (SECTIONS.index(item[0]),
                                               item[1]))
 

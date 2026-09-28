@@ -5,6 +5,54 @@ All notable changes to this project are recorded here. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.y releases may
 change interfaces.
 
+## [Unreleased]
+
+The tracker becomes the project's experiment record
+([ADR 0018](docs/decisions/0018-tracker-as-experiment-record.md)): its
+lineage tasks stay in view, every generation measurement is an experiment
+with its configuration and scalars, and the pinned model is kept there
+with its licence. No data is uploaded.
+
+### Added
+
+- `tracking.measurements`
+  ([docs/experiment-tracking.md](docs/experiment-tracking.md#measurements)):
+  each benchmark run of the generation is kept as a record in the
+  workspace, written once and named by a digest of its content, holding
+  its configuration fields and, by stratum, its counts, release rates,
+  scores and measures, and is sent once as a completed, visible task,
+  `Generation measurement`, named by its case set, precision, prompt
+  version and commit; an index keeps the task of each record.
+  `--operator-real` checks every task offline and `--operator-remote`
+  sends the records not yet sent.
+- `config/measurement_history.json`: the 17 Phase 7 runs since ADR 0014,
+  each at its commit, as the execution log records their aggregates; they
+  are sent as records marked backfilled, and the development result of the
+  configuration is marked assembled.
+- `generation.measure --record`: keeps the measurement of a benchmark or
+  paired run, refusing tracked files that differ from the commit before
+  or after the run.
+- `tracking.models`
+  ([docs/experiment-tracking.md](docs/experiment-tracking.md#the-model)):
+  checks the pinned MedGemma 1.5 4B IT files against
+  `config/generation.json`, stages the licence's notice, the owner's copy
+  of the agreement and a manifest of every file, uploads them to the
+  tracker's files server and registers the revision once in the model
+  registry, with its tags and metadata.
+- The controlled wrapper's task kinds, names from checked configuration
+  fields, configuration fields and scalar metrics, each from a fixed
+  allowlist (`tracking.controlled`).
+
+### Changed
+
+- The inherited input registration and the runtime aggregates are no
+  longer archived: each task is read back and marked completed, and the
+  aggregates task carries its configuration fields and scalars. Only the
+  controlled probe is archived.
+- The tracker policy and the connection declaration list the one model
+  whose files may be uploaded, and why; models trained on the project's
+  data stay excluded.
+
 ## [0.9.0] - 2026-09-28
 
 LLM and operations (Phase 7, work items 41 to 46.1): MedGemma 1.5 4B IT
@@ -480,6 +528,7 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.0...v0.7.1

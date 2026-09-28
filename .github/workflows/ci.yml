@@ -98,7 +98,9 @@ jobs:
             "ehr_evidence_app.tracking.lineage",
             "ehr_evidence_app.tracking.policy",
             "ehr_evidence_app.tracking.connection",
-            "ehr_evidence_app.tracking.aggregates"
+            "ehr_evidence_app.tracking.aggregates",
+            "ehr_evidence_app.tracking.measurements",
+            "ehr_evidence_app.tracking.models"
           )
           foreach ($module in $modules) {
             Write-Output "::group::$module"

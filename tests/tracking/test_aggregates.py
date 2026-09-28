@@ -17,7 +17,7 @@ from ehr_evidence_app.evidence import contracts
 from ehr_evidence_app.tracking import aggregates
 from ehr_evidence_app.tracking import controlled as tracking
 from tests.tracking.test_registration import (
-    ALLOWED_ACTIONS, SCRATCH, FakeAdapter, regular_file, valid_environment)
+    READBACK_ACTIONS, SCRATCH, FakeAdapter, regular_file, valid_environment)
 
 INVENTED = aggregates.invented_records()
 
@@ -117,19 +117,36 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(refused["finding"], "metadata_refused")
 
     def test_remote(self):
-        """The remote mode creates, reads back and archives one task whose
-        tags hold the aggregates and nothing of a record."""
+        """The remote mode creates one visible "Runtime aggregates" task,
+        named by its case set and version, reads it back and marks it
+        completed: its tags hold the aggregates, its configuration the
+        versions and its scalars the counts and measures, nothing of a
+        record; it is not archived."""
         adapter = FakeAdapter()
+        found = relabelled()
         result = aggregates.remote_result(
-            "dev-30-v1", valid_environment(), lambda: adapter, relabelled(),
+            "dev-30-v1", valid_environment(), lambda: adapter, found,
             self.directory, lstat=regular_file)
         self.assertEqual(result["status"], "PASS", result)
-        self.assertEqual(adapter.actions(), ALLOWED_ACTIONS)
+        manifest = aggregates.manifest_of(found, "dev-30-v1")
+        events = aggregates.scalars_of(manifest)
+        self.assertEqual(adapter.actions(), READBACK_ACTIONS + [
+            "events.add"] * len(events) + ["tasks.completed"])
+        self.assertEqual(adapter.created["name"],
+                         "Runtime aggregates: dev-30-v1, prompt v9")
         tags = adapter.created["tags"]
         self.assertIn("lineage:evaluation_outputs:requests=%d"
                       % len(INVENTED), tags)
         self.assertIn("provenance:runtime_aggregates", tags)
-        text = json.dumps(adapter.created)
+        section = adapter.created["hyperparams"]["Configuration"]
+        self.assertEqual(section["case_set"]["value"], "dev-30-v1")
+        self.assertEqual(section["prompt_version"]["value"], "v9")
+        sent = [payload for action, payload in adapter.calls
+                if action == "events.add"]
+        self.assertIn(("requests", "all", float(len(INVENTED))),
+                      {(event["metric"], event["variant"], event["value"])
+                       for event in sent})
+        text = json.dumps([payload for _, payload in adapter.calls])
         for record in INVENTED:
             self.assertNotIn(record.request_id, text)
 

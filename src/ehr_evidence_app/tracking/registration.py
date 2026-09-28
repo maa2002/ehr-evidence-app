@@ -4,8 +4,9 @@
 The default mode validates the pinned baseline record and writes the
 deterministic registration manifest. An identical existing manifest is left
 untouched; a different one is never replaced (finding registration_conflict).
---operator-remote additionally creates, reads back and archives one
-metadata-only ClearML task; nothing else is uploaded.
+--operator-remote additionally creates and reads back one metadata-only
+ClearML task and marks it completed; it stays visible (ADR 0018), and
+nothing else is uploaded.
 
 Usage:
     python -m ehr_evidence_app.tracking.registration [--operator-remote]
@@ -210,7 +211,8 @@ def build_payload(project_id, record, registration_path=REGISTRATION_PATH):
         "protected_reference": registration_path,
         "protected_checksum": sha256_file(registration_path),
     }
-    payload = tracking.build_task_payload(project_id, lineage, {})
+    payload = tracking.build_task_payload(project_id, lineage, {},
+                                          kind="registration")
     payload["tags"].extend(("provenance:inherited_reported",
                              "execution:not_executed_by_downstream"))
     return payload
@@ -229,7 +231,8 @@ def offline_result(baseline_path=BASELINE_PATH, registration_path=REGISTRATION_P
 def remote_result(environ=None, adapter_factory=checker.SdkAdapter,
                   baseline_path=BASELINE_PATH, registration_path=REGISTRATION_PATH,
                   lstat=os.lstat):
-    """Create/read back/archive one inherited-input metadata task.
+    """Create and read back one inherited-input metadata task, which stays
+    visible in the project (ADR 0018).
 
     environ, adapter_factory and lstat are injectable for synthetic tests.
     """
@@ -243,36 +246,11 @@ def remote_result(environ=None, adapter_factory=checker.SdkAdapter,
         write_registration(record, registration_path)
         with checker.quiet_sdk():
             adapter = adapter_factory()
-            findings = []
-            task_id = None
             try:
-                config = adapter.load_config()
-                if adapter.offline():
-                    raise checker.ProbeFailure("sdk", "offline_mode_set")
-                hosts = adapter.configured_hosts(config)
-                for role in checker.ENDPOINT_ROLES:
-                    if checker.normalise_url(hosts.get(role)) != checker.ENDPOINTS[role]:
-                        raise checker.ProbeFailure("connection", "endpoint_mismatch", role)
-                adapter.connect(config, checker.ENDPOINTS["api_server"])
-                checker.confirm_workspace(adapter)
-                project_id = checker.find_project(adapter)
-                if project_id is None:
-                    raise checker.ProbeFailure("connection", "project_missing")
+                project_id = checker.connect_project(adapter)
                 payload = build_payload(project_id, record, registration_path)
-                created = checker.call_service(adapter, "tasks", "create", payload)
-                task_id = checker.safe_id(created.get("id"))
-                if task_id is None:
-                    raise checker.ProbeFailure("task", "unexpected_task_id")
-                try:
-                    checker.verify_controlled_task(adapter, task_id, project_id, payload)
-                except checker.ProbeFailure as failure:
-                    findings.extend(item[1] for item in failure.findings)
-                except Exception:
-                    findings.append("readback_failed")
-                try:
-                    checker.archive_controlled_task(adapter, task_id)
-                except checker.ProbeFailure as failure:
-                    findings.extend(item[1] for item in failure.findings)
+                task_id, findings = checker.create_controlled_task(
+                    adapter, project_id, payload, "registration")
                 if findings:
                     return {"status": "FAIL", "mode": "operator_remote",
                             "findings": sorted(set(findings)), "task_id": task_id}

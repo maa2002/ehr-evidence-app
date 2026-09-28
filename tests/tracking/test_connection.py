@@ -235,11 +235,18 @@ class ApprovedDeclarationTests(unittest.TestCase):
                 self.assertIs(task[flag], False)
         self.assertEqual(task["max_tasks_per_run"], 1)
 
-    def test_model_artefact_upload_not_enabled(self):
-        """Step 10 uploads no model artefact; the gate is recorded."""
+    def test_model_artefacts_limited_to_listed_models(self):
+        """Only the listed pretrained model may be uploaded, with its
+        manifest, notice and agreement; patient-derived models never."""
         artefacts = approved_declaration()["model_artefacts"]
-        self.assertEqual(artefacts["status"], "not_enabled")
+        self.assertEqual(artefacts["status"], "enabled_for_listed_models")
         self.assertIs(artefacts["upload_in_step_10"], False)
+        self.assertEqual(artefacts["listed_models"],
+                         ["google/medgemma-1.5-4b-it"])
+        self.assertTrue(artefacts["licence"]["notice_file_required"])
+        self.assertTrue(artefacts["licence"]["agreement_copy_required"])
+        for kind in ("patient_derived_models", "gnn_checkpoints", "prompts"):
+            self.assertIn(kind, artefacts["always_excluded"])
         for field in ("sha256", "provenance",
                       "non_patient_non_secret_confirmation"):
             self.assertIn(field, artefacts["manifest_fields"])
@@ -351,6 +358,10 @@ class DeclarationRejectionTests(unittest.TestCase):
         self.assert_rejected(declaration, "model_artefact_enabled")
         declaration = approved_declaration()
         declaration["model_artefacts"]["always_excluded"].remove("prompts")
+        self.assert_rejected(declaration, "model_artefact_gate_invalid")
+        declaration = approved_declaration()
+        declaration["model_artefacts"]["listed_models"].append(
+            "inherited/gnn-checkpoint")
         self.assert_rejected(declaration, "model_artefact_gate_invalid")
 
     def test_config_path_or_secret_recorded(self):

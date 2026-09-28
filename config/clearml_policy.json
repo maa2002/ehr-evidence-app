@@ -5,7 +5,8 @@
   "notes": [
     "Only this repository's config directory may supply this file.",
     "Remote tracking stays not_authorized and offline_only until a later user-approved Step 10 configuration supplies the server, workspace, project and credentials.",
-    "Lineage fields are defined here only; no runtime, lineage or evaluation record exists because of this policy."
+    "Lineage fields are defined here only; no runtime, lineage or evaluation record exists because of this policy.",
+    "model_files stay forbidden except the listed pretrained models of model_artefacts, which tracking.models uploads with their manifest, the licence's notice and a copy of its agreement (ADR 0018)."
   ],
   "tracker": {
     "name": "clearml",
@@ -133,5 +134,26 @@
     "sdk_configuration": "deferred_to_step_10",
     "remote_authorization": "requires_user_approval",
     "tracking_calls": "deferred_to_later_steps"
+  },
+  "model_artefacts": {
+    "status": "listed_pretrained_models_only",
+    "decision": "adr_0018",
+    "listed_models": [
+      {
+        "repository": "google/medgemma-1.5-4b-it",
+        "files_and_revision": "config/generation.json",
+        "trained_on_project_data": false,
+        "licence": "health-ai-developer-foundations"
+      }
+    ],
+    "never_uploaded": [
+      "patient_derived_models",
+      "gnn_checkpoints",
+      "model_outputs",
+      "patient_records",
+      "prompts",
+      "llm_responses",
+      "data_files"
+    ]
   }
 }

@@ -20,6 +20,12 @@ Aggregate verification records (statuses, counts, hashes) may be copied into
 reports. Anything that identifies a person, a visit or an event, and any
 per-patient value, may not.
 
+The experiment tracker holds metadata, aggregates and the files of the one
+listed pretrained model, MedGemma 1.5 4B IT, with its licence notice and
+agreement; no model trained on the project's data
+([experiment-tracking.md](experiment-tracking.md);
+[ADR 0018](decisions/0018-tracker-as-experiment-record.md)).
+
 ## Storage layout
 
 All project storage sits under one anchor on an internal NTFS volume:

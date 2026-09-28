@@ -133,14 +133,25 @@ SYNTHETIC_TASK = dict(
      ("max_tasks_per_run", 1),
      ("archive_after_creation", True)]
     + [(flag, False) for flag in CAPTURE_FLAGS])
+# Model artefacts: only the listed pretrained models, which were not trained
+# on this project's data, and only through tracking.models (ADR 0018).
 MODEL_ARTEFACTS = {
-    "status": "not_enabled",
+    "status": "enabled_for_listed_models",
     "upload_in_step_10": False,
-    "enablement_gate": "separate_step_10_11_policy_amendment",
-    "hyperparameters": "later_explicit_allowlist_only",
-    "requirements": ["policy_amendment", "dedicated_staging_path",
-                     "artefact_manifest", "privacy_review",
-                     "explicit_enablement_gate"],
+    "enablement_gate": "project_owner_decision_adr_0018",
+    "hyperparameters": "controlled_configuration_allowlist",
+    "listed_models": ["google/medgemma-1.5-4b-it"],
+    "files_and_revision": "config/generation.json",
+    "requirements": {
+        "policy_amendment": "adr_0018",
+        "dedicated_staging_path": "workspace_outputs_model_staging",
+        "artefact_manifest": "manifest_fields",
+        "privacy_review": "pretrained_by_its_publisher_not_on_project_data",
+        "explicit_enablement_gate": "tracking_models_operator_upload",
+    },
+    "licence": {"name": "health-ai-developer-foundations",
+                "notice_file_required": True,
+                "agreement_copy_required": True},
     "manifest_fields": ["logical_name", "type", "size_bytes", "sha256",
                         "provenance", "non_patient_non_secret_confirmation"],
     "always_excluded": ["data_files", "samples", "labels", "prompts",
@@ -148,7 +159,8 @@ MODEL_ARTEFACTS = {
                         "cached_batches", "tokenizer_inputs", "debug_dumps",
                         "traces", "arbitrary_training_directories",
                         "automatic_environment_capture",
-                        "automatic_source_capture"],
+                        "automatic_source_capture", "patient_derived_models",
+                        "gnn_checkpoints"],
 }
 
 # -- Probe environment ------------------------------------------------------
@@ -332,7 +344,8 @@ def check_synthetic_task(section):
 
 
 def check_model_artefacts(section):
-    """Return findings unless model artefact upload stays gated and off."""
+    """Return findings unless model artefact upload stays limited to the
+    listed pretrained models, exactly as ADR 0018 sets it."""
     if isinstance(section, dict) and (
             section.get("upload_in_step_10") is not False
             or section.get("status") != MODEL_ARTEFACTS["status"]):
@@ -690,6 +703,71 @@ def verify_controlled_task(adapter, task_id, project_id, expected):
         raise ProbeFailure("task", "readback_mismatch")
     if task.get("comment") != expected.get("comment"):
         raise ProbeFailure("task", "readback_mismatch")
+
+
+def connect_project(adapter):
+    """Load the SDK configuration, check its hosts against the declaration,
+    authenticate, confirm the workspace and return the declared project's
+    ID; any failure is a ProbeFailure."""
+    config = adapter.load_config()
+    if adapter.offline():
+        raise ProbeFailure("sdk", "offline_mode_set")
+    hosts = adapter.configured_hosts(config)
+    for role in ENDPOINT_ROLES:
+        if normalise_url(hosts.get(role)) != ENDPOINTS[role]:
+            raise ProbeFailure("connection", "endpoint_mismatch", role)
+    adapter.connect(config, ENDPOINTS["api_server"])
+    confirm_workspace(adapter)
+    project_id = find_project(adapter)
+    if project_id is None:
+        raise ProbeFailure("connection", "project_missing")
+    return project_id
+
+
+def create_controlled_task(adapter, project_id, payload, kind, scalars=()):
+    """Create a controlled task of one kind, read it back and report its
+    scalars; a probe is then archived, and a lineage task, which stays
+    visible (ADR 0018), is marked completed when nothing was found.
+    Return (task ID, findings)."""
+    created = call_service(adapter, "tasks", "create", payload)
+    task_id = safe_id(created.get("id"))
+    if task_id is None:
+        raise ProbeFailure("task", "unexpected_task_id")
+    findings = []
+    try:
+        verify_controlled_task(adapter, task_id, project_id, payload)
+    except ProbeFailure as failure:
+        findings.extend(item[1] for item in failure.findings)
+    except Exception:  # noqa: BLE001 - reported by its code only
+        findings.append("readback_failed")
+    try:
+        for event in tracking.build_scalar_events(task_id, list(scalars)):
+            call_service(adapter, "events", "add", event)
+    except tracking.UnsafeMetadata:
+        findings.append("scalars_refused")
+    except ProbeFailure as failure:
+        findings.extend(item[1] for item in failure.findings)
+    if tracking.TASK_KINDS[kind]["archive"]:
+        try:
+            archive_controlled_task(adapter, task_id)
+        except ProbeFailure as failure:
+            findings.extend(item[1] for item in failure.findings)
+    elif not findings:
+        try:
+            complete_controlled_task(adapter, task_id)
+        except ProbeFailure as failure:
+            findings.extend(item[1] for item in failure.findings)
+    return task_id, findings
+
+
+def complete_controlled_task(adapter, task_id):
+    """Mark a lineage task completed, so that it reads as a finished record
+    and its fields cannot be edited in the web application without a
+    reset; its scalars are already reported."""
+    data = call_service(adapter, "tasks", "completed",
+                        {"task": task_id, "force": True})
+    if data.get("updated") != 1:
+        raise ProbeFailure("task", "complete_failed")
 
 
 def archive_controlled_task(adapter, task_id):

@@ -55,7 +55,8 @@ work is always explicit:
 - `gnn.baseline` needs `--output`, `gnn.assets` writes only with `--write`,
   and `sources.exports` needs `--version-label`;
 - `sources.pilot` needs database credentials in the process environment;
-- `tracking.connection` and `tracking.registration` contact ClearML only with
+- `tracking.connection`, `tracking.registration`, `tracking.aggregates`,
+  `tracking.measurements` and `tracking.models` contact ClearML only with
   their explicit live flags.
 
 Writers refuse to replace an existing record. The one exception is

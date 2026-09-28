@@ -71,7 +71,7 @@ Code is one package, `src/ehr_evidence_app`:
 | `qa` | Condition vocabulary, question interpretation, concept and scope resolution, scoped answers, development suite |
 | `validation` | Candidate contract, checks before generation, structure, reference, support, preservation and wording checks, template explanation, release gate, mutation suite |
 | `generation` | Model-written candidates: document shape and schema, the model's view of the evidence, prompt, adapter with limits and template fallback, the pinned model's worker, development measurement |
-| `tracking` | Tracker policy, ClearML connection checks, controlled tracking, lineage |
+| `tracking` | Tracker policy, ClearML connection checks, controlled tracking, measurements, the pinned model in the tracker, lineage |
 | `environment` | Application and GNN environment verification |
 | `quality` | Publication audit of repository content and history; release checks |
 
@@ -105,7 +105,8 @@ configuration, documentation and invented test fixtures only.
 - Patient-bearing data and outputs live in a private workspace outside the
   repository, on a permission-restricted volume.
 - Console output, logs and tracker payloads carry statuses, counts, hashes
-  and finding codes only.
+  and finding codes only; the tracker also keeps the pinned pretrained
+  model's files, with its licence, and nothing trained on the data.
 - Credentials come from the process environment or untracked local files and
   are never stored by the project.
 - A publication audit checks the working tree, index and full Git history for
@@ -127,7 +128,7 @@ See [docs/data-handling.md](docs/data-handling.md).
 | [Natural-language QA](docs/qa.md) | Interpretation, scope, concept resolution and matching, answers, development suite |
 | [Validation](docs/validation.md) | Candidate contract, checks, explanations, release gate, mutation suite |
 | [Generation](docs/generation.md) | Model-written candidates: shape, schema, the model's view of the evidence, driver selection, prompt, adapter, limits, fallbacks, measurement |
-| [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, lineage |
+| [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, measurements, the model, lineage |
 | [Environments](docs/environments.md) | Application and GNN environments |
 | [Development](docs/development.md) | Set-up, tests, quality gates, CI, conventions, releases |
 | [Roadmap](docs/roadmap.md) | Phases and work items |

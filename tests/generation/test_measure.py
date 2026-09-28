@@ -365,6 +365,58 @@ class MeasureTests(unittest.TestCase):
         low, high = measure.wilson(5, 10)
         self.assertAlmostEqual(low + high, 1.0)
 
+    def test_record_of_a_run(self):
+        """A run's scalars count each stratum, its unions and all the
+        requests, score each stratum and measure the model's attempts; with
+        the run's configuration they make a record the tracker accepts."""
+        from ehr_evidence_app.evidence import contracts
+        from ehr_evidence_app.tracking import measurements
+        documents = {projection.text(projection.view(context)): shape.text(
+            shape.document_of(template)) for context, template in PAIRS}
+
+        def script(messages, schema):
+            """Write the template document of the request's view."""
+            body = messages[1]["content"]
+            view = body[:-len(END)].rsplit("\n\n", 1)[1]
+            return adapter.output(documents[view])
+
+        writer = adapter.Writer(adapter.ScriptedBackend(script),
+                                adapter.scripted_limits())
+        results = measure.write_sample(PAIRS, release_of, writer, 100)
+        needs = [result.needed for pairs in results.values()
+                 for result in pairs]
+        scalars = measure.measurement_scalars(results, 12.5,
+                                              (max(needs), 1))
+        groups = {measure.STRATA[measure.group_of(context, template)]
+                  for context, template in PAIRS}
+        self.assertEqual(scalars["requests"]["all"], len(PAIRS))
+        self.assertEqual(scalars["released"], scalars["requests"])
+        self.assertEqual(scalars["released within limits"],
+                         scalars["requests"])
+        self.assertEqual(set(scalars["requests"]),
+                         groups | {"all lists", "presence", "all"})
+        self.assertEqual(scalars["requests"]["all lists"],
+                         scalars["requests"]["lists"]
+                         + scalars["requests"]["empty lists"])
+        self.assertNotIn("all", scalars["outcome right"])
+        self.assertEqual(set(scalars["F1"].values()), {1.0})
+        self.assertIn("explanations: history lines", scalars["F1"])
+        self.assertEqual(scalars["seconds"]["all: total"], 12.5)
+        self.assertIn("all: median", scalars["output tokens"])
+        limits = contracts.load_limits()
+        configuration = measure.run_configuration(
+            "dev-30-v1", "bf16-mixed", limits, 8, None, (max(needs), 1),
+            "0123abc", "2026-09-28")
+        self.assertEqual(configuration["prompt_version"], "v9")
+        self.assertEqual(configuration["max_output_tokens"],
+                         limits.max_output_tokens)
+        record = measurements.build_record(configuration, scalars)
+        self.assertEqual(record["scalars"]["release rate"]["all"], 1.0)
+        text = json.dumps(record)
+        for pairs in results.values():
+            for result in pairs:
+                self.assertNotIn(result.written.output.text, text)
+
     def test_labels_name_the_placement(self):
         """The BF16 configuration is never called GPU-resident."""
         self.assertIn("mixed GPU/CPU", measure.PRECISION_LABELS["bf16-mixed"])
@@ -386,6 +438,11 @@ class MeasureTests(unittest.TestCase):
             self.assertEqual(measure.main(["--tokens", "--case-set",
                                            "dev-30-v1", "--within", "768",
                                            "120"]), 2)
+            self.assertEqual(measure.main(["--tokens", "--case-set",
+                                           "dev-30-v1", "--record"]), 2)
+            self.assertEqual(measure.main([
+                "--benchmark", "--case-set", "dev-30-v1", "--record",
+                "--within", "512", "60", "--within", "256", "30"]), 2)
         self.assertIn("RESULT: PASS", output.getvalue())
 
 

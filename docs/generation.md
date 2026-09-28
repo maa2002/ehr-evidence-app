@@ -817,3 +817,16 @@ with the model at one precision:
 `--within` counts the same outputs under lower output and time limits:
 greedy decoding writes the same tokens under any output limit they fit,
 so one run at the higher limits answers for the lower ones.
+
+`--record`, with `--benchmark` or `--paired`, also keeps each run's
+measurement as a record for the tracker: its configuration and, by
+stratum, the counts, release rates, scores and measures reported above,
+and nothing of a request
+([experiment-tracking.md](experiment-tracking.md#measurements);
+[ADR 0018](decisions/0018-tracker-as-experiment-record.md)). It keeps one
+`--within`, and the tracked files must be as committed before and after
+the run, so that the record names the commit that ran:
+
+```powershell
+& $AppPython -m ehr_evidence_app.generation.measure --benchmark --case-set dev-30-v1 --per-group 1000 --record
+```
