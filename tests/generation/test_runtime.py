@@ -117,6 +117,20 @@ class RuntimeTests(unittest.TestCase):
         self.addCleanup(cut.stop)
         self.assertFalse(cut.generate(messages, {}, 10, 30).finished)
 
+    def test_stopping_closes_the_pipes(self):
+        """A stopped worker has ended, its reading threads have finished
+        and its pipes are closed, so nothing is left to the collector."""
+        backend = fake("ok", self.root)
+        self.addCleanup(backend.stop)
+        backend.text_tokens("abcd")
+        process, readers = backend.process, list(backend.readers)
+        backend.stop()
+        self.assertIsNotNone(process.poll())
+        self.assertFalse(any(reader.is_alive() for reader in readers))
+        self.assertTrue(all(stream.closed for stream in (
+            process.stdin, process.stdout, process.stderr)))
+        self.assertEqual((backend.process, backend.readers), (None, []))
+
     def test_failures(self):
         """Exhausted memory and failures are backend errors; a worker that
         does not reply in time is stopped, and the next call starts a new

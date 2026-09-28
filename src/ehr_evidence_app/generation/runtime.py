@@ -207,6 +207,7 @@ class WorkerBackend:
         self.runtime_root = runtime_root
         self.process = None
         self.replies = None
+        self.readers = []
         self.info = None
         self.verified = False
         self.lock = threading.Lock()
@@ -248,12 +249,15 @@ class WorkerBackend:
             self.process = None
             raise adapter.BackendError("backend_failed") from None
         self.replies = queue.Queue()
-        threading.Thread(target=self.read, args=(self.process,
-                                                 self.replies),
-                         daemon=True).start()
-        threading.Thread(target=self.drain, args=(self.process,
-                                                  self.status),
-                         daemon=True).start()
+        self.readers = [
+            threading.Thread(target=self.read, args=(self.process,
+                                                     self.replies),
+                             daemon=True),
+            threading.Thread(target=self.drain, args=(self.process,
+                                                      self.status),
+                             daemon=True)]
+        for reader in self.readers:
+            reader.start()
         ready = self.receive(self.settings.worker.start_seconds)
         if ready.get("op") != "ready":
             self.stop()
@@ -353,7 +357,8 @@ class WorkerBackend:
         return found
 
     def stop(self):
-        """Stop the worker, asking first and then ending it."""
+        """Stop the worker, asking first and then ending it, and close its
+        pipes once the threads reading them have seen them end."""
         process, self.process = self.process, None
         if process is None:
             return
@@ -365,6 +370,14 @@ class WorkerBackend:
             except (OSError, ValueError, subprocess.TimeoutExpired):
                 process.kill()
                 process.wait()
+        readers, self.readers = self.readers, []
+        for reader in readers:
+            reader.join(timeout=STOP_SECONDS)
+        for stream in (process.stdin, process.stdout, process.stderr):
+            try:
+                stream.close()
+            except (OSError, ValueError):
+                pass
 
 
 # --------------------------------------------------------------------------
