@@ -40,6 +40,7 @@ Usage:
 """
 
 import argparse
+import contextlib
 import hashlib
 import json
 import ntpath
@@ -63,6 +64,9 @@ MANIFEST_NAME = "MANIFEST.json"
 AGREEMENT_NAMES = ("HAI-DEF-terms-of-use.pdf", "HAI-DEF-terms-of-use.html",
                    "HAI-DEF-terms-of-use.txt")
 MAX_AGREEMENT_BYTES = 8 * 1024 * 1024
+# The largest upload whose size is counted from its decoded bytes, when the
+# files server sends it compressed although asked not to.
+MAX_COUNTED_BYTES = 64 * 1024 * 1024
 REMOTE_FOLDER = "ehr-evidence-app/models"
 FRAMEWORK = "PyTorch"
 COMMENT = ("As published by its developer at the pinned revision, not "
@@ -306,14 +310,45 @@ class SdkStorage(object):
     """Bridge to the SDK's storage manager, used by the live mode only;
     the SDK sends its credentials to the declared files server only."""
 
-    def __init__(self):
-        """Import the SDK's storage manager."""
-        from clearml.storage.manager import StorageManager
-        self._manager = StorageManager
+    def __init__(self, manager=None):
+        """Import the SDK's storage manager; manager is injectable for
+        tests."""
+        if manager is None:
+            from clearml.storage.manager import StorageManager
+            manager = StorageManager
+        self._manager = manager
 
     def size(self, url):
-        """Return the size of an uploaded file, or None."""
-        return self._manager.get_file_size_bytes(url, silence_errors=True)
+        """Return the size of an uploaded file as the files server holds
+        it, or None when it holds none. The file is asked for through the
+        SDK's session, with the headers the SDK attaches for the files
+        server, and without content coding: the server compresses some
+        types, such as JSON, on the way out, and a compressed reply's
+        length is not the file's. A reply compressed anyway, or without a
+        length, is counted from its decoded bytes, for a small file
+        only."""
+        container = self._manager.storage_helper.get(url)._container
+        headers = dict(container.get_headers(url) or {})
+        headers["Accept-Encoding"] = "identity"
+        try:
+            response = container.session.get(url, headers=headers,
+                                              stream=True, timeout=(30, 120))
+            with contextlib.closing(response):
+                if response.status_code != 200:
+                    return None
+                coding = response.headers.get("Content-Encoding",
+                                              "identity").strip().lower()
+                length = response.headers.get("Content-Length", "")
+                if coding == "identity" and length.isdigit():
+                    return int(length)
+                counted = 0
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    counted += len(chunk)
+                    if counted > MAX_COUNTED_BYTES:
+                        return None
+                return counted
+        except (OSError, ValueError):
+            return None
 
     def upload(self, local, url):
         """Upload one file and wait for it."""
@@ -376,7 +411,8 @@ def remote_result(environ=None, adapter_factory=checker.SdkAdapter,
                 found = storage.size(url)
             if found != size:
                 return {"status": "FAIL", "mode": "operator_remote",
-                        "finding": "upload_incomplete", "file": name}
+                        "finding": "upload_incomplete", "file": name,
+                        "size_bytes": size, "found_bytes": found}
             say("uploaded %d of %d: %s (%d bytes)" % (number, len(uploads),
                                                       name, size))
         with checker.quiet_sdk():

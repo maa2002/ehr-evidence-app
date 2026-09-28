@@ -211,6 +211,111 @@ class StagingTests(unittest.TestCase):
         self.assertEqual(tracker.calls, [])
 
 
+class Reply(object):
+    """A streamed reply of the in-memory files server."""
+
+    def __init__(self, status, headers, chunks=()):
+        """Keep the status, headers and body chunks."""
+        self.status_code, self.headers = status, headers
+        self.chunks, self.closed = list(chunks), False
+
+    def iter_content(self, chunk_size):
+        """Yield the decoded body."""
+        return iter(self.chunks)
+
+    def close(self):
+        """Note that the reply was closed."""
+        self.closed = True
+
+
+class SdkStand(object):
+    """Stands in for the SDK's storage manager, its helper, its files
+    server container and its session."""
+
+    def __init__(self, reply):
+        """Answer every request with reply, or raise it."""
+        self.reply, self.requests = reply, []
+        stand = self
+
+        class Session(object):
+            """Records each request."""
+
+            def get(self, url, **options):
+                """Answer one request."""
+                stand.requests.append((url, options))
+                if isinstance(stand.reply, Exception):
+                    raise stand.reply
+                return stand.reply
+
+        class Container(object):
+            """The files server's container."""
+
+            session = Session()
+
+            def get_headers(self, url):
+                """Return the headers the SDK attaches for its server."""
+                return {"Authorization": "fixture"}
+
+        class Helper(object):
+            """The helper of a URL."""
+
+            _container = Container()
+
+        class Manager(object):
+            """The storage manager."""
+
+            class storage_helper(object):
+                """The helper class."""
+
+                @staticmethod
+                def get(url):
+                    """Return the helper of a URL."""
+                    return Helper()
+
+        self.manager = Manager
+
+
+class SizeTests(unittest.TestCase):
+    """The size of an upload, as the files server holds it."""
+
+    URL = "https://files.clear.ml/ehr-evidence-app/models/x/config.json"
+
+    def size(self, reply):
+        """Return (the size found, the requests made)."""
+        stand = SdkStand(reply)
+        return models.SdkStorage(stand.manager).size(self.URL), stand.requests
+
+    def test_asked_for_without_content_coding(self):
+        """The file is asked for uncompressed, with the SDK's headers for
+        the files server, and its length read without its body."""
+        reply = Reply(200, {"Content-Length": "2551"})
+        found, requests = self.size(reply)
+        self.assertEqual(found, 2551)
+        headers = requests[0][1]["headers"]
+        self.assertEqual(headers["Accept-Encoding"], "identity")
+        self.assertEqual(headers["Authorization"], "fixture")
+        self.assertTrue(requests[0][1]["stream"])
+        self.assertTrue(reply.closed)
+
+    def test_compressed_reply_is_counted_decoded(self):
+        """A compressed reply's length is not the file's: a small file is
+        counted from its decoded bytes; a large one is not trusted."""
+        found, _ = self.size(Reply(200, {"Content-Encoding": "gzip",
+                                         "Content-Length": "812"},
+                                   [b"a" * 2000, b"b" * 551]))
+        self.assertEqual(found, 2551)
+        chunk = b"c" * (1024 * 1024)
+        found, _ = self.size(Reply(
+            200, {"Content-Encoding": "gzip"},
+            [chunk] * (models.MAX_COUNTED_BYTES // len(chunk) + 1)))
+        self.assertIsNone(found)
+
+    def test_no_file_is_no_size(self):
+        """A missing file, or no reply, has no size."""
+        self.assertIsNone(self.size(Reply(404, {}))[0])
+        self.assertIsNone(self.size(ConnectionError("fixture"))[0])
+
+
 class CommandTests(unittest.TestCase):
     """The command's modes."""
 

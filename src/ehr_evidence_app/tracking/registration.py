@@ -25,7 +25,10 @@ from ehr_evidence_app.tracking import connection as checker  # noqa: E402
 from ehr_evidence_app.tracking import controlled as tracking  # noqa: E402
 
 BASELINE_PATH = r"G:\Industry Dataset\ehr-evidence-workspace\outputs\baselines\inherited-baseline-v1.json"
-REGISTRATION_PATH = r"G:\Industry Dataset\ehr-evidence-workspace\outputs\lineage\inherited-input-registration-v1.json"
+# Version 1 was written before the workspace moved to G: and names the
+# baseline at its former path; it stays as written (gnn.provenance pins
+# it), and version 2 names the baseline where it now is.
+REGISTRATION_PATH = r"G:\Industry Dataset\ehr-evidence-workspace\outputs\lineage\inherited-input-registration-v2.json"
 ROLES = ("documentation", "source_explain_patient", "source_train",
          "source_model", "source_build_patient_graphs", "canonical_checkpoint",
          "canonical_metrics", "canonical_explanations", "concept_vocab",

@@ -148,7 +148,10 @@ explanations) fail before any request.
 record, verifies its digest, the canonical `diag_kg` identity, asset roles,
 sizes, checksums and metric provenance, and writes the deterministic
 registration manifest
-`outputs\lineage\inherited-input-registration-v1.json`. Every registered
+`outputs\lineage\inherited-input-registration-v2.json`. Version 1 was
+written before the workspace moved to G: and names the baseline at its
+former path; it stays as written, since the model provenance record pins
+it, and version 2 names the baseline where it now is. Every registered
 input is labelled `reused_inherited` and `not_executed_by_downstream`;
 documented metrics stay `inherited_reported`. An identical existing manifest
 is left untouched and a different one is refused
@@ -259,7 +262,9 @@ owner first saves a copy of the agreement there, as one of
 staged. `--operator-remote` then uploads the model's files, the notice,
 the agreement and, last, the manifest to the files server under
 `ehr-evidence-app/models/medgemma-1.5-4b-it/<revision>/`, checking the
-size of each upload; a file already there at its size is not sent again.
+size the server holds for each upload, asked for without content coding
+since the server may compress a reply; a file already there at its size
+is not sent again.
 It registers the revision once in the project's model registry, as
 `MedGemma 1.5 4B IT` with the manifest's address, the tags `pretrained`,
 `licence:health-ai-developer-foundations` and `revision:<revision>`, and

@@ -52,6 +52,20 @@ with its licence. No data is uploaded.
 - The tracker policy and the connection declaration list the one model
   whose files may be uploaded, and why; models trained on the project's
   data stay excluded.
+- `tracking.registration` writes
+  `outputs\lineage\inherited-input-registration-v2.json`. Version 1 was
+  written before the workspace moved to G: and names the baseline at its
+  former path, so the rebuilt manifest differed from it
+  (`registration_conflict`); it stays as written, pinned by the model
+  provenance record.
+
+### Fixed
+
+- `tracking.models` measures each upload as the files server holds it:
+  the file is asked for without content coding, so that a reply the
+  server compresses is not measured by its compressed length, and a reply
+  compressed anyway is counted from its decoded bytes, for a small file
+  only. An upload found incomplete reports both sizes.
 
 ## [0.9.0] - 2026-09-28
 

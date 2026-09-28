@@ -166,7 +166,7 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | 0.3.2 | `sources.pilot` | `protected-data\source-pilot\pilot-10-v1` |
 | 1 | `gnn.baseline` | `outputs\baselines\inherited-baseline-v1.json` |
 | 6 | `environment.gnn` | `outputs\environments\gnn-environment.json` |
-| 13 | `tracking.registration` | `outputs\lineage\inherited-input-registration-v1.json` |
+| 13 | `tracking.registration` | `outputs\lineage\inherited-input-registration-v2.json` (version 1, pinned by work item 21, names the baseline at its path before the move to G:) |
 | 15 | `gnn.assets` | `outputs\asset-validation\source-assets-v1.json` |
 | 17 | `gnn.mapping` | `protected-data\identity-mappings\step-17-pilot10-v1` |
 | 19 | `gnn.parity` | `protected-data\verification\step-19-preprocessing-parity-final` |
