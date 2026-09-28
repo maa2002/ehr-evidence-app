@@ -1,9 +1,9 @@
 # 0016. Evaluation metrics, fixed before the final evaluation (Phase 9)
 
-Status: proposed (2026-09-28), for the project owner's agreement before any
-request of `eval-100-v1` is written. Once agreed, these definitions are
-frozen with the settings, prompts, evidence selection and validators;
-changing any of them afterwards makes a new evaluated version.
+Status: accepted (2026-09-28), agreed by the project owner before any
+request of `eval-100-v1` is written. These definitions are frozen with
+the settings, prompts, evidence selection and validators; changing any of
+them afterwards makes a new evaluated version.
 
 ## Context
 

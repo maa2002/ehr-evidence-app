@@ -113,7 +113,7 @@ task, and the templates are its fallback.
   bundles and records found in the routine logs.
 - The metrics of the final evaluation, with their denominators and
   empty-set conventions, a prose rubric and the paired comparison, are
-  proposed for agreement before Phase 9
+  fixed before Phase 9
   ([ADR 0016](docs/decisions/0016-evaluation-metrics.md)).
 
 ### Changed
