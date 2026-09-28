@@ -63,7 +63,7 @@ attribution.
 | Evidence contracts, records, event linkage and bundles | implemented for the development pilot and the development and evaluation case sets |
 | Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out and written wording tests done |
 | Validation and the release gate | implemented; mutation suite version 4 covers model-written candidates, driver selection and scores as shown |
-| LLM generation | in progress: the compact output shape with syntax-only decoding, the model's structured view of the evidence, the prompt, adapter, limits and fallback, and the pinned model's worker in its own environment are implemented; QA answers and explanations are measured with the model on development requests; runtime records follow |
+| LLM generation | implemented (release 0.9.0): the compact output shape with syntax-only decoding, the model's structured view of the evidence, the prompt, adapter, limits and fallback, the pinned model's worker in its own environment, protected runtime records, the log audit and tracker aggregates; measured on the development case sets |
 | API, interface and evaluation | planned |
 
 See [roadmap.md](roadmap.md) for the planned work.
