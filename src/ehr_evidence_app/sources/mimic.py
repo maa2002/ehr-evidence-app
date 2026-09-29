@@ -13,7 +13,8 @@ them (its ICU chart tables are empty, and its laboratory results carry no
 names), so they are read here, from the raw files.
 
 Each pinned raw file is read once, read-only, and hashed over exactly the
-bytes read. The rows kept are those of exactly the persons of each pinned
+bytes read; a blank line, or a record whose quotes never close, stops the
+extraction. The rows kept are those of exactly the persons of each pinned
 source snapshot (pilot-10-v1, dev-30-v1 and eval-100-v1), matched on
 subject_id; of the ICU chart events, only the items of the fixed
 vital-sign list (VITAL_GROUPS). Nothing else is filtered: rows that no
@@ -355,6 +356,9 @@ def scan(handle, table, routes, emit):
                     table.header):
                 raise ExtractionError("header_unexpected:%s" % table.name)
             continue
+        if not record:
+            # A blank line is no row, in every table alike.
+            raise ExtractionError("record_malformed:%s" % table.name)
         if named:
             fields = fields_of(decode(record, collections.Counter()))
             if len(fields) != len(table.header):

@@ -11,7 +11,7 @@ it never modifies them. Command examples assume the session set-up in
 | OMOP CDM database | local PostgreSQL 18, database `mimiciv_omop`, schema `omopcdm` | read-only transactions on loopback |
 | Legacy CSV exports | `C:\omop_export` | read-only copy source |
 | Raw MIMIC-IV 3.1 hospital and ICU modules | external archive disk | eleven pinned files read once, read-only, for exactly the case sets' persons ([Raw MIMIC-IV records](#raw-mimic-iv-records)) |
-| Athena vocabularies (release of 31 August 2026) | external archive disk | four pinned files read once, read-only, to build the condition vocabulary ([ADR 0006](decisions/0006-condition-vocabulary.md)) |
+| Athena vocabularies (release of 31 August 2026) | external archive disk | four pinned files read once, read-only, to build the condition vocabulary ([ADR 0006](decisions/0006-condition-vocabulary.md)) and the medication and procedure vocabulary ([ADR 0021](decisions/0021-the-whole-record.md); version 2 in [ADR 0022](decisions/0022-record-edge-cases.md)) |
 
 **Source identity.** The upstream ETL code is in the inherited tree
 (`OHDSI_MIMIC\`) and its loader reads the MIMIC-IV 3.1 files. This is

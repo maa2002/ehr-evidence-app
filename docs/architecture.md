@@ -67,7 +67,7 @@ attribution.
 | Validation and the release gate | implemented; mutation suite version 4 covers model-written candidates, driver selection and scores as shown |
 | LLM generation | implemented (release 0.9.0): the compact output shape with syntax-only decoding, the model's structured view of the evidence, the prompt, adapter, limits and fallback, the pinned model's worker in its own environment, protected runtime records, the log audit and tracker aggregates; measured on the development case sets |
 | API and interface | in progress (Phase 8): the local API, its access boundary, the interface's page and its operations, the launcher and sharing through the tunnel are implemented |
-| The whole record | implemented: raw record extracts, record bundles, the medication and procedure vocabulary, reading of questions about the record, template answers and their support checks ([ADR 0021](decisions/0021-the-whole-record.md)) |
+| The whole record | implemented: raw record extracts, record bundles, the medication and procedure vocabulary, reading of questions about the record, template answers and their support checks ([ADR 0021](decisions/0021-the-whole-record.md)), tested at their edges ([ADR 0022](decisions/0022-record-edge-cases.md)) |
 | Evaluation | planned |
 
 See [roadmap.md](roadmap.md) for the planned work.
@@ -194,6 +194,7 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | 34.3 | `qa.written` | `protected-data\question-sets\written-v1` to `written-v3`, one set per rule version |
 | 52.1 | `sources.mimic` | `protected-data\source-records\<case set>` |
 | 52.2 | `qa.record_vocabulary` | `protected-data\vocabularies\record-vocabulary-athena-20260831-v1` |
+| 52.8 | `qa.record_vocabulary` (version 2: each drug class's ingredients) | `protected-data\vocabularies\record-vocabulary-athena-20260831-v2` |
 | 52.3 | `evidence.record_bundles` | `protected-data\evidence-bundles\<case set>-records-v1` |
 
 Work items 16 (bridge output contract) and 18 (target and history policy)

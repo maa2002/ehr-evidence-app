@@ -7,7 +7,10 @@ answers and the bundle bound to that request, before any other check:
   task and statements do not fit together; a wording's placeholders are
   not exactly the slots of its kind, a wording holds a digit (a fact
   typed outside the slots), or a notice's wording is not its approved
-  text; a notice is stated twice; the statements are not in their
+  text; a notice is stated twice or belongs to another task, or an
+  answer lacks a notice its task and outcome require (REQUIRED_NOTICES);
+  a visit's or the person's field is not one of its statement kind's; the
+  statements are not in their
   answer's order (a list's items follow its summary, an explanation's
   history and context follow their own driver); a statement cites
   evidence its kind does not cite; or the response it renders would break
@@ -91,13 +94,24 @@ COMPOSITION = {
                                    "visit_fact": (0, None),
                                    "notice": (0, 1)},
 }
-# A record answer that is not recorded: the kind's or the item's absence
-# and its notices, whatever the task.
+# A record answer that is not recorded: the kind's or the item's absence,
+# the records without a standard concept that were checked, and its
+# notices, whatever the task.
 for _task in ("record_list", "record_presence", "record_timing",
               "record_count", "record_values"):
     COMPOSITION[(_task, "not_recorded")] = {"record_list_empty": (0, 1),
                                             "record_absent": (0, 1),
+                                            "record_unmapped": (0, 1),
                                             "notice": (1, 2)}
+# The notices an answer holds whatever its question: every "not recorded"
+# says that it is not clinical absence, and a list that it is complete.
+REQUIRED_NOTICES = {
+    ("condition_list", "answer"): ("list_complete",),
+    ("record_list", "answer"): ("record_list_complete",),
+    ("record_timing", "answer"): ("dates_shifted",),
+}
+for _task in vocab.QA_TASKS:
+    REQUIRED_NOTICES[(_task, "not_recorded")] = ("absence",)
 EVIDENTIAL = ("answer", "not_recorded")
 # The order of a QA answer's statements, by kind.
 ORDER = {
@@ -122,7 +136,7 @@ ORDER = {
 for _task in ("record_list", "record_presence", "record_timing",
               "record_count", "record_values"):
     ORDER[(_task, "not_recorded")] = ("record_list_empty", "record_absent",
-                                      "notice")
+                                      "record_unmapped", "notice")
 # The value lists of a record answer: each group's header, then its
 # values; a selector's values stand alone.
 VALUE_LINES = ("record_value", "record_value_group", "record_value_item")
@@ -203,12 +217,16 @@ def kind_problems(statement, candidate):
         approved = candidates.NOTICES[statement.notice]
         if (statement.wording != approved.text
                 or candidate.outcome not in approved.outcomes
-                or approved.task not in (None, candidate.task)):
+                or not approved.answers(candidate.task)):
             return {"structure_invalid"}
         return set()
     kind = candidates.KINDS[statement.kind]
     if (not kind.answers(candidate.task)
             or candidate.outcome not in kind.outcomes):
+        return {"structure_invalid"}
+    field = statement.slots.field
+    if field is not None and field not in candidates.FIELDS_BY_KIND.get(
+            statement.kind, ()):
         return {"structure_invalid"}
     return set()
 
@@ -293,7 +311,9 @@ def composition_problems(candidate):
     stated twice."""
     notices = [statement.notice for statement in candidate.statements
                if statement.kind == "notice"]
-    if len(notices) != len(set(notices)):
+    if len(notices) != len(set(notices)) or any(
+            notice not in notices for notice in REQUIRED_NOTICES.get(
+                (candidate.task, candidate.outcome), ())):
         return {"structure_invalid"}
     rules = COMPOSITION.get((candidate.task, candidate.outcome))
     if rules is None:

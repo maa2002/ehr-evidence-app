@@ -138,6 +138,70 @@ class StructureTests(unittest.TestCase):
         self.assertEqual(check(absent, condition=other),
                          ("scope_violated",))
 
+    def test_answers_hold_only_the_notices_of_their_task(self):
+        """A condition answer may not carry a notice of the answers about
+        the whole record in place of its own: a list keeps "the list is
+        complete", a "not recorded" that it is not clinical absence."""
+        index = len(GOOD.statements) - 1
+        for other in ("record_list_complete", "dates_shifted",
+                      "vitals_icu_only", "age_meaning"):
+            statements = list(GOOD.statements)
+            statements[index] = candidates.notice(other)
+            self.assertEqual(check(GOOD.model_copy(update={
+                "statements": tuple(statements)})), ("structure_invalid",),
+                other)
+        absent = candidates.Candidate(
+            schema_version=candidates.CANDIDATE_VERSION, request_id="q-1",
+            task="condition_presence", case=GOOD.case, scope=GOOD.scope,
+            outcome="not_recorded", bundle=GOOD.bundle,
+            statements=(candidates.Statement(
+                kind="presence_absent",
+                wording="{condition} is not recorded within {scope}.",
+                slots=candidates.Slots(
+                    condition=candidates.ConditionName(code="Z99"),
+                    scope=GOOD.scope), refs=("C1",)),
+                candidates.notice("absence")))
+        self.assertEqual(check(absent), ())
+        for other in ("vitals_icu_only", "not_flagged", "vital_no_flag"):
+            self.assertEqual(check(absent.model_copy(update={
+                "statements": absent.statements[:1] + (
+                    candidates.notice(other),)})), ("structure_invalid",),
+                other)
+
+    def test_notices_name_the_tasks_they_belong_to(self):
+        """A notice of some tasks answers those tasks only."""
+        dates = candidates.NOTICES["dates_shifted"]
+        self.assertTrue(dates.answers("record_timing"))
+        self.assertTrue(dates.answers("visit_details"))
+        self.assertFalse(dates.answers("condition_list"))
+        self.assertFalse(dates.answers(None))
+        self.assertTrue(candidates.NOTICES["absence"].answers(
+            "condition_presence"))
+        self.assertTrue(candidates.NOTICES["list_complete"].answers(
+            "condition_list"))
+        self.assertFalse(candidates.NOTICES["list_complete"].answers(
+            "record_list"))
+        for notice in candidates.NOTICES.values():
+            if set(notice.outcomes) & {"answer", "not_recorded"} and (
+                    notice.task is None and not notice.tasks):
+                self.assertEqual(notice.text,
+                                 candidates.NOTICES["absence"].text)
+
+    def test_every_not_recorded_states_it_is_not_absence(self):
+        """"Not recorded" without the absence notice is refused, whatever
+        else it holds."""
+        for task, outcome, notice in (
+                ("condition_list", "answer", "list_complete"),
+                ("record_list", "answer", "record_list_complete"),
+                ("record_timing", "answer", "dates_shifted")):
+            self.assertIn(notice, structure.REQUIRED_NOTICES[(task,
+                                                              outcome)])
+        for task in ("condition_list", "condition_presence",
+                     "record_presence", "record_values",
+                     "record_abnormal"):
+            self.assertEqual(structure.REQUIRED_NOTICES[
+                (task, "not_recorded")], ("absence",))
+
     def test_concepts_must_be_in_the_vocabulary(self):
         """A named concept the vocabulary lacks does not resolve."""
         notice = candidates.notice("concept_suggested", term="synthetik",

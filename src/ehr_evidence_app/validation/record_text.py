@@ -11,6 +11,7 @@ for.
 from __future__ import annotations
 
 import datetime
+import decimal
 
 MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
           "Oct", "Nov", "Dec")
@@ -35,6 +36,7 @@ MATCH_WORDS = {"item": "the test or item itself",
                "class": "a drug class",
                "brand": "the brand name's ingredient",
                "name": "the name as written (no standard concept)",
+               "words": "the words of its name",
                "exact": "exact concept",
                "more_specific": "a more specific concept",
                "icd_code": "ICD code",
@@ -91,18 +93,21 @@ def date_text(value):
 
 
 def number_text(number):
-    """Return a number as recorded, without a needless ".0"."""
+    """Return a number as recorded: its shortest exact decimal form,
+    without a needless ".0", rounding or an exponent."""
     if number is None:
         return ""
-    if float(number).is_integer():
-        return "%d" % number
-    return ("%.6g" % number)
+    value = float(number)
+    if value.is_integer():
+        return "%d" % value
+    return format(decimal.Decimal(repr(value)), "f")
 
 
 def record_name(entry):
     """Return how a record's item is named: its name, with a laboratory
     test's fluid and category; a record without a name by what it holds
-    instead."""
+    instead, and why it has none: no standard concept, or a concept or
+    item whose name is unavailable."""
     if entry.name_status == "available":
         if entry.kind == "lab" and entry.detail:
             return "%s (%s)" % (entry.name, entry.detail.replace(" · ", ", "))
@@ -110,13 +115,15 @@ def record_name(entry):
         if specimen and specimen.casefold() != entry.name.casefold():
             return "%s (%s)" % (entry.name, specimen)
         return entry.name
+    unmapped = entry.name_status == "unmapped"
+    why = "no standard concept" if unmapped else "name unavailable"
     if entry.dose is not None and entry.dose.drug:
-        return "%s (as written; no standard concept)" % entry.dose.drug
+        return "%s (as written; %s)" % (entry.dose.drug, why)
     if entry.detail:
         code = "%s %s, " % (entry.vocabulary, entry.code) if (
             entry.vocabulary and entry.code) else ""
-        return "%s%s (no standard concept)" % (code, entry.detail)
-    if entry.kind == "medication":
+        return "%s%s (%s)" % (code, entry.detail.replace(" · ", ", "), why)
+    if entry.kind == "medication" and unmapped:
         return "medication whose name is not linked to its prescription"
     if entry.code:
         return "code %s (name unavailable)" % entry.code
@@ -128,13 +135,14 @@ def measure_text(measure):
     range and flag."""
     if measure is None:
         return "no value recorded"
+    withheld = False
     if measure.text is not None and measure.text != WITHHELD:
         value = measure.text
     elif measure.number is not None:
         value = number_text(measure.number)
     else:
-        value = "value removed by de-identification"
-    if measure.unit and measure.unit not in ("None",):
+        value, withheld = "value removed by de-identification", True
+    if measure.unit and measure.unit not in ("None",) and not withheld:
         value += " " + measure.unit
     extras = []
     if measure.low is not None and measure.high is not None:
@@ -258,6 +266,9 @@ def visit_field(field, visit):
         days = length_days(visit)
         if days is None:
             return "%s not recorded" % label
+        if days < 0:
+            return ("%s not given: the discharge is recorded before the "
+                    "admission" % label)
         return "%s %s %s" % (label, number_text(days),
                              "day" if days == 1 else "days")
     if field == "type":
@@ -274,7 +285,7 @@ def visit_field(field, visit):
                if admission and admission.discharge_time else visit.end_date)
         parts.append("%s to %s" % (date_text(start), date_text(end)))
         days = length_days(visit)
-        if days is not None:
+        if days is not None and days >= 0:
             parts.append("%s %s" % (number_text(days),
                                     "day" if days == 1 else "days"))
         return ", ".join(parts)

@@ -4,7 +4,7 @@ A question about the record names what it asks about in words: a
 laboratory test, a vital sign, a medication or a class of medications, a
 procedure, a microbiology specimen or organism, a care unit, or a
 condition. The phrase is resolved within one kind of record by fixed
-rules (rules record-resolution-v1), in order:
+rules (rules record-resolution-v2), in order:
 
 1. the phrase is a name the kind's dictionary holds (the laboratory and
    ICU item dictionaries, the medication vocabulary's ingredients,
@@ -15,12 +15,18 @@ rules (rules record-resolution-v1), in order:
    "e coli", "micu"), read as the dictionary words it stands for;
 3. otherwise the dictionary names holding every word of the phrase: a
    word of four letters or more may be part of a longer word ("dialysis"
-   in "hemodialysis"), a shorter one must be a whole word.
+   in "hemodialysis"), a shorter one must be a whole word. For a
+   procedure, the names hold the words between them, and a phrase that
+   is itself a procedure name resolves by rule 1. A resolution by words
+   is weak: a question that names no kind takes it only in a kind its
+   verbs or its task point to (qa.record_interpret).
 
-A phrase that resolves to nothing is unknown, and comes with suggestions
-(names that begin with it), never a guess; one that resolves to too many
-names is too broad. Conditions resolve as condition questions do
-(qa.resolve).
+A phrase that resolves to nothing is unknown, and comes with suggestions,
+never a guess: names that begin with its first word, else names whose
+first word is its closest spelling (one edit, two from eight letters),
+and for a procedure the phrase with each unknown word spelled as the
+closest word of the procedure names. One that resolves to too many names
+is too broad. Conditions resolve as condition questions do (qa.resolve).
 
 A record matches a resolved phrase, and the answer states how (MATCHES):
 
@@ -29,10 +35,22 @@ A record matches a resolved phrase, and the answer states how (MATCHES):
 * ingredient, class, brand name: its drug concept has a resolved
   ingredient or ATC class among its ancestors (a brand name resolves to
   its ingredients);
-* name: its name, or the drug, specimen, test, organism, antibiotic or
-  unit written in it, holds the resolved words (records without a
-  concept, procedures, microbiology and units);
+* name: a medication without a standard concept, whose drug name as
+  written holds, as whole words, the phrase, the name of a resolved
+  ingredient, or the name of an ingredient of a resolved class (the ATC
+  hierarchy of qa.record_vocabulary); a counter-ion that is an
+  ingredient's whole name (sodium, potassium, calcium, magnesium) counts
+  only as the written name's first word, so "heparin sodium" is not
+  sodium;
+* words: its name, or the specimen, test, organism, antibiotic or unit
+  written in it, holds the resolved words (procedures, microbiology and
+  units);
 * a condition's own match kinds (qa.resolve.match).
+
+Version 2 matches medications without a standard concept against the
+ingredients of a class and by whole words, names word matches apart from
+matches of a written drug name, and suggests spellings of medications
+and procedures.
 """
 
 from __future__ import annotations
@@ -43,7 +61,7 @@ import re
 from ehr_evidence_app.qa import resolve as conditions
 from ehr_evidence_app.sources import mimic
 
-RULES_VERSION = "record-resolution-v1"
+RULES_VERSION = "record-resolution-v2"
 # The kinds a question may ask about; a procedure question covers the
 # ICD procedures and the ICU procedure events.
 QUESTION_KINDS = ("condition", "procedure", "medication", "lab",
@@ -55,7 +73,12 @@ RECORD_KINDS = {"condition": ("condition",),
                 "transfer": ("transfer",), "icu_stay": ("icu_stay",)}
 MATCHES = {"item": "test or item", "group": "vital sign",
            "ingredient": "ingredient", "class": "drug class",
-           "brand": "brand name", "name": "name"}
+           "brand": "brand name", "name": "name as written",
+           "words": "words of the name"}
+# Salts written after a drug's name ("heparin sodium"): as an
+# ingredient's whole name, each matches a written name only as its first
+# word.
+COUNTER_IONS = frozenset(("sodium", "potassium", "calcium", "magnesium"))
 # More names than this make a phrase too broad to answer.
 MAX_NAMES = 40
 SUGGESTIONS = 6
@@ -172,6 +195,12 @@ TERMS = {
         "dialysis": ("dialysis", "urinary filtration"),
         "hemodialysis": ("dialysis", "urinary filtration"),
         "intubation": ("intubation", "endotracheal airway"),
+        "intubated": ("intubation", "endotracheal airway"),
+        "extubation": ("extubation",), "extubated": ("extubation",),
+        "ventilated": ("ventilation",),
+        "dialysed": ("dialysis", "urinary filtration"),
+        "dialyzed": ("dialysis", "urinary filtration"),
+        "transfused": ("transfusion",),
         "ventilation": ("ventilation",),
         "mechanical ventilation": ("ventilation",),
         "ventilator": ("ventilation",),
@@ -250,7 +279,9 @@ class ItemResolution:
     matched by (item numbers, vital-sign groups, drug concepts, or word
     tuples); rule says how it resolved; suggestions are names offered for
     an unknown phrase. For a condition, condition holds its
-    qa.resolve.Resolution.
+    qa.resolve.Resolution; for a medication, written holds the names, as
+    sorted word tuples, that a record without a standard concept is
+    matched by.
     """
 
     kind: str
@@ -261,6 +292,7 @@ class ItemResolution:
     keys: tuple = ()
     suggestions: tuple = ()
     condition: object = None
+    written: tuple = ()
 
 
 def normalize(text):
@@ -275,6 +307,35 @@ def words_in(words, text):
     padded = " %s " % text
     return all((" %s " % word in padded) if len(word) < SHORT_WORD
                else any(word in token for token in found) for word in words)
+
+
+def written_in(words, text):
+    """Return True when a written drug name holds every word of a name as
+    a whole word; a counter-ion that is the whole name only as the
+    written name's first word."""
+    found = text.split()
+    if len(words) == 1 and words[0] in COUNTER_IONS:
+        return bool(found) and found[0] == words[0]
+    return set(words) <= set(found)
+
+
+def closest(word, known, limit):
+    """Return the words of known (grouped by their first letter) within
+    limit edits of a word, closest first."""
+    found = []
+    for other in known.get(word[:1], ()):
+        distance = conditions.edit_distance(word, other, limit)
+        if distance <= limit:
+            found.append((distance, len(other), other))
+    return [other for _, _, other in sorted(found)]
+
+
+def by_letter(words):
+    """Return words grouped by their first letter, each group sorted."""
+    groups = {}
+    for word in sorted(words):
+        groups.setdefault(word[:1], []).append(word)
+    return groups
 
 
 @dataclasses.dataclass(frozen=True)
@@ -361,10 +422,15 @@ class Terms:
         self.units = dictionary("transfer",
                                 ((name, normalize(name)) for name in units))
         self.drugs = drugs
+        self.procedure_names = frozenset(procedures)
         self.procedure_words = frozenset(word for name in procedures
                                          for word in name.split())
         self.procedure_long_words = tuple(sorted(
             word for word in self.procedure_words if len(word) >= SHORT_WORD))
+        # Built when first needed: the words of each ingredient's name,
+        # and the words suggestions are spelled from.
+        self.ingredient_words = {}
+        self.spelling = {}
         self.condition_vocabulary = condition_vocabulary
         # ICD source concepts by vocabulary and code, for the description
         # matches of condition records without a standard concept.
@@ -483,27 +549,90 @@ class Terms:
             return ItemResolution("medication", phrase, "unknown")
         return ItemResolution("medication", phrase, "resolved", rule,
                               tuple(dict.fromkeys(names)),
-                              tuple(sorted(keys)))
+                              tuple(sorted(keys)),
+                              written=self.written_names(phrase, keys))
+
+    def written_names(self, phrase, keys):
+        """Return the names, as sorted word tuples, that a medication
+        without a standard concept is matched by: the phrase, each
+        resolved ingredient and each ingredient of a resolved class."""
+        ingredients = set()
+        classes = getattr(self.drugs, "class_ingredients", {}) or {}
+        for kind, concept in keys:
+            if kind == "ingredient":
+                ingredients.add(concept)
+            elif kind == "atc":
+                ingredients |= set(classes.get(concept, ()))
+        found = {tuple(sorted(phrase.split()))}
+        for concept in ingredients:
+            words = self.ingredient_words.get(concept)
+            if words is None:
+                item = self.drugs.drugs.get(concept)
+                words = tuple(sorted(normalize(item.name).split())) if (
+                    item is not None) else ()
+                self.ingredient_words[concept] = words
+            if words:
+                found.add(words)
+        return tuple(sorted(found))
+
+    def spelled(self, kind, words):
+        """Return the words suggestions of a kind are spelled from,
+        grouped by their first letter."""
+        if kind not in self.spelling:
+            self.spelling[kind] = by_letter(words())
+        return self.spelling[kind]
 
     def drug_suggestions(self, phrase):
         """Return medication names that begin with the phrase's first
-        word."""
+        word, else those whose first word is its closest spelling."""
         first = phrase.split()[0]
         found = sorted(name for name in self.drugs.drug_names
                        if name.startswith(first))
+        if not found and len(first) >= conditions.MIN_WORD:
+            limit = 2 if len(first) >= conditions.LONG_WORD else 1
+            known = self.spelled("medication", lambda: {
+                name.split()[0] for name in self.drugs.drug_names
+                if name.split()})
+            spellings = closest(first, known, limit)
+            found = sorted(name for name in self.drugs.drug_names
+                           if name.split() and name.split()[0] in spellings)
         found.sort(key=len)
         return tuple(found[:SUGGESTIONS])
 
+    def procedure_suggestions(self, phrase):
+        """Return the phrase with each word no procedure name holds spelled
+        as the closest word of the procedure names, when every word then
+        is one."""
+        known = self.spelled("procedure", lambda: self.procedure_words)
+        words, changed = [], False
+        for word in phrase.split():
+            if self.procedure_word(word):
+                words.append(word)
+                continue
+            if len(word) < conditions.MIN_WORD or not word.isalpha():
+                return ()
+            limit = 2 if len(word) >= conditions.LONG_WORD else 1
+            spellings = closest(word, known, limit)
+            if not spellings:
+                return ()
+            words.append(spellings[0])
+            changed = True
+        return (" ".join(words),) if changed else ()
+
     def procedure(self, phrase):
         """Resolve a procedure phrase to the words records are matched
-        by: a fixed synonym's words, or the phrase itself when procedure
-        names hold its words."""
+        by: a fixed synonym's words, or the phrase itself when it is a
+        procedure name (rule name) or procedure names hold its words (rule
+        words)."""
         targets = TERMS["procedure"].get(phrase)
         rule = "synonym"
         if targets is None:
-            rule = "words"
-            if not all(self.procedure_word(word) for word in phrase.split()):
-                return ItemResolution("procedure", phrase, "unknown")
+            rule = "name" if phrase in self.procedure_names else "words"
+            if rule == "words" and not all(self.procedure_word(word)
+                                           for word in phrase.split()):
+                return ItemResolution(
+                    "procedure", phrase, "unknown",
+                    suggestions=self.procedure_suggestions(phrase))
             targets = (phrase,)
         return ItemResolution("procedure", phrase, "resolved", rule,
                               (phrase,), tuple(tuple(target.split())
@@ -544,7 +673,7 @@ class Terms:
         else:
             keys = tuple(tuple(key.split()) for key in resolution.keys)
         if any(words_in(words, text) for words in keys):
-            return "name"
+            return "words"
         return None
 
     def medication_match(self, resolution, entry):
@@ -565,10 +694,8 @@ class Terms:
             return "class"
         if entry.concept_id == 0:
             text = normalize(" ".join(filter(None, record_texts(entry))))
-            names = [normalize(self.drugs.drugs[concept].name)
-                     for kind, concept in resolution.keys
-                     if kind == "ingredient" and concept in self.drugs.drugs]
-            if any(words_in(name.split(), text) for name in names if name):
+            if any(written_in(words, text) for words in resolution.written
+                   if words):
                 return "name"
         return None
 

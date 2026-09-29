@@ -128,6 +128,132 @@ class ReadingTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
 
 
+def random_rows(generator, count, width):
+    """Return invented rows whose fields hold commas, quotes, line breaks
+    of both kinds, accents and empty values."""
+    pieces = ("a", "b", ",", '"', "\n", "\r\n", " ", "é", "µ", "1", "")
+    return [[("".join(generator.choice(pieces)
+                      for _ in range(generator.randrange(0, 6))))
+             for _ in range(width)] for _ in range(count)]
+
+
+class RecordEdgeTests(unittest.TestCase):
+    """Records and scans at their edges: every chunk size, blank lines,
+    marks, quotes and bytes."""
+
+    def records_of(self, data, chunk):
+        """Return the records of bytes read in chunks of a size, and the
+        counter."""
+        counter = {"sha256": hashlib.sha256(), "size": 0}
+        with mock.patch.object(mimic, "CHUNK_BYTES", chunk):
+            found = list(mimic.records(io.BytesIO(data), counter))
+        return found, counter
+
+    def test_records_agree_with_the_csv_module_at_every_chunk_size(self):
+        """Random rows written by the csv module are read back whole,
+        whatever the chunk size and the line ends, and hashed exactly."""
+        import random
+        generator = random.Random(20260930)
+        for trial in range(40):
+            rows = random_rows(generator, generator.randrange(1, 12),
+                               generator.randrange(1, 5))
+            ending = generator.choice(("\n", "\r\n"))
+            text = io.StringIO(newline="")
+            csv.writer(text, lineterminator=ending).writerows(rows)
+            data = text.getvalue().encode("utf-8")
+            if generator.random() < 0.3:
+                data = data[:-len(ending)]
+            for chunk in (1, 2, 3, 7, 64, 1 << 20):
+                found, counter = self.records_of(data, chunk)
+                parsed = [mimic.fields_of(record.decode("utf-8"))
+                          for record in found]
+                self.assertEqual(parsed, rows, (trial, chunk))
+                self.assertEqual(counter["size"], len(data))
+                self.assertEqual(counter["sha256"].hexdigest(),
+                                 hashlib.sha256(data).hexdigest())
+
+    def test_a_character_split_between_chunks_is_read_whole(self):
+        """A multi-byte character across a chunk boundary is kept."""
+        data = "a,b\n1,é\n2,µ€\n".encode("utf-8")
+        found, _ = self.records_of(data, 1)
+        self.assertEqual([record.decode("utf-8") for record in found],
+                         ["a,b", "1,é", "2,µ€"])
+
+    def test_a_blank_line_is_no_row_in_any_table(self):
+        """A blank line inside a table is refused, in every table alike."""
+        for item in mimic.TABLES:
+            header = ",".join(item.header).encode()
+            with self.assertRaises(mimic.ExtractionError, msg=item.name) \
+                    as caught:
+                scanned(item.name, header + b"\n\n")
+            self.assertIn("record_malformed", str(caught.exception))
+        # A file's own final line end is no blank line.
+        counts, _ = scanned("patients", ",".join(
+            table("patients").header).encode() + b"\n")
+        self.assertEqual(counts["records"], 0)
+
+    def test_a_byte_order_mark_and_line_ends_are_accepted(self):
+        """The header may start with a byte order mark and end in CRLF; a
+        header alone holds no rows."""
+        header = ("﻿" + ",".join(table("patients").header)).encode(
+            "utf-8")
+        counts, rows = scanned("patients", header + b"\r\n")
+        self.assertEqual((counts["records"], rows), (0, []))
+        counts, rows = scanned("patients", header + b"\r\n900001,F,60,2100,"
+                                                    b"2008 - 2010,")
+        self.assertEqual(len(rows), 1)
+
+    def test_quoted_keys_and_items_are_read_whole(self):
+        """A quoted person or item is read by the full parse, and the
+        vital-sign list still applies."""
+        header = ",".join(table("chartevents").header).encode()
+        data = header + (b'\n"900002",800002,600002,5,t,t,"220045",88,88,'
+                         b'bpm,0\n"900002",800002,600002,5,t,t,"999999",x,,'
+                         b',0\n')
+        counts, rows = scanned("chartevents", data)
+        self.assertEqual(counts["kept"], {"synthetic-b-v1": 1})
+        self.assertEqual(rows[0][2][6], "220045")
+
+    def test_latin1_is_counted_on_kept_rows_only(self):
+        """A Latin-1 byte in a row that is not kept is not counted."""
+        header = ",".join(table("patients").header).encode()
+        data = header + b"\n900009,F,60,2100,2008 - 2010\xb5,\n"
+        counts, rows = scanned("patients", data)
+        self.assertEqual((counts["decoded_latin1"], rows), (0, []))
+        data = header + b"\n900001,F,60,2100,2008 - 2010\xb5,\n"
+        counts, rows = scanned("patients", data)
+        self.assertEqual(counts["decoded_latin1"], 1)
+        self.assertEqual(rows[0][2][4], "2008 - 2010\xb5")
+
+    def test_a_person_of_two_case_sets_is_kept_for_both(self):
+        """A row is emitted once with every label whose persons hold it."""
+        routes = mimic.routes_of({"synthetic-a-v1": {"900001"},
+                                  "synthetic-b-v1": {"900001"}})
+        counts, rows = scanned("patients",
+                               mimic.synthetic_files()["patients"], routes)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][0], ("synthetic-a-v1", "synthetic-b-v1"))
+        self.assertEqual(counts["kept"], {"synthetic-a-v1": 1,
+                                          "synthetic-b-v1": 1})
+
+    def test_a_row_too_short_before_the_person_fails(self):
+        """A row without the person's column is malformed."""
+        header = ",".join(table("labevents").header).encode()
+        with self.assertRaises(mimic.ExtractionError):
+            scanned("labevents", header + b"\n1\n")
+        with self.assertRaises(mimic.ExtractionError):
+            scanned("d_labitems", b"itemid,label,fluid,category\n1,A\n")
+
+    def test_names_are_stripped_and_empty_ones_left_out(self):
+        """The dictionary of names holds stripped, non-empty values."""
+        header = ",".join(table("transfers").header).encode()
+        data = header + (b"\n900001,800001,1,admit, Unit A ,t,t"
+                         b"\n900001,800001,2,admit,,t,t"
+                         b"\n900009,800009,3,admit,Unit A,t,t\n")
+        counts, _ = scanned("transfers", data)
+        self.assertEqual(counts["names"], {"careunit": ["Unit A"]})
+
+
 class CollectorTests(unittest.TestCase):
     """Keys, links and the written CSV of one case set."""
 
@@ -256,6 +382,62 @@ class ExtractTests(unittest.TestCase):
         self.assertIn("files_unexpected", problems)
         self.assertIn("file_hash_mismatch:patients.csv", problems)
 
+    def test_published_files_are_read_verified(self):
+        """A published file is read only when it is its manifest's; a file
+        the manifest does not list, or one changed, is refused."""
+        mimic.extract(self.plan)
+        directory = os.path.join(self.plan["output_root"], "synthetic-a-v1")
+        path = os.path.join(directory, mimic.MANIFEST_NAME)
+        with open(path, "rb") as handle:
+            data = handle.read()
+        pin = {"path": path, "size_bytes": len(data),
+               "sha256": hashlib.sha256(data).hexdigest()}
+        with mock.patch.object(mimic, "pinned_manifest", lambda label: pin):
+            found = mimic.read_files("synthetic-a-v1", ("patients.csv",
+                                                        mimic.NAMES_FILE))
+            self.assertEqual([row["subject_id"]
+                              for row in found["patients.csv"]], ["900001"])
+            with self.assertRaises(mimic.ExtractionError) as caught:
+                mimic.read_files("synthetic-a-v1", ("extra.csv",))
+            self.assertIn("extract_file_unlisted", str(caught.exception))
+            with open(os.path.join(directory, "patients.csv"),
+                      "ab") as handle:
+                handle.write(b"x")
+            with self.assertRaises(mimic.ExtractionError) as caught:
+                mimic.read_files("synthetic-a-v1", ("patients.csv",))
+            self.assertIn("extract_hash_mismatch", str(caught.exception))
+        pin = dict(pin, sha256="0" * 64)
+        with mock.patch.object(mimic, "pinned_manifest", lambda label: pin):
+            with self.assertRaises(mimic.ExtractionError):
+                mimic.read_files("synthetic-a-v1", ("patients.csv",))
+
+    def test_a_failed_publish_leaves_nothing_behind(self):
+        """When a directory cannot be renamed, every partial directory is
+        removed and nothing is published."""
+        with mock.patch.object(mimic.os, "rename",
+                               side_effect=OSError("refused")):
+            with self.assertRaises(OSError):
+                mimic.extract(self.plan)
+        self.assertEqual(os.listdir(self.plan["output_root"]), [])
+        manifests = mimic.extract(self.plan)
+        self.assertEqual(set(manifests), set(mimic.SYNTHETIC_SUBJECTS))
+
+    def test_verify_reads_what_it_is_given(self):
+        """A missing or foreign manifest is reported, never trusted."""
+        self.assertEqual(mimic.verify(self.plan, "synthetic-a-v1"),
+                         ["manifest_unreadable"])
+        mimic.extract(self.plan)
+        self.assertEqual(mimic.verify(self.plan, "synthetic-a-v1"), [])
+        directory = os.path.join(self.plan["output_root"], "synthetic-a-v1")
+        path = os.path.join(directory, mimic.MANIFEST_NAME)
+        with open(path, "rb") as handle:
+            manifest = json.loads(handle.read())
+        manifest["version_label"] = "synthetic-b-v1"
+        with open(path, "wb") as handle:
+            handle.write(json.dumps(manifest).encode("utf-8"))
+        self.assertIn("manifest_unexpected",
+                      mimic.verify(self.plan, "synthetic-a-v1"))
+
     def test_raw_inputs_must_be_permitted_sources(self):
         """A raw input outside the raw directory is refused."""
         outside = os.path.join(self.work, "patients.csv")
@@ -288,9 +470,9 @@ class CommandTests(unittest.TestCase):
     def test_the_plan_reads_the_archive_and_writes_protected_data(self):
         """Inputs lie in the raw directory; outputs in protected data."""
         self.assertEqual(mimic.RAW_ROOT, guard.RAW_SOURCE_DIR)
-        self.assertTrue(guard.is_within(mimic.OUTPUT_ROOT,
-                                        guard.PRIVATE_ROOT + "\\protected-data",
-                                        strict=True))
+        self.assertTrue(guard.is_within(
+            mimic.OUTPUT_ROOT, guard.PRIVATE_ROOT + "\\protected-data",
+            strict=True))
         self.assertEqual(set(mimic.INPUTS), set(mimic.TABLE_NAMES))
         self.assertEqual(len(mimic.VITAL_ITEMS), sum(
             len(items) for items in mimic.VITAL_GROUPS.values()))

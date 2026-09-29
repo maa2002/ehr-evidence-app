@@ -5,7 +5,9 @@ of the API's default mode): questions go through qa.answer with the
 record context, and every answer leaves through the release gate.
 """
 
+import json
 import unittest
+from unittest import mock
 
 from ehr_evidence_app.api import service as services
 from ehr_evidence_app.evidence import contracts
@@ -86,7 +88,11 @@ class RecordAnswerTests(unittest.TestCase):
                          "Is synthetic concept 1001 recorded?",
                          "Is florbnitis recorded?",
                          "How should heart failure be treated?",
-                         "Will she survive?"):
+                         "Will she survive?",
+                         # Phrases only the words of procedure names hold.
+                         "Is excision recorded?",
+                         "Is organ excision recorded?",
+                         "Is the patient's organ excision severe?"):
             with_records = self.ask(question).response
             without = self.ask(question, records=False).response
             self.assertEqual(
@@ -149,6 +155,104 @@ class RecordAnswerTests(unittest.TestCase):
         with self.assertRaises(record_answer.RecordAnswerError):
             records.bundle(1, ALL)
         self.assertIsNone(records.bundle(2, ALL))
+
+
+class RecordSetTests(unittest.TestCase):
+    """Record bundles are read verified, kept a while, and read safely by
+    many requests at once."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Hold the invented edge bundles and their bytes."""
+        from ehr_evidence_app.evidence import record_bundles
+        from tests.qa import record_cases
+        cls.cases = record_cases
+        cls.built = record_cases.bundles()
+        cls.data = {"record/%s.json" % bundle.bundle_id:
+                    record_bundles.bundle_bytes(bundle)
+                    for bundle in cls.built}
+        cls.manifest = record_bundles.manifest_document(
+            cls.built, record_cases.PROVENANCE, {}, "synthetic-edge-records")
+
+    def record_set(self, data=None, manifest=None):
+        """Return a RecordSet reading bundle bytes through a counting
+        reader; reads holds each path read."""
+        data = data or self.data
+        self.reads = []
+
+        def reader(entry):
+            """Read one invented bundle's bytes."""
+            self.reads.append(entry["path"])
+            return data[entry["path"]]
+
+        return record_answer.RecordSet(self.cases.CASE_SET, None,
+                                       manifest or self.manifest,
+                                       reader=reader)
+
+    def test_bundles_are_kept_and_the_oldest_let_go(self):
+        """A bundle read once is kept; beyond KEPT_BUNDLES the least
+        recently read is read again."""
+        records = self.record_set()
+        scopes = self.cases.SCOPES
+        with mock.patch.object(record_answer, "KEPT_BUNDLES", 2):
+            for scope in scopes[:2] + scopes[:2]:
+                records.bundle(1, scope)
+            self.assertEqual(len(self.reads), 2)
+            records.bundle(1, scopes[2])
+            records.bundle(1, scopes[0])
+            self.assertEqual(len(self.reads), 4)
+            self.assertLessEqual(len(records.kept), 2)
+
+    def test_a_file_that_is_not_its_bundle_is_refused(self):
+        """Bytes that are another scope's bundle, or changed, are
+        refused even with a matching digest."""
+        import hashlib
+        first, second = self.built[0], self.built[1]
+        swapped = dict(self.data)
+        path = "record/%s.json" % first.bundle_id
+        swapped[path] = self.data["record/%s.json" % second.bundle_id]
+        manifest = json.loads(json.dumps(self.manifest))
+        for entry in manifest["files"]:
+            if entry["path"] == path:
+                entry["size_bytes"] = len(swapped[path])
+                entry["sha256"] = hashlib.sha256(swapped[path]).hexdigest()
+        records = self.record_set(swapped, manifest)
+        with self.assertRaises(record_answer.RecordAnswerError) as caught:
+            records.bundle(1, first.scope)
+        self.assertIn("record_bundle_unexpected", str(caught.exception))
+        changed = dict(self.data, **{path: self.data[path] + b" "})
+        with self.assertRaises(record_answer.RecordAnswerError):
+            self.record_set(changed).bundle(1, first.scope)
+        self.assertIsNone(self.record_set().bundle(2, first.scope))
+
+    def test_many_requests_read_at_once(self):
+        """Threads reading every scope while bundles are let go get each
+        its own bundle, and nothing fails."""
+        import threading
+        records = self.record_set()
+        failures, lock = [], threading.Lock()
+
+        def work(seed):
+            """Read scopes in an order of this thread's own."""
+            order = list(self.cases.SCOPES) * 20
+            for index in range(len(order)):
+                scope = order[(index * (seed + 1)) % len(order)]
+                try:
+                    bundle, _ = records.bundle(1, scope)
+                    if bundle.scope != scope:
+                        raise AssertionError("another scope's bundle")
+                except Exception as error:  # noqa: BLE001 - collected
+                    with lock:
+                        failures.append(repr(error))
+
+        with mock.patch.object(record_answer, "KEPT_BUNDLES", 2):
+            threads = [threading.Thread(target=work, args=(seed,))
+                       for seed in range(8)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+        self.assertEqual(failures, [])
 
 
 if __name__ == "__main__":

@@ -26,7 +26,14 @@ claim_unsupported:
 * visits and the person's details cover every visit of the scope, each
   with the field the question asks about;
 * the disclosure unmapped_records_in_scope is stated exactly when the
-  scope holds records of the kind without a standard concept or a name.
+  scope holds records of the kind without a standard concept or a name;
+  a "not recorded" about a named condition, medication or procedure
+  states the scope's records of the kind without a standard concept, and
+  their number, and an empty list states nothing else;
+* a single record is stated as the only one, and the latest stands in
+  for the highest or lowest only when no value of the item is a number;
+* the notices are exactly those the question needs (validation.candidate
+  ties each to its tasks; structure requires those of every task).
 
 Usage:
     python -m ehr_evidence_app.validation.record_support
@@ -127,9 +134,7 @@ def list_supported(candidate, bundle, check, records):
     """Return True when a list names every item of the kind once."""
     entries = records_of(bundle, check.question.kind)
     if candidate.outcome == "not_recorded":
-        empty = of_kind(candidate, "record_list_empty")
-        return (not entries and len(empty) == 1
-                and empty[0].slots.kind == check.question.kind)
+        return not entries and absence_named(candidate, check, bundle)
     summary = of_kind(candidate, "record_list_summary")[0].slots
     items = of_kind(candidate, "record_list_item")
     stays = of_kind(candidate, "record_stay_item")
@@ -161,7 +166,7 @@ def presence_supported(candidate, bundle, check, records):
     """Return True when a presence answer cites every matching record."""
     matches = matches_of(check, bundle)
     if candidate.outcome == "not_recorded":
-        return not matches and absence_named(candidate, check)
+        return not matches and absence_named(candidate, check, bundle)
     summary = of_kind(candidate, "record_presence_summary")[0].slots
     items = of_kind(candidate, "record_presence_item")
     if summary.item.terms != expected_terms(check) or (
@@ -178,11 +183,29 @@ def presence_supported(candidate, bundle, check, records):
     return len(named) == len(set(named)) and cited_once(items, matches)
 
 
-def absence_named(candidate, check):
+def unmapped_of(bundle, check):
+    """Return how many records of the question's kind within the scope
+    have no standard concept, when a "not recorded" about a named item
+    must say how they were checked; 0 otherwise."""
+    if check.resolution is None or (
+            check.question.kind not in candidates.UNMAPPED_KINDS):
+        return 0
+    return sum(1 for entry in records_of(bundle, check.question.kind)
+               if entry.concept_id == 0)
+
+
+def absence_named(candidate, check, bundle):
     """Return True when "not recorded" names the question's kind or its
-    phrase's resolution."""
+    phrase's resolution, and states the scope's records without a
+    standard concept that were checked, when there are any."""
     empty = of_kind(candidate, "record_list_empty")
     absent = of_kind(candidate, "record_absent")
+    unmapped = of_kind(candidate, "record_unmapped")
+    expected = unmapped_of(bundle, check)
+    if len(unmapped) != bool(expected) or (expected and (
+            unmapped[0].slots.unmapped != expected
+            or unmapped[0].slots.kind != check.question.kind)):
+        return False
     if check.resolution is None:
         return (len(empty) == 1 and not absent
                 and empty[0].slots.kind == check.question.kind)
@@ -195,7 +218,7 @@ def timing_supported(candidate, bundle, check, records):
     matching records."""
     matches = [records[ref] for ref in matches_of(check, bundle)]
     if candidate.outcome == "not_recorded":
-        return not matches and absence_named(candidate, check)
+        return not matches and absence_named(candidate, check, bundle)
     summary = of_kind(candidate, "record_presence_summary")[0].slots
     times = of_kind(candidate, "record_time")
     if summary.item.terms != expected_terms(check) or (
@@ -220,7 +243,7 @@ def count_supported(candidate, bundle, check, records):
     the kind's items and records."""
     matches = matches_of(check, bundle)
     if candidate.outcome == "not_recorded":
-        return not matches and absence_named(candidate, check)
+        return not matches and absence_named(candidate, check, bundle)
     counts = of_kind(candidate, "record_count")
     kinds = of_kind(candidate, "record_count_kind")
     if check.resolution is None:
@@ -259,14 +282,15 @@ def selected(entries, selector):
     records, or None when the selector cannot be stated for them."""
     if selector == "only":
         return entries[0] if len(entries) == 1 else None
+    if len(entries) == 1:
+        # A single record is stated as the only one.
+        return None
     if selector in ("highest", "lowest"):
         numbers = [entry for entry in entries if number(entry) is not None]
         if not numbers:
             return None
         return (max if selector == "highest" else min)(
             numbers, key=lambda entry: (number(entry), timed(entry)))
-    if len(entries) == 1:
-        return None
     if selector == "first":
         return min(entries, key=timed)
     return max(entries, key=timed)
@@ -322,7 +346,7 @@ def values_supported(candidate, bundle, check, records):
     matches = [records[ref] for ref in matches_of(check, bundle)
                if has_value(records[ref])]
     if candidate.outcome == "not_recorded":
-        return not matches and absence_named(candidate, check)
+        return not matches and absence_named(candidate, check, bundle)
     groups = groups_of(matches)
     body = [statement for statement in candidate.statements
             if statement.kind != "notice"]
@@ -351,11 +375,14 @@ def values_supported(candidate, bundle, check, records):
             return False
         expected = selected(groups[key], slots.selector)
         wanted = check.question.selector
-        if expected is None or expected.ref != entry.ref or (
-                slots.selector not in (wanted, "only", "latest")):
-            return False
-        if slots.selector == "latest" and wanted in ("highest", "lowest") \
-                and any(number(item) is not None for item in groups[key]):
+        # A single record is the only one; the latest stands in for the
+        # highest or lowest only when no value of the item is a number.
+        allowed = {wanted, "only"}
+        if wanted in ("highest", "lowest") and not any(
+                number(item) is not None for item in groups[key]):
+            allowed.add("latest")
+        if (expected is None or expected.ref != entry.ref
+                or slots.selector not in allowed):
             return False
         seen.add(key)
     return seen == set(groups)
@@ -363,8 +390,10 @@ def values_supported(candidate, bundle, check, records):
 
 def shown_of(check):
     """Return how many values of each item a list shows: MAX_VALUES for a
-    named item, the latest one of each item of a whole kind."""
-    return MAX_VALUES if check.resolution is not None else 1
+    named item and for microbiology, the latest one of each item of
+    another whole kind."""
+    return MAX_VALUES if check.resolution is not None or (
+        check.question.kind == "microbiology") else 1
 
 
 def flagged(entry):
@@ -438,6 +467,48 @@ def person_supported(candidate, bundle, check):
                              for statement in visits))
 
 
+def expected_notices(candidate, check):
+    """Return the notices a record answer states, by its question: that
+    "not recorded" is not clinical absence, that a list is complete, that
+    vital signs are charted in ICU stays, that dates are shifted, what an
+    age or a date of death means, that an unflagged result is not stated
+    to be normal, and that vital signs carry no flag. Whether earlier
+    values were left out (values_omitted) is checked with the values."""
+    question = check.question
+    task, outcome = candidate.task, candidate.outcome
+    vital = {"vitals_icu_only"} if question.kind == "vital" else set()
+    flag = {"not_flagged"} if question.kind == "lab" else set()
+    if outcome == "not_recorded":
+        return {"absence"} | (flag if task == "record_abnormal" else vital)
+    if task == "record_list":
+        return {"record_list_complete"} | vital
+    if task == "record_timing":
+        return {"dates_shifted"}
+    if task == "record_values":
+        return vital | ({"vital_no_flag"} if question.kind == "vital"
+                        and question.category == "vital_flag"
+                        and question.selector in ("highest", "lowest")
+                        else set())
+    if task == "record_abnormal":
+        return flag
+    if task == "visit_details":
+        field = VISIT_FIELDS.get(question.field, question.field)
+        return ({"dates_shifted"}
+                if field in ("summary", "admitted", "discharged") else set())
+    if task == "person_details":
+        return {"death": {"death_meaning"}, "age": {"age_meaning"}}.get(
+            question.field, set())
+    return set()
+
+
+def notices_supported(candidate, check):
+    """Return True when a record answer states exactly the notices its
+    question needs (values_omitted aside)."""
+    stated = {statement.notice for statement in candidate.statements
+              if statement.kind == "notice"} - {"values_omitted"}
+    return stated == expected_notices(candidate, check)
+
+
 def check(candidate, bundle=None, record_check=None):
     """Return the reason codes of the statements of a record answer that
     what they cite does not support; empty when it passes.
@@ -453,7 +524,8 @@ def check(candidate, bundle=None, record_check=None):
         return ("claim_unsupported",)
     task = candidate.task
     question = record_check.question
-    if question.task != task:
+    if question.task != task or not notices_supported(candidate,
+                                                      record_check):
         return ("claim_unsupported",)
     records = {entry.ref: entry for entry in bundle.records}
     if task in ("visit_details", "person_details"):

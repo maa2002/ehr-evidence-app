@@ -2,7 +2,10 @@
 
 Status: accepted (2026-09-29). Amends [ADR 0016](0016-evaluation-metrics.md)
 (decision 11) and [ADR 0019](0019-api-and-interface.md) (the evidence the
-interface shows).
+interface shows). Points 5 to 7 amended by
+[ADR 0022](0022-record-edge-cases.md): medications without a standard
+concept found by drug class, notices tied to their tasks, and the rules'
+second versions.
 
 ## Context
 

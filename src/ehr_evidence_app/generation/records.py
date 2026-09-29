@@ -112,7 +112,8 @@ def versions():
     """Return the versions of everything that writes and checks a
     response, and the SHA-256 of the configuration it reads."""
     from ehr_evidence_app import __version__
-    from ehr_evidence_app.qa import answer, interpret, resolve
+    from ehr_evidence_app.qa import answer, interpret, record_answer, \
+        record_interpret, record_resolve, resolve
     from ehr_evidence_app.validation import explanation, language
     found = {"application": __version__}
     found.update(prompt.describe())
@@ -120,6 +121,9 @@ def versions():
                   "question_interpretation": interpret.RULES_VERSION,
                   "condition_resolution": resolve.RULES_VERSION,
                   "qa_answer": answer.RULES_VERSION,
+                  "record_questions": record_interpret.RULES_VERSION,
+                  "record_resolution": record_resolve.RULES_VERSION,
+                  "record_answer": record_answer.RULES_VERSION,
                   "explanation_template": explanation.TEMPLATE_VERSION,
                   "wording_rules": language.RULES_VERSION})
     for name in CONFIG_FILES:

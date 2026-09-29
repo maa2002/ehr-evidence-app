@@ -11,6 +11,7 @@ shows every word as text, never as markup.
 
 from __future__ import annotations
 
+import decimal
 import re
 
 OUTCOMES = {"answer": "Answer", "not_recorded": "Not Recorded",
@@ -229,10 +230,14 @@ def moment(value):
 
 
 def number(value):
-    """Return a number as recorded, without a needless ".0"."""
+    """Return a number as recorded: its shortest exact decimal form,
+    without a needless ".0", rounding or an exponent."""
     if value is None:
         return ""
-    return "%d" % value if float(value).is_integer() else "%.6g" % value
+    value = float(value)
+    if value.is_integer():
+        return "%d" % value
+    return format(decimal.Decimal(repr(value)), "f")
 
 
 def references(response):

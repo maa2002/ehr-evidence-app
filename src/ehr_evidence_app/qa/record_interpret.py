@@ -3,7 +3,7 @@
 Questions about conditions are read by the condition rules
 (qa.interpret) exactly as before. A question those rules refuse, or
 whose condition phrase names no condition, is read here (rules
-record-questions-v1), by fixed rules and without a model:
+record-questions-v2), by fixed rules and without a model:
 
 1. The question is normalised as condition questions are, "ICU" and
    "intensive care" are marked, and scope phrases are set aside
@@ -29,6 +29,26 @@ record-questions-v1), by fixed rules and without a model:
    the phrase. It must resolve, or the question gets a clarification;
    words of time or of a part of the record that are not a scope
    phrase, exclusions, filters by value and pronouns do too.
+6. A negation ("was heparin not given", "did she never have a CT") asks
+   the same presence as the question without it, as condition questions
+   do; a negated question about a whole kind ("which labs were not
+   done") is a filter, and gets a clarification. Two items joined by
+   "and" or "or", each of which resolves while the whole does not, get
+   a clarification that asks about one at a time.
+7. A phrase that names no kind takes a kind only by a name or a synonym
+   of it, or by its words in a kind the question's verbs or task point
+   to; otherwise the question is left to the condition rules, so that
+   "is diabetes recorded" keeps the condition rules' response.
+8. Flags are read the same way for an item and for a whole kind: a
+   laboratory result asked about as high or low asks for the results
+   the laboratory flagged; a vital sign asked about as high or low for
+   its highest or lowest value, since vital signs carry no flag; and a
+   question about abnormal results of a kind that carries no flag (vital
+   signs without high or low, medications, procedures) gets a
+   clarification. A question about the doses of the medications asks
+   for their values.
+
+Version 2 adds rules 6 to 8.
 """
 
 from __future__ import annotations
@@ -40,7 +60,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v1"
+RULES_VERSION = "record-questions-v2"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -86,7 +106,8 @@ HINTS = {
 PERSON = (
     ("sex", re.compile(r"\b(?:sex|gender)\b|\b(?:is|was) (?:the patient|he|"
                        r"she|they|patient|this patient) (?:a )?(?:male|"
-                       r"female|man|woman)\b|\bmale or female\b|"
+                       r"female|man|woman)(?: or (?:a )?(?:male|female|man|"
+                       r"woman))?\b|\bmale or female\b|"
                        r"\bfemale or male\b")),
     ("age", re.compile(r"\bhow old\b|\bages?\b|\baged\b|\byears? old\b|"
                        r"\bborn\b|\bbirth\b|\bbirthday\b")),
@@ -184,6 +205,18 @@ TIMES = re.compile(r"\b(?:yesterday|today|tomorrow|tonight|ago|since|after|"
                    r"overnight|week|weeks|month|months|year|years|hours?|"
                    r"january|february|march|april|may|june|july|august|"
                    r"september|october|november|december)\b")
+# A day, hour or week named by its number as a time ("on day 2", "in the
+# first 24 hours", "3 days ago"), not a scope; a number in a name ("24
+# hour urine") is not one.
+NUMBERED_TIMES = re.compile(
+    r"\b(?:on|in|at|by|during|from|until|till) (?:the )?(?:days?|hours?|"
+    r"weeks?|months?) [0-9]+\b|"
+    r"\b(?:days?|hours?|weeks?|months?) [0-9]+ (?:of|after|before|into)\b|"
+    r"\b(?:within|after|before|for|over|in|during|first|last|past|next) "
+    r"(?:the )?(?:first |last |past |next )?[0-9]+ (?:days?|hours?|weeks?|"
+    r"months?)\b|"
+    r"\b[0-9]+ (?:days?|hours?|weeks?|months?) (?:ago|after|before|later|"
+    r"earlier|into)\b")
 PARTS = re.compile(r"\b(?:admission|admissions|visit|visits|stay|stays|"
                    r"encounter|encounters|hospital|hospitali[sz]ation|"
                    r"discharge|currently|current|now|presently|then)\b")
@@ -212,6 +245,12 @@ ADVICE = re.compile(r"\b(?:should|ought to|recommend\w*|advis\w*|need to|"
                     r"could (?:he|she|they|the patient))\b")
 PRONOUNS = frozenset(("it", "this", "that", "these", "those", "them",
                       "they", "one", "ones", "anything", "something"))
+# Negations: harmless in a question about an item or a field, a filter in
+# one about a whole kind.
+NEGATIONS = frozenset(("not", "no", "never", "none", "without", "neither",
+                       "nor"))
+# Words that join two items.
+CONJUNCTIONS = frozenset(("and", "or", "plus", "versus", "vs"))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -235,12 +274,25 @@ class RecordQuestion:
     reason: str | None = None
     category: str | None = None
     names: tuple = ()
+    suggestions: tuple = ()
 
 
-def clarify(reason, category, mentions=(), names=(), phrase=None):
+def clarify(reason, category, mentions=(), names=(), phrase=None,
+            suggestions=()):
     """Return a clarification reading."""
     return RecordQuestion("clarify", reason=reason, category=category,
-                          mentions=mentions, names=names, phrase=phrase)
+                          mentions=mentions, names=names, phrase=phrase,
+                          suggestions=suggestions)
+
+
+def suggestions_of(terms, phrase, kinds):
+    """Return the names the first of some kinds suggests for a phrase that
+    none of them resolves."""
+    for kind in kinds:
+        found = terms.resolve(kind, phrase).suggestions
+        if found:
+            return found
+    return ()
 
 
 def marked(text):
@@ -262,16 +314,49 @@ def blank(pattern, text):
     return " ".join(pattern.sub(" ", text).split())
 
 
-def left_words(text, kinds=()):
-    """Return the words of text that are not harmless, a kind's words, a
-    selector or a frame, in order."""
+def left_words(text, kinds=(), keep=frozenset()):
+    """Return the words of text that are not harmless, a negation, a
+    kind's words, a selector or a frame, in order; harmless words in keep
+    are kept."""
     for kind in kinds:
         text = blank(KIND_PATTERNS[kind], text)
     text = blank(SELECTOR_WORDS, text)
     for pattern in (COUNT, TIMING, ABNORMAL, HIGH, LOW, DOSE, re.compile(
             r"\bout of range\b|\bhow many\b|\bnumber of\b|\bover time\b")):
         text = blank(pattern, text)
-    return [word for word in text.split() if word not in HARMLESS]
+    return [word for word in text.split() if word in keep or (
+        word not in HARMLESS and word not in NEGATIONS)]
+
+
+def negated(body):
+    """Return True when a question holds a negation."""
+    return any(word in NEGATIONS for word in body.split())
+
+
+def two_items(terms, body, kinds, hints, prefer):
+    """Return True when a question names two items joined by "and" or
+    "or", each of which resolves."""
+    words = left_words(body, kinds, keep=CONJUNCTIONS)
+    parts, current = [], []
+    for word in words:
+        if word in CONJUNCTIONS:
+            parts.append(current)
+            current = []
+        else:
+            current.append(word)
+    parts.append(current)
+    parts = [part for part in parts if part]
+    if len(parts) < 2:
+        return False
+    for part in parts:
+        kind, resolution = resolve_phrase(terms, " ".join(part), kinds,
+                                          hints, prefer)
+        if isinstance(resolution, dict):
+            continue
+        if kind is None or resolution is None or (
+                resolution.status != "resolved"):
+            return False
+    return True
 
 
 def person_field(body):
@@ -322,10 +407,15 @@ def hints_of(body):
 def resolve_phrase(terms, phrase, kinds, hints=(), prefer=()):
     """Return (kind, resolution) of a phrase: in the kind the question
     names, or the one kind of ORDER it resolves in by a name or a
-    synonym (by its words when no kind resolves it by name), the kinds
-    its verbs point to (hints), then those the task prefers, breaking a
-    tie; (None, resolutions) when several remain, and (None, None) when
-    none resolves it."""
+    synonym, else by its words in a kind its verbs (hints) or its task
+    (prefer) point to; the hints, then the kinds the task prefers, break
+    a tie. Return (None, resolutions) when several remain, and (None,
+    None) when none resolves it.
+
+    Words alone never take a question that names no kind: "is diabetes
+    recorded" is a condition question the condition rules could not
+    resolve, and the words of the procedure names hold "diabetes", which
+    would answer it as a procedure."""
     if kinds:
         kind = kinds[0]
         return kind, terms.resolve(kind, phrase)
@@ -336,7 +426,9 @@ def resolve_phrase(terms, phrase, kinds, hints=(), prefer=()):
             found[kind] = resolution
     named = {kind: item for kind, item in found.items()
              if item.rule in ("name", "synonym", "icd_code")}
-    chosen = named or found
+    guided = {kind: item for kind, item in found.items()
+              if kind in hints or kind in prefer}
+    chosen = named or guided
     for narrower in (hints, prefer):
         kept = {kind: item for kind, item in chosen.items()
                 if kind in narrower}
@@ -394,12 +486,42 @@ def interpret(question, terms):
 
 def icu_question(body, found):
     """Read a question about ICU stays: a count, or the stays with their
-    units, times and lengths."""
+    units, times and lengths; a negation asks the same. Any other words
+    ask about records within the stays, which is not a scope."""
     rest = left_words(blank(re.compile(r"\bicustay\b"), body))
     if rest:
-        return clarify("task_ambiguous", "unexplained", found)
+        return clarify("scope_ambiguous", "scope_unrecognised", found)
     task = "record_count" if COUNT.search(body) else "record_list"
     return RecordQuestion("task", task=task, kind="icu_stay", mentions=found)
+
+
+def flag_rules(kind, task, selector, body):
+    """Return (task, selector, category) of a question once its flags are
+    read for its kind, or None when it asks about a flag that its kind
+    does not carry."""
+    high, low = HIGH.search(body), LOW.search(body)
+    if kind == "lab" and task == "record_values" and selector is None and (
+            high or low):
+        return "record_abnormal", selector, None
+    if kind == "vital" and (task == "record_abnormal" or (
+            task == "record_values" and selector is None
+            and (high or low))):
+        if not (high or low):
+            return None
+        # Vital signs carry no flag: the highest or lowest value instead.
+        return ("record_values", "lowest" if low and not high else
+                "highest", "vital_flag")
+    if task == "record_abnormal" and kind not in ("lab", "microbiology"):
+        return None
+    return task, selector, None
+
+
+def default_selector(task, kind, selector):
+    """Return the selector of a values question that names none: the
+    latest result of a test or vital sign, every other value."""
+    if task == "record_values" and selector is None:
+        return "latest" if kind in ("lab", "vital") else "all"
+    return selector
 
 
 def item_question(body, found, terms):
@@ -414,35 +536,54 @@ def item_question(body, found, terms):
     phrase_words = left_words(body, kinds)
     remaining = " ".join(phrase_words)
     hints = hints_of(body)
-    if TIMES.search(remaining) or PARTS.search(remaining):
+    if TIMES.search(remaining) or PARTS.search(remaining) or (
+            NUMBERED_TIMES.search(body)):
         return clarify("scope_ambiguous", "scope_unrecognised", found)
     if not phrase_words:
         if not kinds and hints and any(word in PRONOUNS
                                        for word in body.split()):
             return clarify("concept_unknown", "missing_item", found)
+        if not kinds and "medication" in hints and DOSE.search(body):
+            # "What doses were given?": the medications' doses.
+            kinds = ["medication"]
         if not kinds:
             return RecordQuestion("none")
+        if negated(body):
+            # "Which labs were not done?": a filter of the kind.
+            return clarify("task_ambiguous", "qualified", found)
         kind = kinds[0]
         if kind == "microbiology" and task in (None, "record_values") and (
                 GROWTH.search(body)):
             return RecordQuestion("task", task="record_values", kind=kind,
                                   selector="all", mentions=found)
-        if task in (None, "record_values", "record_timing"):
-            task = "record_list" if task is None else task
-        if task == "record_values" and kind not in ("lab", "vital",
-                                                    "microbiology"):
+        flags = flag_rules(kind, task, selector, body)
+        if flags is None:
+            return clarify("task_ambiguous", "flag_unrecorded", found)
+        task, selector, category = flags
+        if task is None:
+            task = "record_list"
+        if task == "record_values" and kind not in (
+                "lab", "vital", "microbiology") and not (
+                kind == "medication" and DOSE.search(body)):
             task = "record_list"
         return RecordQuestion("task", task=task, kind=kind,
-                              selector=selector, mentions=found)
+                              selector=default_selector(task, kind,
+                                                        selector),
+                              mentions=found, category=category)
     phrase = " ".join(phrase_words)
     if phrase in PRONOUNS or all(word in PRONOUNS for word in phrase_words):
         return clarify("concept_unknown", "missing_item", found)
     prefer = ("lab", "vital") if task in (
         "record_values", "record_abnormal") or RESULTS.search(body) else ()
     kind, resolution = resolve_phrase(terms, phrase, kinds, hints, prefer)
+    unresolved = (kind is None and resolution is None) or (
+        kind is not None and resolution.status != "resolved")
+    if unresolved and two_items(terms, body, kinds, hints, prefer):
+        return clarify("task_ambiguous", "two_items", found)
     if kind is None and resolution is None and (kinds or hints):
         return clarify("concept_unknown", "unknown_item", found,
-                       phrase=phrase)
+                       phrase=phrase, suggestions=suggestions_of(
+                           terms, phrase, kinds or hints))
     if kind is None and isinstance(resolution, dict):
         return clarify("concept_ambiguous", "several_kinds", found,
                        names=tuple(resolution), phrase=phrase)
@@ -453,26 +594,15 @@ def item_question(body, found, terms):
         task, selector = "record_values", "all"
     if task is None:
         task = "record_presence"
-    high, low = HIGH.search(body), LOW.search(body)
-    category = None
-    if kind == "lab" and task == "record_values" and selector is None and (
-            high or low):
-        task = "record_abnormal"
-    if kind == "vital" and (task == "record_abnormal" or (
-            task == "record_values" and selector is None
-            and (high or low))):
-        # Vital signs carry no flag: the highest or lowest value instead.
-        task, category = "record_values", "vital_flag"
-        selector = "lowest" if low and not high else "highest"
+    flags = flag_rules(kind, task, selector, body)
+    if flags is None:
+        return clarify("task_ambiguous", "flag_unrecorded", found)
+    task, selector, category = flags
     if task == "record_values" and kind not in ("lab", "vital",
                                                 "microbiology",
                                                 "medication"):
         task = "record_presence" if selector not in ("latest", "first") \
             else "record_timing"
-    if task == "record_abnormal" and kind not in ("lab", "microbiology"):
-        task = "record_presence"
-    if task == "record_values" and selector is None:
-        selector = "latest" if kind in ("lab", "vital") else "all"
     return RecordQuestion("task", task=task, kind=kind, phrase=phrase,
-                          selector=selector, mentions=found,
-                          category=category)
+                          selector=default_selector(task, kind, selector),
+                          mentions=found, category=category)

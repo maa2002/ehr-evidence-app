@@ -167,6 +167,12 @@ follow.
   answers (`qa.record_answer`), their rendering and support checks
   (`validation.record_text`, `validation.record_support`), and the whole
   record in the evidence panel
+- 52.8 Test the whole record at its edges
+  ([ADR 0022](decisions/0022-record-edge-cases.md); done): an invented
+  record built for its edges, every question in every scope, the answers'
+  checks broken one fact at a time, and the same on the development case
+  sets; medications without a standard concept matched by drug class
+  (record vocabulary version 2), and the faults the review found fixed
 
 ## Phase 9. Evaluation
 

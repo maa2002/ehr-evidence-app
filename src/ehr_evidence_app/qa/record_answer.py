@@ -1,4 +1,4 @@
-"""Answers about the whole record (rules record-answer-v1).
+"""Answers about the whole record (rules record-answer-v2).
 
 A question read as a question about the record (qa.record_interpret) is
 answered from the case's record bundle for the bound scope
@@ -17,13 +17,18 @@ until its answers about the record have been measured.
   visits; each ICU stay and transfer is listed with its times.
 * A presence check cites every record that matches the phrase, grouped by
   item and by how it matched; with none, it is not recorded within the
-  scope, which is never a statement of clinical absence.
+  scope, which is never a statement of clinical absence, and a "not
+  recorded" about a named condition, medication or procedure states how
+  many records of its kind in the scope have no standard concept and how
+  they were checked.
 * A time question gives the first and the last matching record.
 * A count gives the number of matching records and their visits, or the
   number of items and records of a kind.
 * A values question gives, for each matching item, its latest, first,
-  highest or lowest value, or its values in time order (the latest
-  MAX_VALUES, the others counted).
+  highest or lowest value (a single record is the only one), or its
+  values in time order: the latest MAX_VALUES of a named item and of
+  each microbiology test, the latest of each item of another whole kind,
+  the others counted; each item is named by its earliest record.
 * A question about abnormal results cites every result the laboratory
   flagged abnormal (for microbiology, every result reported resistant).
 * Visits and the person are answered from the visits of the scope and
@@ -45,10 +50,11 @@ from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import record_text as words
 
-RULES_VERSION = "record-answer-v1"
+RULES_VERSION = "record-answer-v2"
 # The values listed of one item: the latest MAX_VALUES when the question
-# names the item, the latest one of each item when it asks about a whole
-# kind; the others are counted, and kept in the evidence.
+# names the item or asks what grew in microbiology, the latest one of each
+# item when it asks about another whole kind; the others are counted, and
+# kept in the evidence.
 MAX_VALUES = 30
 # Record bundles kept parsed, most recently read last.
 KEPT_BUNDLES = 12
@@ -67,6 +73,25 @@ WORDINGS = {
     "record_presence_item": "{item} ({count} in {visits}; matched by "
                             "{how})",
     "record_absent": "{item} is not recorded within {scope}.",
+    "record_unmapped": {
+        "condition": ("{unmapped} {kind} record in this scope has no "
+                      "standard concept; its ICD code and description were "
+                      "checked.",
+                      "{unmapped} {kind} records in this scope have no "
+                      "standard concept; their ICD codes and descriptions "
+                      "were checked."),
+        "medication": ("{unmapped} {kind} record in this scope has no "
+                       "standard concept; the drug name written in it was "
+                       "checked.",
+                       "{unmapped} {kind} records in this scope have no "
+                       "standard concept; the drug names written in them "
+                       "were checked."),
+        "procedure": ("{unmapped} {kind} record in this scope has no "
+                      "standard concept; the words of its name were "
+                      "checked.",
+                      "{unmapped} {kind} records in this scope have no "
+                      "standard concept; the words of their names were "
+                      "checked.")},
     "record_time": "{selector} record: {item}, {when}, in {visit}",
     "record_count": "{item}: {count} within {scope}, in {visits}.",
     "record_count_kind": ("{items} is recorded within {scope} "
@@ -147,6 +172,12 @@ class RecordSet:
                 or hashlib.sha256(data).hexdigest() != entry["sha256"]):
             raise RecordAnswerError("record_bundle_hash_mismatch")
         bundle = record.RecordBundle.model_validate_json(data)
+        if (bundle.bundle_id != entry["bundle_id"]
+                or bundle.case.case_set != self.label
+                or bundle.case.case_number != case_number
+                or bundle.scope != scope):
+            # A file that is not the bundle its manifest entry names.
+            raise RecordAnswerError("record_bundle_unexpected")
         with self.lock:
             self.kept[entry["bundle_id"]] = bundle
             while len(self.kept) > KEPT_BUNDLES:
@@ -187,10 +218,11 @@ class RecordContext:
 # --------------------------------------------------------------------------
 
 def wording(name, number=None, record_kind=None):
-    """Return a statement kind's template wording."""
+    """Return a statement kind's template wording: by the kind of record
+    it is about, then by its number, when it has several."""
     entry = WORDINGS[name]
     if isinstance(entry, dict):
-        return entry[record_kind]
+        entry = entry[record_kind]
     if isinstance(entry, str):
         return entry
     return entry[0] if number == 1 else entry[1]
@@ -278,14 +310,19 @@ def has_value(entry):
     return True
 
 
-def shown_of(resolution):
-    """Return how many values of each item a list shows."""
-    return MAX_VALUES if resolution is not None else 1
+def shown_of(resolution, kind):
+    """Return how many values of each item a list shows: MAX_VALUES for a
+    named item and for microbiology, whose results of one test are its
+    organisms and their antibiotics; the latest one of each item of
+    another whole kind."""
+    return MAX_VALUES if resolution is not None or (
+        kind == "microbiology") else 1
 
 
 def value_lines(items, visits, limit):
     """Return (the statements of each item's latest values in time order,
-    the count of the others)."""
+    the count of the others). Each item is named by its earliest record,
+    whatever the order of the visits."""
     statements, earlier = [], 0
     for group in grouped(items):
         ordered = sorted(group, key=timed)
@@ -293,7 +330,8 @@ def value_lines(items, visits, limit):
         earlier += len(ordered) - len(shown)
         statements.append(statement(
             "record_value_group",
-            item=candidates.ItemName(record=group[0].ref), count=len(group)))
+            item=candidates.ItemName(record=ordered[0].ref),
+            count=len(group)))
         statements += [statement("record_value_item", refs=(entry.ref,),
                                  value=entry.ref, when=entry.ref,
                                  visit=visits[entry.visit_ref])
@@ -314,8 +352,20 @@ def candidate(request, bundle_ref, outcome, statements, reasons=()):
         bundle=bundle_ref, statements=tuple(statements))
 
 
+def unmapped_of(bundle, question, resolution):
+    """Return how many records of the question's kind within the scope
+    have no standard concept, when a "not recorded" about a named item
+    states how they were checked; 0 otherwise."""
+    if resolution is None or question.kind not in candidates.UNMAPPED_KINDS:
+        return 0
+    return sum(1 for entry in of_kind(bundle, question.kind)
+               if entry.concept_id == 0)
+
+
 def absent(request, bundle, bundle_ref, question, resolution, notices=()):
-    """Return the "not recorded" candidate of a kind or an item."""
+    """Return the "not recorded" candidate of a kind or an item; for an
+    item, with the records without a standard concept that were
+    checked."""
     if resolution is None:
         first = statement("record_list_empty", refs=("C1",),
                           kind=question.kind, scope=request.scope)
@@ -323,7 +373,13 @@ def absent(request, bundle, bundle_ref, question, resolution, notices=()):
         first = statement("record_absent", refs=("C1",),
                           item=item_terms(question, resolution),
                           scope=request.scope)
-    items = [first, candidates.notice("absence")] + [
+    items = [first]
+    unmapped = unmapped_of(bundle, question, resolution)
+    if unmapped:
+        items.append(statement("record_unmapped", unmapped, refs=("C1",),
+                               record_kind=question.kind, unmapped=unmapped,
+                               kind=question.kind))
+    items += [candidates.notice("absence")] + [
         candidates.notice(notice) for notice in notices]
     return candidate(request, bundle_ref, "not_recorded", items,
                      disclosure(bundle, question.kind))
@@ -466,7 +522,8 @@ def values_candidate(request, bundle, bundle_ref, question, resolution,
     statements, earlier = [], 0
     if question.selector == "all":
         statements, earlier = value_lines(entries, visits,
-                                          shown_of(resolution))
+                                          shown_of(resolution,
+                                                   question.kind))
     else:
         for items in grouped(entries):
             entry, selector = chosen(items, question.selector)
@@ -518,7 +575,8 @@ def abnormal_candidate(request, bundle, bundle_ref, question, resolution,
                             record_kind=question.kind,
                             item=item_terms(question, resolution),
                             scope=request.scope, matches=len(entries))]
-    lines, earlier = value_lines(entries, visits, shown_of(resolution))
+    lines, earlier = value_lines(entries, visits,
+                                 shown_of(resolution, question.kind))
     statements += lines
     if earlier:
         statements.append(candidates.notice("values_omitted",
@@ -598,6 +656,9 @@ def clarification(request_id, case, scope, question, resolution=None):
     be answered as asked."""
     from ehr_evidence_app.qa import templates
     term = templates.term_slot(question.phrase or "")
+    if question.category in ("two_items", "flag_unrecorded"):
+        return templates.notice(request_id, case, scope, "clarification",
+                                "task_ambiguous", question.category)
     if question.category == "several_kinds":
         return templates.notice(request_id, case, scope, "clarification",
                                 "concept_ambiguous", "several_kinds",
@@ -608,7 +669,8 @@ def clarification(request_id, case, scope, question, resolution=None):
                                 "concept_too_broad", "item_too_broad",
                                 term=term)
     suggestions = tuple(name[:255] for name in (
-        resolution.suggestions if resolution is not None else ()))
+        resolution.suggestions if resolution is not None
+        else question.suggestions))
     if term and suggestions:
         return templates.notice(request_id, case, scope, "clarification",
                                 "concept_unknown", "item_suggested",

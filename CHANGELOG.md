@@ -39,6 +39,25 @@ evidence beside it
   `validation.record_support` show their facts and check their support
   ([docs/validation.md](docs/validation.md)). The evidence panel shows the
   person, each visit's admission and every kind of record.
+- The whole record tested at its edges
+  ([ADR 0022](docs/decisions/0022-record-edge-cases.md);
+  [docs/qa.md](docs/qa.md#edge-cases-tested)): an invented record built
+  for its edges (`tests/qa/record_cases.py`), every one of 135 questions
+  in every scope, the answers' checks broken one fact at a time (1,479
+  mutants, `tests/validation/test_record_mutations.py`), a randomised
+  test of the raw-file reader at every chunk size, and the builder, the
+  vocabulary, the rendering, the bundle cache under threads and the
+  evidence panel at their edges; the same questions and mutants on the
+  development case sets.
+- Record vocabulary version 2 (`record-vocabulary-athena-20260831-v2`):
+  each ATC class's ingredients from the pinned Athena hierarchy, every
+  version 1 file unchanged byte for byte. A medication without a
+  standard concept (45% of the development records) is now found by a
+  drug class through the written names of the class's ingredients.
+- A "not recorded" about a named condition, medication or procedure
+  states how many records of its kind in the scope have no standard
+  concept and how they were checked (`record_unmapped`).
+- Runtime records name the rule versions of answers about the record.
 - `api` package (Phase 8, work items 47 and 48;
   [docs/interface.md](docs/interface.md)): `api.service` answers
   questions about a selected case and scope through `qa.answer`, explains
@@ -127,6 +146,34 @@ evidence beside it
 
 ### Changed
 
+- Rules `record-questions-v2`: a negation asks the same presence (a
+  filter in a question about a whole kind); two items at once, flags a
+  kind does not carry, and a day or the ICU named as a time get a
+  clarification; flags are read alike for an item and a whole kind; the
+  doses of the medications; "male or female"; verb forms of procedures;
+  suggestions for misspellings of the kind a question's verbs name.
+- Rules `record-resolution-v2`: whole-word matching of written drug
+  names, salts apart; word matches named "the words of its name";
+  spelling suggestions for medications and procedures.
+- Rules `record-answer-v2`: a value list names its item by its earliest
+  record and lists every result of a microbiology test; a removed value
+  has no unit; a discharge before the admission gives no length; numbers
+  are shown with every recorded digit and no exponent; a record without
+  a name says whether it has no standard concept or its name is
+  unavailable.
+- Checks: every notice is tied to its tasks and every answer must hold
+  the notices its task and outcome require; a record answer's notices
+  are exactly its question's; a single record is the only one; the
+  latest stands in for the highest or lowest only without numbers; a
+  field must be of its statement's kind; an empty list states nothing
+  else. Wording rules `wording-rules-v5` read record statements with
+  their kinds. The condition development suite and the validation
+  mutation suite give the same results as before.
+- `sources.mimic` refuses a blank line in any table;
+  `evidence.record_bundles` refuses two visits of one admission and
+  identifiers that are not ASCII digits (the published development
+  bundles rebuild byte for byte); `qa.record_answer` refuses a bundle
+  file that is not the case and scope its manifest names.
 - A question the condition rules refuse as being about other data, times
   or counts is read as a question about the whole record; every question
   about conditions gets the response it got before. The refusals'
@@ -159,6 +206,19 @@ evidence beside it
 
 ### Fixed
 
+- A condition question the condition rules could not resolve ("is
+  diabetes recorded?") was answered from the whole record when the words
+  of procedure names held its phrase, as "not recorded"; words alone no
+  longer take a question that names no kind of record, and every
+  condition question gets the response it gets without the record.
+- "Were any vitals abnormal?" (a flag a kind does not carry, asked of a
+  whole kind) raised an error; it now gets a clarification.
+- A condition answer could carry a notice of the answers about the whole
+  record in place of its own ("not recorded" without the note that it is
+  not clinical absence) and pass the checks.
+- A value list of an item whose visits' order differs from its records'
+  time order was named by another record than its check expected, and
+  would have been withheld.
 - `tracking.models` measures each upload as the files server holds it:
   the file is asked for without content coding, so that a reply the
   server compresses is not measured by its compressed length, and a reply

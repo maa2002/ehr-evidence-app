@@ -114,7 +114,7 @@ the bundle bound to that request:
 
 | Finding | Reason code |
 | --- | --- |
-| A malformed document; an outcome, reason codes, task or bundle that do not fit together; a digit in a wording (counts, visits, dates and scores are slots); a statement of a kind the answer cannot hold, or an answer without the statements it needs (a list needs one summary, at least one item and the completeness notice); a wording whose placeholders are not exactly its kind's slots; a changed notice, or a notice stated twice; statements out of their answer's order (a list's items after its summary, the notice at the end; an explanation's prediction first, then the notice introducing the drivers, each driver followed by its own history and context, then the other notices); a statement that cites what its kind does not cite; a response the renderer cannot build within the response limits | `structure_invalid` |
+| A malformed document; an outcome, reason codes, task or bundle that do not fit together; a digit in a wording (counts, visits, dates and scores are slots); a statement of a kind the answer cannot hold, or an answer without the statements it needs (a list needs one summary, at least one item and the completeness notice); a wording whose placeholders are not exactly its kind's slots; a changed notice, a notice stated twice, a notice of another task, or an answer without a notice its task and outcome require (every "not recorded" says that it is not clinical absence, a list that it is complete, a time that dates are shifted); a visit's or the person's field that is not of its statement's kind; statements out of their answer's order (a list's items after its summary, the notice at the end; an explanation's prediction first, then the notice introducing the drivers, each driver followed by its own history and context, then the other notices); a statement that cites what its kind does not cite; a response the renderer cannot build within the response limits | `structure_invalid` |
 | Another request's case or scope; a statement about another scope; another bundle than the one bound to the request; a request with a bound bundle answered without it, such as a refusal of an answerable request; a presence answer about another condition than the one the question was resolved to | `scope_violated` |
 | A reference, event, driver, visit number or concept that the bundle or the vocabulary lacks | `reference_unresolved` |
 
@@ -157,9 +157,29 @@ the number of matching records; a value is the one its selector picks
 for its item, and every matching item is answered; flagged results are
 every flagged result of the matching items; visits' and the person's
 details cover every visit of the scope; and the disclosure of records
-without a standard concept follows the scope. The wording rules are
-unchanged: the words "latest", "highest" and the like are slots of a
-statement, rendered from its selector, never typed.
+without a standard concept follows the scope. A "not recorded" about a
+named condition, medication or procedure states the scope's records of
+the kind without a standard concept, and their number. A single record
+is stated as the only one; the latest stands in for the highest or
+lowest only when no value of the item is a number. An answer's notices
+are exactly those its question needs: that "not recorded" is not
+clinical absence, that a list is complete, that vital signs are charted
+in ICU stays, that dates are shifted, what an age or a date of death
+means, that an unflagged result is not stated to be normal, and that
+vital signs carry no flag. The words "latest", "highest" and the like
+are slots of a statement, rendered from its selector, never typed.
+
+Each notice names the tasks it belongs to. The notices of answers about
+the whole record were first open to every task, so a condition answer
+could have carried one in place of its own (a "not recorded" with the
+note on vital signs instead of the one on clinical absence) and passed;
+the edge-case review found it, and notices are now tied to their tasks,
+and the notices an answer must hold are required by its task and
+outcome. The same review found three faults of the support checks, now
+refused: a "first" value stated as the latest, a "not recorded" list
+with a second statement about an item, and a visit's or the person's
+field of another statement kind, which failed the rendering instead of
+being refused.
 
 ## Wording
 
@@ -167,7 +187,7 @@ statement, rendered from its selector, never typed.
 released outcome: answers, refusals and clarifying questions. It reads
 only the writer's words: each slot is replaced by a neutral token first,
 so a condition named "Pneumonia caused by a virus" never trips a rule.
-Rules version `wording-rules-v4`:
+Rules version `wording-rules-v5`:
 
 | Rule | Examples | Reason code |
 | --- | --- | --- |
@@ -184,8 +204,8 @@ Rules version `wording-rules-v4`:
 | In answers and explanations, hedged facts | "possibly", "may", "seems to" | `prohibited_wording` |
 | In answers and explanations, rankings | "the main", "most important", "key" | `prohibited_wording` |
 | In answers and explanations, counts or quantities in words | "three", "several", "most" | `prohibited_wording` |
-| A statement that something is recorded (a summary or item of an answer, the prediction, a driver, its history and context), negated | "No conditions are recorded" above a list | `prohibited_wording` |
-| A statement that something is not recorded (an empty list, a condition not recorded) without a negated "recorded" wherever it says "recorded" | "{condition} is recorded within {scope}" for an absence | `prohibited_wording` |
+| A statement that something is recorded (a summary or item of an answer, the prediction, a driver, its history and context; an answer about the whole record's list, presence, time, count, value, flagged results, visit and person), negated | "No conditions are recorded" above a list | `prohibited_wording` |
+| A statement that something is not recorded (an empty list, a condition, kind or item not recorded) without a negated "recorded" wherever it says "recorded" | "{condition} is recorded within {scope}" for an absence | `prohibited_wording` |
 | Dates, recurrence, frequency and recency typed into a wording | a date, a month, "again", "recurs", "often", "every visit", "recently", "the last admission" | `date_unsupported` |
 
 A negation shortly before a causal, diagnostic or risk word, in the same
@@ -203,7 +223,10 @@ a language model worded a list's summary "No conditions are recorded
 ..." on invented data and the gate released it: a statement that
 something is recorded may hold a negation only where it denies a
 causal, diagnostic or risk reading, and a statement that something is
-not recorded must negate every "recorded" it holds. How often and in
+not recorded must negate every "recorded" it holds. Version 5 reads the
+statements of answers about the whole record with their kinds too; the
+templates write them, and a writer that is not the templates is held to
+the same rules. How often and in
 which visits a driver's concept was recorded is stated only through the
 slots of a statement that cites the driver's linked events, as the
 evidence claim policy allows; QA answers state it only as the records
@@ -360,6 +383,29 @@ found one gap on its first run, in wording rules version 1 (see
 error classes; a statement that says something prohibited in words no
 rule knows is outside what it can show, which is why the facts stay in
 slots that no writer types.
+
+### Mutants of answers about the whole record
+
+The answers about the whole record are broken the same way, one fact at
+a time, by `tests/validation/test_record_mutations.py`: a statement left
+out or repeated, a digit typed into a wording, a count, selector, match
+kind, field, kind, visit, value, time or named item changed, a reference
+dropped, added or swapped for a record of another item, a notice
+replaced or added, the outcome, the disclosure, the scope, the case or
+the bundle changed, and a summary moved after its items. A mutant is
+withheld when the gate rejects it or it does not parse; the originals
+and the controls (a list or presence item named by another of its own
+records) must be released.
+
+| Samples | Answers | Mutants withheld | Controls released |
+| --- | --- | --- | --- |
+| Invented edge record (every task and outcome) | 38 | 1,479 of 1,479 | all |
+| Development case sets (3 cases of each, all visits and the history, 25 questions) | 300 | 30,703 of 30,703 | 762 of 762 |
+
+On their first run the tests found two faults, now refused: a visit's or
+the person's field of another statement kind failed the rendering (an
+operational error instead of a rejection), and a single record stated
+as the highest passed.
 
 ## Commands
 

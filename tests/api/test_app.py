@@ -72,6 +72,24 @@ class ApiTests(unittest.TestCase):
             "case_set": self.label, "case_number": 1}).json()
         self.assertEqual(explained["response"]["outcome"], "explanation")
 
+    def test_questions_about_the_whole_record_at_their_edges(self):
+        """Questions about the record at the edges of the rules each get
+        a response over HTTP, none an error: a flag vital signs do not
+        carry, two items, markup, a long question and a negation."""
+        for question, outcome in (
+                ("Were any vitals abnormal?", "clarification"),
+                ("Was heparin or potassium given?", "clarification"),
+                ("<script>alert(1)</script> labs", "clarification"),
+                ("What labs were done?", "answer"),
+                ("What labs were not done?", "clarification"),
+                ("potassium " * 60, "operational_error")):
+            reply = self.call("POST", "/questions", json={
+                "case_set": self.label, "case_number": 1,
+                "scope": {"kind": "case_visits"}, "question": question})
+            self.assertEqual(reply.status_code, 200, question)
+            self.assertEqual(reply.json()["response"]["outcome"], outcome,
+                             question)
+
     def test_boundary_refusals(self):
         """No token, a wrong one, another host, a cross-origin request and
         a large body are refused by code; the health check is open."""

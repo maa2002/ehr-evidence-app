@@ -11,9 +11,9 @@ person and each visit's admission.
 
 A raw row belongs to a case visit when its admission is the visit's own:
 the snapshot records each visit's MIMIC-IV admission in its source value
-("subject_id|hadm_id"). Rows of the person that no case visit holds
-(outpatient results, other admissions) are counted in the coverage and
-never delivered.
+("subject_id|hadm_id"); two visits of one admission stop the build. Rows
+of the person that no case visit holds (outpatient results, other
+admissions) are counted in the coverage and never delivered.
 
 A medication's ingredients and ATC classes come from the pinned drug
 ancestors (qa.record_vocabulary). Its dose and route come from the raw
@@ -123,9 +123,10 @@ def short(value):
 
 
 def integer(value):
-    """Return a strict decimal integer, or None."""
+    """Return a strict decimal integer of ASCII digits, or None."""
     value = text(value)
-    return int(value) if value is not None and value.isdigit() else None
+    return int(value) if value is not None and value.isascii() and (
+        value.isdigit()) else None
 
 
 def time_of(value):
@@ -416,6 +417,10 @@ def case_records(case, snapshot, extract, ancestors, counts):
             raise RecordBundleError("case_visit_missing")
         person, _, admission = (source.source_value or "").partition("|")
         if person == subject and admission:
+            if admission in visit_of:
+                # Two visits of one admission: its rows would belong to
+                # either.
+                raise RecordBundleError("visit_admission_repeated")
             visit_of[admission] = visit_id
             admission_of_visit[visit_id] = admission
     raw, outside = raw_entries(extract, subject, visit_of)
@@ -710,8 +715,9 @@ def run_real(plan):
                                  sha256=case_set.closure_sha256),
         concept_table=DigestRef(name=snapshot.label + "-concepts",
                                 sha256=snapshot.concepts_sha256),
-        drug_ancestors=DigestRef(name=record_vocabulary.OUTPUT_VERSION,
-                                 sha256=vocabulary_sha),
+        drug_ancestors=DigestRef(name=plan["vocabulary"].get(
+            "version", record_vocabulary.OUTPUT_VERSION),
+            sha256=vocabulary_sha),
         builder=BUILDER)
     bundles, counts = build_set(
         case_set, snapshot, Extract(tables), ancestors, provenance,

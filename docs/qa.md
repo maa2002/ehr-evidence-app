@@ -568,7 +568,7 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v1`); so are a dose question, a past question
+(rules `record-questions-v2`); so are a dose question, a past question
 about death and a question about a first or last result. A request for
 advice, a question about the future and a ranking of conditions keep
 their refusals.
@@ -579,34 +579,105 @@ their refusals.
 | `record_presence` | "Was heparin given?", "Was she on Lasix?", "Any antibiotics?", "Was a chest x-ray done?" | Every matching record, grouped by item and by how it matched; or not recorded within the scope |
 | `record_timing` | "When was heparin first given?", "When was hypertension first recorded?" | The first and the last matching record |
 | `record_count` | "How many potassium results are there?", "How many medications?" | The number of matching records and their visits, or of a kind's items and records |
-| `record_values` | "What was the last potassium?", "Highest creatinine?", "Show the hemoglobin trend", "What dose of heparin was given?", "What organisms grew?" | Each matching item's latest, first, highest or lowest value, or its values in time order |
-| `record_abnormal` | "Were any labs abnormal?", "Was the potassium high?" | Every result the laboratory flagged abnormal (for microbiology, every result reported resistant) |
+| `record_values` | "What was the last potassium?", "Highest creatinine?", "Show the hemoglobin trend", "What dose of heparin was given?", "What doses were given?", "What organisms grew?" | Each matching item's latest, first, highest or lowest value, or its values in time order |
+| `record_abnormal` | "Were any labs abnormal?", "Was the potassium high?", "Were any labs low?" | Every result the laboratory flagged abnormal (for microbiology, every result reported resistant) |
 | `visit_details` | "How many visits?", "When was she admitted?", "Where was she discharged to?" | The field asked about, for every visit of the scope |
 | `person_details` | "How old was the patient?", "What is her race?", "Did the patient die?" | The person's sex or date of death, or the field recorded with each visit of the scope |
 
 The question's frame gives its task, its words or its phrase the kind,
 and a selector (last, first, highest, lowest, all) the values it wants.
-A vital sign asked about as high or low gives its highest or lowest
-value, since vital signs carry no flag. The phrase is resolved within
-its kind by `qa.record_resolve` (rules `record-resolution-v1`): a name of
-the kind's dictionary (the laboratory and ICU item dictionaries, the
-medication vocabulary's ingredients, ATC classes and brand names, the
-microbiology and care-unit names), a fixed synonym ("hgb", "wbc", "bp",
-"blood thinners", "cabg", "e coli", "micu"), or the names holding its
-words; a phrase that resolves in no kind is left to the condition rules,
-and one that resolves in several asks which is meant, unless the
-question's verbs ("given", "done", "measured") or its task decide. An
-unknown phrase gets suggestions of the closest names, never a guess.
+Flags are read the same way whether the question names an item or a
+whole kind: a laboratory result asked about as high or low asks for the
+results the laboratory flagged; a vital sign asked about as high or low
+gives its highest or lowest value, since vital signs carry no flag; and
+a question about abnormal vital signs without high or low, or abnormal
+medications or procedures, asks again, since the record flags none of
+them. The phrase is resolved within its kind by `qa.record_resolve`
+(rules `record-resolution-v2`): a name of the kind's dictionary (the
+laboratory and ICU item dictionaries, the medication vocabulary's
+ingredients, ATC classes and brand names, the microbiology and care-unit
+names), a fixed synonym ("hgb", "wbc", "bp", "blood thinners", "cabg",
+"intubated", "e coli", "micu"), or the names holding its words; a phrase
+that resolves in no kind is left to the condition rules, and one that
+resolves in several asks which is meant, unless the question's verbs
+("given", "done", "measured") or its task decide. A question that names
+no kind takes one only by a name or a synonym, or by the words of its
+names in a kind its verbs or task point to: "is diabetes recorded" is a
+condition question the condition rules could not resolve, and it keeps
+their response instead of being answered as a procedure whose names hold
+the word (as it was until this version). An unknown phrase gets
+suggestions of the closest names of the kind its words or verbs name,
+never a guess: names that begin with it, else the closest spellings (one
+edit, two from eight letters), for medications and procedures too.
+
+A medication record with a standard concept matches an ingredient, a
+brand name (through its ingredients) or an ATC class by its concept's
+ancestors. One without a standard concept (45% of the development
+records) matches by the drug name written in its prescription: the
+phrase itself, the name of a resolved ingredient, or the name of any
+ingredient the ATC hierarchy places in a resolved class (the class
+ingredients of the record vocabulary's version 2), each as whole words,
+so "hydroxyurea" is not urea; a salt written after a drug ("heparin
+sodium") is not the ingredient sodium. Over all visits of the 36
+development cases, 13 drug-class questions were not recorded in 278
+case questions before and 237 now, and 745 records without a standard
+concept are found by their written names; "Any opioids?" is not recorded
+for 10 cases instead of 17. A "not recorded" about a named
+condition, medication or procedure says how many records of the kind in
+the scope have no standard concept and how they were checked: their ICD
+codes and descriptions, their written drug names, or the words of their
+names. Procedures, microbiology and care units match by the words of
+their names, and an answer says so ("matched by the words of its name").
 
 Filters by value ("above 5"), times and parts of the record that are not
-scope phrases ("yesterday", "after the transfer"), exclusions, pronouns
-and two kinds at once get a clarification. The scope binds as for
-conditions. The templates write every answer (`qa.record_answer`, rules
-`record-answer-v1`): its facts are references to records, visits and the
+scope phrases ("yesterday", "on day 2", "in the ICU"), exclusions,
+pronouns, two kinds at once and two items at once ("was heparin or
+warfarin given") get a clarification. A negation asks the same as the
+question without it ("was heparin not given" is a presence check, as for
+conditions), except in a question about a whole kind ("which labs were
+not done"), where it is a filter. The scope binds as for conditions. The
+templates write every answer (`qa.record_answer`, rules
+`record-answer-v2`): its facts are references to records, visits and the
 person, and every name, value, time, date and age is rendered from them.
-Ages are the anchor age plus the years to the visit, so they may be one
-more than the age on the day, and ages over 89 are not given; dates are
-the shifted dates of MIMIC-IV.
+Values are shown as recorded, every digit and no exponent; a value that
+MIMIC-IV removed says so, without a unit; a single record is the only
+one, and the highest or lowest of values that are not numbers is the
+latest, said as such. A list of values shows the latest 30 of a named
+item, every result of a microbiology test, and the latest of each item of
+another whole kind, and counts the rest; an item is named by its earliest
+record. A visit whose discharge is recorded before its admission has no
+length. Ages are the anchor age plus the years to the visit, so they may
+be one more than the age on the day, and ages over 89 are not given;
+dates are the shifted dates of MIMIC-IV.
+
+### Edge cases tested
+
+The rules are tested at their edges on an invented record built for
+them (`tests/qa/record_cases.py`): results of one test across visits out
+of time order, results at the same time, more results than an answer
+lists, values that are not numbers or were removed, a test without a
+name, medications without a standard concept (a written name, a salt, a
+name inside another, none at all), a brand name, drug classes,
+microbiology with and without growth and every interpretation, an open
+transfer, two ICU stays, an admission without times, one whose discharge
+precedes its admission, a death in hospital and an age that passes 89.
+Every one of 135 questions, including noise, markup, accents,
+abbreviations, negations, misspellings and words of time, is asked in
+every scope; none ends in a rejection or an error. The answers' checks
+are tested by breaking correct answers one fact at a time
+(`tests/validation/test_record_mutations.py`): all 1,479 changed answers
+are withheld, and every answer and control is released.
+
+The same questions, with the heavy ones of the first development check
+(every result of every test, every culture, every dose), were asked of
+every scope of every case of the development case sets through the
+service, without the model and without runtime records: 31,652 requests
+gave 13,425 answers, 9,048 "not recorded", 8,214 clarifications and 965
+abstentions, with no rejection, error or exception (median 0.046 s, the
+slowest 1.33 s). Seventeen condition questions, asked in every scope,
+get the same response with and without the record. The answers' checks
+were broken the same way on 300 of these answers (see
+[validation.md](validation.md#mutants-of-answers-about-the-whole-record)).
 
 ## Limits
 
@@ -631,8 +702,12 @@ the shifted dates of MIMIC-IV.
 - Questions about the whole record: vital signs and ICU procedures exist
   for ICU stays only; notes cannot be asked about; a medication whose
   drug record cannot be tied to one prescription has no name of its own;
-  everyday names of procedures depend on a fixed synonym table; a value
-  is never compared with a threshold.
+  a medication without a standard concept is found by a class only when
+  its written name holds an ingredient's whole name (abbreviated names,
+  such as "sulfameth", are not); everyday names of procedures depend on a
+  fixed synonym table; a value is never compared with a threshold; a
+  question naming a misspelt item without a word that points to its kind
+  is left to the condition rules.
 
 ## Commands
 

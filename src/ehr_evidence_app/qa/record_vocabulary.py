@@ -14,10 +14,17 @@ hashing exactly the bytes parsed. It publishes:
                          of the branded drugs it names;
   drug_ancestors.tsv     for every drug concept the source snapshots
                          record, its ingredients and ATC classes;
+  class_ingredients.tsv  for every ATC class, the ingredients the ATC
+                         hierarchy places in it (version 2), which records
+                         without a standard concept are matched by, by
+                         their written drug names;
   procedures.tsv         the procedure concepts of ICD-9-CM volume 3,
                          ICD-10-PCS, SNOMED, CPT-4 and HCPCS, with their
                          English synonyms;
   manifest.json          input pins, counts and every file's digest.
+
+Version 2 adds class_ingredients.tsv; every other file is built as in
+version 1, from the same pinned inputs, byte for byte.
 
 The drug ancestors are read from the source snapshots' drug records
 (concept identifiers only), so the vocabulary is kept with the protected
@@ -48,7 +55,7 @@ from ehr_evidence_app.storage import policy as guard
 
 SCHEMA = "record-vocabulary"
 SCHEMA_VERSION = "1.0"
-OUTPUT_VERSION = "record-vocabulary-athena-20260831-v1"
+OUTPUT_VERSION = "record-vocabulary-athena-20260831-v2"
 PROTECTED_ROOT = conditions.PROTECTED_ROOT
 OUTPUT_DIR = PROTECTED_ROOT + "\\vocabularies\\" + OUTPUT_VERSION
 MANIFEST_NAME = "manifest.json"
@@ -58,6 +65,7 @@ BUILDER = "ehr_evidence_app.qa.record_vocabulary %s" % (
 FILES = {"drugs": "drugs.tsv", "synonyms": "drug_synonyms.tsv",
          "brands": "brand_ingredients.tsv",
          "ancestors": "drug_ancestors.tsv",
+         "classes": "class_ingredients.tsv",
          "procedures": "procedures.tsv"}
 COLUMNS = {
     "drugs": ("concept_id", "kind", "vocabulary_id", "concept_class_id",
@@ -65,15 +73,23 @@ COLUMNS = {
     "synonyms": ("concept_id", "synonym"),
     "brands": ("brand_id", "ingredient_id"),
     "ancestors": ("drug_concept_id", "ancestor_id"),
+    "classes": ("class_id", "ingredient_id"),
     "procedures": ("concept_id", "vocabulary_id", "concept_code", "name"),
 }
 DRUG_VOCABULARIES = ("RxNorm", "RxNorm Extension")
 PROCEDURE_VOCABULARIES = ("ICD9Proc", "ICD10PCS", "SNOMED", "CPT4", "HCPCS")
 SNAPSHOT_LABELS = ("pilot-10-v1", "dev-30-v1", "eval-100-v1")
-# (size in bytes, SHA-256) of the published manifest, pinned after its
-# build.
-PIN = (2110, "1418474f04f0b6cd97acc1ab95cabcab"
-             "833ea71f20803d53a38439cd11ac0f1e")
+# (size in bytes, SHA-256) of each version's published manifest, pinned
+# after its build; the current version's pin is PIN.
+PINS = {
+    "record-vocabulary-athena-20260831-v1": (
+        2110, "1418474f04f0b6cd97acc1ab95cabcab"
+              "833ea71f20803d53a38439cd11ac0f1e"),
+    "record-vocabulary-athena-20260831-v2": (
+        2335, "366bb8fb956f3ede7766b97e96abae60"
+              "bd7644d9130ca7b132f5014f316c2d16"),
+}
+PIN = PINS[OUTPUT_VERSION]
 
 
 class RecordVocabularyError(Exception):
@@ -92,12 +108,15 @@ def real_plan():
     return plan
 
 
-def pinned():
-    """Return {path, size_bytes, sha256} of the published manifest."""
-    if PIN is None:
+def pinned(version=OUTPUT_VERSION):
+    """Return {path, size_bytes, sha256, version} of a version's published
+    manifest, the current version's by default."""
+    pin = PINS.get(version)
+    if pin is None:
         raise RecordVocabularyError("record_vocabulary_not_pinned")
-    return {"path": OUTPUT_DIR + "\\" + MANIFEST_NAME,
-            "size_bytes": PIN[0], "sha256": PIN[1]}
+    return {"path": (PROTECTED_ROOT + "\\vocabularies\\" + version + "\\"
+                     + MANIFEST_NAME),
+            "size_bytes": pin[0], "sha256": pin[1], "version": version}
 
 
 # --------------------------------------------------------------------------
@@ -180,18 +199,22 @@ def select_branded(rows, brands):
     return found
 
 
-def select_ancestors(rows, wanted, ancestors):
-    """Return {concept: ancestor ids} for the wanted concepts, keeping only
-    ancestors in the given set."""
+def select_ancestors(rows, wanted, ancestors, classes=frozenset(),
+                     ingredients=frozenset()):
+    """Return ({concept: ancestor ids} for the wanted concepts, keeping
+    only ancestors in the given set; the (class, ingredient) pairs whose
+    ancestor is one of the classes and whose descendant is one of the
+    ingredients)."""
     found = collections.defaultdict(set)
+    pairs = []
     for row in rows:
         descendant = int(row["descendant_concept_id"])
-        if descendant not in wanted:
-            continue
         ancestor = int(row["ancestor_concept_id"])
-        if ancestor in ancestors:
+        if descendant in ingredients and ancestor in classes:
+            pairs.append((ancestor, descendant))
+        if descendant in wanted and ancestor in ancestors:
             found[descendant].add(ancestor)
-    return found
+    return found, pairs
 
 
 def encode_tsv(name, lines):
@@ -216,8 +239,9 @@ def build_files(read, recorded):
         rows, ids["brand"]))
     wanted = set(recorded) | {concept for concepts in branded.values()
                               for concept in concepts}
-    found = read("ancestor", lambda rows: select_ancestors(
-        rows, wanted, ids["ingredient"] | ids["atc"]))
+    found, classes = read("ancestor", lambda rows: select_ancestors(
+        rows, wanted, ids["ingredient"] | ids["atc"], ids["atc"],
+        ids["ingredient"]))
     ancestors = [(concept, ancestor) for concept in recorded
                  for ancestor in found.get(concept, ())]
     brands = [(brand, ingredient) for brand, concepts in branded.items()
@@ -227,6 +251,7 @@ def build_files(read, recorded):
              FILES["synonyms"]: encode_tsv("synonyms", synonyms),
              FILES["brands"]: encode_tsv("brands", brands),
              FILES["ancestors"]: encode_tsv("ancestors", ancestors),
+             FILES["classes"]: encode_tsv("classes", classes),
              FILES["procedures"]: encode_tsv("procedures", procedures)}
     counts = {"ingredients": len(ids["ingredient"]), "atc_classes": len(
         ids["atc"]), "brand_names": len(ids["brand"]),
@@ -235,6 +260,8 @@ def build_files(read, recorded):
         "recorded_drug_concepts": len(recorded),
         "recorded_drug_concepts_with_ancestors": sum(
             1 for concept in recorded if found.get(concept)),
+        "class_ingredient_pairs": len(set(classes)),
+        "classes_with_ingredients": len({pair[0] for pair in classes}),
         "procedure_names": len(procedures)}
     return files, counts
 
@@ -322,7 +349,8 @@ class DrugConcept:
 class RecordVocabulary:
     """The loaded vocabulary: drug concepts by identifier, their names and
     synonyms, each brand's ingredients, each recorded drug concept's
-    ingredients and classes, and the procedure names."""
+    ingredients and classes, the procedure names and each ATC class's
+    ingredients."""
 
     drugs: dict
     drug_names: dict
@@ -330,6 +358,7 @@ class RecordVocabulary:
     ancestors: dict
     procedure_names: tuple
     manifest_sha256: str = ""
+    class_ingredients: dict = dataclasses.field(default_factory=dict)
 
 
 def read_files(entry):
@@ -386,9 +415,15 @@ def vocabulary_of(files, digest=""):
         ancestors[int(row["drug_concept_id"])].add(int(row["ancestor_id"]))
     procedures = tuple(sorted({interpret.normalize(row["name"])
                                for row in rows_of(files, "procedures")}))
+    classes = collections.defaultdict(set)
+    if FILES["classes"] in files:
+        for row in rows_of(files, "classes"):
+            classes[int(row["class_id"])].add(int(row["ingredient_id"]))
     names.pop("", None)
     return RecordVocabulary(drugs, dict(names), dict(brands),
-                            dict(ancestors), procedures, digest)
+                            dict(ancestors), procedures, digest,
+                            {concept: frozenset(found)
+                             for concept, found in classes.items()})
 
 
 def load(entry=None):
@@ -463,6 +498,8 @@ SYNTHETIC_TABLES = {
          "min_levels_of_separation": "1", "max_levels_of_separation": "1"},
         {"ancestor_concept_id": "32", "descendant_concept_id": "35",
          "min_levels_of_separation": "2", "max_levels_of_separation": "2"},
+        {"ancestor_concept_id": "32", "descendant_concept_id": "31",
+         "min_levels_of_separation": "1", "max_levels_of_separation": "1"},
     ],
 }
 
@@ -502,6 +539,7 @@ def main(argv=None):
             digests = {}
             expected = {35: {31, 32}}
             if (loaded.ancestors != expected or loaded.brands != {33: {31}}
+                    or loaded.class_ingredients != {32: {31}}
                     or "synthetic drug" not in loaded.drug_names):
                 print("PROBLEM: the invented vocabulary loads wrongly")
                 print("RESULT: FAIL")

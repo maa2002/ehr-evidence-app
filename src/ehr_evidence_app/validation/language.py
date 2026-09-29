@@ -6,7 +6,7 @@ condition named "Pneumonia caused by a virus" never trips a rule. Every
 statement of every released outcome is read: answers, refusals and
 clarifying questions (and, from work item 38, explanations).
 
-Rules version wording-rules-v4 prohibits (prohibited_wording):
+Rules version wording-rules-v5 prohibits (prohibited_wording):
 
 * causal or directional attribution ("caused", "led to", "due to",
   "raised the risk", "risk factor", "associated with", "secondary to");
@@ -42,7 +42,11 @@ is not recorded, caused by ..."); the mutation suite
 (validation.mutations) found it. Version 3 adds the phrasings a language
 model writes around facts and a template never does, and version 4 reads
 a wording with its statement's kind, after the model negated a list's
-summary on invented data. Dates, recurrence, frequency and
+summary on invented data. Version 5 reads the statements of answers about
+the whole record with their kinds too: a list, a presence answer, a
+time, a count, a value, flagged results, a visit's or the person's
+details may not be negated, and a kind or an item not recorded must
+negate every "recorded" it holds. Dates, recurrence, frequency and
 recency are never typed into a wording (date_unsupported); an
 explanation states how often and in which visits a driver's concept was
 recorded only through the slots of a statement that cites its linked
@@ -64,7 +68,7 @@ import sys
 
 from ehr_evidence_app.validation import candidate as candidates
 
-RULES_VERSION = "wording-rules-v4"
+RULES_VERSION = "wording-rules-v5"
 # Stands in for a slot, so that no fact is read as wording.
 SLOT = "X"
 NEGATIONS = frozenset(("not", "no", "never", "nor", "without", "cannot",
@@ -77,8 +81,14 @@ WORD = re.compile(r"[a-z']+")
 # state that something is not.
 AFFIRMATIVE = ("list_summary", "list_item", "presence_summary",
                "presence_item", "prediction", "driver", "driver_history",
-               "driver_context")
-ABSENT = ("list_empty", "presence_absent")
+               "driver_context", "record_list_summary", "record_list_item",
+               "record_stay_item", "record_presence_summary",
+               "record_presence_item", "record_time", "record_count",
+               "record_count_kind", "record_value", "record_value_group",
+               "record_value_item", "record_abnormal_summary",
+               "visit_summary", "visit_fact", "person_fact", "person_age")
+ABSENT = ("list_empty", "presence_absent", "record_list_empty",
+          "record_absent")
 RECORD = re.compile(r"\brecord(?:s|ed)?\b")
 # (rule, pardoned by a negation, pattern, outcomes it applies to; None for
 # every outcome)
@@ -325,6 +335,24 @@ SYNTHETIC_KINDS = (
      "No conditions are recorded within {scope}.", ()),
     ("list_unmapped", "answer",
      "{unmapped} of these records have no standard concept.", ()),
+    # Answers about the whole record (version 5).
+    ("record_list_summary", "answer",
+     "No {items} is recorded within {scope} ({records}):",
+     ("prohibited_wording",)),
+    ("record_value", "answer",
+     "{selector} {item}: {value}, {when}, in {visit}, not flagged",
+     ("prohibited_wording",)),
+    ("visit_fact", "answer", "{visit}: {field}, not otherwise",
+     ("prohibited_wording",)),
+    ("record_absent", "not_recorded", "{item} is recorded within {scope}.",
+     ("prohibited_wording",)),
+    ("record_absent", "not_recorded", "{item} is not recorded within "
+     "{scope}.", ()),
+    ("record_list_empty", "not_recorded",
+     "No {kind} is recorded within {scope}.", ()),
+    ("record_unmapped", "not_recorded",
+     "{unmapped} {kind} records in this scope have no standard concept; "
+     "the drug names written in them were checked.", ()),
 )
 
 

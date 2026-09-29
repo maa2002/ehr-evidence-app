@@ -118,13 +118,188 @@ class ResolutionTests(unittest.TestCase):
                                    specimen="BLOOD CULTURE",
                                    organism="ESCHERICHIA COLI"))
         self.assertEqual(self.terms.match(
-            self.terms.resolve("microbiology", "e coli"), culture), "name")
+            self.terms.resolve("microbiology", "e coli"), culture), "words")
 
     def test_words_within_longer_words(self):
         """Words of four letters or more may be part of longer words."""
         self.assertTrue(resolving.words_in(["dialysis"], "hemodialysis"))
         self.assertFalse(resolving.words_in(["ct"], "section"))
         self.assertTrue(resolving.words_in(["ct"], "head ct scan"))
+
+
+class EdgeResolutionTests(unittest.TestCase):
+    """Resolution at its edges (rules record-resolution-v2), over the
+    invented edge record's terms."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Build the invented edge terms once."""
+        from tests.qa import record_cases
+        cls.cases = record_cases
+        cls.terms = record_cases.terms()
+
+    def test_written_names_are_matched_by_whole_words(self):
+        """Every word whole, in any order; a counter-ion that is a whole
+        name only as the written name's first word."""
+        self.assertTrue(resolving.written_in(("heparin",), "heparin sodium"))
+        self.assertTrue(resolving.written_in(("chloride", "potassium"),
+                                             "potassium chloride 20 meq"))
+        self.assertFalse(resolving.written_in(("urea",), "hydroxyurea"))
+        self.assertFalse(resolving.written_in(("sodium",), "heparin sodium"))
+        self.assertTrue(resolving.written_in(("sodium",),
+                                             "sodium bicarbonate"))
+        self.assertFalse(resolving.written_in(("sodium",), ""))
+        self.assertTrue(resolving.words_in(["heparin"], "heparin sodium"))
+        self.assertTrue(resolving.words_in(["urea"], "hydroxyurea"))
+
+    def test_class_questions_carry_the_names_of_their_ingredients(self):
+        """A class resolves to its concept, and to the names its
+        ingredients and the phrase are written as."""
+        found = self.terms.resolve("medication", "opioids")
+        self.assertEqual((found.status, found.rule, found.keys),
+                         ("resolved", "name", (("atc", 13),)))
+        self.assertEqual(found.written, (("morphine",), ("opioids",)))
+        found = self.terms.resolve("medication", "painkillers")
+        self.assertEqual((found.status, found.rule), ("unknown", None))
+        found = self.terms.resolve("medication", "antibiotics")
+        self.assertEqual((found.rule, found.keys, found.written), (
+            "synonym", (("atc", 15),), (("antibiotics",), ("vancomycin",))))
+        found = self.terms.resolve("medication", "insulin")
+        self.assertIn(("insulin",), found.written)
+        self.assertIn(("glargine", "insulin"), found.written)
+
+    def test_misspelt_medications_and_procedures_are_suggested(self):
+        """A misspelling within one edit (two from eight letters) is
+        suggested; nothing is suggested for what is further away."""
+        self.assertEqual(self.terms.resolve("medication",
+                                            "heprin").suggestions,
+                         ("heparin", "heparin group"))
+        self.assertEqual(self.terms.resolve("medication",
+                                            "zzzz").suggestions, ())
+        self.assertEqual(self.terms.resolve("medication",
+                                            "heprain").suggestions, ())
+        self.assertEqual(self.terms.resolve("procedure",
+                                            "apendectomy").suggestions,
+                         ("appendectomy",))
+        self.assertEqual(self.terms.resolve(
+            "procedure", "radiografy of chest").suggestions,
+            ("radiography of chest",))
+        self.assertEqual(self.terms.resolve("procedure",
+                                            "zzzzectomy").suggestions, ())
+        self.assertEqual(self.terms.resolve("lab", "potasium").suggestions,
+                         ("Potassium",))
+
+    def test_names_before_synonyms_before_words(self):
+        """A dictionary name is taken before a synonym, and a synonym
+        before the names that hold the phrase's words; a singular form is
+        tried before those."""
+        terms = resolving.Terms(
+            labs=[("1", "INR", "Blood", "Hematology"),
+                  ("2", "INR(PT)", "Blood", "Hematology"),
+                  ("3", "Potassium", "Blood", "Chemistry")],
+            items=[], micro=[], units=[], drugs=None, procedures=())
+        found = terms.resolve("lab", "inr")
+        self.assertEqual((found.rule, found.keys), ("name", ("1",)))
+        found = terms.resolve("lab", "potassiums")
+        self.assertEqual((found.status, found.keys), ("resolved", ("3",)))
+        found = terms.resolve("lab", "blood")
+        self.assertEqual(found.status, "unknown")
+
+    def test_too_many_names_are_too_broad(self):
+        """A phrase whose words more than MAX_NAMES names hold is too
+        broad, and names a few of them."""
+        labs = [(str(number), "Synthetic panel %d" % number, "Blood",
+                 "Chemistry") for number in range(resolving.MAX_NAMES + 1)]
+        terms = resolving.Terms(labs=labs, items=[], micro=[], units=[],
+                                drugs=None, procedures=())
+        found = terms.resolve("lab", "panel")
+        self.assertEqual(found.status, "too_broad")
+        self.assertEqual(len(found.names), resolving.SUGGESTIONS)
+        labs = labs[:resolving.MAX_NAMES]
+        terms = resolving.Terms(labs=labs, items=[], micro=[], units=[],
+                                drugs=None, procedures=())
+        self.assertEqual(terms.resolve("lab", "panel").status, "resolved")
+
+    def test_nothing_to_resolve_against(self):
+        """Without a vocabulary, or a name, nothing resolves."""
+        terms = resolving.Terms(labs=[], items=[], micro=[], units=[],
+                                drugs=None, procedures=())
+        for kind in ("medication", "condition", "icu_stay", "lab"):
+            self.assertEqual(terms.resolve(kind, "heparin").status,
+                             "unknown", kind)
+        self.assertEqual(self.terms.resolve("lab", "   ").status, "unknown")
+
+    def test_a_record_matches_only_its_own_kinds(self):
+        """A resolution matches no record of another kind, and an
+        unresolved one matches nothing."""
+        bundle = self.cases.bundles()[-1]
+        heparin = self.terms.resolve("medication", "heparin")
+        potassium = self.terms.resolve("lab", "potassium")
+        for entry in bundle.records:
+            if entry.kind != "medication":
+                self.assertIsNone(self.terms.match(heparin, entry))
+            if entry.kind != "lab":
+                self.assertIsNone(self.terms.match(potassium, entry))
+        unknown = self.terms.resolve("lab", "florbnazine")
+        self.assertTrue(all(self.terms.match(unknown, entry) is None
+                            for entry in bundle.records))
+
+    def test_extract_dictionaries(self):
+        """Items without a label are left out; the names file gives the
+        microbiology and care-unit names."""
+        labs, items, micro, units = resolving.extract_dictionaries({
+            "d_labitems": [{"itemid": "1", "label": "A", "fluid": "Blood",
+                            "category": "C"},
+                           {"itemid": "2", "label": "", "fluid": "",
+                            "category": ""}],
+            "d_items": [{"itemid": "220045", "label": "Heart Rate"},
+                        {"itemid": "9", "label": ""}],
+            "d_names": [{"table": "microbiologyevents", "column": "org_name",
+                         "name": "B"},
+                        {"table": "transfers", "column": "careunit",
+                         "name": "Unit"},
+                        {"table": "microbiologyevents",
+                         "column": "spec_type_desc", "name": "A"}]})
+        self.assertEqual(labs, [("1", "A", "Blood", "C")])
+        self.assertEqual(items, [("220045", "Heart Rate")])
+        self.assertEqual((micro, units), (["A", "B"], ["Unit"]))
+
+
+class VocabularyVersionTests(unittest.TestCase):
+    """Version 2 of the record vocabulary: each class's ingredients."""
+
+    def test_class_ingredients_are_selected_in_the_same_pass(self):
+        """One pass over the ancestors gives the recorded drugs'
+        ancestors and every class's ingredients."""
+        rows = [{"ancestor_concept_id": "32", "descendant_concept_id": "31"},
+                {"ancestor_concept_id": "31", "descendant_concept_id": "35"},
+                {"ancestor_concept_id": "32", "descendant_concept_id": "35"},
+                {"ancestor_concept_id": "31", "descendant_concept_id": "31"}]
+        found, pairs = record_vocabulary.select_ancestors(
+            rows, {35}, {31, 32}, {32}, {31})
+        self.assertEqual(dict(found), {35: {31, 32}})
+        self.assertEqual(pairs, [(32, 31)])
+
+    def test_a_vocabulary_without_classes_loads_without_them(self):
+        """The first version's files load, with no class ingredients."""
+        files, _, loaded = record_vocabulary.run_synthetic()
+        self.assertEqual(loaded.class_ingredients, {32: {31}})
+        older = dict(files)
+        del older[record_vocabulary.FILES["classes"]]
+        self.assertEqual(record_vocabulary.vocabulary_of(
+            older).class_ingredients, {})
+
+    def test_versions_are_pinned_by_name(self):
+        """Each published version is read through its own pin."""
+        first = record_vocabulary.pinned(
+            "record-vocabulary-athena-20260831-v1")
+        current = record_vocabulary.pinned()
+        self.assertEqual(first["size_bytes"], 2110)
+        self.assertEqual(current["version"],
+                         record_vocabulary.OUTPUT_VERSION)
+        self.assertNotEqual(first["path"], current["path"])
+        with self.assertRaises(record_vocabulary.RecordVocabularyError):
+            record_vocabulary.pinned("record-vocabulary-unknown")
 
 
 class TextTests(unittest.TestCase):

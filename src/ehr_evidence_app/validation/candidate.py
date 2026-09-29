@@ -70,7 +70,7 @@ NOUNS = {"count": ("record", "records"),
          "matches": ("matching record", "matching records"),
          "omitted": ("recorded concept", "recorded concepts"),
          "total": ("visit", "visits"),
-         "earlier": ("result", "results")}
+         "earlier": ("record", "records")}
 PLACEHOLDER = re.compile(r"\{([a-z]+)\}")
 
 EventRef = Annotated[str, StringConstraints(pattern=r"^E[1-9][0-9]{0,5}$")]
@@ -100,12 +100,23 @@ RecordField = Literal["sex", "age", "race", "language", "insurance",
                       "length", "type", "admitted_from", "discharged_to",
                       "hospital_death", "summary"]
 RecordMatch = Literal["item", "group", "ingredient", "class", "brand",
-                      "name", "exact", "more_specific", "icd_code",
+                      "name", "words", "exact", "more_specific", "icd_code",
                       "more_specific_icd_code", "icd_description"]
 # The record tasks a statement kind about the record may answer.
 RECORD_LISTS = ("record_list",)
 RECORD_ITEMS = ("record_presence", "record_timing", "record_count",
                 "record_values", "record_abnormal")
+# The kinds whose records may lack a standard concept (OMOP records).
+UNMAPPED_KINDS = ("condition", "medication", "procedure")
+# The fields each statement of a visit's or the person's details states.
+FIELDS_BY_KIND = {
+    "visit_fact": ("admitted", "discharged", "length", "type",
+                   "admitted_from", "discharged_to", "race", "language",
+                   "insurance", "marital_status", "hospital_death",
+                   "summary"),
+    "person_fact": ("sex", "death"),
+    "person_age": ("age",),
+}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -181,6 +192,8 @@ KINDS = {
                                  tasks=("record_presence",)),
     "record_absent": Kind(("item", "scope"), "coverage", None,
                           ("not_recorded",), tasks=RECORD_ITEMS),
+    "record_unmapped": Kind(("unmapped", "kind"), "coverage", None,
+                            ("not_recorded",), tasks=RECORD_ITEMS),
     "record_time": Kind(("selector", "item", "when", "visit"), "records",
                         None, ("answer",), depth=1,
                         tasks=("record_timing",)),
@@ -250,11 +263,20 @@ UNSUPPORTED = {
 @dataclasses.dataclass(frozen=True)
 class Notice:
     """An approved text, the outcomes it may end and, for a notice of an
-    answer, the task it belongs to."""
+    answer, the task or tasks it belongs to (any task when neither is
+    given)."""
 
     text: str
     outcomes: tuple
     task: str | None = None
+    tasks: tuple = ()
+
+    def answers(self, task):
+        """Return True when the notice may appear in an answer to a
+        task."""
+        if self.tasks:
+            return task in self.tasks
+        return self.task is None or task == self.task
 
 
 NOTICES = {
@@ -362,9 +384,10 @@ NOTICES = {
     "record_list_complete": Notice("The list is complete for the records "
                                    "of this kind within the selected "
                                    "scope.", ("answer",), "record_list"),
-    "values_omitted": Notice("Earlier results are not listed here and are "
+    "values_omitted": Notice("Earlier records are not listed here and are "
                              "kept in the evidence: {earlier}.",
-                             ("answer",)),
+                             ("answer",),
+                             tasks=("record_values", "record_abnormal")),
     "not_flagged": Notice("A result without the laboratory's abnormal flag "
                           "is not stated to be normal.",
                           ("answer", "not_recorded"), "record_abnormal"),
@@ -374,10 +397,14 @@ NOTICES = {
                             "record_values"),
     "vitals_icu_only": Notice("Vital signs and ICU procedures are charted "
                               "during ICU stays only.",
-                              ("answer", "not_recorded")),
+                              ("answer", "not_recorded"),
+                              tasks=("record_list", "record_presence",
+                                     "record_timing", "record_count",
+                                     "record_values")),
     "dates_shifted": Notice("Dates are shifted by the de-identification of "
                             "MIMIC-IV, by the same interval for all of this "
-                            "patient's records.", ("answer",)),
+                            "patient's records.", ("answer",),
+                            tasks=("record_timing", "visit_details")),
     "age_meaning": Notice("Ages are the anchor age MIMIC-IV records for the "
                           "patient plus the years to the visit, so they can "
                           "be one more than the age on the day; ages above "
@@ -405,6 +432,14 @@ NOTICES = {
     "item_too_broad": Notice("\"{term}\" names too many tests or items to "
                              "answer at once. Name a more specific one.",
                              ("clarification",)),
+    "two_items": Notice("Ask about one test, medication or other record at "
+                        "a time.", ("clarification",)),
+    "flag_unrecorded": Notice("The record flags laboratory results as "
+                              "abnormal and microbiology results as "
+                              "resistant; other records, vital signs "
+                              "included, carry no such flag. Ask whether "
+                              "one is recorded, or for its highest or "
+                              "lowest value.", ("clarification",)),
 }
 # The notice that discloses each restriction of an explanation.
 RESTRICTION_NOTICES = {"batch_sensitive_prediction": "batch_sensitive",
@@ -756,6 +791,8 @@ def record_slot_text(statement, name, value, lookup):
 def field_text(statement, field, lookup):
     """Return a visit's or the person's field as a statement shows it."""
     from ehr_evidence_app.validation import record_text as words
+    if field not in FIELDS_BY_KIND.get(statement.kind, ()):
+        raise CandidateError("field_not_of_kind")
     if statement.kind == "visit_fact":
         return words.visit_field(field, lookup.visit(statement.slots.visit))
     if lookup.person is None:

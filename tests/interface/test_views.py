@@ -269,6 +269,71 @@ class EvidenceTests(InventedTestCase):
         self.assertNotIn("native", text)
         self.assertNotIn("hadm", text)
 
+    def test_the_whole_record_at_its_edges(self):
+        """The invented edge record: every kind gets its table, records
+        without a name say why, a removed value has no unit, an open
+        transfer has no end, and no native identifier is shown."""
+        from ehr_evidence_app.api import service as services
+        from tests.qa import record_cases
+        for bundle in record_cases.bundles():
+            whole = services.whole_record_view(bundle)
+            text = json.dumps(whole)
+            self.assertNotIn("native_id", text)
+            self.assertNotIn("\"source\"", text)
+        whole = services.whole_record_view(record_cases.bundles()[-1])
+        sections = {section["title"].split(" · ")[0]: section
+                    for section in views.record_sections(whole)}
+        self.assertEqual(set(sections) - {"Record Coverage"},
+                         {title for _, title in views.KIND_TITLES})
+        self.assertTrue(sections["Condition Records"]["collapsed"])
+        self.assertFalse(sections["Laboratory Results"]["collapsed"])
+
+        def cells(title):
+            """Return the cells of a section's rows."""
+            return [row["cells"]
+                    for row in sections[title]["blocks"][-1]["rows"]]
+
+        labs = cells("Laboratory Results")
+        self.assertIn("Removed by de-identification",
+                      [row[4] for row in labs])
+        self.assertIn("Blood, Chemistry (Name Unavailable)",
+                      [row[2] for row in labs])
+        medications = [row[2] for row in cells("Medications")]
+        self.assertIn("Vancomycin (No Standard Concept)", medications)
+        self.assertIn("No Standard Concept", medications)
+        transfers = cells("Transfers")
+        self.assertEqual(transfers[-1][-1], "")
+        self.assertEqual([row[-1] for row in cells("ICU Stays")],
+                         ["1.5", "1.0"])
+        visits = views.admissions_section(whole["visits"])
+        rows = visits["blocks"][0]["rows"]
+        self.assertEqual(rows[1]["cells"][6:8], ["1 Mar 2150", "3 Mar 2150"])
+        self.assertEqual(rows[2]["cells"][-1], "Yes")
+        person = views.person_section(whole["person"])
+        self.assertEqual(person["blocks"][0]["items"][1]["value"],
+                         "88 in 2149")
+        older = views.person_section(dict(whole["person"], anchor_age=91))
+        self.assertEqual(older["blocks"][0]["items"][1]["value"],
+                         "Over 89 in 2149")
+
+    def test_values_as_recorded(self):
+        """Numbers keep every recorded digit and never an exponent; a
+        result without a value says so."""
+        for value, shown in ((5.0, "5"), (0.1, "0.1"), (123456.7,
+                                                        "123456.7"),
+                             (0.00001, "0.00001"), (-2.5, "-2.5"),
+                             (1e20, "100000000000000000000"), (None, "")):
+            self.assertEqual(labels.number(value), shown, value)
+        self.assertEqual(views.measure_cells(None),
+                         ("No value recorded", "", ""))
+        self.assertEqual(views.measure_cells({"text": None, "number": 0.00001,
+                                              "unit": "mg"}),
+                         ("0.00001 mg", "", ""))
+        self.assertEqual(views.measure_cells({"text": "___", "number": None,
+                                              "unit": "mg", "flag":
+                                              "abnormal"}),
+                         ("Removed by de-identification", "", "Abnormal"))
+
     def test_prediction(self):
         """The prediction's evidence shows every attribution with its
         unsigned score and link status, warns of those without a verified

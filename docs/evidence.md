@@ -203,7 +203,10 @@ snapshot records for the visit (`visit_source_value`,
 "subject_id|hadm_id"); the person's other rows are counted as outside
 the case visits and never delivered, and a history bundle counts the
 final admission's records it leaves out. A medication's ingredients and
-classes come from the pinned record vocabulary (`qa.record_vocabulary`);
+classes come from the pinned record vocabulary (`qa.record_vocabulary`,
+version 1; version 2 adds each class's ingredients for the matching of
+records without a standard concept, every version 1 file unchanged,
+[ADR 0022](decisions/0022-record-edge-cases.md));
 its dose and route from the raw prescription it was made from, found by
 the source ETL's own keys (admission, start and stop times, and the NDC,
 else the drug's name and strength), and attached only when every

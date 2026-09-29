@@ -556,11 +556,12 @@ def measure_cells(measure):
     if not measure:
         return "No value recorded", "", ""
     value = measure.get("text")
+    withheld = False
     if value in (None, "___"):
-        value = (labels.number(measure.get("number"))
-                 if measure.get("number") is not None
-                 else "Removed by de-identification")
-    if measure.get("unit") and measure["unit"] != "None":
+        withheld = measure.get("number") is None
+        value = ("Removed by de-identification" if withheld
+                 else labels.number(measure["number"]))
+    if measure.get("unit") and measure["unit"] != "None" and not withheld:
         value += " " + measure["unit"]
     shown = ""
     if measure.get("low") is not None and measure.get("high") is not None:
@@ -570,16 +571,18 @@ def measure_cells(measure):
 
 
 def record_name(item):
-    """Return how the evidence names a record."""
+    """Return how the evidence names a record: its name, or what it holds
+    and why it has none (no standard concept, or a name unavailable)."""
     if item.get("name"):
         return item["name"]
+    why = ("No Standard Concept" if item.get("name_status") == "unmapped"
+           else "Name Unavailable")
     dose = item.get("dose") or {}
     if dose.get("drug"):
-        return "%s (No Standard Concept)" % dose["drug"]
+        return "%s (%s)" % (dose["drug"], why)
     if item.get("detail"):
-        return "%s (No Standard Concept)" % item["detail"]
-    return "No Standard Concept" if item.get("concept_id") == 0 else (
-        "Name Unavailable")
+        return "%s (%s)" % (item["detail"].replace(" · ", ", "), why)
+    return why
 
 
 def kind_rows(kind, items):

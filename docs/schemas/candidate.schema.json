@@ -296,6 +296,7 @@
                 "class",
                 "brand",
                 "name",
+                "words",
                 "exact",
                 "more_specific",
                 "icd_code",
@@ -698,6 +699,7 @@
             "record_presence_summary",
             "record_presence_item",
             "record_absent",
+            "record_unmapped",
             "record_time",
             "record_count",
             "record_count_kind",
@@ -767,7 +769,9 @@
                 "item_suggested",
                 "item_unknown",
                 "item_missing",
-                "item_too_broad"
+                "item_too_broad",
+                "two_items",
+                "flag_unrecorded"
               ],
               "type": "string"
             },

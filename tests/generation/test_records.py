@@ -86,6 +86,14 @@ class RecordTests(unittest.TestCase):
             self.assertEqual(record.bundle_sha256, context.bundle_sha256)
             self.assertEqual(record.versions["prompt_version"],
                              prompt.PROMPT_VERSION)
+            from ehr_evidence_app.qa import record_answer, \
+                record_interpret, record_resolve
+            self.assertEqual(
+                (record.versions["record_questions"],
+                 record.versions["record_resolution"],
+                 record.versions["record_answer"]),
+                (record_interpret.RULES_VERSION,
+                 record_resolve.RULES_VERSION, record_answer.RULES_VERSION))
             for name in records.CONFIG_FILES:
                 self.assertEqual(
                     record.versions[name.replace(".json", "_sha256")],

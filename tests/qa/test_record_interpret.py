@@ -225,5 +225,208 @@ class ReadingTests(unittest.TestCase):
             self.assertEqual(conditions.interpret(question).status, "task")
 
 
+class EdgeReadingTests(unittest.TestCase):
+    """How questions at the edges of the rules are read (rules
+    record-questions-v2), over the invented edge record's terms."""
+
+    # (question, the reading's expected fields)
+    TABLE = (
+        # Noise, casing, accents and symbols.
+        ("", {"status": "none"}),
+        ("   ", {"status": "none"}),
+        ("???", {"status": "none"}),
+        ("WHAT MEDICATIONS WERE GIVEN???", {"task": "record_list",
+                                            "kind": "medication"}),
+        ("  labs.  ", {"task": "record_list", "kind": "lab"}),
+        ("Was héparin given?", {"task": "record_presence",
+                                "kind": "medication", "phrase": "heparin"}),
+        # Markup is read as words; the phrase it leaves does not resolve,
+        # so the answer asks which test is meant.
+        ("<b>labs</b>", {"task": "record_presence", "kind": "lab",
+                         "phrase": "b b"}),
+        ("<script>alert(1)</script> labs", {
+            "kind": "lab", "phrase": "script alert 1 script"}),
+        # Abbreviations and everyday words.
+        ("K?", {"task": "record_presence", "kind": "lab"}),
+        ("Hgb", {"task": "record_presence", "kind": "lab"}),
+        ("BP?", {"task": "record_presence", "kind": "vital"}),
+        ("o2 sat", {"task": "record_presence", "kind": "vital"}),
+        ("temp", {"task": "record_presence", "kind": "vital"}),
+        ("cxr", {"task": "record_presence", "kind": "procedure"}),
+        ("Was she intubated?", {"task": "record_presence",
+                                "kind": "procedure"}),
+        ("Any E. coli?", {"task": "record_presence",
+                          "kind": "microbiology"}),
+        ("Was she in the MICU?", {"task": "record_presence",
+                                  "kind": "transfer"}),
+        # Selectors.
+        ("most recent potassium", {"task": "record_values",
+                                   "selector": "latest"}),
+        ("baseline creatinine", {"task": "record_values",
+                                 "selector": "first"}),
+        ("peak troponin", {"task": "record_values", "selector": "highest"}),
+        ("nadir hemoglobin", {"task": "record_values",
+                              "selector": "lowest"}),
+        ("potassium over time", {"task": "record_values",
+                                 "selector": "all"}),
+        # Counts and times.
+        ("How often was heparin given?", {"task": "record_count",
+                                          "kind": "medication"}),
+        ("number of potassium results", {"task": "record_count",
+                                         "kind": "lab"}),
+        ("What date was heparin given?", {"task": "record_timing"}),
+        ("At what time was potassium checked?", {"task": "record_timing"}),
+        # Doses.
+        ("How much heparin was given?", {"task": "record_values",
+                                         "kind": "medication",
+                                         "selector": "all"}),
+        ("What doses were given?", {"task": "record_values",
+                                    "kind": "medication"}),
+        # Flags.
+        ("Were any labs high?", {"task": "record_abnormal", "kind": "lab"}),
+        ("Was the hemoglobin low?", {"task": "record_abnormal"}),
+        ("Was the heart rate abnormally high?", {
+            "task": "record_values", "selector": "highest",
+            "category": "vital_flag"}),
+        ("Were any vitals low?", {"task": "record_values",
+                                  "selector": "lowest",
+                                  "category": "vital_flag"}),
+        ("Were any vitals abnormal?", {"status": "clarify",
+                                       "category": "flag_unrecorded"}),
+        ("Was the chest x-ray abnormal?", {"category": "flag_unrecorded"}),
+        ("Any abnormal medications?", {"category": "flag_unrecorded"}),
+        # Microbiology results.
+        ("Did the urine culture grow anything?", {
+            "task": "record_values", "kind": "microbiology",
+            "selector": "all"}),
+        ("What were the microbiology results?", {
+            "task": "record_values", "kind": "microbiology",
+            "selector": "all"}),
+        # ICU stays, visits and the person.
+        ("Was she in intensive care?", {"task": "record_list",
+                                        "kind": "icu_stay"}),
+        ("Was she never in the ICU?", {"task": "record_list",
+                                       "kind": "icu_stay"}),
+        ("How many ICU admissions?", {"task": "record_count",
+                                      "kind": "icu_stay"}),
+        ("Did she get heparin in the ICU?", {
+            "category": "scope_unrecognised"}),
+        ("How many admissions?", {"task": "visit_details",
+                                  "field": "count"}),
+        ("Where was she admitted from?", {"field": "admitted_from"}),
+        ("Was it an elective admission?", {"field": "type"}),
+        ("How old?", {"task": "person_details", "field": "age"}),
+        ("What gender?", {"field": "sex"}),
+        ("Is she male or female?", {"field": "sex"}),
+        ("Was the patient a man or a woman?", {"field": "sex"}),
+        ("Does she need an interpreter?", {"field": "language"}),
+        ("Did the patient not die?", {"field": "death"}),
+        # Negations.
+        ("Was heparin not given?", {"task": "record_presence",
+                                    "phrase": "heparin"}),
+        ("Was there no heparin?", {"task": "record_presence"}),
+        ("Which labs were not done?", {"category": "qualified"}),
+        ("Were no medications given?", {"category": "qualified"}),
+        # Filters, times, pronouns, two items and two kinds.
+        ("only potassium", {"category": "qualified"}),
+        ("besides heparin, what was given?", {"category": "qualified"}),
+        ("potassium last week", {"category": "scope_unrecognised"}),
+        ("potassium this morning", {"category": "scope_unrecognised"}),
+        ("What was the potassium on day 2?", {
+            "category": "scope_unrecognised"}),
+        ("Was potassium checked 3 days ago?", {
+            "category": "scope_unrecognised"}),
+        ("potassium in the first 24 hours", {
+            "category": "scope_unrecognised"}),
+        ("Was she ventilated for 96 hours?", {
+            "category": "scope_unrecognised"}),
+        ("Was it measured?", {"category": "missing_item"}),
+        ("Was heparin or furosemide given?", {"category": "two_items"}),
+        ("Were potassium and sodium checked?", {"category": "two_items"}),
+        ("Show the labs and medications", {"category": "two_tasks"}),
+        # Unknown and misspelt items, with suggestions of the kind the
+        # question's verb points to.
+        ("Was florbnazine given?", {"category": "unknown_item"}),
+        ("Was heprin given?", {"category": "unknown_item",
+                               "suggestions": ("heparin",
+                                               "heparin group")}),
+        ("Was an apendectomy done?", {"suggestions": ("appendectomy",)}),
+        # Advice and the future are not questions about the record.
+        ("Should heparin be stopped?", {"status": "none"}),
+        ("What is the prognosis?", {"status": "none"}),
+        ("Would she benefit from dialysis?", {"status": "none"}),
+        # Conditions through the record's reading.
+        ("When was synthetic concept 1001 first recorded?", {
+            "task": "record_timing", "kind": "condition"}),
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        """Build the invented edge terms once."""
+        from tests.qa import record_cases
+        cls.terms = record_cases.terms()
+
+    def test_readings(self):
+        """Each question gets its reading."""
+        for question, expected in self.TABLE:
+            found = reader.interpret(question, self.terms)
+            for name, value in expected.items():
+                with self.subTest(question=question, field=name):
+                    self.assertEqual(getattr(found, name), value)
+
+    def test_words_alone_never_take_a_question_that_names_no_kind(self):
+        """A phrase that only the words of procedure names hold ("is
+        radiography recorded", as "is diabetes recorded" once was) is left
+        to the condition rules; a verb or a kind word, or a phrase that is
+        a procedure's own name, takes it."""
+        self.assertEqual(reader.interpret("Is radiography recorded?",
+                                          self.terms).status, "none")
+        self.assertEqual(reader.interpret(
+            "Is the patient's chest radiography severe?",
+            self.terms).status, "none")
+        for question in ("Was radiography done?",
+                         "Which procedures show radiography?",
+                         "Is appendectomy recorded?"):
+            found = reader.interpret(question, self.terms)
+            self.assertEqual((found.status, found.kind),
+                             ("task", "procedure"), question)
+        found = self.terms.resolve("procedure", "appendectomy")
+        self.assertEqual(found.rule, "name")
+        self.assertEqual(self.terms.resolve("procedure", "radiography").rule,
+                         "words")
+
+    def test_numbered_times_are_times_and_numbered_names_are_not(self):
+        """A day or an hour named by its number as a time is one; a number
+        in a name ("24 hour urine") is not."""
+        for text in ("what was the potassium on day 2",
+                     "was potassium checked 3 days ago",
+                     "potassium in the first 24 hours",
+                     "was she ventilated for 96 hours",
+                     "day 2 of the admission"):
+            self.assertTrue(reader.NUMBERED_TIMES.search(text), text)
+        for text in ("24 hour urine protein", "hydromorphone 12 hour",
+                     "was potassium 5 4", "type 2 diabetes"):
+            self.assertFalse(reader.NUMBERED_TIMES.search(text), text)
+
+    def test_long_and_repeated_questions_are_read_without_failing(self):
+        """A long question, or one word many times, is read, whatever the
+        reading."""
+        for question in ("potassium " * 200, "a" * 2000,
+                         "what " * 300 + "labs", "? " * 500):
+            found = reader.interpret(question, self.terms)
+            self.assertIn(found.status, ("task", "clarify", "none"))
+
+    def test_left_words_set_negations_and_frames_aside(self):
+        """Negations, frames, selectors and harmless words are no part of
+        a phrase; conjunctions are kept only when asked for."""
+        self.assertEqual(reader.left_words(
+            "was the last potassium not measured"), ["potassium"])
+        self.assertEqual(reader.left_words("heparin or warfarin"),
+                         ["heparin", "warfarin"])
+        self.assertEqual(reader.left_words(
+            "heparin or warfarin", keep=reader.CONJUNCTIONS),
+            ["heparin", "or", "warfarin"])
+
+
 if __name__ == "__main__":
     unittest.main()
