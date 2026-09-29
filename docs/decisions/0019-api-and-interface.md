@@ -37,10 +37,11 @@ point on 2026-09-29.
    requests are refused, no response is cached, and Streamlit's usage
    statistics are switched off. To share the interface, a Cloudflare
    named tunnel gives it an address on the owner's domain; the API is
-   never reachable through it. The interface then admits a browser only
-   with a secret link's key, a long random value kept only as its digest,
-   or the session cookie set on the first visit (HttpOnly, Secure,
-   SameSite=Strict), and answers anything else as not found. The secret
+   never reachable through it. Access checks inside the interface's
+   process then admit a browser only with a secret link's key, a long
+   random value kept only as its digest, or the session cookie set on the
+   first visit (HttpOnly, Secure, SameSite=Lax, since the link is opened
+   from another site), and answer anything else as not found. The secret
    link is the authentication and Cloudflare's HTTPS the encrypted
    transport. The link is shared with the supervisor through an issue in
    the private repository, never in a committed file; the supervisor

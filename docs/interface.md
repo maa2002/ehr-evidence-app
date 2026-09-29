@@ -4,9 +4,11 @@ Phase 8 puts the application in front of a person
 ([ADR 0019](decisions/0019-api-and-interface.md)). A local API serves the
 development case sets: it answers questions about a selected case and
 scope, explains a case's prepared prediction and shows the evidence
-behind both. Nothing in the evidence, the generation or the release gate
-changes: the API returns the gate's response exactly, and nothing the gate
-withheld. Command examples assume the session set-up in
+behind both. A Streamlit interface, a separate process, reaches it only
+over HTTP, and one launcher starts both on 127.0.0.1. Nothing in the
+evidence, the generation or the release gate changes: the API returns the
+gate's response exactly, and nothing the gate withheld. Command examples
+assume the session set-up in
 [development.md](development.md#session-set-up).
 
 ## The service
@@ -73,12 +75,16 @@ at fault, never their values.
   at each launch and handed to the interface in its process environment
   (`EHR_API_TOKEN`), sent as `Authorization: Bearer <token>`, compared in
   constant time and never logged;
+- a request naming no host, or two, is refused like one naming
+  another host;
 - a body is read whole and bounded (16 KiB) before the API sees it;
 - every response, a refusal included, is marked `Cache-Control: no-store`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
   `X-Frame-Options: DENY`;
 - an exception inside the API is answered with a bare code and logged by
-  its type name only.
+  its type name only;
+- the server's own access log, which would hold every path and query, is
+  switched off.
 
 The access log, `outputs\logs\api\api-<date>.log` in the workspace, holds
 each request's method, route template (such as
@@ -86,6 +92,96 @@ each request's method, route template (such as
 never a value from the path or the query, a question or a response. The
 log audit reads it with the other routine logs
 (`generation.records --operator-real --audit-logs`).
+
+## The interface
+
+`ehr_evidence_app.interface.app` is the Streamlit page; it reaches the API
+only through `interface.client`, on 127.0.0.1 with the launch token, and
+ignores proxy settings so that no request leaves the machine.
+
+- **The selector** (work item 49). The sidebar selects the case set, the
+  case (with its number of visits) and the scope: the pre-target history,
+  a visit, or all case visits. The top of the page names the active case,
+  scope and model state.
+- **Context.** A question is answered for the selected case and scope
+  only, and nothing carries over from an earlier one. Changing the case
+  clears every earlier response. Changing the scope keeps them, greyed,
+  marked as an earlier scope and labelled with the scope they answered,
+  never shown as current.
+- **Questions** (work item 50). Each response shows its outcome (answer,
+  not recorded, clarification needed, abstained, case rejected, withheld
+  by validation or operational error), the scope it answered, who wrote
+  it (the model, or the template and why), the seconds it took, its text,
+  and its references; choosing a reference opens its record in the
+  evidence view, in the scope the response answered.
+- **The explanation** (work item 51). The prepared prediction shows its
+  label, score and logit, with the score's fixed meaning, "uncalibrated
+  sigmoid of the logit; not a clinical risk", and never as a percentage.
+  The explanation of the selected drivers follows, with a note that
+  attribution scores are unsigned and not causal, and its references. The
+  conditions recorded in the pre-target history stand in a block of their
+  own, as records rather than the model's prediction or drivers.
+- **The evidence** (work item 52). For a scope: its coverage, with the
+  records without a standard concept and the final-admission records
+  left out, its visits and records, and its provenance. For the
+  prediction: every original attribution with its unsigned score,
+  attachment and link status, a warning naming how many have no verified
+  link to a record, the linked history records, the final admission's
+  records as context, the case's restrictions, the coverage and the
+  provenance. A reference opened from a response is shown first; one the
+  evidence does not hold is said to be missing.
+
+A refusal of the API is shown in words. `interface.serve` serves the
+page with Streamlit on 127.0.0.1 behind the interface's access checks:
+Streamlit's usage statistics are off, no error detail reaches the
+browser, no file is watched, and a failure of the page is logged by its
+type only.
+
+## The access checks of the interface
+
+`ehr_evidence_app.interface.gate` stands in front of Streamlit, in the same
+process:
+
+- a request must name one host the interface answers to: 127.0.0.1 or
+  localhost at its port and, when the interface is shared, the tunnel's
+  public host;
+- every response is marked `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer` and `X-Frame-Options: DENY`, and every one
+  but Streamlit's static files `Cache-Control: no-store`;
+- the server's access log is switched off, and the gate's own log,
+  `outputs\logs\interface\interface-<date>.log`, names only what it
+  decided, never a path, a query or a key.
+
+When the interface is shared, a request from the tunnel (it names the
+public host, or carries Cloudflare's headers) is let in only with a
+session. The first visit opens the secret link, whose key, the query
+parameter `k`, is checked against its SHA-256 in constant time; the gate
+sets a session cookie (`HttpOnly`, `Secure`, `SameSite=Lax`, because the
+link is opened from another site) and redirects to the page without the
+key. Anything else is answered as not found, and a websocket without a
+session is closed before it opens. Sessions end after a day, or when the
+interface stops.
+
+## Starting the application
+
+`ehr_evidence_app.api.launch` starts the API and the interface as two
+processes on 127.0.0.1, with a fresh launch token that each receives in
+its process environment only; waits until the API answers, then the
+interface; prints the interface's address; and stops both together on
+Ctrl+C, or when either stops. Each runs in a process group of its own and
+is asked to stop with Ctrl+Break, so that the API stops the model worker;
+their own output is discarded. The development case sets take about 20
+seconds to load and verify, and the model about 16 seconds more.
+
+By default the API serves the invented case set with its scripted model,
+reading and writing nothing: a demonstration without data.
+`--operator-real` serves the development case sets with the model, and
+`--no-model` with the templates only.
+
+```powershell
+& $AppPython -m ehr_evidence_app.api.launch
+& $AppPython -m ehr_evidence_app.api.launch --operator-real
+```
 
 ## Commands
 
@@ -97,10 +193,14 @@ real connection; nothing is written:
 & $AppPython -m ehr_evidence_app.api.app
 ```
 
-`--serve` serves the development case sets with the model on
-127.0.0.1, taking the launch token from `EHR_API_TOKEN`; the launcher
-sets it:
+`--serve` serves on 127.0.0.1, taking the launch token from
+`EHR_API_TOKEN`: the invented case set, or with `--operator-real` the
+development case sets with the model. The interface takes the API's
+address and the token from `EHR_API_URL` and `EHR_API_TOKEN`. The
+launcher sets all three; the processes can be started by hand only for a
+diagnosis:
 
 ```powershell
-& $AppPython -m ehr_evidence_app.api.app --serve --port 8601
+& $AppPython -m ehr_evidence_app.api.app --serve --port 8601 --operator-real
+& $AppPython -m ehr_evidence_app.interface.serve --port 8501
 ```

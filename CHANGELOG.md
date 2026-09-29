@@ -32,6 +32,26 @@ serves the development case sets behind its access boundary
   answers failures with bare codes and logs routes only. The default mode
   checks every route and the boundary over a real loopback connection on
   the invented case set.
+- `interface` package (Phase 8, work items 48 to 52;
+  [docs/interface.md](docs/interface.md#the-interface)): the Streamlit
+  page (`interface.app`) with the case, scope and model state in the
+  sidebar and three views. Questions: each response with its outcome,
+  scope, author, seconds, text and references, the context cleared on a
+  case change and greyed, labelled with its scope, on a scope change. The
+  explanation: the prepared prediction with its score's fixed meaning,
+  never a percentage, the explanation with attribution labelled unsigned
+  and not causal, and the recorded conditions apart. The evidence: a
+  scope's coverage, visits, records and provenance, or every original
+  attribution with its link status. `interface.client` reaches the API
+  on 127.0.0.1 only; `interface.gate` checks the host, marks responses,
+  switches the server's access log off and, when the interface is shared,
+  admits the tunnel's requests only with the secret link's key or its
+  session cookie; `interface.serve` serves the page with Streamlit on
+  127.0.0.1 without usage statistics or error details.
+- `api.launch`: starts the API and the interface on 127.0.0.1 with a fresh
+  launch token, and stops both, the model worker included, on Ctrl+C;
+  the invented case set by default, the development case sets with
+  `--operator-real`.
 - `tracking.measurements`
   ([docs/experiment-tracking.md](docs/experiment-tracking.md#measurements)):
   each benchmark run of the generation is kept as a record in the

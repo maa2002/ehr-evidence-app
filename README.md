@@ -128,7 +128,7 @@ See [docs/data-handling.md](docs/data-handling.md).
 | [Natural-language QA](docs/qa.md) | Interpretation, scope, concept resolution and matching, answers, development suite |
 | [Validation](docs/validation.md) | Candidate contract, checks, explanations, release gate, mutation suite |
 | [Generation](docs/generation.md) | Model-written candidates: shape, schema, the model's view of the evidence, driver selection, prompt, adapter, limits, fallbacks, measurement |
-| [API and interface](docs/interface.md) | The local API, its routes and its access boundary |
+| [API and interface](docs/interface.md) | The local API, its routes, the interface, the access checks and the launcher |
 | [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, measurements, the model, lineage |
 | [Environments](docs/environments.md) | Application and GNN environments |
 | [Development](docs/development.md) | Set-up, tests, quality gates, CI, conventions, releases |

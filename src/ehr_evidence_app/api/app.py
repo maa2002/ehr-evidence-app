@@ -23,19 +23,23 @@ record (api.service). A refusal is a bare code.
 
 The default mode serves the invented case set on a free loopback port
 with a scripted model, and checks every route and the boundary over a real
-connection; nothing is written. --serve serves the development case sets
-with the model on 127.0.0.1 only, taking the launch token from the
-process environment (EHR_API_TOKEN), as the launcher (api.launch) sets
-it; it logs routes only, to the workspace's logs.
+connection; nothing is written. --serve serves on 127.0.0.1 only, taking
+the launch token from the process environment (EHR_API_TOKEN), as the
+launcher (api.launch) sets it: the invented case set and its scripted
+model, reading and writing nothing, or with --operator-real the
+development case sets with the model, logging routes only to the
+workspace's logs.
 
 Usage:
     python -m ehr_evidence_app.api.app
     python -m ehr_evidence_app.api.app --serve --port 8601
+    python -m ehr_evidence_app.api.app --serve --port 8601 --operator-real
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import socket
@@ -80,9 +84,18 @@ class ExplanationBody(BaseModel):
 def create_app(service, token, hosts, log=None):
     """Return the API application of a service behind its boundary: the
     launch token, the Host values it answers to and the access log (a
-    function of one line)."""
+    function of one line). The service's model is stopped when the
+    server shuts down."""
+
+    @contextlib.asynccontextmanager
+    async def lifespan(app):
+        """Stop the model when the server shuts down."""
+        yield
+        service.stop()
+
     api = FastAPI(title="EHR evidence app API", version=__version__,
-                  docs_url=None, redoc_url=None, openapi_url=None)
+                  docs_url=None, redoc_url=None, openapi_url=None,
+                  lifespan=lifespan)
 
     @api.exception_handler(services.ServiceError)
     async def refused(request, error):
@@ -283,25 +296,31 @@ def run_synthetic():
     return made[0], problems
 
 
-def serve(port, model=True):
-    """Serve the development case sets on 127.0.0.1 with the launch token
-    of the process environment; blocks until stopped."""
+def serve(port, real=False, model=True):
+    """Serve the invented case set and its scripted model, or with real
+    the development case sets and the model, on 127.0.0.1 with the launch
+    token of the process environment; blocks until stopped."""
     import uvicorn
     token = os.environ.get(boundary.TOKEN_VARIABLE, "")
     if len(token) < boundary.MIN_TOKEN_CHARS:
         print("FAILED: %s holds no launch token" % boundary.TOKEN_VARIABLE)
         return 2
-    service = services.Service.from_workspace()
-    if model:
-        from ehr_evidence_app.generation import runtime
-        service.use_backend(runtime.WorkerBackend())
-    app = create_app(service, token, boundary.loopback_hosts(port),
-                     boundary.file_log())
+    if not real:
+        service, log = invented_service(), None
+    else:
+        service, log = services.Service.from_workspace(), boundary.file_log()
+        if model:
+            from ehr_evidence_app.generation import runtime
+            service.use_backend(runtime.WorkerBackend())
+    app = create_app(service, token, boundary.loopback_hosts(port), log)
+    boundary.quiet_access_log()
     try:
         uvicorn.run(app, host="127.0.0.1", port=port, log_config=None,
                     access_log=False, log_level="warning",
                     server_header=False, date_header=False)
     finally:
+        # The shutdown already stopped the model; this covers a server
+        # that never started.
         service.stop()
     return 0
 
@@ -310,17 +329,28 @@ def main(argv=None):
     """Run the default mode, or serve the development case sets."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--serve", action="store_true",
-                        help="serve the development case sets on "
-                             "127.0.0.1 with the model")
+                        help="serve on 127.0.0.1: the invented case set, "
+                             "or with --operator-real the development ones")
+    parser.add_argument("--operator-real", action="store_true",
+                        help="serve the development case sets, with the "
+                             "model")
     parser.add_argument("--port", type=int, default=8601)
     parser.add_argument("--no-model", action="store_true",
-                        help="serve with the templates only")
+                        help="answer the development case sets with the "
+                             "templates only")
     args = parser.parse_args(argv)
+    if (args.operator_real or args.no_model) and not args.serve:
+        print("FAILED: --operator-real and --no-model go with --serve")
+        return 2
+    if args.no_model and not args.operator_real:
+        print("FAILED: --no-model goes with --operator-real")
+        return 2
     if args.serve:
         if not 1024 <= args.port <= 65535:
             print("FAILED: --port is a number from 1024 to 65535")
             return 2
-        return serve(args.port, model=not args.no_model)
+        return serve(args.port, real=args.operator_real,
+                     model=not args.no_model)
     made, problems = run_synthetic()
     for problem in problems:
         print("PROBLEM: %s" % problem)

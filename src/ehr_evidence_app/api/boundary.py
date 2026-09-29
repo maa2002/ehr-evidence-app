@@ -12,10 +12,11 @@ cached or sniffed and to send no referrer. An exception inside the API is
 answered with a bare code and logged by its type name only, so that
 nothing it holds reaches a console or a log.
 
-The access log holds each request's method, route (its template, such as
-/case-sets/{case_set}/cases/{case_number}; never the values in the path,
-nor the query), status and milliseconds, and nothing else. The log audit
-(generation.records) reads it.
+The server's own access log, which would hold every path and query, is
+switched off. The boundary's access log holds each request's method,
+route (its template, such as /case-sets/{case_set}/cases/{case_number};
+never the values in the path, nor the query), status and milliseconds,
+and nothing else. The log audit (generation.records) reads it.
 """
 
 from __future__ import annotations
@@ -51,6 +52,14 @@ class BodyTooLarge(Exception):
 def new_token():
     """Return a fresh launch token."""
     return secrets.token_urlsafe(32)
+
+
+def quiet_access_log():
+    """Switch the server's access log off, whatever configured it: it
+    would hold every path and query."""
+    access = logging.getLogger("uvicorn.access")
+    access.disabled = True
+    access.propagate = False
 
 
 def loopback_hosts(port):
@@ -104,9 +113,11 @@ class Boundary:
 
     def refusal(self, scope, headers):
         """Return (status, code) of a request the boundary refuses, or
-        None."""
+        None. A request must name exactly one host."""
         host = headers.get(b"host", b"").decode("latin-1")
-        if host not in self.hosts:
+        named = sum(name.lower() == b"host"
+                    for name, _ in scope.get("headers", []))
+        if host not in self.hosts or named != 1:
             return 403, "host_refused"
         if b"origin" in headers:
             return 403, "origin_refused"
@@ -156,6 +167,7 @@ class Boundary:
 
     async def __call__(self, scope, receive, send):
         """Answer one connection through the boundary."""
+        quiet_access_log()
         if scope["type"] == "lifespan":
             await self.app(scope, receive, send)
             return
