@@ -22,6 +22,11 @@ an attribution score and the model's score mean, the refusals and the
 clarifying questions. A notice may hold slots of its own (the user's
 term, suggested names, scopes) and never cites evidence.
 
+An answer about the whole record (a record bundle, evidence.record) is
+written the same way: its slots name records, visits and the person by
+reference, and a record's name, value, time and a person's age are
+rendered from them (validation.record_text).
+
 The released text and claims are rendered from a candidate's statements
 only, so no sentence reaches the user that is not a statement of the
 candidate. Whether a candidate may be released is decided by the checks of
@@ -50,8 +55,8 @@ from ehr_evidence_app.evidence.contracts import CaseRef, Frozen, \
 
 CANDIDATE_VERSION = "1.1"
 MAX_REFS = 50
-MAX_CLAIMS = 200
-MAX_TEXT = 20000
+MAX_CLAIMS = contracts.MAX_CLAIMS
+MAX_TEXT = contracts.MAX_TEXT
 MAX_STATEMENTS = 1000
 MATCH_WORDS = {"exact": "exact concept",
                "more_specific": "a more specific concept",
@@ -63,7 +68,9 @@ NOUNS = {"count": ("record", "records"),
          "records": ("record", "records"),
          "groups": ("distinct condition", "distinct conditions"),
          "matches": ("matching record", "matching records"),
-         "omitted": ("recorded concept", "recorded concepts")}
+         "omitted": ("recorded concept", "recorded concepts"),
+         "total": ("visit", "visits"),
+         "earlier": ("result", "results")}
 PLACEHOLDER = re.compile(r"\{([a-z]+)\}")
 
 EventRef = Annotated[str, StringConstraints(pattern=r"^E[1-9][0-9]{0,5}$")]
@@ -82,6 +89,23 @@ Logit = Annotated[float, Field(allow_inf_nan=False)]
 Rank = Annotated[int, Field(ge=1, le=10000)]
 DOMAIN_WORDS = {"condition": "diagnosis", "procedure": "procedure",
                 "drug": "medication"}
+RecordRef = Annotated[str, StringConstraints(pattern=r"^R[1-9][0-9]{0,5}$")]
+VisitRef = Annotated[str, StringConstraints(pattern=r"^V[1-9][0-9]{0,5}$")]
+TermName = Annotated[str, StringConstraints(min_length=1, max_length=255)]
+QuestionKind = Literal["condition", "procedure", "medication", "lab",
+                       "microbiology", "vital", "transfer", "icu_stay"]
+Selector = Literal["latest", "first", "highest", "lowest", "only"]
+RecordField = Literal["sex", "age", "race", "language", "insurance",
+                      "marital_status", "death", "admitted", "discharged",
+                      "length", "type", "admitted_from", "discharged_to",
+                      "hospital_death", "summary"]
+RecordMatch = Literal["item", "group", "ingredient", "class", "brand",
+                      "name", "exact", "more_specific", "icd_code",
+                      "more_specific_icd_code", "icd_description"]
+# The record tasks a statement kind about the record may answer.
+RECORD_LISTS = ("record_list",)
+RECORD_ITEMS = ("record_presence", "record_timing", "record_count",
+                "record_values", "record_abnormal")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -101,6 +125,12 @@ class Kind:
     task: str | None
     outcomes: tuple
     depth: int = 0
+    tasks: tuple = ()
+
+    def answers(self, task):
+        """Return True when a statement of this kind may answer a
+        task."""
+        return task in self.tasks if self.tasks else task == self.task
 
 
 KINDS = {
@@ -131,14 +161,69 @@ KINDS = {
     "driver_context": Kind(("driver", "count"), "events",
                            "prediction_explanation", ("explanation",),
                            depth=2),
+    # Answers about the whole record (qa.record_answer).
+    "record_list_summary": Kind(("items", "scope", "records"), "none",
+                                None, ("answer",), tasks=RECORD_LISTS),
+    "record_list_item": Kind(("item", "count", "visits"), "records", None,
+                             ("answer",), depth=1, tasks=RECORD_LISTS),
+    "record_stay_item": Kind(("item", "value"), "records", None,
+                             ("answer",), depth=1, tasks=RECORD_LISTS),
+    "record_list_empty": Kind(("kind", "scope"), "coverage", None,
+                              ("not_recorded",),
+                              tasks=RECORD_LISTS + RECORD_ITEMS),
+    "record_presence_summary": Kind(("item", "scope", "matches"), "none",
+                                    None, ("answer",),
+                                    tasks=("record_presence",
+                                           "record_timing")),
+    "record_presence_item": Kind(("item", "count", "visits",
+                                  "how"), "records", None,
+                                 ("answer",), depth=1,
+                                 tasks=("record_presence",)),
+    "record_absent": Kind(("item", "scope"), "coverage", None,
+                          ("not_recorded",), tasks=RECORD_ITEMS),
+    "record_time": Kind(("selector", "item", "when", "visit"), "records",
+                        None, ("answer",), depth=1,
+                        tasks=("record_timing",)),
+    "record_count": Kind(("item", "count", "scope", "visits"), "records",
+                         None, ("answer",), tasks=("record_count",)),
+    "record_count_kind": Kind(("items", "scope", "records"), "records",
+                              None, ("answer",), tasks=("record_count",)),
+    "record_value": Kind(("selector", "item", "value", "when", "visit"),
+                         "records", None, ("answer",),
+                         tasks=("record_values",)),
+    "record_value_group": Kind(("item", "count"), "none", None,
+                               ("answer",), tasks=("record_values",
+                                                   "record_abnormal")),
+    "record_value_item": Kind(("value", "when", "visit"), "records", None,
+                              ("answer",), depth=1,
+                              tasks=("record_values", "record_abnormal")),
+    "record_abnormal_summary": Kind(("item", "scope", "matches"), "none",
+                                    None, ("answer",),
+                                    tasks=("record_abnormal",)),
+    "record_abnormal_absent": Kind(("item", "scope"), "coverage", None,
+                                   ("not_recorded",),
+                                   tasks=("record_abnormal",)),
+    "visit_summary": Kind(("total", "scope"), "none", None,
+                          ("answer",), tasks=("visit_details",)),
+    "visit_fact": Kind(("visit", "field"), "visit", None, ("answer",),
+                       depth=1, tasks=("visit_details",
+                                       "person_details")),
+    "person_fact": Kind(("field",), "person", None, ("answer",),
+                        tasks=("person_details",)),
+    "person_age": Kind(("visit", "field"), "person_visit", None,
+                       ("answer",), depth=1, tasks=("person_details",)),
     "notice": Kind((), "none", None, vocab.RELEASED_TEXT_OUTCOMES),
 }
 StatementKind = Literal[tuple(KINDS)]
 
-SUPPORTED = ("It can list the conditions recorded within the selected scope, "
-             "or check whether a named condition is recorded there.")
-ASK = ("Ask for the list of conditions recorded within the selected scope, "
-       "or whether one named condition is recorded there.")
+SUPPORTED = ("It answers questions about what the record holds within the "
+             "selected scope: conditions, procedures, medications, "
+             "laboratory results, microbiology, vital signs, transfers "
+             "and ICU stays, the visits and the person's details.")
+ASK = ("Ask what the record holds within the selected scope: for example "
+       "the list of conditions or medications, whether one named "
+       "condition, medication or test is recorded, or the results of a "
+       "test.")
 UNSUPPORTED = {
     "treatment": "Treatment and management questions are outside what this "
                  "application answers.",
@@ -146,12 +231,12 @@ UNSUPPORTED = {
                  "outside what this application answers.",
     "diagnosis_request": "This application does not diagnose. It reports "
                          "what is recorded.",
-    "other_data": "Only recorded conditions (diagnoses) can be queried here; "
-                  "medications, procedures, results and notes cannot.",
-    "time_or_count": "Questions about dates, times, the order of events or "
-                     "the number of times something was recorded are "
-                     "outside what this application answers; the visits "
-                     "are chosen with the scope selector.",
+    "other_data": "This question asks about a kind of record that was "
+                  "not recognised, such as notes or imaging reports, "
+                  "which the record here does not hold.",
+    "time_or_count": "This question about dates, times or counts could not "
+                     "be interpreted; the visits are chosen with the scope "
+                     "selector.",
     "ranking": "Questions about which condition is first, main or most "
                "important are outside what this application answers: the "
                "recorded conditions are not ranked.",
@@ -273,6 +358,53 @@ NOTICES = {
                                      "could not be read completely, so no "
                                      "explanation is given.",
                                      ("abstention",)),
+    # Answers about the whole record.
+    "record_list_complete": Notice("The list is complete for the records "
+                                   "of this kind within the selected "
+                                   "scope.", ("answer",), "record_list"),
+    "values_omitted": Notice("Earlier results are not listed here and are "
+                             "kept in the evidence: {earlier}.",
+                             ("answer",)),
+    "not_flagged": Notice("A result without the laboratory's abnormal flag "
+                          "is not stated to be normal.",
+                          ("answer", "not_recorded"), "record_abnormal"),
+    "vital_no_flag": Notice("Vital signs carry no abnormal flag in the "
+                            "record, so the highest or lowest value is "
+                            "shown instead.", ("answer", "not_recorded"),
+                            "record_values"),
+    "vitals_icu_only": Notice("Vital signs and ICU procedures are charted "
+                              "during ICU stays only.",
+                              ("answer", "not_recorded")),
+    "dates_shifted": Notice("Dates are shifted by the de-identification of "
+                            "MIMIC-IV, by the same interval for all of this "
+                            "patient's records.", ("answer",)),
+    "age_meaning": Notice("Ages are the anchor age MIMIC-IV records for the "
+                          "patient plus the years to the visit, so they can "
+                          "be one more than the age on the day; ages above "
+                          "the range it gives exactly are given only as a "
+                          "lower bound.",
+                          ("answer",),
+                          "person_details"),
+    "death_meaning": Notice("A date of death comes from the hospital, or "
+                            "from state records up to one year after the "
+                            "last discharge; no date of death is not a "
+                            "statement that the patient is alive.",
+                            ("answer",), "person_details"),
+    "several_kinds": Notice("\"{term}\" names more than one kind of record: "
+                            "{options}. Which one do you mean?",
+                            ("clarification",)),
+    "item_suggested": Notice("\"{term}\" was not found as the name of a "
+                             "test, medication, procedure or other record. "
+                             "Did you mean: {labels}?", ("clarification",)),
+    "item_unknown": Notice("Which test, medication or procedure do you "
+                           "mean? \"{term}\" was not found as the name of "
+                           "one.", ("clarification",)),
+    "item_missing": Notice("Which test, medication or procedure do you "
+                           "mean? Name it to ask about it.",
+                           ("clarification",)),
+    "item_too_broad": Notice("\"{term}\" names too many tests or items to "
+                             "answer at once. Name a more specific one.",
+                             ("clarification",)),
 }
 # The notice that discloses each restriction of an explanation.
 RESTRICTION_NOTICES = {"batch_sensitive_prediction": "batch_sensitive",
@@ -304,6 +436,29 @@ class ConditionName(Frozen):
         return self
 
 
+class ItemCount(Frozen):
+    """A count of distinct items of one kind of record."""
+
+    kind: QuestionKind
+    count: Count
+
+
+class ItemName(Frozen):
+    """How a statement about the record names what it is about: by a
+    record of the bundle, or by the names a question's phrase resolved
+    to (as the dictionary writes them)."""
+
+    record: Optional[RecordRef] = None
+    terms: tuple[TermName, ...] = Field(default=(), max_length=50)
+
+    @model_validator(mode="after")
+    def _one_source(self):
+        """Exactly one of a record or terms names the item."""
+        if (self.record is not None) == bool(self.terms):
+            raise ValueError("an item is named by a record or by terms")
+        return self
+
+
 class Slots(Frozen):
     """The facts of one statement; its kind decides which it has."""
 
@@ -327,6 +482,21 @@ class Slots(Frozen):
     driver: Optional[AttributionRef] = None
     rank: Optional[Rank] = None
     omitted: Optional[Count] = None
+    kind: Optional[QuestionKind] = None
+    item: Optional[ItemName] = None
+    value: Optional[RecordRef] = None
+    when: Optional[RecordRef] = None
+    visit: Optional[VisitRef] = None
+    selector: Optional[Selector] = None
+    field: Optional[RecordField] = None
+    how: Optional[RecordMatch] = None
+    items: Optional[ItemCount] = None
+    total: Optional[Count] = None
+    earlier: Optional[Count] = None
+    options: Optional[tuple[QuestionKind, ...]] = Field(default=None,
+                                                        max_length=8)
+    labels: Optional[tuple[TermName, ...]] = Field(default=None,
+                                                   max_length=20)
 
     def filled(self):
         """Return the names of the slots that hold a value."""
@@ -440,7 +610,7 @@ def counted(name, number):
 
 def bundle_events(bundle):
     """Return a bundle's events by reference."""
-    if bundle is None:
+    if bundle is None or getattr(bundle, "kind", None) == "record":
         return {}
     events = getattr(bundle, "events", None)
     if events is None:
@@ -456,6 +626,11 @@ class Lookup:
     def __init__(self, bundle=None, concept_name=None):
         """Index the bundle's records, drivers and concepts."""
         self.events = bundle_events(bundle)
+        self.records = {entry.ref: entry for entry in
+                        getattr(bundle, "records", ()) or ()}
+        self.visit_refs = {visit.ref: visit for visit in
+                           getattr(bundle, "visits", ()) or ()}
+        self.person = getattr(bundle, "person", None)
         self.attributions = {item.ref: item for item in
                              getattr(bundle, "attributions", ())}
         self.concepts = {}
@@ -479,6 +654,18 @@ class Lookup:
         """Return True when a concept can be named."""
         return concept in self.concepts or (
             self.concept_name(concept) is not None)
+
+    def record(self, ref):
+        """Return a record of the bundle."""
+        if ref not in self.records:
+            raise CandidateError("record_not_in_bundle")
+        return self.records[ref]
+
+    def visit(self, ref):
+        """Return a visit of the bundle."""
+        if ref not in self.visit_refs:
+            raise CandidateError("visit_not_in_bundle")
+        return self.visit_refs[ref]
 
 
 def condition_text(kind, name, lookup):
@@ -528,7 +715,54 @@ def slot_text(statement, name, lookup):
         return shown(value)
     if name in ("term", "rank"):
         return str(value)
+    if name in RECORD_SLOTS:
+        return record_slot_text(statement, name, value, lookup)
     return counted(name, value)
+
+
+RECORD_SLOTS = ("kind", "items", "item", "value", "when", "visit",
+                "selector", "field", "how", "options", "labels")
+
+
+def record_slot_text(statement, name, value, lookup):
+    """Return the text of a slot of a statement about the record."""
+    from ehr_evidence_app.validation import record_text as words
+    if name == "kind":
+        return words.kind_word(value)
+    if name == "items":
+        return words.items_text(value.count, value.kind)
+    if name == "item":
+        if value.record is not None:
+            return words.record_name(lookup.record(value.record))
+        return "; ".join(value.terms)
+    if name == "value":
+        return words.value_text(lookup.record(value))
+    if name == "when":
+        return words.when_text(lookup.record(value))
+    if name == "visit":
+        return words.visit_text(lookup.visit(value))
+    if name == "selector":
+        return words.SELECTOR_WORDS[value]
+    if name == "how":
+        return words.MATCH_WORDS[value]
+    if name == "options":
+        return ", ".join(words.kind_word(kind, plural=True)
+                         for kind in value)
+    if name == "labels":
+        return "; ".join(value)
+    return field_text(statement, value, lookup)
+
+
+def field_text(statement, field, lookup):
+    """Return a visit's or the person's field as a statement shows it."""
+    from ehr_evidence_app.validation import record_text as words
+    if statement.kind == "visit_fact":
+        return words.visit_field(field, lookup.visit(statement.slots.visit))
+    if lookup.person is None:
+        raise CandidateError("person_not_in_bundle")
+    visit = (lookup.visit(statement.slots.visit)
+             if statement.slots.visit is not None else None)
+    return words.person_field(field, lookup.person, visit)
 
 
 def shown(value):

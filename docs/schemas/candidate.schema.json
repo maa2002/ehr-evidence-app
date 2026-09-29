@@ -89,6 +89,70 @@
       "title": "ConditionName",
       "type": "object"
     },
+    "ItemCount": {
+      "additionalProperties": false,
+      "description": "A count of distinct items of one kind of record.",
+      "properties": {
+        "count": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "condition",
+            "procedure",
+            "medication",
+            "lab",
+            "microbiology",
+            "vital",
+            "transfer",
+            "icu_stay"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "count"
+      ],
+      "title": "ItemCount",
+      "type": "object"
+    },
+    "ItemName": {
+      "additionalProperties": false,
+      "description": "How a statement about the record names what it is about: by a\nrecord of the bundle, or by the names a question's phrase resolved\nto (as the dictionary writes them).",
+      "properties": {
+        "record": {
+          "anyOf": [
+            {
+              "pattern": "^R[1-9][0-9]{0,5}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Record"
+        },
+        "terms": {
+          "default": [],
+          "items": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Terms",
+          "type": "array"
+        }
+      },
+      "title": "ItemName",
+      "type": "object"
+    },
     "ScopeRef": {
       "additionalProperties": false,
       "description": "An explicit record scope; only a selected visit names its visit.",
@@ -165,6 +229,49 @@
           "default": null,
           "title": "Driver"
         },
+        "earlier": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Earlier"
+        },
+        "field": {
+          "anyOf": [
+            {
+              "enum": [
+                "sex",
+                "age",
+                "race",
+                "language",
+                "insurance",
+                "marital_status",
+                "death",
+                "admitted",
+                "discharged",
+                "length",
+                "type",
+                "admitted_from",
+                "discharged_to",
+                "hospital_death",
+                "summary"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Field"
+        },
         "groups": {
           "anyOf": [
             {
@@ -179,6 +286,75 @@
           "default": null,
           "title": "Groups"
         },
+        "how": {
+          "anyOf": [
+            {
+              "enum": [
+                "item",
+                "group",
+                "ingredient",
+                "class",
+                "brand",
+                "name",
+                "exact",
+                "more_specific",
+                "icd_code",
+                "more_specific_icd_code",
+                "icd_description"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "How"
+        },
+        "item": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ItemName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "items": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ItemCount"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "condition",
+                "procedure",
+                "medication",
+                "lab",
+                "microbiology",
+                "vital",
+                "transfer",
+                "icu_stay"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        },
         "label": {
           "anyOf": [
             {
@@ -191,6 +367,24 @@
           ],
           "default": null,
           "title": "Label"
+        },
+        "labels": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 20,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Labels"
         },
         "logit": {
           "anyOf": [
@@ -268,6 +462,32 @@
           "default": null,
           "title": "Omitted"
         },
+        "options": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "condition",
+                  "procedure",
+                  "medication",
+                  "lab",
+                  "microbiology",
+                  "vital",
+                  "transfer",
+                  "icu_stay"
+                ],
+                "type": "string"
+              },
+              "maxItems": 8,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Options"
+        },
         "rank": {
           "anyOf": [
             {
@@ -331,6 +551,25 @@
           "default": null,
           "title": "Score"
         },
+        "selector": {
+          "anyOf": [
+            {
+              "enum": [
+                "latest",
+                "first",
+                "highest",
+                "lowest",
+                "only"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selector"
+        },
         "term": {
           "anyOf": [
             {
@@ -345,6 +584,20 @@
           "default": null,
           "title": "Term"
         },
+        "total": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total"
+        },
         "unmapped": {
           "anyOf": [
             {
@@ -358,6 +611,32 @@
           ],
           "default": null,
           "title": "Unmapped"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "pattern": "^R[1-9][0-9]{0,5}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "visit": {
+          "anyOf": [
+            {
+              "pattern": "^V[1-9][0-9]{0,5}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visit"
         },
         "visits": {
           "anyOf": [
@@ -376,6 +655,19 @@
           ],
           "default": null,
           "title": "Visits"
+        },
+        "when": {
+          "anyOf": [
+            {
+              "pattern": "^R[1-9][0-9]{0,5}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "When"
         }
       },
       "title": "Slots",
@@ -399,6 +691,25 @@
             "driver",
             "driver_history",
             "driver_context",
+            "record_list_summary",
+            "record_list_item",
+            "record_stay_item",
+            "record_list_empty",
+            "record_presence_summary",
+            "record_presence_item",
+            "record_absent",
+            "record_time",
+            "record_count",
+            "record_count_kind",
+            "record_value",
+            "record_value_group",
+            "record_value_item",
+            "record_abnormal_summary",
+            "record_abnormal_absent",
+            "visit_summary",
+            "visit_fact",
+            "person_fact",
+            "person_age",
             "notice"
           ],
           "title": "Kind",
@@ -443,7 +754,20 @@
                 "target_excluded",
                 "explanation_ineligible",
                 "no_positive_attribution",
-                "explanation_incomplete"
+                "explanation_incomplete",
+                "record_list_complete",
+                "values_omitted",
+                "not_flagged",
+                "vital_no_flag",
+                "vitals_icu_only",
+                "dates_shifted",
+                "age_meaning",
+                "death_meaning",
+                "several_kinds",
+                "item_suggested",
+                "item_unknown",
+                "item_missing",
+                "item_too_broad"
               ],
               "type": "string"
             },
@@ -457,7 +781,7 @@
         "refs": {
           "default": [],
           "items": {
-            "pattern": "^[VEPAC][1-9][0-9]{0,5}$",
+            "pattern": "^[VEPACRD][1-9][0-9]{0,5}$",
             "type": "string"
           },
           "maxItems": 5000,
@@ -470,21 +794,34 @@
             "condition": null,
             "count": null,
             "driver": null,
+            "earlier": null,
+            "field": null,
             "groups": null,
+            "how": null,
+            "item": null,
+            "items": null,
+            "kind": null,
             "label": null,
+            "labels": null,
             "logit": null,
             "match": null,
             "matches": null,
             "names": null,
             "omitted": null,
+            "options": null,
             "rank": null,
             "records": null,
             "requested": null,
             "scope": null,
             "score": null,
+            "selector": null,
             "term": null,
+            "total": null,
             "unmapped": null,
-            "visits": null
+            "value": null,
+            "visit": null,
+            "visits": null,
+            "when": null
           }
         },
         "wording": {
@@ -608,7 +945,15 @@
           "enum": [
             "condition_list",
             "condition_presence",
-            "prediction_explanation"
+            "prediction_explanation",
+            "record_list",
+            "record_presence",
+            "record_timing",
+            "record_count",
+            "record_values",
+            "record_abnormal",
+            "visit_details",
+            "person_details"
           ],
           "type": "string"
         },

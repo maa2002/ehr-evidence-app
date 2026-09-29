@@ -65,6 +65,8 @@ in the registry, and the next stage reads the record only through that pin.
 | Preparation: identity mapping, model outputs, case facts, admission | `casesets.prepare` | GNN environment, CUDA | `case-preparation\<label>` |
 | Event linkage | `gnn.linkage --case-set` | GNN environment, CPU | `evidence\event-linkage-<label>` |
 | Evidence bundles | `evidence.bundles --case-set` | application environment | `evidence-bundles\<label>` |
+| Raw records | `sources.mimic` (every case set at once) | application environment | `source-records\<label>` |
+| Record bundles | `evidence.record_bundles --case-set` | application environment | `evidence-bundles\<label>-records-v1` |
 
 The selection reads the pinned graph collection on the CPU for subjects,
 diagnosis-label presence and visit identifiers only; no model is loaded.

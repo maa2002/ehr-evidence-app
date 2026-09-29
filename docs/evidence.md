@@ -24,6 +24,7 @@ session set-up in [development.md](development.md#session-set-up).
 | 27 | `evidence.retrieval` | Scoped retrieval with an explicit coverage record |
 | 28 | `gnn.linkage`, `evidence.policy` | Driver-to-event linkage record; evidence claim policy |
 | 29, 30 | `evidence.bundles` | QA and explanation bundle sets |
+| 52.3 | `evidence.record`, `evidence.record_bundles` | Record bundles: the whole record of a case, scope by scope |
 
 Closed vocabularies (tasks, scopes, outcomes, reason codes, coverage states,
 visit roles, attachment classes, link states) are fixed in
@@ -176,6 +177,55 @@ For every admitted case, one bundle (`exp-c01`, ...) holding:
 The builder checks each driver's closure attachment against the visits its
 linkage entry lists, and the bundle's eligibility against the closure
 record.
+
+## Record bundles
+
+Questions about the whole record ([ADR 0021](decisions/0021-the-whole-record.md))
+are answered from record bundles, one per case and scope like the QA
+bundles (`rec-c01-history`, `rec-c01-visit-1`, `rec-c01-all`). A record
+bundle holds the person (`D1`: sex, anchor age and year, date of death),
+the scope's visits (`V` and the visit's number) with their admissions
+(type, locations, times, death in hospital, insurance, language, marital
+status, race), every record of those visits (`R1`..) and a coverage
+(`C1`) of every kind:
+
+| Kind | Source | Holds |
+| --- | --- | --- |
+| condition, procedure, medication | OMOP snapshot | concept, source code and dates; a medication's ingredients and ATC classes, and its prescription's dose and route |
+| lab | raw laboratory results | test, fluid and category, value, unit, reference range, flag, time |
+| microbiology | raw microbiology | specimen, test, organism, antibiotic, interpretation, time |
+| vital | raw ICU chart events | the vital sign, its value and unit, time |
+| transfer, icu_stay | raw transfers and ICU stays | care unit, event, times, length |
+| icu_procedure | raw ICU procedure events | the procedure, its value, category and times |
+
+A raw row belongs to a case visit when its admission is the one the
+snapshot records for the visit (`visit_source_value`,
+"subject_id|hadm_id"); the person's other rows are counted as outside
+the case visits and never delivered, and a history bundle counts the
+final admission's records it leaves out. A medication's ingredients and
+classes come from the pinned record vocabulary (`qa.record_vocabulary`);
+its dose and route from the raw prescription it was made from, found by
+the source ETL's own keys (admission, start and stop times, and the NDC,
+else the drug's name and strength), and attached only when every
+prescription that fits them agrees. Names are never invented: a record
+without a standard concept keeps its source description, or its written
+drug name. The record types enforce that a record holds the fields of its
+kind only and that the coverage counts agree with the records.
+
+| Measure | `pilot-10-v1` | `dev-30-v1` | `eval-100-v1` |
+| --- | --- | --- | --- |
+| Record bundles | 58 | 135 | 519 |
+| Records in case visits (all-visits scope) | 5,270 | 29,514 | 81,297 |
+| Laboratory results | 3,531 | 13,390 | 43,002 |
+| Vital-sign records | 294 | 11,001 | 21,092 |
+| Medications (with dose, without a standard concept) | 887 (871, 385) | 3,209 (2,984, 1,455) | 11,223 (10,709, 4,777) |
+| Microbiology, transfers, ICU stays, ICU procedures | 41, 121, 1, 6 | 321, 318, 20, 146 | 1,199, 1,187, 46, 282 |
+| Largest bundle (records, bytes) | 1,479, 1,048,833 | 3,999, 2,825,542 | 6,975, 4,870,133 |
+
+```powershell
+& $AppPython -m ehr_evidence_app.evidence.record_bundles
+& $AppPython -m ehr_evidence_app.evidence.record_bundles --operator-real --case-set dev-30-v1
+```
 
 ## Claim policy
 

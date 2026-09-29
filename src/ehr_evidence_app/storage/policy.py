@@ -27,11 +27,11 @@ Missing leaves are allowed; nothing beneath the first missing component exists
 to be inspected.
 
 Source access is the other half: the legacy export directory on C: is a
-read-only copy source, the Athena vocabulary directory in the cold archive
-is a read-only vocabulary source, the configured PostgreSQL database on
-loopback is a read-only connection source, and psql runs from an
-allow-listed environment whose read-only options cannot be overridden by
-inherited settings.
+read-only copy source, the Athena vocabulary directory and the raw
+MIMIC-IV directory in the cold archive are read-only sources, the
+configured PostgreSQL database on loopback is a read-only connection
+source, and psql runs from an allow-listed environment whose read-only
+options cannot be overridden by inherited settings.
 
 These are checks at one moment. They cannot stop a concurrent external change
 to the filesystem made after the check and before the write.
@@ -65,8 +65,11 @@ ROOT_NAMES = {"workspace": PRIVATE_ROOT, "runtime": RUNTIME_ROOT}
 DRIVE_FIXED = 3
 LEGACY_SOURCE_DIR = "C:\\omop_export"
 # The Athena vocabulary release in the cold archive: vocabulary only, no
-# patient data. Read-only, and only by the condition vocabulary build.
+# patient data. Read-only, and only by the vocabulary builds.
 VOCABULARY_SOURCE_DIR = "W:\\Industry Dataset\\Athena"
+# The raw MIMIC-IV 3.1 hospital and ICU modules in the cold archive:
+# credentialed patient data. Read-only, and only by the record extraction.
+RAW_SOURCE_DIR = "W:\\Industry Dataset\\mimic-iv-3.1"
 
 ALLOWED_SOURCE_HOSTS = ("127.0.0.1", "::1", "localhost")
 REQUIRED_SOURCE_DATABASE = "mimiciv_omop"
@@ -595,6 +598,34 @@ def vocabulary_source_problem(path, directory=VOCABULARY_SOURCE_DIR):
         return problem
     if not os.path.isfile(path):
         return "vocabulary file is missing"
+    return None
+
+
+def raw_source_problem(path, directory=RAW_SOURCE_DIR):
+    """Return why path is not a readable raw MIMIC-IV source file, else None.
+
+    The directory must be exactly the raw MIMIC-IV directory, or a
+    directory under the policy anchor outside the disposable runtime root.
+    The file must lie beneath it and be a plain regular file reached
+    without symlinks, junctions or reparse points. Raw sources are read,
+    never written.
+    """
+    for label, value in (("raw directory", directory), ("raw file", path)):
+        problem = path_problem(value)
+        if problem:
+            return "%s: %s" % (label, problem)
+    if not (ntpath.normcase(directory) == ntpath.normcase(RAW_SOURCE_DIR)
+            or (is_within(directory, POLICY_ANCHOR, strict=True)
+                and not is_within(directory, RUNTIME_ROOT))):
+        return ("raw directory must be %s or lie under %s outside the "
+                "runtime root" % (RAW_SOURCE_DIR, POLICY_ANCHOR))
+    if not is_within(path, directory, strict=True):
+        return "raw file must lie beneath its directory"
+    problem = filesystem_problem(path, "file")
+    if problem:
+        return problem
+    if not os.path.isfile(path):
+        return "raw file is missing"
     return None
 
 

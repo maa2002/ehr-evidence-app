@@ -23,6 +23,7 @@ session set-up in [development.md](development.md#session-set-up).
 | 39 | `validation.language` | Wording rules for every outcome; dates and recurrence | done |
 | 40 | `validation.gate` | The release gate | done |
 | 40.1 | `validation.mutations` | Mutation suite: every error class applied to correct responses | done |
+| 52.6 | `validation.record_text`, `validation.record_support` | How the facts of answers about the whole record are shown; their support | done |
 
 ## Candidates
 
@@ -140,6 +141,25 @@ statement of an answer says. Any failure is `claim_unsupported`.
 
 Refusals and clarifying questions state no recorded facts and have nothing
 to support.
+
+### Answers about the whole record
+
+An answer about the record (`qa.record_answer`) names records, visits and
+the person by reference (`R`, `V`, `D1`), and its text is rendered from
+them (`validation.record_text`), so no value, time, date or age is typed.
+Its statement kinds, their citations and their order are checked like
+the others, and `validation.record_support` decides whether the right
+records were chosen and none was left out: a list names every item of
+the kind once and cites each record once; a presence answer cites every
+record that matches, each by the match kind the resolver finds; a time
+answer's first and last records are the earliest and latest; a count is
+the number of matching records; a value is the one its selector picks
+for its item, and every matching item is answered; flagged results are
+every flagged result of the matching items; visits' and the person's
+details cover every visit of the scope; and the disclosure of records
+without a standard concept follows the scope. The wording rules are
+unchanged: the words "latest", "highest" and the like are slots of a
+statement, rendered from its selector, never typed.
 
 ## Wording
 

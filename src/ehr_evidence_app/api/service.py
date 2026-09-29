@@ -10,6 +10,11 @@ its protected runtime record. What a request returns is the gate's
 response, exactly, with who wrote it and the seconds it took; nothing the
 gate withheld is returned.
 
+A question about the whole record (qa.record_answer) is answered from
+the case set's record bundles when they are published and pinned, with
+the item dictionaries of its raw extract and the medication and
+procedure vocabulary; the templates write those answers.
+
 Only the development case sets are served (decision D3), so that the
 evaluation set's cases are not seen before the final evaluation. The
 evidence is arranged for display without the native database identifiers
@@ -32,7 +37,7 @@ import uuid
 
 from ehr_evidence_app.evidence import contracts
 from ehr_evidence_app.generation import adapter, records
-from ehr_evidence_app.qa import answer
+from ehr_evidence_app.qa import answer, record_answer
 from ehr_evidence_app.validation import explanation
 
 SERVED = ("dev-30-v1", "pilot-10-v1")
@@ -55,18 +60,40 @@ class ServiceError(Exception):
 @dataclasses.dataclass(frozen=True)
 class Source:
     """What one case set is answered from: its QA bundle set, its
-    explanation bundles with their SHA-256 by case number, and its
-    admitted cases by case number."""
+    explanation bundles with their SHA-256 by case number, its admitted
+    cases by case number and, when published, what questions about the
+    whole record are answered from (qa.record_answer.RecordContext)."""
 
     label: str
     bundle_set: answer.BundleSet
     explanations: dict
     cases: dict
+    records: object = None
 
 
-def workspace_source(label):
+def record_context(label, drugs, conditions):
+    """Return the RecordContext of a served case set, or None when its
+    record bundles or its extract are not published and pinned."""
+    from ehr_evidence_app.evidence import record_bundles
+    from ehr_evidence_app.qa import record_resolve
+    from ehr_evidence_app.sources import mimic
+    if (record_bundles.PINS.get(label) is None
+            or mimic.EXTRACT_PINS.get(label) is None or drugs is None):
+        return None
+    records = record_answer.load_record_set(record_bundles.pinned(label))
+    tables = mimic.read_files(label, ("d_labitems.csv", "d_items.csv",
+                                      mimic.NAMES_FILE))
+    labs, items, micro, units = record_resolve.extract_dictionaries({
+        name[:-4]: rows for name, rows in tables.items()})
+    return record_answer.RecordContext(records, record_resolve.Terms(
+        labs, items, micro, units, drugs, drugs.procedure_names,
+        conditions))
+
+
+def workspace_source(label, drugs=None, conditions=None):
     """Return the source of a served case set, every input verified
-    against its pin."""
+    against its pin; drugs and conditions are the record and condition
+    vocabularies questions about the record resolve against."""
     from ehr_evidence_app.evidence import readers
     from ehr_evidence_app.gnn import mapping
     if label not in SERVED:
@@ -78,10 +105,26 @@ def workspace_source(label):
                              else label)
     admitted = {case.case_number: case
                 for case in readers.read_cases(plan).cases if case.admitted}
-    return Source(label, bundle_set, found, admitted)
+    return Source(label, bundle_set, found, admitted,
+                  record_context(label, drugs, conditions))
 
 
-def invented_source():
+def invented_records(vocabulary):
+    """Return the RecordContext of the invented case set, held in
+    memory."""
+    from ehr_evidence_app.evidence import record_bundles
+    from ehr_evidence_app.validation import record_support
+    bundles, _ = record_bundles.run_synthetic()
+    manifest = record_bundles.manifest_document(
+        bundles, bundles[0].provenance, {}, "synthetic-records")
+    records = record_answer.RecordSet(
+        bundles[0].case.case_set, None, manifest,
+        bundles={bundle.bundle_id: bundle for bundle in bundles})
+    return record_answer.RecordContext(
+        records, record_support.synthetic_terms(vocabulary))
+
+
+def invented_source(vocabulary=None):
     """Return the source of the invented case set, held in memory."""
     from ehr_evidence_app.evidence import bundles
     from ehr_evidence_app.qa import suite
@@ -92,7 +135,8 @@ def invented_source():
                       bundles.bundle_bytes(bundle)).hexdigest())
                    for bundle in found},
                   {case.case_number: case for case in case_set.cases
-                   if case.admitted})
+                   if case.admitted},
+                  invented_records(vocabulary or suite.synthetic_vocabulary()))
 
 
 # --------------------------------------------------------------------------
@@ -185,8 +229,9 @@ def scope_view(scope):
     return found
 
 
-def qa_evidence_view(bundle):
-    """Return the evidence of a QA bundle as displayed."""
+def qa_evidence_view(bundle, whole=None):
+    """Return the evidence of a QA bundle as displayed, and the whole
+    record of the scope when its record bundle is given."""
     numbers = {visit.ref: visit.visit_number for visit in bundle.visits}
     return {"kind": "scope", "scope": scope_view(bundle.scope),
             "bundle": {"bundle_id": bundle.bundle_id},
@@ -194,7 +239,38 @@ def qa_evidence_view(bundle):
             "records": [record_view(event, numbers)
                         for event in bundle.events],
             "coverage": coverage_view(bundle.coverage, bundle.events),
-            "provenance": provenance_view(bundle.provenance)}
+            "provenance": provenance_view(bundle.provenance),
+            "record": whole_record_view(whole) if whole is not None
+            else None}
+
+
+def whole_record_view(bundle):
+    """Return a scope's record bundle as displayed: the person, each
+    visit with its admission, every record with its visit's number, the
+    coverage of every kind and the provenance; no native identifier."""
+    numbers = {visit.ref: visit.visit_number for visit in bundle.visits}
+    inputs = {}
+    for field in ("source_snapshot", "record_extract", "identity_mapping",
+                  "closure_record", "concept_table", "drug_ancestors"):
+        item = getattr(bundle.provenance, field)
+        if item is not None:
+            inputs[field] = {"name": item.name, "sha256": item.sha256}
+    return {
+        "bundle": {"bundle_id": bundle.bundle_id},
+        "person": bundle.person.model_dump(mode="json",
+                                           exclude={"native_id"}),
+        "visits": [visit.model_dump(mode="json", exclude={
+            "admission": {"native_id"}}) for visit in bundle.visits],
+        "records": [dict(entry.model_dump(
+            mode="json", exclude={"native_id", "source", "ancestors"}),
+            visit_number=numbers[entry.visit_ref])
+            for entry in bundle.records],
+        "coverage": [item.model_dump(mode="json")
+                     for item in bundle.coverage.kinds],
+        "statement": bundle.coverage.statement,
+        "provenance": {"inputs": inputs,
+                       "schema_version": bundle.provenance.schema_version,
+                       "builder": bundle.provenance.builder}}
 
 
 def prediction_evidence_view(bundle):
@@ -259,17 +335,21 @@ class Service:
     def from_workspace(cls, labels=SERVED):
         """Return the service of the served development case sets, with
         the recorder of the protected runtime records."""
-        from ehr_evidence_app.qa import resolve
-        return cls([workspace_source(label) for label in labels],
-                   resolve.load(), contracts.load_limits(),
-                   records.Recorder())
+        from ehr_evidence_app.qa import record_vocabulary, resolve
+        conditions = resolve.load()
+        drugs = (record_vocabulary.load()
+                 if record_vocabulary.PIN is not None else None)
+        return cls([workspace_source(label, drugs, conditions)
+                    for label in labels],
+                   conditions, contracts.load_limits(), records.Recorder())
 
     @classmethod
     def invented(cls, recorder=None):
         """Return the service of the invented case set, held in memory."""
         from ehr_evidence_app.evidence import bundles
         from ehr_evidence_app.qa import suite
-        return cls([invented_source()], suite.synthetic_vocabulary(),
+        vocabulary = suite.synthetic_vocabulary()
+        return cls([invented_source(vocabulary)], vocabulary,
                    contracts.ExecutionLimits(**bundles.SYNTHETIC_LIMITS),
                    recorder)
 
@@ -393,7 +473,9 @@ class Service:
             if str(error) == "bundle_missing":
                 raise ServiceError("scope_unknown") from None
             raise
-        return qa_evidence_view(bundle)
+        whole = (source.records.records.bundle(case_number, scope)
+                 if source.records is not None else None)
+        return qa_evidence_view(bundle, whole[0] if whole else None)
 
     def ask(self, case_set, case_number, scope, question):
         """Answer one question about a case in a scope, record it and
@@ -403,7 +485,8 @@ class Service:
         result = answer.answer(question, case_set, case_number, scope,
                                source.bundle_set, self.vocabulary,
                                "q-" + uuid.uuid4().hex[:16], self.limits,
-                               self.writer, self.recorder)
+                               self.writer, self.recorder,
+                               records=source.records)
         return written_view(result.response, result.written,
                             self.clock() - started)
 

@@ -15,6 +15,7 @@ from ehr_evidence_app.api import app, service as services
 from ehr_evidence_app.evidence import contracts
 from ehr_evidence_app.generation import adapter, records
 
+ALL = contracts.ScopeRef(kind="case_visits")
 HISTORY = contracts.ScopeRef(kind="pre_target_history")
 LIST = "Which conditions are recorded?"
 PRESENT = "Is synthetic concept 1001 recorded?"
@@ -74,10 +75,16 @@ class ServiceTests(unittest.TestCase):
                          ("answer", "model"))
         self.assertTrue(response["claims"])
         refused = self.service.ask(self.label, 1, HISTORY,
-                                   "What medications were given?")
+                                   "How should heart failure be treated?")
         self.assertEqual((refused["response"]["outcome"], refused["author"],
                           refused["fallback"]),
                          ("abstention", "template", None))
+        listed = self.service.ask(self.label, 1, ALL,
+                                  "What medications were given?")
+        self.assertEqual((listed["response"]["outcome"],
+                          listed["response"]["task"], listed["author"],
+                          listed["fallback"]),
+                         ("answer", "record_list", "template", None))
 
     def test_withheld_candidates_never_return(self):
         """A model's candidate the gate withholds never reaches the
@@ -188,14 +195,18 @@ class ServiceTests(unittest.TestCase):
             recorder.writer = self.service.writer
             self.service.ask(self.label, 1, HISTORY, LIST)
             self.service.ask(self.label, 1, HISTORY,
+                             "How should heart failure be treated?")
+            self.service.ask(self.label, 1, ALL,
                              "What medications were given?")
             self.service.explain(self.label, 1)
             found = [records.read(path)
                      for path in records.paths(recorder.root)]
         self.assertEqual(sorted(item.response.outcome for item in found),
-                         ["abstention", "answer", "explanation"])
+                         ["abstention", "answer", "answer", "explanation"])
         self.assertEqual(sorted(item.generation.author for item in found
                                 if item.generation), ["model", "model"])
+        self.assertEqual([item.bundle.bundle_id for item in found
+                          if item.task == "record_list"], ["rec-c01-all"])
 
 
 if __name__ == "__main__":

@@ -82,7 +82,7 @@
         <svg class="mark welcome-mark" aria-hidden="true" focusable="false"><use href="#i-mark"></use></svg>
         <h2 id="welcome-title">Opening the Records</h2>
         <div class="tags" id="welcome-tags"></div>
-        <p class="welcome-hint">Ask which conditions are recorded, or whether a specific one is, across the prior history, a single visit or every visit. You can also generate the predicted diagnosis with its explanation.</p>
+        <p class="welcome-hint">Ask about anything in the record: conditions, medications, lab results, vital signs, procedures, microbiology, ICU stays, the visits or the patient, across the prior history, a single visit or every visit. You can also generate the predicted diagnosis with its explanation.</p>
       </div>
       <ol class="thread" id="thread"></ol>
     </section>
@@ -109,6 +109,8 @@
       <div class="suggestions" id="suggestions">
         <button class="chip" type="button" data-question="Which conditions are recorded?">Which Conditions Are Recorded?</button>
         <button class="chip" type="button" id="suggest-check">Check a Specific Condition</button>
+        <button class="chip" type="button" data-question="What medications were given?">What Medications Were Given?</button>
+        <button class="chip" type="button" data-question="What were the latest lab results?">Latest Lab Results</button>
         <button class="chip" id="suggest-explain" type="button" hidden>Generate &amp; Explain Diagnosis</button>
         <button class="chip" id="suggest-evidence" type="button">View the Evidence</button>
       </div>

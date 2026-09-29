@@ -35,6 +35,9 @@ examples assume the session set-up in
 | 34.1 | `qa.suite` | Development question suite with an independent oracle; vocabulary sweep |
 | 34.2 | `qa.heldout` | Partitions of MIMIC-IV-Ext-Instr; held-out wording test |
 | 34.3 | `qa.written` | Written wording test: template, case overview, scoring by intent and family |
+| 52.2 | `qa.record_vocabulary` | Medication and procedure vocabulary built from the pinned Athena release |
+| 52.4 | `qa.record_interpret`, `qa.record_resolve` | Reading of questions about the whole record; their terms and the records they match |
+| 52.5 | `qa.record_answer` | Answers about the whole record, from its record bundle |
 
 ## From question to response
 
@@ -555,10 +558,61 @@ a clarification get an abstention; 8 presence checks that version 2
 could not read, and the 7 questions it answered wrongly, are now as
 expected.
 
+## Questions about the whole record
+
+The rest of the record can be asked about too
+([ADR 0021](decisions/0021-the-whole-record.md)): medications,
+procedures, laboratory results, microbiology, vital signs, transfers and
+ICU stays, the visits and the person. The condition rules read every
+question first, unchanged, so a condition question gets exactly the
+response it got before. A question they refuse as being about other
+data, times or counts, or holding words they cannot place, and one whose
+condition phrase names no condition, is read by `qa.record_interpret`
+(rules `record-questions-v1`); so are a dose question, a past question
+about death and a question about a first or last result. A request for
+advice, a question about the future and a ranking of conditions keep
+their refusals.
+
+| Task | Examples | Answer |
+| --- | --- | --- |
+| `record_list` | "What medications were given?", "Show me the labs", "Was she in the ICU?" | Every item of the kind within the scope, with its records and visits; each ICU stay and transfer with its times |
+| `record_presence` | "Was heparin given?", "Was she on Lasix?", "Any antibiotics?", "Was a chest x-ray done?" | Every matching record, grouped by item and by how it matched; or not recorded within the scope |
+| `record_timing` | "When was heparin first given?", "When was hypertension first recorded?" | The first and the last matching record |
+| `record_count` | "How many potassium results are there?", "How many medications?" | The number of matching records and their visits, or of a kind's items and records |
+| `record_values` | "What was the last potassium?", "Highest creatinine?", "Show the hemoglobin trend", "What dose of heparin was given?", "What organisms grew?" | Each matching item's latest, first, highest or lowest value, or its values in time order |
+| `record_abnormal` | "Were any labs abnormal?", "Was the potassium high?" | Every result the laboratory flagged abnormal (for microbiology, every result reported resistant) |
+| `visit_details` | "How many visits?", "When was she admitted?", "Where was she discharged to?" | The field asked about, for every visit of the scope |
+| `person_details` | "How old was the patient?", "What is her race?", "Did the patient die?" | The person's sex or date of death, or the field recorded with each visit of the scope |
+
+The question's frame gives its task, its words or its phrase the kind,
+and a selector (last, first, highest, lowest, all) the values it wants.
+A vital sign asked about as high or low gives its highest or lowest
+value, since vital signs carry no flag. The phrase is resolved within
+its kind by `qa.record_resolve` (rules `record-resolution-v1`): a name of
+the kind's dictionary (the laboratory and ICU item dictionaries, the
+medication vocabulary's ingredients, ATC classes and brand names, the
+microbiology and care-unit names), a fixed synonym ("hgb", "wbc", "bp",
+"blood thinners", "cabg", "e coli", "micu"), or the names holding its
+words; a phrase that resolves in no kind is left to the condition rules,
+and one that resolves in several asks which is meant, unless the
+question's verbs ("given", "done", "measured") or its task decide. An
+unknown phrase gets suggestions of the closest names, never a guess.
+
+Filters by value ("above 5"), times and parts of the record that are not
+scope phrases ("yesterday", "after the transfer"), exclusions, pronouns
+and two kinds at once get a clarification. The scope binds as for
+conditions. The templates write every answer (`qa.record_answer`, rules
+`record-answer-v1`): its facts are references to records, visits and the
+person, and every name, value, time, date and age is rendered from them.
+Ages are the anchor age plus the years to the visit, so they may be one
+more than the age on the day, and ages over 89 are not given; dates are
+the shifted dates of MIMIC-IV.
+
 ## Limits
 
-- One condition per question. Dates, times, the order of events, counts,
-  rankings and lists of a number of conditions are not answered.
+- One condition per question. Rankings and lists of a number of
+  conditions are not answered; dates, times and counts are answered by
+  the questions about the whole record.
 - Unusual wording gets a clarification rather than a guess; so do
   abbreviations, everyday terms and misspellings that are not in the
   vocabulary, the last with suggestions of the closest spellings (see
@@ -574,6 +628,11 @@ expected.
   severity or current state.
 - ICD description matches of records without a standard concept are a
   heuristic; they are labelled as such in every answer.
+- Questions about the whole record: vital signs and ICU procedures exist
+  for ICU stays only; notes cannot be asked about; a medication whose
+  drug record cannot be tied to one prescription has no name of its own;
+  everyday names of procedures depend on a fixed synonym table; a value
+  is never compared with a threshold.
 
 ## Commands
 
@@ -594,6 +653,8 @@ expected.
 & $AppPython -m ehr_evidence_app.qa.written --operator-real --score --set written-v2
 & $AppPython -m ehr_evidence_app.qa.written --operator-real --score --set written-v3
 & $AppPython -m ehr_evidence_app.qa.written --operator-real --score --set written-v4
+& $AppPython -m ehr_evidence_app.qa.record_vocabulary
+& $AppPython -m ehr_evidence_app.qa.record_vocabulary --operator-real
 ```
 
 The vocabulary build and the partition record each write one new

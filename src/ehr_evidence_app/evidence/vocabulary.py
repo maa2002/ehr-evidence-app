@@ -7,8 +7,14 @@ value is a deliberate, versioned change rather than a free-text drift.
 
 from typing import Literal
 
-TASKS = ("condition_list", "condition_presence", "prediction_explanation")
-QA_TASKS = ("condition_list", "condition_presence")
+CONDITION_TASKS = ("condition_list", "condition_presence")
+# Questions about the whole record (qa.record_answer): the templates write
+# their answers.
+RECORD_TASKS = ("record_list", "record_presence", "record_timing",
+                "record_count", "record_values", "record_abnormal",
+                "visit_details", "person_details")
+TASKS = CONDITION_TASKS + ("prediction_explanation",) + RECORD_TASKS
+QA_TASKS = CONDITION_TASKS + RECORD_TASKS
 
 SCOPES = ("pre_target_history", "selected_visit", "case_visits")
 EXPLANATION_SCOPES = ("pre_target_history",)

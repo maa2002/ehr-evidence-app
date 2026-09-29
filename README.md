@@ -11,8 +11,12 @@ MIMIC-IV 3.1 mapped to the OMOP Common Data Model.
 For one selected patient, the application will:
 
 1. answer scoped questions about recorded conditions ("Which conditions are
-   recorded before the final admission?", "Is heart failure recorded?"), and
-2. explain an existing prediction of the inherited E-TRANS GNN from its
+   recorded before the final admission?", "Is heart failure recorded?"),
+2. answer scoped questions about the rest of the record: medications,
+   procedures, laboratory results, microbiology, vital signs, transfers
+   and ICU stays, the visits and the person ("What was the last
+   potassium?", "Was heparin given?", "How long was the stay?"), and
+3. explain an existing prediction of the inherited E-TRANS GNN from its
    gradient attribution and the patient's recorded events.
 
 Every answer names the patient and scope, states coverage, cites readable
@@ -43,7 +47,9 @@ view of its evidence, through an adapter that releases the template's
 candidate whenever the model's is not released, and every response
 writes a protected runtime record. The local API and its interface, a
 conversation about a selected patient with the evidence beside it, are
-in place (Phase 8); the evaluation is planned. See the
+in place (Phase 8), and the whole record can be asked about: the case
+sets' raw MIMIC-IV records, record bundles, and template answers checked
+by the same gate. The evaluation is planned. See the
 [roadmap](docs/roadmap.md) and the [changelog](CHANGELOG.md).
 
 ## Architecture

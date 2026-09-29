@@ -46,6 +46,57 @@ PROVENANCE_COLUMNS = (("Input", "text"), ("Name", "text"),
                       ("SHA-256", "code"))
 CONDITION_COLUMNS = (("Condition", "text"), ("Records", "number"),
                      ("Visits", "text"))
+# The whole record of a scope: a table for each kind of record, folded
+# when it is long.
+KIND_TITLES = (("condition", "Condition Records"),
+               ("procedure", "Procedures"),
+               ("icu_procedure", "ICU Procedures"),
+               ("medication", "Medications"),
+               ("lab", "Laboratory Results"),
+               ("microbiology", "Microbiology"),
+               ("vital", "Vital Signs"),
+               ("transfer", "Transfers"), ("icu_stay", "ICU Stays"))
+KIND_COLUMNS = {
+    "condition": (("Ref", "ref"), ("Visit", "number"), ("Condition", "text"),
+                  ("Code", "code"), ("Vocabulary", "text"),
+                  ("Start", "date")),
+    "procedure": (("Ref", "ref"), ("Visit", "number"), ("Procedure", "text"),
+                  ("Code", "code"), ("Vocabulary", "text"),
+                  ("Start", "date"), ("End", "date")),
+    "icu_procedure": (("Ref", "ref"), ("Visit", "number"),
+                      ("Procedure", "text"), ("Category", "text"),
+                      ("Value", "text"), ("Start", "date"),
+                      ("End", "date")),
+    "medication": (("Ref", "ref"), ("Visit", "number"),
+                   ("Medication", "text"), ("Dose", "text"),
+                   ("Route", "text"), ("Start", "date"), ("End", "date")),
+    "lab": (("Ref", "ref"), ("Visit", "number"), ("Test", "text"),
+            ("Specimen", "text"), ("Value", "text"),
+            ("Reference Range", "text"), ("Flag", "text"), ("Time", "date")),
+    "microbiology": (("Ref", "ref"), ("Visit", "number"),
+                     ("Specimen", "text"), ("Test", "text"),
+                     ("Organism", "text"), ("Antibiotic", "text"),
+                     ("Result", "text"), ("Time", "date")),
+    "vital": (("Ref", "ref"), ("Visit", "number"), ("Vital Sign", "text"),
+              ("Value", "text"), ("Time", "date")),
+    "transfer": (("Ref", "ref"), ("Visit", "number"), ("Unit", "text"),
+                 ("Event", "text"), ("In", "date"), ("Out", "date")),
+    "icu_stay": (("Ref", "ref"), ("Visit", "number"), ("First Unit", "text"),
+                 ("Last Unit", "text"), ("In", "date"), ("Out", "date"),
+                 ("Days", "number")),
+}
+ADMISSION_COLUMNS = (("Ref", "ref"), ("Visit", "number"), ("Role", "text"),
+                     ("Visit Type", "text"), ("Admission Type", "text"),
+                     ("Admitted From", "text"), ("Admitted", "date"),
+                     ("Discharged", "date"), ("Discharged To", "text"),
+                     ("Died in Hospital", "text"))
+RECORD_COVERAGE_COLUMNS = (("Records", "text"), ("In Scope", "number"),
+                           ("Without a Name", "number"),
+                           ("Final Admission Left Out", "number"),
+                           ("Outside the Case Visits", "number"))
+INTERPRETATIONS = {"S": "Sensitive", "R": "Resistant", "I": "Intermediate",
+                   "P": "Pending"}
+FOLD_ROWS = 60
 # The first line of a presence answer names the condition asked about.
 PRESENCE_SUBJECT = re.compile(r"^(?P<name>.+?)(?= is (?:not )?recorded "
                               r"within )")
@@ -210,12 +261,17 @@ def normal(text):
 
 def names_of(view):
     """Return the names of the concepts an evidence view holds: its
-    records', its attributions' and its prediction's."""
+    records', its attributions', its prediction's and those of the whole
+    record's conditions, procedures and medications."""
     found = set()
     for key in ("records", "history_records", "final_admission_context",
                 "attributions"):
         found |= {item["concept_name"] for item in view.get(key, [])
                   if item.get("concept_name")}
+    whole = view.get("record") or {}
+    found |= {item["name"] for item in whole.get("records", [])
+              if item.get("name") and item["kind"] in (
+                  "condition", "procedure", "medication")}
     if view.get("prediction") and view["prediction"].get("label"):
         found.add(view["prediction"]["label"])
     return found
@@ -411,7 +467,7 @@ def coverage_section(coverage):
     return section("Coverage", blocks, ref=coverage["ref"])
 
 
-def provenance_section(provenance, coverage):
+def provenance_section(provenance, coverage, name="Provenance"):
     """Return the digest of every input of the evidence and the coverage's
     own statement, folded."""
     blocks = [table(PROVENANCE_COLUMNS, [
@@ -423,23 +479,192 @@ def provenance_section(provenance, coverage):
                            % coverage["statement"]))
     blocks.append(note("muted", "Schema %s · %s" % (
         provenance["schema_version"], provenance["builder"])))
-    return section("Provenance", blocks, collapsed=True)
+    return section(name, blocks, collapsed=True)
 
 
 def scope_evidence_view(view):
-    """Return a scope's evidence: its coverage, visits, records and
-    provenance."""
+    """Return a scope's evidence: its coverage, visits, condition records
+    and provenance and, when the whole record is published, the person,
+    each visit's admission and every kind of record."""
+    whole = view.get("record")
+    visits = (admissions_section(whole["visits"]) if whole else
+              section("Visits", [table(VISIT_COLUMNS,
+                                       visit_rows(view["visits"]),
+                                       "No visit in this scope.")]))
+    sections = [coverage_section(view["coverage"])]
+    if whole:
+        sections.append(person_section(whole["person"]))
+    sections += [visits,
+                 section("Records" if not whole else "Conditions", [
+                     table(RECORD_COLUMNS, record_rows(view["records"]),
+                           "No record in this scope.")])]
+    if whole:
+        sections += record_sections(whole)
+    sections.append(provenance_section(view["provenance"],
+                                       view["coverage"]))
+    if whole:
+        sections.append(provenance_section(whole["provenance"],
+                                           {"statement": whole["statement"]},
+                                           "Record Provenance"))
     return {"key": scope_key(view["scope"]),
-            "title": labels.scope(view["scope"]),
-            "sections": [
-                coverage_section(view["coverage"]),
-                section("Visits", [table(VISIT_COLUMNS,
-                                         visit_rows(view["visits"]),
-                                         "No visit in this scope.")]),
-                section("Records", [table(RECORD_COLUMNS,
-                                          record_rows(view["records"]),
-                                          "No record in this scope.")]),
-                provenance_section(view["provenance"], view["coverage"])]}
+            "title": labels.scope(view["scope"]), "sections": sections}
+
+
+# --------------------------------------------------------------------------
+# The whole record of a scope
+# --------------------------------------------------------------------------
+
+def person_section(person):
+    """Return the person: sex, the age MIMIC-IV anchors and the date of
+    death."""
+    anchor = "%d in %d" % (person["anchor_age"], person["anchor_year"])
+    if person["anchor_age"] > 89:
+        anchor = "Over 89 in %d" % person["anchor_year"]
+    return section("Person", [facts([
+        ("Sex", {"F": "Female", "M": "Male"}.get(person.get("sex"),
+                                                  "Not Recorded")),
+        ("Anchor Age", anchor),
+        ("Date of Death", labels.date(person.get("date_of_death"))
+         or "Not Recorded")]),
+        note("muted", "Dates and years are shifted by the "
+                      "de-identification of MIMIC-IV.")], ref="D1")
+
+
+def admissions_section(visits):
+    """Return each visit of the scope with its admission."""
+    rows = []
+    for visit in visits:
+        admission = visit.get("admission") or {}
+        rows.append(row((
+            visit["ref"], visit["visit_number"], labels.words(visit["role"]),
+            labels.title(visit.get("visit_type") or ""),
+            admission.get("admission_type"),
+            admission.get("admission_location"),
+            labels.moment(admission.get("admit_time")
+                          or visit.get("start_date")),
+            labels.moment(admission.get("discharge_time")
+                          or visit.get("end_date")),
+            admission.get("discharge_location"),
+            ("Yes" if admission.get("hospital_death") else "No")
+            if admission else ""), visit["ref"]))
+    return section("Visits", [table(ADMISSION_COLUMNS, rows,
+                                    "No visit in this scope.")])
+
+
+def measure_cells(measure):
+    """Return a result's value, reference range and flag, as shown."""
+    if not measure:
+        return "No value recorded", "", ""
+    value = measure.get("text")
+    if value in (None, "___"):
+        value = (labels.number(measure.get("number"))
+                 if measure.get("number") is not None
+                 else "Removed by de-identification")
+    if measure.get("unit") and measure["unit"] != "None":
+        value += " " + measure["unit"]
+    shown = ""
+    if measure.get("low") is not None and measure.get("high") is not None:
+        shown = "%s to %s" % (labels.number(measure["low"]),
+                              labels.number(measure["high"]))
+    return value, shown, "Abnormal" if measure.get("flag") else ""
+
+
+def record_name(item):
+    """Return how the evidence names a record."""
+    if item.get("name"):
+        return item["name"]
+    dose = item.get("dose") or {}
+    if dose.get("drug"):
+        return "%s (No Standard Concept)" % dose["drug"]
+    if item.get("detail"):
+        return "%s (No Standard Concept)" % item["detail"]
+    return "No Standard Concept" if item.get("concept_id") == 0 else (
+        "Name Unavailable")
+
+
+def kind_rows(kind, items):
+    """Return the rows of one kind's table."""
+    rows = []
+    for item in items:
+        start = labels.moment(item.get("start"))
+        end = labels.moment(item.get("end"))
+        head = (item["ref"], item["visit_number"])
+        if kind == "condition":
+            cells = (labels.title(record_name(item)), item.get("code"),
+                     item.get("vocabulary"), start)
+        elif kind == "procedure":
+            cells = (labels.title(record_name(item)), item.get("code"),
+                     item.get("vocabulary"), start, end)
+        elif kind == "icu_procedure":
+            value, _, _ = measure_cells(item.get("measure"))
+            cells = (record_name(item), item.get("detail"), value, start,
+                     end)
+        elif kind == "medication":
+            dose = item.get("dose") or {}
+            amount = " ".join(part for part in (dose.get("amount"),
+                                                dose.get("unit")) if part)
+            cells = (labels.title(record_name(item)), amount,
+                     dose.get("route"), start, end)
+        elif kind == "lab":
+            value, shown, flag = measure_cells(item.get("measure"))
+            cells = (record_name(item), (item.get("detail") or "").replace(
+                " · ", ", "), value, shown, flag, start)
+        elif kind == "microbiology":
+            microbe = item.get("microbe") or {}
+            cells = (microbe.get("specimen"), microbe.get("test"),
+                     microbe.get("organism"), microbe.get("antibiotic"),
+                     INTERPRETATIONS.get(microbe.get("interpretation"), ""),
+                     start)
+        elif kind == "vital":
+            value, _, _ = measure_cells(item.get("measure"))
+            cells = (record_name(item), value, start)
+        elif kind == "transfer":
+            stay = item.get("stay") or {}
+            cells = (stay.get("unit") or "", labels.title(
+                stay.get("event") or ""), start, end)
+        else:
+            stay = item.get("stay") or {}
+            days = stay.get("days")
+            cells = (stay.get("unit"), stay.get("last_unit"), start, end,
+                     "%.1f" % days if days is not None else "")
+        rows.append(row(head + cells, item["ref"]))
+    return rows
+
+
+def record_sections(whole):
+    """Return a section for each kind of record the scope holds, and the
+    coverage of every kind."""
+    by_kind = collections.defaultdict(list)
+    for item in whole["records"]:
+        by_kind[item["kind"]].append(item)
+    sections = []
+    for kind, name in KIND_TITLES:
+        items = by_kind.get(kind, [])
+        if not items:
+            continue
+        blocks = [table(KIND_COLUMNS[kind], kind_rows(kind, items),
+                        "No record in this scope.")]
+        if kind == "condition":
+            blocks.insert(0, note("muted", "The condition records above, as "
+                                           "answers about the whole record "
+                                           "cite them."))
+        sections.append(section("%s · %d" % (name, len(items)), blocks,
+                                collapsed=kind == "condition"
+                                or len(items) > FOLD_ROWS))
+    coverage = [row((title_of(item["kind"]), item["in_scope"],
+                     item["unnamed_in_scope"],
+                     item["excluded_final_admission"],
+                     item["outside_case_visits"]))
+                for item in whole["coverage"]]
+    sections.append(section("Record Coverage", [
+        table(RECORD_COVERAGE_COLUMNS, coverage, "No record."),
+        note("muted", whole["statement"])], ref="C1", collapsed=True))
+    return sections
+
+
+def title_of(kind):
+    """Return the title of a kind of record."""
+    return dict(KIND_TITLES).get(kind, labels.words(kind))
 
 
 def restriction_text(code):

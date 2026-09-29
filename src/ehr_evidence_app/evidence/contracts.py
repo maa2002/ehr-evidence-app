@@ -52,10 +52,16 @@ Identifier = Annotated[str, StringConstraints(
 CaseSetId = Annotated[str, StringConstraints(
     pattern=r"^[a-z0-9][a-z0-9.-]{0,63}$")]
 EvidenceRef = Annotated[str, StringConstraints(
-    pattern=r"^[VEPAC][1-9][0-9]{0,5}$")]
+    pattern=r"^[VEPACRD][1-9][0-9]{0,5}$")]
 ClaimText = Annotated[str, StringConstraints(min_length=1, max_length=2000)]
+# A response's text and claims; an answer about the whole record may be
+# longer, since it may list every result of a scope.
+MAX_TEXT = 20000
+MAX_CLAIMS = 200
+MAX_RECORD_TEXT = 60000
+MAX_RECORD_CLAIMS = 1000
 ResponseText = Annotated[str, StringConstraints(min_length=1,
-                                                max_length=20000)]
+                                                max_length=MAX_RECORD_TEXT)]
 QuestionText = Annotated[str, StringConstraints(min_length=1,
                                                 max_length=4000)]
 
@@ -196,12 +202,17 @@ class Response(Frozen):
     outcome: vocab.Outcome
     reason_codes: tuple[vocab.ReasonCode, ...] = ()
     text: Optional[ResponseText] = None
-    claims: tuple[Claim, ...] = Field(default=(), max_length=200)
+    claims: tuple[Claim, ...] = Field(default=(),
+                                      max_length=MAX_RECORD_CLAIMS)
     bundle: Optional[BundleRef] = None
 
     @model_validator(mode="after")
     def _outcome_shape(self):
         """Keep the eight outcomes structurally distinct."""
+        if self.task not in vocab.RECORD_TASKS and (
+                len(self.claims) > MAX_CLAIMS
+                or len(self.text or "") > MAX_TEXT):
+            raise ValueError("the response is longer than its task allows")
         allowed = vocab.REASONS_BY_OUTCOME[self.outcome]
         if len(set(self.reason_codes)) != len(self.reason_codes):
             raise ValueError("reason codes repeat")
@@ -258,7 +269,7 @@ def request_limit_problem(request, limits):
 def json_schemas():
     """Return the JSON Schema of each committed contract, by file name."""
     # Bundles and candidates build on these contracts.
-    from ehr_evidence_app.evidence import schema
+    from ehr_evidence_app.evidence import record, schema
     from ehr_evidence_app.validation import candidate
     schemas = {"request.schema.json": Request.model_json_schema(),
                "response.schema.json": Response.model_json_schema(),
@@ -267,6 +278,7 @@ def json_schemas():
                "candidate.schema.json":
                    candidate.Candidate.model_json_schema()}
     schemas.update(schema.bundle_schemas())
+    schemas.update(record.record_schemas())
     return schemas
 
 

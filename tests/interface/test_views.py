@@ -218,8 +218,10 @@ class EvidenceTests(InventedTestCase):
         records with their names and dates as the page shows them, and
         its folded provenance, each row with its reference and no native
         identifier."""
-        found = views.evidence_view(self.service.evidence(
-            self.label, 1, "pre_target_history"))
+        view = dict(self.service.evidence(self.label, 1,
+                                          "pre_target_history"),
+                    record=None)
+        found = views.evidence_view(view)
         self.assertEqual(found["title"], "Prior History")
         self.assertEqual([section["title"] for section in found["sections"]],
                          ["Coverage", "Visits", "Records", "Provenance"])
@@ -237,6 +239,35 @@ class EvidenceTests(InventedTestCase):
         text = json.dumps(found)
         self.assertNotIn("native", text)
         self.assertNotIn("visit_occurrence_id", text)
+
+    def test_scope_with_the_whole_record(self):
+        """With the whole record, a scope's evidence adds the person, each
+        visit's admission, a table for each kind of record and the record
+        coverage; every row keeps its reference and no native
+        identifier."""
+        found = views.evidence_view(self.service.evidence(
+            self.label, 1, "case_visits"))
+        titles = [section["title"] for section in found["sections"]]
+        self.assertEqual(titles[:4], ["Coverage", "Person", "Visits",
+                                      "Conditions"])
+        self.assertEqual(titles[-3:], ["Record Coverage", "Provenance",
+                                       "Record Provenance"])
+        self.assertIn("Laboratory Results · 2", titles)
+        self.assertIn("Vital Signs · 2", titles)
+        person = found["sections"][1]
+        self.assertEqual((person["ref"], person["blocks"][0]["items"][0]),
+                         ("D1", {"label": "Sex", "value": "Female"}))
+        refs = self.refs(found)
+        self.assertTrue({"V1", "V2", "V3", "D1", "C1"} <= refs)
+        self.assertTrue(any(ref.startswith("R") for ref in refs))
+        labs = next(section for section in found["sections"]
+                    if section["title"].startswith("Laboratory"))
+        cells = labs["blocks"][0]["rows"][0]["cells"]
+        self.assertEqual(cells[4:7], ["5.6 mEq/L", "3.3 to 5.1",
+                                      "Abnormal"])
+        text = json.dumps(found)
+        self.assertNotIn("native", text)
+        self.assertNotIn("hadm", text)
 
     def test_prediction(self):
         """The prediction's evidence shows every attribution with its

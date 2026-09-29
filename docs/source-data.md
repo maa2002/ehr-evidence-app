@@ -10,7 +10,7 @@ it never modifies them. Command examples assume the session set-up in
 | --- | --- | --- |
 | OMOP CDM database | local PostgreSQL 18, database `mimiciv_omop`, schema `omopcdm` | read-only transactions on loopback |
 | Legacy CSV exports | `C:\omop_export` | read-only copy source |
-| Raw MIMIC-IV 3.1 | external archive disk | not read by this project |
+| Raw MIMIC-IV 3.1 hospital and ICU modules | external archive disk | eleven pinned files read once, read-only, for exactly the case sets' persons ([Raw MIMIC-IV records](#raw-mimic-iv-records)) |
 | Athena vocabularies (release of 31 August 2026) | external archive disk | four pinned files read once, read-only, to build the condition vocabulary ([ADR 0006](decisions/0006-condition-vocabulary.md)) |
 
 **Source identity.** The upstream ETL code is in the inherited tree
@@ -194,6 +194,64 @@ psql runs with an allow-listed environment: operating-system basics, the
 validated connection variables and the forced options. An inherited
 `PGOPTIONS`, `PGPASSFILE` or other `PG*` variable is never passed on.
 
+## Raw MIMIC-IV records
+
+The OMOP snapshots hold visits, conditions, procedures and drug
+exposures. The rest of a patient's record is read from the raw MIMIC-IV
+3.1 files ([ADR 0021](decisions/0021-the-whole-record.md)): the local
+database's laboratory results carry no names, its ICU chart tables were
+loaded empty, and it holds no microbiology, transfers or admission
+details. `ehr_evidence_app.sources.mimic` reads, from
+`W:\Industry Dataset\mimic-iv-3.1`:
+
+| Table | Kept | Key |
+| --- | --- | --- |
+| `hosp\patients` | sex, anchor age and year, anchor year group, date of death | `subject_id` |
+| `hosp\admissions` | every column but the admitting provider | `hadm_id` |
+| `hosp\transfers` | every column | `transfer_id` |
+| `icu\icustays` | every column | `stay_id` |
+| `hosp\labevents`, `hosp\d_labitems` | results with value, unit, reference range, flag and priority; not the comments or the ordering provider | `labevent_id` |
+| `hosp\microbiologyevents` | specimens, tests, organisms, antibiotics, dilutions and interpretations; not the comments or the ordering provider | `microevent_id` |
+| `hosp\prescriptions` | drug, strength, form, dose, unit and route; not the order or pharmacy identifiers | row number |
+| `icu\chartevents`, `icu\d_items` | the vital-sign items of a fixed list (`VITAL_GROUPS`); not the caregiver | row number |
+| `icu\procedureevents` | ICU procedure events; not the caregiver or the order identifiers | row number |
+
+Every input is pinned by the size and SHA-256 of the file in the archive
+(`INPUTS`; the archive's own checksums are of the compressed files), read
+once and hashed over exactly the bytes read, and must be unchanged
+during the read. The rows kept are those of exactly the persons of each
+pinned source snapshot (`pilot-10-v1`, `dev-30-v1`, `eval-100-v1`),
+matched on `subject_id`; nothing else is filtered but the vital-sign
+list, so rows that no case visit holds are kept and counted downstream.
+Each row keeps its number in its file. The item dictionaries are kept
+whole, and the distinct specimen, test, organism, antibiotic and
+care-unit names over every row form `d_names.csv`, which links no row to
+them. A quoted value may span lines; a record that is not UTF-8 is read
+as Latin-1 and counted.
+
+One protected directory per case set,
+`protected-data\source-records\<case set>`, is written through a partial
+directory and renamed only when every input matched its pin; an existing
+one is never overwritten. Its manifest records every input's size and
+digest and every output's size, digest and row count, and is pinned in
+code (`EXTRACT_PINS`). Console output carries counts only.
+
+```powershell
+& $AppPython -m ehr_evidence_app.sources.mimic
+& $AppPython -m ehr_evidence_app.sources.mimic --operator-real --measure-inputs
+& $AppPython -m ehr_evidence_app.sources.mimic --operator-real
+& $AppPython -m ehr_evidence_app.sources.mimic --operator-real --verify-only
+```
+
+| Case set | Admissions | Transfers | ICU stays | Laboratory results (in snapshot visits) | Microbiology rows | Prescriptions | Vital-sign rows | ICU procedure events |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `pilot-10-v1` | 38 | 135 | 1 | 6,698 (3,531) | 208 | 886 | 294 | 6 |
+| `dev-30-v1` | 116 | 461 | 27 | 46,887 (27,971) | 792 | 5,290 | 18,289 | 167 |
+| `eval-100-v1` | 407 | 1,629 | 53 | 104,254 (54,612) | 3,335 | 14,402 | 24,263 | 316 |
+
+Every admission of a snapshot visit was found. Laboratory results and
+microbiology outside the snapshot visits are mostly outpatient.
+
 ## Limitations
 
 - The pilot is 10 persons; evaluation uses the larger, separately versioned
@@ -202,3 +260,7 @@ validated connection variables and the forced options. An inherited
   never fabricated.
 - Row-count agreement shows internal consistency of a snapshot, not ETL
   correctness.
+- The raw files are identified by their own digests; nothing
+  cryptographically binds them to the archive's compressed files or to
+  the rows the database was loaded from, beyond the shared persons and
+  admissions.

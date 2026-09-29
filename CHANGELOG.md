@@ -20,6 +20,25 @@ evidence beside it
 
 ### Added
 
+- The whole record can be asked about
+  ([ADR 0021](docs/decisions/0021-the-whole-record.md);
+  [docs/qa.md](docs/qa.md#questions-about-the-whole-record)):
+  medications, procedures, laboratory results, microbiology, vital signs,
+  transfers and ICU stays, the visits and the person, in lists, presence
+  checks, times, counts, values, flagged results and details, each
+  answered by templates from the case's record bundle for the selected
+  scope and checked by the release gate. `sources.mimic` extracts the case
+  sets' raw MIMIC-IV 3.1 records from pinned files
+  ([docs/source-data.md](docs/source-data.md#raw-mimic-iv-records));
+  `qa.record_vocabulary` builds the medication and procedure vocabulary
+  from the pinned Athena release; `evidence.record` and
+  `evidence.record_bundles` hold the whole record of each case and scope
+  ([docs/evidence.md](docs/evidence.md#record-bundles));
+  `qa.record_interpret`, `qa.record_resolve` and `qa.record_answer`
+  read, resolve and answer the questions; `validation.record_text` and
+  `validation.record_support` show their facts and check their support
+  ([docs/validation.md](docs/validation.md)). The evidence panel shows the
+  person, each visit's admission and every kind of record.
 - `api` package (Phase 8, work items 47 and 48;
   [docs/interface.md](docs/interface.md)): `api.service` answers
   questions about a selected case and scope through `qa.answer`, explains
@@ -108,6 +127,16 @@ evidence beside it
 
 ### Changed
 
+- A question the condition rules refuse as being about other data, times
+  or counts is read as a question about the whole record; every question
+  about conditions gets the response it got before. The refusals'
+  approved texts say what the application now answers.
+- Responses cite records of the whole record as R and the person as D1,
+  and an answer about the whole record may hold up to 1,000 claims and
+  60,000 characters; the committed JSON Schemas add the record bundle's.
+- ADR 0016 gains decision 11: questions about the whole record are
+  strata of their own in the final evaluation, agreed before any request
+  of `eval-100-v1` was written.
 - The application's dependencies no longer include Streamlit: the lock
   pins 40 packages instead of 56, and Starlette, Requests and NumPy,
   which the code imports, are declared directly

@@ -429,6 +429,9 @@ def expected_restrictions(prediction, attributions, excluded_driver_entries):
 
 def bundle_refs(bundle):
     """Return every bundle-local reference a response may cite."""
+    if getattr(bundle, "kind", None) == "record":
+        from ehr_evidence_app.evidence import record
+        return record.refs_of(bundle)
     refs = {bundle.coverage.ref}
     refs.update(visit.ref for visit in bundle.visits)
     if isinstance(bundle, QABundle):

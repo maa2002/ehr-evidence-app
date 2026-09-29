@@ -37,6 +37,15 @@ complete bundle, and the template candidate is released instead only when
 the model's is not (a recorded fallback). Refusals and clarifying
 questions are settled before any evidence is read and stay the
 templates' notices.
+
+When the case set's record bundles are given (records), a question the
+condition rules refuse as being about other data, times, counts or words
+they cannot place, or one whose condition phrase names no condition, is
+read as a question about the whole record (qa.record_interpret) and
+answered from the record bundle of the scope by the templates
+(qa.record_answer). Every question the condition rules answer is
+answered exactly as without the records. A request for advice, or about
+the future, keeps its refusal.
 """
 
 from __future__ import annotations
@@ -46,16 +55,20 @@ import dataclasses
 import hashlib
 import json
 import os
+import re
+
+from pydantic import ValidationError
 
 from ehr_evidence_app.casesets import registry
 from ehr_evidence_app.evidence import bundles, contracts, schema
 from ehr_evidence_app.generation import adapter, shape
 from ehr_evidence_app.gnn import mapping
 from ehr_evidence_app.qa import interpret as interpreter
+from ehr_evidence_app.qa import record_answer, record_interpret
 from ehr_evidence_app.qa import resolve, templates
 from ehr_evidence_app.qa import scope as scopes
 from ehr_evidence_app.validation import candidate as candidates
-from ehr_evidence_app.validation import evidence, gate
+from ehr_evidence_app.validation import evidence, gate, record_support
 
 RULES_VERSION = "qa-answer-v5"
 PILOT = "pilot-10-v1"
@@ -73,6 +86,22 @@ RESOLUTION_REASONS = {"ambiguous": "concept_ambiguous",
                       "too_broad": "concept_too_broad"}
 # The most concept names a clarifying question offers.
 MAX_NAMES = 20
+# The refusals and clarifications of the condition rules after which a
+# question is read as one about the whole record.
+RECORD_CATEGORIES = ("other_data", "time_or_count", "unexplained",
+                     "unrecognised", "scope_unrecognised")
+# A treatment question about a dose is one about the record; one asking
+# for advice is not. A question about death that is not about the future
+# is one about the record.
+DOSE = re.compile(r"\b(?:dose|doses|dosage|dosing|how much|strength|"
+                  r"route)\b")
+ADVICE = re.compile(r"\b(?:should|recommend\w*|manage|management|treat|"
+                    r"treatment|treatments|therapy|therapies|start|stop|"
+                    r"prescribe)\b")
+FUTURE = re.compile(r"\b(?:will|would|going to|likely|likelihood|chance|"
+                    r"chances|risk|expected|prognosis|outlook|get worse|"
+                    r"getting worse|worsen\w*|improve\w*|recover\w*|"
+                    r"progress\w*)\b")
 
 
 class AnswerError(Exception):
@@ -290,14 +319,17 @@ def record_matches(bundle, resolution, vocab):
 
 
 def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
-           request_id, limits, writer=None, recorder=None):
+           request_id, limits, writer=None, recorder=None, records=None):
     """Return the Result for one question about the active case and scope;
     writer (a generation.adapter.Writer) writes the answers from evidence,
     and without one the templates do, each a "no_model" fallback.
     recorder (a generation.records.Recorder), when given, writes the
-    protected record of the response."""
+    protected record of the response. records (a
+    qa.record_answer.RecordContext), when given, answers questions about
+    the whole record."""
     result = result_of(question, case_set, case_number, active_scope,
-                       bundle_set, vocab, request_id, limits, writer)
+                       bundle_set, vocab, request_id, limits, writer,
+                       records)
     if recorder is not None:
         recorder.record(result.response, result.request, question=question,
                         bundle_sha256=result.bundle_sha256,
@@ -305,8 +337,88 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
     return result
 
 
+def record_allowed(interpretation):
+    """Return True when a question the condition rules do not answer may
+    be read as one about the whole record."""
+    category, text = interpretation.category, interpretation.text
+    if category in RECORD_CATEGORIES:
+        return True
+    if category == "treatment":
+        return bool(DOSE.search(text)) and not ADVICE.search(text)
+    if category == "prognosis":
+        return not FUTURE.search(text)
+    if category == "ranking":
+        # "The first potassium" is a time; "the first diagnosis" stays a
+        # ranking of conditions, which is refused.
+        return not re.search(r"%s" % interpreter.CONDITIONS, text)
+    return False
+
+
+def record_result(question, case, active_scope, bundle_set, vocab,
+                  request_id, records, tasks_only=False):
+    """Return the Result of a question read as one about the whole record,
+    or None when it is not one (with tasks_only, unless it is read as a
+    task)."""
+    reading = record_interpret.interpret(question, records.terms)
+    if reading.status == "none" or (tasks_only
+                                    and reading.status != "task"):
+        return None
+    if reading.status == "clarify":
+        candidate = record_answer.clarification(request_id, case,
+                                                active_scope, reading)
+        return Result(gate.release(candidate, request_id, case,
+                                   active_scope, vocab=vocab),
+                      candidate=candidate)
+    visit_count = bundle_set.visit_count(case.case_number)
+    if not visit_count:
+        return Result(respond(request_id, case, active_scope,
+                              "case_rejection",
+                              reasons=("case_not_admitted",)))
+    binding = scopes.bind(reading.mentions, active_scope, visit_count)
+    if binding.status != "bound":
+        candidate = binding_notice(request_id, case, active_scope, binding,
+                                   reading.task)
+        return Result(gate.release(candidate, request_id, case,
+                                   active_scope, vocab=vocab),
+                      candidate=candidate)
+    scope = binding.scope
+    found = records.records.bundle(case.case_number, scope)
+    if found is None:
+        return Result(respond(request_id, case, scope, "case_rejection",
+                              reasons=("scope_invalid",), task=reading.task))
+    bundle, digest = found
+    request = contracts.Request(
+        schema_version="1.0", request_id=request_id, task=reading.task,
+        case=case, scope=scope, question=question)
+    resolution = record_answer.resolution_of(records, reading)
+    if resolution is not None and resolution.status != "resolved":
+        candidate = record_answer.clarification(request_id, case, scope,
+                                                reading, resolution)
+        return Result(gate.release(candidate, request_id, case, scope,
+                                   vocab=vocab),
+                      request=request, bundle_sha256=digest,
+                      candidate=candidate)
+    bundle_ref = contracts.BundleRef(bundle_id=bundle.bundle_id,
+                                     sha256=digest)
+    try:
+        candidate = record_answer.answer_candidate(records, request, bundle,
+                                                   bundle_ref, reading,
+                                                   resolution)
+    except ValidationError:
+        return Result(respond(request_id, case, scope, "operational_error",
+                              reasons=("limit_exceeded",), task=reading.task),
+                      request=request, bundle_sha256=digest)
+    response = gate.release(
+        candidate, request_id, case, scope, bundle, digest, vocab,
+        record=record_support.RecordCheck(records.terms, resolution,
+                                          reading))
+    return Result(response, request=request, bundle_sha256=digest,
+                  candidate=candidate,
+                  written=adapter.Written(response, candidate, "template"))
+
+
 def result_of(question, case_set, case_number, active_scope, bundle_set,
-              vocab, request_id, limits, writer=None):
+              vocab, request_id, limits, writer=None, records=None):
     """Return the Result for one question (see answer)."""
     case = contracts.CaseRef(case_set=case_set, case_number=case_number)
     if len(question or "") > limits.max_question_chars:
@@ -321,6 +433,12 @@ def result_of(question, case_set, case_number, active_scope, bundle_set,
                                    active_scope, vocab=vocab),
                       candidate=candidate)
 
+    if records is not None and interpretation.status in (
+            "abstain", "clarify") and record_allowed(interpretation):
+        found = record_result(question, case, active_scope, bundle_set,
+                              vocab, request_id, records)
+        if found is not None:
+            return found
     if interpretation.status == "abstain" or (
             interpretation.status == "clarify"
             and interpretation.category in CLARIFYING_RULES):
@@ -399,6 +517,11 @@ def result_of(question, case_set, case_number, active_scope, bundle_set,
                                                      bundle, bundle_ref)
         return written(candidate, groups=groups)
     resolution = resolve_phrase(interpretation, vocab)
+    if records is not None and resolution.status == "unknown":
+        found = record_result(question, case, active_scope, bundle_set,
+                              vocab, request_id, records, tasks_only=True)
+        if found is not None:
+            return found
     if interpretation.guard and resolution.status == "unknown":
         return bound(out_of_scope(request_id, case, scope,
                                   *interpretation.guard),

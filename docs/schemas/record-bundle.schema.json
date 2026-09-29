@@ -1,0 +1,1258 @@
+{
+  "$defs": {
+    "Admission": {
+      "additionalProperties": false,
+      "description": "The raw admission of a case visit, as recorded: its type, where\nthe patient came from and went to, its times, whether the patient\ndied in hospital, and the details recorded with it.",
+      "properties": {
+        "admission_location": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Admission Location"
+        },
+        "admission_type": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Admission Type"
+        },
+        "admit_time": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Admit Time"
+        },
+        "death_time": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Death Time"
+        },
+        "discharge_location": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Discharge Location"
+        },
+        "discharge_time": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Discharge Time"
+        },
+        "ed_out": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ed Out"
+        },
+        "ed_registration": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ed Registration"
+        },
+        "hospital_death": {
+          "title": "Hospital Death",
+          "type": "boolean"
+        },
+        "insurance": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Insurance"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Language"
+        },
+        "marital_status": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Marital Status"
+        },
+        "native_id": {
+          "minimum": 1,
+          "title": "Native Id",
+          "type": "integer"
+        },
+        "race": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Race"
+        }
+      },
+      "required": [
+        "native_id",
+        "hospital_death"
+      ],
+      "title": "Admission",
+      "type": "object"
+    },
+    "CaseRef": {
+      "additionalProperties": false,
+      "description": "One case of one case set, numbered from 1 in the closure record.",
+      "properties": {
+        "case_number": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Case Number",
+          "type": "integer"
+        },
+        "case_set": {
+          "pattern": "^[a-z0-9][a-z0-9.-]{0,63}$",
+          "title": "Case Set",
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_set",
+        "case_number"
+      ],
+      "title": "CaseRef",
+      "type": "object"
+    },
+    "DigestRef": {
+      "additionalProperties": false,
+      "description": "A versioned input identified by name and SHA-256.",
+      "properties": {
+        "name": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "sha256"
+      ],
+      "title": "DigestRef",
+      "type": "object"
+    },
+    "Dose": {
+      "additionalProperties": false,
+      "description": "A prescription's drug as written, its dose, form, strength and\nroute, as ordered; linked to the drug record only when every raw\nprescription that could be its source agrees.",
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount"
+        },
+        "drug": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Drug"
+        },
+        "drug_type": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Drug Type"
+        },
+        "form": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Form"
+        },
+        "route": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Route"
+        },
+        "strength": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strength"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "title": "Dose",
+      "type": "object"
+    },
+    "Entry": {
+      "additionalProperties": false,
+      "description": "One record of one source row, kept separate even when repeated.",
+      "properties": {
+        "ancestors": {
+          "default": [],
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 200,
+          "title": "Ancestors",
+          "type": "array"
+        },
+        "code": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "concept_id": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Concept Id"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "dose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Dose"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "end": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(?: [0-9]{2}:[0-9]{2}(?::[0-9]{2})?)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "group": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Group"
+        },
+        "kind": {
+          "enum": [
+            "condition",
+            "procedure",
+            "medication",
+            "lab",
+            "microbiology",
+            "vital",
+            "transfer",
+            "icu_stay",
+            "icu_procedure"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "measure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Measure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "microbe": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Microbe"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "name_status": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unmapped"
+          ],
+          "title": "Name Status",
+          "type": "string"
+        },
+        "native_id": {
+          "minimum": 1,
+          "title": "Native Id",
+          "type": "integer"
+        },
+        "ref": {
+          "pattern": "^R[1-9][0-9]{0,5}$",
+          "title": "Ref",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "condition_occurrence",
+            "procedure_occurrence",
+            "drug_exposure",
+            "labevents",
+            "microbiologyevents",
+            "chartevents",
+            "transfers",
+            "icustays",
+            "procedureevents"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(?: [0-9]{2}:[0-9]{2}(?::[0-9]{2})?)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start"
+        },
+        "stay": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Stay"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "visit_ref": {
+          "pattern": "^V[1-9][0-9]{0,5}$",
+          "title": "Visit Ref",
+          "type": "string"
+        },
+        "vocabulary": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vocabulary"
+        }
+      },
+      "required": [
+        "ref",
+        "kind",
+        "source",
+        "native_id",
+        "visit_ref",
+        "name_status"
+      ],
+      "title": "Entry",
+      "type": "object"
+    },
+    "KindCoverage": {
+      "additionalProperties": false,
+      "description": "What the scope covered of one kind of record: the records\ndelivered, those without a standard concept or a name, those of the\nfinal admission a history leaves out, and those of the person that no\ncase visit holds (never delivered).",
+      "properties": {
+        "excluded_final_admission": {
+          "minimum": 0,
+          "title": "Excluded Final Admission",
+          "type": "integer"
+        },
+        "in_scope": {
+          "minimum": 0,
+          "title": "In Scope",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "condition",
+            "procedure",
+            "medication",
+            "lab",
+            "microbiology",
+            "vital",
+            "transfer",
+            "icu_stay",
+            "icu_procedure"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "outside_case_visits": {
+          "minimum": 0,
+          "title": "Outside Case Visits",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "complete_empty"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "unnamed_in_scope": {
+          "minimum": 0,
+          "title": "Unnamed In Scope",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "status",
+        "in_scope",
+        "unnamed_in_scope",
+        "excluded_final_admission",
+        "outside_case_visits"
+      ],
+      "title": "KindCoverage",
+      "type": "object"
+    },
+    "Measure": {
+      "additionalProperties": false,
+      "description": "A result as recorded: its value as text and, when it is one, as a\nnumber; its unit; the reference range recorded with it; the flag the\nlaboratory set; and the priority of the order. A test recorded\nwithout a value (its result was in a comment, which is not read) has\nno measure.",
+      "properties": {
+        "flag": {
+          "anyOf": [
+            {
+              "const": "abnormal",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Flag"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Number"
+        },
+        "priority": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Priority"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "title": "Measure",
+      "type": "object"
+    },
+    "Microbe": {
+      "additionalProperties": false,
+      "description": "A microbiology row: the specimen, the test, the organism grown,\nthe antibiotic tested and its interpretation (S, R, I or P) and\ndilution, as recorded.",
+      "properties": {
+        "antibiotic": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Antibiotic"
+        },
+        "dilution": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dilution"
+        },
+        "interpretation": {
+          "anyOf": [
+            {
+              "enum": [
+                "S",
+                "R",
+                "I",
+                "P"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interpretation"
+        },
+        "organism": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Organism"
+        },
+        "specimen": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Specimen"
+        },
+        "test": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Test"
+        }
+      },
+      "title": "Microbe",
+      "type": "object"
+    },
+    "Person": {
+      "additionalProperties": false,
+      "description": "The person, as the raw patients table records them: sex, the age\nat the anchor year, the anchor year's group and the date of death.\nMIMIC-IV gives ages over 89 as 91.",
+      "properties": {
+        "anchor_age": {
+          "maximum": 91,
+          "minimum": 0,
+          "title": "Anchor Age",
+          "type": "integer"
+        },
+        "anchor_year": {
+          "maximum": 2300,
+          "minimum": 1900,
+          "title": "Anchor Year",
+          "type": "integer"
+        },
+        "anchor_year_group": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Anchor Year Group"
+        },
+        "date_of_death": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date Of Death"
+        },
+        "native_id": {
+          "minimum": 1,
+          "title": "Native Id",
+          "type": "integer"
+        },
+        "ref": {
+          "const": "D1",
+          "default": "D1",
+          "title": "Ref",
+          "type": "string"
+        },
+        "sex": {
+          "anyOf": [
+            {
+              "enum": [
+                "F",
+                "M"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sex"
+        }
+      },
+      "required": [
+        "native_id",
+        "anchor_age",
+        "anchor_year"
+      ],
+      "title": "Person",
+      "type": "object"
+    },
+    "RecordCoverage": {
+      "additionalProperties": false,
+      "description": "The coverage of a record bundle: every kind, in order.",
+      "properties": {
+        "kinds": {
+          "items": {
+            "$ref": "#/$defs/KindCoverage"
+          },
+          "title": "Kinds",
+          "type": "array"
+        },
+        "record_extract": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "title": "Record Extract",
+          "type": "string"
+        },
+        "ref": {
+          "const": "C1",
+          "default": "C1",
+          "title": "Ref",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/ScopeRef"
+        },
+        "source_snapshot": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "title": "Source Snapshot",
+          "type": "string"
+        },
+        "statement": {
+          "const": "Complete within the OMOP visit, condition, procedure and drug tables of the source snapshot and the raw MIMIC-IV patients, admissions, transfers, ICU stays, laboratory, microbiology, prescriptions, ICU procedure and vital-sign chart tables, for the case's person at the pinned extract; not a statement of clinical absence. Vital signs and ICU procedures are charted during ICU stays only.",
+          "default": "Complete within the OMOP visit, condition, procedure and drug tables of the source snapshot and the raw MIMIC-IV patients, admissions, transfers, ICU stays, laboratory, microbiology, prescriptions, ICU procedure and vital-sign chart tables, for the case's person at the pinned extract; not a statement of clinical absence. Vital signs and ICU procedures are charted during ICU stays only.",
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "kinds",
+        "source_snapshot",
+        "record_extract"
+      ],
+      "title": "RecordCoverage",
+      "type": "object"
+    },
+    "RecordProvenance": {
+      "additionalProperties": false,
+      "description": "Versions of every input a record bundle was built from.",
+      "properties": {
+        "builder": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Builder",
+          "type": "string"
+        },
+        "closure_record": {
+          "$ref": "#/$defs/DigestRef"
+        },
+        "concept_table": {
+          "$ref": "#/$defs/DigestRef"
+        },
+        "drug_ancestors": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DigestRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "identity_mapping": {
+          "$ref": "#/$defs/DigestRef"
+        },
+        "record_extract": {
+          "$ref": "#/$defs/DigestRef"
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_snapshot": {
+          "$ref": "#/$defs/DigestRef"
+        }
+      },
+      "required": [
+        "source_snapshot",
+        "record_extract",
+        "identity_mapping",
+        "closure_record",
+        "concept_table",
+        "builder"
+      ],
+      "title": "RecordProvenance",
+      "type": "object"
+    },
+    "RecordVisit": {
+      "additionalProperties": false,
+      "description": "One case visit with its graph position, role, visit type and, when\nthe raw admissions hold it, its admission.",
+      "properties": {
+        "admission": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Admission"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "end_date": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Date"
+        },
+        "position": {
+          "minimum": 0,
+          "title": "Position",
+          "type": "integer"
+        },
+        "ref": {
+          "pattern": "^V[1-9][0-9]{0,5}$",
+          "title": "Ref",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "pre_target",
+            "final_admission"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "start_date": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Date"
+        },
+        "visit_concept_id": {
+          "minimum": 0,
+          "title": "Visit Concept Id",
+          "type": "integer"
+        },
+        "visit_number": {
+          "minimum": 1,
+          "title": "Visit Number",
+          "type": "integer"
+        },
+        "visit_type": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visit Type"
+        }
+      },
+      "required": [
+        "ref",
+        "position",
+        "visit_number",
+        "role",
+        "visit_concept_id"
+      ],
+      "title": "RecordVisit",
+      "type": "object"
+    },
+    "ScopeRef": {
+      "additionalProperties": false,
+      "description": "An explicit record scope; only a selected visit names its visit.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "pre_target_history",
+            "selected_visit",
+            "case_visits"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "visit_number": {
+          "anyOf": [
+            {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visit Number"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ScopeRef",
+      "type": "object"
+    },
+    "Stay": {
+      "additionalProperties": false,
+      "description": "A stay in a care unit: the transfer's event, the unit and, for an\nICU stay, its last unit and its length in days.",
+      "properties": {
+        "days": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Days"
+        },
+        "event": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event"
+        },
+        "last_unit": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Unit"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "title": "Stay",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The whole record of one case in one scope.",
+  "properties": {
+    "bundle_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "case": {
+      "$ref": "#/$defs/CaseRef"
+    },
+    "coverage": {
+      "$ref": "#/$defs/RecordCoverage"
+    },
+    "kind": {
+      "const": "record",
+      "default": "record",
+      "title": "Kind",
+      "type": "string"
+    },
+    "person": {
+      "$ref": "#/$defs/Person"
+    },
+    "provenance": {
+      "$ref": "#/$defs/RecordProvenance"
+    },
+    "records": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Entry"
+      },
+      "title": "Records",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/ScopeRef"
+    },
+    "visits": {
+      "items": {
+        "$ref": "#/$defs/RecordVisit"
+      },
+      "minItems": 1,
+      "title": "Visits",
+      "type": "array"
+    }
+  },
+  "required": [
+    "bundle_id",
+    "case",
+    "scope",
+    "person",
+    "visits",
+    "coverage",
+    "provenance"
+  ],
+  "title": "RecordBundle",
+  "type": "object"
+}

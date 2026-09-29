@@ -218,6 +218,23 @@ def date(value):
                          match.group(1))
 
 
+def moment(value):
+    """Return an ISO time as a short date and its hour ("2 Jan 2100
+    08:00"), or a date alone; nothing for no time."""
+    if not value:
+        return ""
+    shown = date(value)
+    match = re.match(r"^\d{4}-\d{2}-\d{2}[ T](\d{2}:\d{2})", str(value))
+    return "%s %s" % (shown, match.group(1)) if match else shown
+
+
+def number(value):
+    """Return a number as recorded, without a needless ".0"."""
+    if value is None:
+        return ""
+    return "%d" % value if float(value).is_integer() else "%.6g" % value
+
+
 def references(response):
     """Return the references a response cites, in their first order."""
     found = []

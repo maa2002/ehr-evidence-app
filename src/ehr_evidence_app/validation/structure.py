@@ -62,7 +62,42 @@ COMPOSITION = {
                                                 "driver_history": (0, None),
                                                 "driver_context": (0, None),
                                                 "notice": (3, None)},
+    # Answers about the whole record.
+    ("record_list", "answer"): {"record_list_summary": (1, 1),
+                                "record_list_item": (0, None),
+                                "record_stay_item": (0, None),
+                                "notice": (1, 2)},
+    ("record_presence", "answer"): {"record_presence_summary": (1, 1),
+                                    "record_presence_item": (1, None)},
+    ("record_timing", "answer"): {"record_presence_summary": (1, 1),
+                                  "record_time": (1, 2), "notice": (1, 1)},
+    ("record_count", "answer"): {"record_count": (0, 1),
+                                 "record_count_kind": (0, 1)},
+    ("record_values", "answer"): {"record_value": (0, None),
+                                  "record_value_group": (0, None),
+                                  "record_value_item": (0, None),
+                                  "notice": (0, 3)},
+    ("record_abnormal", "answer"): {"record_abnormal_summary": (1, 1),
+                                    "record_value_group": (1, None),
+                                    "record_value_item": (1, None),
+                                    "notice": (0, 2)},
+    ("record_abnormal", "not_recorded"): {"record_abnormal_absent": (1, 1),
+                                          "notice": (1, 2)},
+    ("visit_details", "answer"): {"visit_summary": (1, 1),
+                                  "visit_fact": (1, None),
+                                  "notice": (0, 1)},
+    ("person_details", "answer"): {"person_fact": (0, 1),
+                                   "person_age": (0, None),
+                                   "visit_fact": (0, None),
+                                   "notice": (0, 1)},
 }
+# A record answer that is not recorded: the kind's or the item's absence
+# and its notices, whatever the task.
+for _task in ("record_list", "record_presence", "record_timing",
+              "record_count", "record_values"):
+    COMPOSITION[(_task, "not_recorded")] = {"record_list_empty": (0, 1),
+                                            "record_absent": (0, 1),
+                                            "notice": (1, 2)}
 EVIDENTIAL = ("answer", "not_recorded")
 # The order of a QA answer's statements, by kind.
 ORDER = {
@@ -72,7 +107,25 @@ ORDER = {
     ("condition_presence", "answer"): ("presence_summary", "presence_item"),
     ("condition_presence", "not_recorded"): ("presence_absent",
                                              "presence_unmapped", "notice"),
+    ("record_list", "answer"): ("record_list_summary", "record_list_item",
+                                "record_stay_item", "notice"),
+    ("record_presence", "answer"): ("record_presence_summary",
+                                    "record_presence_item"),
+    ("record_timing", "answer"): ("record_presence_summary", "record_time",
+                                  "notice"),
+    ("record_abnormal", "not_recorded"): ("record_abnormal_absent",
+                                          "notice"),
+    ("visit_details", "answer"): ("visit_summary", "visit_fact", "notice"),
+    ("person_details", "answer"): ("person_fact", "person_age",
+                                   "visit_fact", "notice"),
 }
+for _task in ("record_list", "record_presence", "record_timing",
+              "record_count", "record_values"):
+    ORDER[(_task, "not_recorded")] = ("record_list_empty", "record_absent",
+                                      "notice")
+# The value lists of a record answer: each group's header, then its
+# values; a selector's values stand alone.
+VALUE_LINES = ("record_value", "record_value_group", "record_value_item")
 # The statements under an explanation's driver, in their order.
 DRIVER_LINES = ("driver_history", "driver_context")
 # The statements that name the condition a presence question asks about.
@@ -100,6 +153,10 @@ def outcome_problems(candidate):
         return {"structure_invalid"}
     if outcome in EVIDENTIAL:
         if candidate.task not in vocab.QA_TASKS or candidate.bundle is None:
+            return {"structure_invalid"}
+        if candidate.task in vocab.RECORD_TASKS and outcome == (
+                "not_recorded") and candidate.task in ("visit_details",
+                                                       "person_details"):
             return {"structure_invalid"}
     elif outcome == "explanation":
         if (candidate.task != "prediction_explanation"
@@ -150,7 +207,7 @@ def kind_problems(statement, candidate):
             return {"structure_invalid"}
         return set()
     kind = candidates.KINDS[statement.kind]
-    if (candidate.task != kind.task
+    if (not kind.answers(candidate.task)
             or candidate.outcome not in kind.outcomes):
         return {"structure_invalid"}
     return set()
@@ -170,6 +227,14 @@ def cites_as_its_kind(statement):
         return refs == ("P1",)
     if rule == "attribution":
         return refs == (statement.slots.driver,)
+    if rule == "records":
+        return bool(refs) and all(ref.startswith("R") for ref in refs)
+    if rule == "visit":
+        return refs == (statement.slots.visit,)
+    if rule == "person":
+        return refs == ("D1",)
+    if rule == "person_visit":
+        return refs == ("D1", statement.slots.visit)
     return not refs
 
 
@@ -198,9 +263,22 @@ def reference_problems(statement, candidate, bundle, concept_name):
         if slots.visits and any(number not in numbers
                                 for number in slots.visits):
             problems.add("reference_unresolved")
+        named = (slots.value, slots.when, slots.item.record
+                 if slots.item is not None else None)
+        if any(ref is not None and ref not in lookup.records
+               for ref in named):
+            problems.add("reference_unresolved")
+        if slots.visit is not None and slots.visit not in lookup.visit_refs:
+            problems.add("reference_unresolved")
+        if (statement.kind in ("person_fact", "person_age")
+                and lookup.person is None):
+            problems.add("reference_unresolved")
     elif refs or slots.visits or slots.driver is not None or (
             slots.condition is not None
-            and slots.condition.event is not None):
+            and slots.condition.event is not None) or any(
+            value is not None for value in (
+                slots.value, slots.when, slots.visit,
+                slots.item.record if slots.item is not None else None)):
         problems.add("reference_unresolved")
     concepts = tuple(slots.names or ()) + (
         slots.condition.concepts if slots.condition is not None else ()) + (
@@ -255,11 +333,38 @@ def explanation_in_order(statements):
                                       for kind in kinds[index:])
 
 
+def values_in_order(statements):
+    """Return True when a record answer's values come first, each group's
+    header before its own values, and its notices last."""
+    kinds = [statement.kind for statement in statements]
+    count = len(kinds) - len([kind for kind in kinds if kind == "notice"])
+    if any(kind == "notice" for kind in kinds[:count]):
+        return False
+    body = kinds[:count]
+    if body and body[0] == "record_abnormal_summary":
+        body = body[1:]
+    if not body:
+        return False
+    if all(kind == "record_value" for kind in body):
+        return True
+    if "record_value" in body or body[0] != "record_value_group":
+        return False
+    groups = [index for index, kind in enumerate(body)
+              if kind == "record_value_group"]
+    ends = groups[1:] + [len(body)]
+    return all(end - start > 1 for start, end in zip(groups, ends)) and all(
+        kind in ("record_value_group", "record_value_item")
+        for kind in body)
+
+
 def order_problems(candidate):
     """Return problems of the order of an answer's statements."""
     key = (candidate.task, candidate.outcome)
     if key == ("prediction_explanation", "explanation"):
         return set() if explanation_in_order(candidate.statements) else {
+            "structure_invalid"}
+    if key in (("record_values", "answer"), ("record_abnormal", "answer")):
+        return set() if values_in_order(candidate.statements) else {
             "structure_invalid"}
     order = ORDER.get(key)
     if order is None:
@@ -287,8 +392,11 @@ def size_problems(candidate, bundle, concept_name):
         released = candidates.response(candidate, bundle, concept_name)
     except (ValidationError, candidates.CandidateError):
         return {"structure_invalid"}
-    if (len(released.text) > candidates.MAX_TEXT
-            or len(released.claims) > candidates.MAX_CLAIMS):
+    record = candidate.task in vocab.RECORD_TASKS
+    if (len(released.text) > (contracts.MAX_RECORD_TEXT if record
+                              else candidates.MAX_TEXT)
+            or len(released.claims) > (contracts.MAX_RECORD_CLAIMS if record
+                                       else candidates.MAX_CLAIMS)):
         return {"structure_invalid"}
     return set()
 

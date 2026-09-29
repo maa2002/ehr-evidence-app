@@ -302,6 +302,24 @@ class PathPolicyTests(ScratchTestCase):
                           guard.vocabulary_source_problem(
                               directory + "\\CONCEPT.csv", directory))
 
+    def test_raw_source_files(self):
+        """Only plain files beneath a permitted raw directory."""
+        self.assertEqual(guard.RAW_SOURCE_DIR,
+                         "W:\\Industry Dataset\\mimic-iv-3.1")
+        source = os.path.join(self.work, "raw")
+        path = os.path.join(source, "hosp", "patients.csv", "patients.csv")
+        write_text(path)
+        self.assertIsNone(guard.raw_source_problem(path, source))
+        for candidate, expected in (
+                (os.path.join(self.work, "patients.csv"), "beneath"),
+                (os.path.join(source, "hosp", "missing.csv"), "missing"),
+                ("relative\\patients.csv", "raw file")):
+            self.assertIn(expected, guard.raw_source_problem(candidate,
+                                                             source))
+        for directory in ("C:\\elsewhere", guard.RUNTIME_ROOT + "\\raw"):
+            self.assertIn("raw directory must be", guard.raw_source_problem(
+                directory + "\\hosp\\patients.csv", directory))
+
     def test_approved_destinations_and_missing_leaves_are_accepted(self):
         """Existing and not-yet-created private destinations pass."""
         existing_file = os.path.join(self.work, "report.json")

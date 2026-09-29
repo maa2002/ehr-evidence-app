@@ -5,10 +5,11 @@ gate runs every check the candidate's answer requires, in order:
 
 1. structure and references (validation.structure), always;
 2. then, when those pass: the support of QA statements by their cited
-   records (validation.support) for lists and presence checks, the
-   preservation of the prediction and drivers (validation.explanation) for
-   explanations, and the wording rules (validation.language) for every
-   outcome;
+   records (validation.support) for condition lists and presence checks,
+   and (validation.record_support) for answers about the whole record,
+   the preservation of the prediction and drivers
+   (validation.explanation) for explanations, and the wording rules
+   (validation.language) for every outcome;
 3. the citation check of evidence.schema on the rendered response.
 
 It maps what the checks find to one outcome:
@@ -30,8 +31,10 @@ import argparse
 import sys
 
 from ehr_evidence_app.evidence import contracts, schema
+from ehr_evidence_app.evidence import vocabulary as vocabularies
 from ehr_evidence_app.validation import candidate as candidates
-from ehr_evidence_app.validation import language, structure, support
+from ehr_evidence_app.validation import language, record_support, \
+    structure, support
 
 
 def concept_namer(vocab):
@@ -43,16 +46,22 @@ def concept_namer(vocab):
     return name
 
 
-def required_checks(candidate, drivers=None):
+def required_checks(candidate, drivers=None, record=None):
     """Return the (name, check) pairs a candidate's answer requires after
     its structure; each check takes (candidate, bundle, vocab) and returns
     reason codes. drivers is how many drivers an explanation describes
-    (the configured number when None)."""
+    (the configured number when None); record is the
+    validation.record_support.RecordCheck of an answer about the
+    record."""
     # Imported here: validation.explanation releases through this gate.
     from ehr_evidence_app.validation import explanation
     checks = []
     if candidate.task in ("condition_list", "condition_presence"):
         checks.append(("support", support.check))
+    if candidate.task in vocabularies.RECORD_TASKS:
+        checks.append(("record_support",
+                       lambda item, bundle, _: record_support.check(
+                           item, bundle, record)))
     if candidate.task == "prediction_explanation":
         checks.append(("explanation",
                        lambda item, bundle, _: explanation.check(
@@ -70,7 +79,7 @@ def withheld(candidate, request_id, case, scope, outcome, reasons):
 
 def release(candidate, request_id, case, scope, bundle=None,
             bundle_sha256=None, vocab=None, checks=None, condition=None,
-            drivers=None):
+            drivers=None, record=None):
     """Return the Response of a candidate for the request (request_id,
     case, scope): rendered from it when every required check passes, a
     validation rejection when any finds a problem, an operational error
@@ -78,7 +87,8 @@ def release(candidate, request_id, case, scope, bundle=None,
 
     bundle is the bundle bound to the request, if any; condition is the
     ConditionName a presence question was resolved to; drivers is how many
-    drivers an explanation describes (the configured number when None).
+    drivers an explanation describes (the configured number when None);
+    record is what an answer about the record is checked against.
     checks replaces the required checks after structure (for tests).
     """
     concept_name = concept_namer(vocab)
@@ -87,7 +97,7 @@ def release(candidate, request_id, case, scope, bundle=None,
                                        bundle, bundle_sha256, concept_name,
                                        condition))
         if not problems:
-            for _, check in (required_checks(candidate, drivers)
+            for _, check in (required_checks(candidate, drivers, record)
                              if checks is None else checks):
                 problems.update(check(candidate, bundle, vocab))
         if not problems:

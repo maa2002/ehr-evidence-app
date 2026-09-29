@@ -26,6 +26,8 @@ production deployment.
 
 ```text
 MIMIC-IV 3.1 --(OHDSI ETL, upstream)--> OMOP CDM in PostgreSQL (read-only)
+     |
+     +--(raw hospital and ICU files, read-only)--> record extracts (sources.mimic)
                                                 |
                   +-----------------------------+------------------------+
                   |                                                      |
@@ -65,6 +67,7 @@ attribution.
 | Validation and the release gate | implemented; mutation suite version 4 covers model-written candidates, driver selection and scores as shown |
 | LLM generation | implemented (release 0.9.0): the compact output shape with syntax-only decoding, the model's structured view of the evidence, the prompt, adapter, limits and fallback, the pinned model's worker in its own environment, protected runtime records, the log audit and tracker aggregates; measured on the development case sets |
 | API and interface | in progress (Phase 8): the local API, its access boundary, the interface's page and its operations, the launcher and sharing through the tunnel are implemented |
+| The whole record | implemented: raw record extracts, record bundles, the medication and procedure vocabulary, reading of questions about the record, template answers and their support checks ([ADR 0021](decisions/0021-the-whole-record.md)) |
 | Evaluation | planned |
 
 See [roadmap.md](roadmap.md) for the planned work.
@@ -77,12 +80,12 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | Package | Responsibility | Modules |
 | --- | --- | --- |
 | `storage` | Fixed storage roots, destination and path checks, process-local destination setup, runtime-volume preflight | `policy`, `destinations`, `runtime` |
-| `sources` | Staging of the legacy OMOP exports; bounded read-only extraction from the OMOP database | `exports`, `pilot` |
+| `sources` | Staging of the legacy OMOP exports; bounded read-only extraction from the OMOP database; the case sets' raw MIMIC-IV records | `exports`, `pilot`, `mimic` |
 | `gnn` | Inherited GNN baseline, asset validation, identity mapping, preprocessing parity, offline outputs, provenance, split membership, run binding, Phase 3 closure, driver-to-event linkage | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission`, `linkage` |
-| `evidence` | Request and response contracts, evidence records, snapshot and case readers, readable names, scoped retrieval, claim policy, QA and explanation bundles | `vocabulary`, `contracts`, `schema`, `readers`, `concepts`, `retrieval`, `policy`, `bundles` |
+| `evidence` | Request and response contracts, evidence records, snapshot and case readers, readable names, scoped retrieval, claim policy, QA and explanation bundles, record bundles | `vocabulary`, `contracts`, `schema`, `readers`, `concepts`, `retrieval`, `policy`, `bundles`, `record`, `record_bundles` |
 | `casesets` | Case-set registry, seeded case-set selection, case-set preparation | `registry`, `selection`, `prepare` |
-| `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, template candidates, scoped answers, development suite, held-out and written wording tests | `vocabulary`, `resolve`, `interpret`, `scope`, `templates`, `answer`, `suite`, `heldout`, `written` |
-| `validation` | Candidate contract, checks before generation, structure and reference checks, support of QA statements, wording rules, template explanation and its preservation checks, release gate, mutation suite | `candidate`, `evidence`, `structure`, `support`, `language`, `explanation`, `gate`, `mutations` |
+| `qa` | Condition vocabulary, question interpretation, concept resolution and record matching, scope binding, template candidates, scoped answers, development suite, held-out and written wording tests; questions about the whole record, their terms, vocabulary and answers | `vocabulary`, `resolve`, `interpret`, `scope`, `templates`, `answer`, `suite`, `heldout`, `written`, `record_vocabulary`, `record_interpret`, `record_resolve`, `record_answer` |
+| `validation` | Candidate contract, checks before generation, structure and reference checks, support of QA statements and of answers about the whole record, how record facts are shown, wording rules, template explanation and its preservation checks, release gate, mutation suite | `candidate`, `evidence`, `structure`, `support`, `record_support`, `record_text`, `language`, `explanation`, `gate`, `mutations` |
 | `generation` | Candidates written by the language model: the document shape and its schema, the model's compact view of the evidence, the prompt, the adapter with its limits and the template fallback, the pinned model's runtime and its worker (which runs in the model environment), development measurement, protected runtime records | `shape`, `projection`, `prompt`, `adapter`, `runtime`, `worker`, `measure`, `records` |
 | `api` | The application's operations for the interface, served as a local HTTP API behind its access boundary; the launcher | `service`, `app`, `boundary`, `launch` |
 | `interface` | The page over the API, a conversation about a selected patient with the evidence beside it; its operations, what it shows, its jobs, names, client, access checks and server; the secret link and the tunnel's parts | `app`, `views`, `jobs`, `names`, `labels`, `client`, `gate`, `serve`, `share`, `static` |
@@ -189,6 +192,9 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | 34.2 | copied unchanged | `protected-data\question-sets\mimic-iv-ext-instr` |
 | 34.2 | `qa.heldout` | `protected-data\question-sets\mimic-iv-ext-instr-partitions-v1` |
 | 34.3 | `qa.written` | `protected-data\question-sets\written-v1` to `written-v3`, one set per rule version |
+| 52.1 | `sources.mimic` | `protected-data\source-records\<case set>` |
+| 52.2 | `qa.record_vocabulary` | `protected-data\vocabularies\record-vocabulary-athena-20260831-v1` |
+| 52.3 | `evidence.record_bundles` | `protected-data\evidence-bundles\<case set>-records-v1` |
 
 Work items 16 (bridge output contract) and 18 (target and history policy)
 are specifications; they are described in

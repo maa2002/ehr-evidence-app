@@ -122,7 +122,15 @@
       "enum": [
         "condition_list",
         "condition_presence",
-        "prediction_explanation"
+        "prediction_explanation",
+        "record_list",
+        "record_presence",
+        "record_timing",
+        "record_count",
+        "record_values",
+        "record_abnormal",
+        "visit_details",
+        "person_details"
       ],
       "title": "Task",
       "type": "string"

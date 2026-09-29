@@ -10,7 +10,7 @@ there. Command examples assume the session set-up in
 
 | Class | Examples | Where it may live |
 | --- | --- | --- |
-| Protected | Source exports and extracts, identity mappings, model outputs, provenance and split sidecars, prepared evidence, external question sets and their partitions, written test questions, runtime records of the generation (`protected-data\runtime-records`) | Workspace `protected-data\` only |
+| Protected | Source exports and extracts, the case sets' raw MIMIC-IV records (`protected-data\source-records`), identity mappings, model outputs, provenance and split sidecars, prepared evidence and record bundles, external question sets and their partitions, written test questions, runtime records of the generation (`protected-data\runtime-records`) | Workspace `protected-data\` only |
 | Private, non-patient | Verification summaries, environment manifests, lineage manifests, asset-validation records, archives | Workspace `outputs\`, `records\`, `archive\` |
 | Disposable | Environments, package and bytecode caches, temporary files, test temp | Runtime root |
 | Publishable | Code, configuration, documentation, synthetic test fixtures | This repository |
@@ -19,6 +19,11 @@ there. Command examples assume the session set-up in
 Aggregate verification records (statuses, counts, hashes) may be copied into
 reports. Anything that identifies a person, a visit or an event, and any
 per-patient value, may not.
+
+The raw MIMIC-IV files in the cold archive are read in place, read-only,
+by the record extraction alone (`sources.mimic`); only rows of the case
+sets' persons are kept, without free-text comments or the identifiers of
+staff and orders.
 
 The experiment tracker holds metadata, aggregates and the files of the one
 listed pretrained model, MedGemma 1.5 4B IT, with its licence notice and

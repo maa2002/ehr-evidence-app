@@ -158,6 +158,15 @@ follow.
 - 51 Add the explanation panel (done: the explanation in the
   conversation)
 - 52 Add the evidence viewer (done: the evidence panel)
+- 52.1 to 52.7 Make the whole record answerable, at the owner's request
+  ([ADR 0021](decisions/0021-the-whole-record.md); done): the case sets'
+  raw MIMIC-IV records (`sources.mimic`), the medication and procedure
+  vocabulary (`qa.record_vocabulary`), record bundles
+  (`evidence.record_bundles`), reading of questions about the record and
+  their terms (`qa.record_interpret`, `qa.record_resolve`), template
+  answers (`qa.record_answer`), their rendering and support checks
+  (`validation.record_text`, `validation.record_support`), and the whole
+  record in the evidence panel
 
 ## Phase 9. Evaluation
 

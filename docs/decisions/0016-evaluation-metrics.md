@@ -3,7 +3,9 @@
 Status: accepted (2026-09-28), agreed by the project owner before any
 request of `eval-100-v1` is written. These definitions are frozen with
 the settings, prompts, evidence selection and validators; changing any of
-them afterwards makes a new evaluated version.
+them afterwards makes a new evaluated version. Decision 11 was added by
+[ADR 0021](0021-the-whole-record.md) on 2026-09-29, with the owner's
+agreement, before any request of `eval-100-v1` was written.
 
 ## Context
 
@@ -110,6 +112,33 @@ independent references instead.
     level decides success; every metric defined here is reported, and
     none is chosen after the results. Development results are reported
     apart from final ones.
+11. **Questions about the whole record.** They form strata of their own,
+    reported apart from condition lists, presence checks and
+    explanations: lists, presence checks, times, counts, values, flagged
+    results, visits' details and the person's details, each also by kind
+    of record. Their references are prepared from the evaluation set's
+    raw extract and OMOP snapshot, independently of the runtime's record
+    bundles and checks. A list is scored as in decision 3, an item being
+    a condition (a standard concept, or the source code of records
+    without one), a laboratory test or ICU item, a medication's concept
+    (or its written name without one), a microbiology test and specimen,
+    a care unit or an ICU stay; a presence check by scoped accuracy
+    (decision 4); a time, a count or a value is correct when it names
+    exactly the reference's records (the first and the last, every
+    counted one, the one each item's selector picks) with their values;
+    visits' and the person's details when every visit of the scope is
+    given with the reference's value. Answerability, evidence and
+    operations are measured as in decisions 5, 7 and 8 over these
+    strata. The templates write these answers in both conditions, so no
+    difference between them is reported for these strata until the model
+    writes them. The questions: a generated suite over the development
+    set (development only); a set worded, after the record rules are
+    fixed, by a writer who has not read them; and the structured
+    questions of MIMIC-IV-Ext-Instr's held-out partition about its seven
+    event types, read once with the fixed rules, each event type with
+    its expected reading. Questions of the condition question sets that
+    asked about other data, and were to be refused, are scored in these
+    strata instead; the condition strata keep the condition questions.
 
 | Metric | Numerator | Denominator | When the denominator is zero |
 | --- | --- | --- | --- |

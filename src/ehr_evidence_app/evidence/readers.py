@@ -70,13 +70,16 @@ class ReaderError(Exception):
 
 @dataclasses.dataclass(frozen=True)
 class SourceVisit:
-    """One visit_occurrence row."""
+    """One visit_occurrence row; source_value is its visit_source_value
+    ("subject_id|hadm_id" for a MIMIC-IV admission) when the snapshot
+    holds it."""
 
     visit_occurrence_id: int
     person_id: int
     visit_concept_id: int
     start_date: str | None
     end_date: str | None
+    source_value: str | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -306,7 +309,8 @@ def parse_visits(rows):
                                           "visit_concept_id"),
             start_date=optional_date(row["visit_start_date"],
                                      "visit_start_date"),
-            end_date=optional_date(row["visit_end_date"], "visit_end_date"))
+            end_date=optional_date(row["visit_end_date"], "visit_end_date"),
+            source_value=optional_text(row.get("visit_source_value")))
         if visit.visit_occurrence_id in visits:
             raise ReaderError("duplicate_native_key:visit")
         visits[visit.visit_occurrence_id] = visit

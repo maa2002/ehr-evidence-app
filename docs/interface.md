@@ -56,7 +56,11 @@ meaning, every original attribution with its score, attachment and link
 status, the linked history records, the final admission's records as
 context, the case's restrictions and the provenance. The native database
 identifiers of visits and records are left out: references and visit
-numbers trace every claim.
+numbers trace every claim. When the case set's record bundles are
+published, the evidence of a scope also holds its whole record
+(`record`): the person, each visit with its admission, every record with
+its visit's number and the part of its kind, the coverage of every kind
+and the provenance, again without native identifiers.
 
 A request the service cannot serve is answered with a bare code:
 `case_set_not_served`, `case_unknown`, `scope_unknown`, `scope_invalid`,
@@ -152,7 +156,12 @@ value chosen there; the page builds everything it shows as text.
   final admission's records as context, the case's restrictions, the
   coverage, the visits and the provenance. A reference opened from a
   response is found and marked; one the evidence does not hold is said to
-  be missing. The panel is resized by its edge, or its handle's arrow
+  be missing. With the whole record, a scope's evidence also shows the
+  person, each visit's admission, and a table for each kind of record
+  (conditions as answers about the record cite them, procedures, ICU
+  procedures, medications, laboratory results, microbiology, vital
+  signs, transfers and ICU stays), long tables folded, and the coverage
+  of every kind. The panel is resized by its edge, or its handle's arrow
   keys, and the browser remembers its width.
 
 Labels, names and headings are in title case and sentences in sentence
