@@ -2,6 +2,7 @@
 
 import unittest
 
+from ehr_evidence_app.api import service
 from ehr_evidence_app.evidence import schema
 from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.generation import adapter
@@ -9,13 +10,14 @@ from ehr_evidence_app.interface import labels
 
 
 class LabelTests(unittest.TestCase):
-    """Outcomes, scopes, authors, the model's state, scores and
+    """Outcomes, scopes, authors, the model's state, values, scores and
     references."""
 
     def test_every_outcome_and_fallback_has_words(self):
-        """Every outcome has a name and a tone the page knows, and every
-        fallback a reason."""
+        """Every outcome has a title-case name and a tone the page knows,
+        and every fallback a reason."""
         self.assertEqual(set(labels.OUTCOMES), set(vocab.OUTCOMES))
+        self.assertEqual(labels.outcome("not_recorded"), "Not Recorded")
         self.assertEqual(set(labels.TONES), set(vocab.OUTCOMES))
         self.assertLessEqual(set(labels.TONES.values()),
                              {"good", "info", "neutral", "warn", "bad"})
@@ -23,38 +25,69 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(labels.tone("unknown"), "neutral")
         self.assertEqual(set(labels.FALLBACKS), set(adapter.FALLBACKS))
 
+    def test_title_case(self):
+        """A name gains capitals but for short joining words inside it; a
+        word holding a capital or a digit is kept as written."""
+        for text, titled in (
+                ("Aortocoronary bypass graft present",
+                 "Aortocoronary Bypass Graft Present"),
+                ("Heart failure due to hypertension",
+                 "Heart Failure Due to Hypertension"),
+                ("Non-ST elevation myocardial infarction",
+                 "Non-ST Elevation Myocardial Infarction"),
+                ("heparin sodium, porcine 5000 UNT/ML Injectable Solution",
+                 "Heparin Sodium, Porcine 5000 UNT/ML Injectable Solution"),
+                ("Chronic kidney disease, stage 3 (moderate)",
+                 "Chronic Kidney Disease, Stage 3 (Moderate)"),
+                ("Crohn's disease of large intestine",
+                 "Crohn's Disease of Large Intestine"),
+                ("pH abnormal", "pH Abnormal"),
+                ("SYNTHETIC CONCEPT 1001", "SYNTHETIC CONCEPT 1001"),
+                ("", "")):
+            self.assertEqual(labels.title(text), titled)
+
+    def test_scopes(self):
+        """A scope is named as the menus name it."""
+        self.assertEqual(labels.scope({"kind": "pre_target_history"}),
+                         "Prior History")
+        self.assertEqual(labels.scope({"kind": "selected_visit",
+                                       "visit_number": 3}), "Visit 3")
+        self.assertEqual(labels.scope({"kind": "case_visits"}), "All Visits")
+        self.assertEqual(set(labels.SCOPES) | {"selected_visit"},
+                         set(vocab.SCOPES))
+
+    def test_authors(self):
+        """Who wrote a response, and why the template did."""
+        self.assertEqual(labels.author({"author": "model"}), "By the Model")
+        self.assertEqual(labels.author({"author": "template",
+                                        "fallback": "busy"}),
+                         "By the Template · Model Busy")
+        self.assertEqual(labels.author({"author": "template",
+                                        "fallback": None}),
+                         "By the Template")
+
     def test_model_states(self):
         """Every state of the model has a short name and a meaning."""
-        from ehr_evidence_app.api import service
         for state in service.MODEL_STATES:
             name, meaning = labels.model(state)
             self.assertTrue(name and meaning)
         self.assertEqual(labels.model("ready"),
-                         ("Model ready", "The model writes the responses."))
+                         ("Model Ready", "The model writes each response."))
 
-    def test_scopes(self):
-        """A scope is named as a sentence and as a menu names it."""
-        for scope, sentence, option in (
-                ({"kind": "pre_target_history"}, "the pre-target history",
-                 "Pre-target history"),
-                ({"kind": "selected_visit", "visit_number": 3}, "visit 3",
-                 "Visit 3"),
-                ({"kind": "case_visits"}, "all case visits",
-                 "All case visits")):
-            self.assertEqual(labels.scope(scope), sentence)
-            self.assertEqual(labels.scope_option(scope), option)
-
-    def test_authors(self):
-        """Who wrote a response, and why the template did."""
-        self.assertEqual(labels.author({"author": "model"}),
-                         "written by the model")
-        self.assertEqual(labels.author({"author": "template",
-                                        "fallback": "gate_rejected"}),
-                         "written by the template: validation withheld the "
-                         "model's reply")
-        self.assertEqual(labels.author({"author": "template",
-                                        "fallback": None}),
-                         "written by the template")
+    def test_values_and_dates(self):
+        """The evidence's codes read as words, and dates as dates."""
+        self.assertEqual(labels.words("drug"), "Medication")
+        self.assertEqual(labels.words("final_admission"), "Final Admission")
+        self.assertEqual(labels.words("target_and_earlier"),
+                         "Final Admission and Earlier")
+        self.assertEqual(labels.words("verified"), "Verified")
+        self.assertEqual(labels.words(None), "")
+        self.assertEqual(labels.date("2100-01-02"), "2 Jan 2100")
+        self.assertEqual(labels.date(None), "")
+        self.assertEqual(labels.date("unknown"), "unknown")
+        for status in vocab.COVERAGE_STATES:
+            name, meaning = labels.coverage(status)
+            self.assertTrue(name and meaning)
 
     def test_scores_are_never_percentages(self):
         """A score shows to three significant figures, never as a
@@ -69,9 +102,9 @@ class LabelTests(unittest.TestCase):
 
     def test_counts(self):
         """A count takes its noun in the singular or the plural."""
-        self.assertEqual(labels.counted(1, "case"), "1 case")
-        self.assertEqual(labels.counted(26, "case"), "26 cases")
-        self.assertEqual(labels.counted(0, "visit"), "0 visits")
+        self.assertEqual(labels.counted(1, "visit"), "1 Visit")
+        self.assertEqual(labels.counted(26, "patient"), "26 Patients")
+        self.assertEqual(labels.counted(0, "visit"), "0 Visits")
 
     def test_references_and_refusals(self):
         """References keep their first order, once each; a refusal says
@@ -79,10 +112,8 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(labels.references({"claims": [
             {"refs": ["E2", "E1"]}, {"refs": ["E1", "P1"]}]}),
                          ["E2", "E1", "P1"])
-        self.assertIn("not answering", labels.error("api_unreachable"))
+        self.assertIn("isn't answering", labels.error("api_unreachable"))
         self.assertIn("other code", labels.error("other_code"))
-        self.assertEqual(labels.words("final_admission"),
-                         "final admission")
 
 
 if __name__ == "__main__":

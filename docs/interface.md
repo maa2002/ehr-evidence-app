@@ -106,18 +106,22 @@ return is what the page shows (`interface.views`), every word about a
 value chosen there; the page builds everything it shows as text.
 
 - **The patients** (work item 49). The sidebar selects the cohort, a case
-  set by its plain name ("Development cohort" for `dev-30-v1`, "Pilot
-  cohort" for `pilot-10-v1`), and the patient. A patient is shown by a
-  pseudonym, as case reports name one: a given name used for any sex and
-  an initial, such as "Jordan K.", fixed by the case set's label and the
-  case's number alone and never drawn from the records
-  (`interface.names`). No given name comes twice among a case set's first
-  sixty cases. The case's number stays beside the pseudonym, the page says
-  that the names are pseudonyms, and a patient can be found by either.
+  set by its plain name ("Development Cohort" for `dev-30-v1`, "Pilot
+  Cohort" for `pilot-10-v1`; no case set's label reaches the page), and
+  the patient. A patient is shown by a pseudonym, as case reports name
+  one: a given name used for any sex and an initial, such as "Jordan K.",
+  fixed by the case set's label and the case's number alone and never
+  drawn from the records (`interface.names`). No given name comes twice
+  among a case set's first sixty cases. The case's number stays beside the
+  pseudonym, a tag and the sidebar say that the names are pseudonyms, and
+  a patient can be found by either.
 - **The conversation.** The questions and responses about the selected
   case form a thread; the composer below it holds the question, the scope
-  (the pre-target history, a visit, or all case visits) and the model's
-  state. A question is answered for the selected case and scope only, and
+  and the model's state. The scope's menu groups Prior History (the
+  pre-target history: the visits before the final admission) and All
+  Visits apart from the single visits, each listed with its date and the
+  final admission marked. A question is answered for the selected case and
+  scope only, and
   nothing carries over from an earlier one. Selecting another patient
   starts a new conversation. Changing the scope keeps the earlier
   responses, greyed and labelled with the scope they answered, never shown
@@ -129,10 +133,12 @@ value chosen there; the page builds everything it shows as text.
   it (the model, or the template and why) and the seconds it took.
   Choosing a reference opens its record in the evidence panel, in the
   scope the response answered.
-- **The explanation** (work item 51). The explanation shows the prepared
-  prediction first: its label, score and logit, with the score's fixed
-  meaning, "uncalibrated sigmoid of the logit; not a clinical risk", and
-  never as a percentage. The explanation of the selected drivers follows,
+- **The explanation** (work item 51). Generate & Explain Diagnosis shows
+  the predicted diagnosis first: its label, score and logit, with the
+  score's fixed meaning, "uncalibrated sigmoid of the logit; not a
+  clinical risk", never as a percentage, and a note that the diagnosis
+  model made the prediction in advance while the explanation is written
+  when asked. The explanation of the selected drivers follows,
   with its references and a note that attribution scores are unsigned and
   not causal. The conditions recorded in the pre-target history stand in
   a block of their own, as records rather than the model's prediction or
@@ -146,21 +152,33 @@ value chosen there; the page builds everything it shows as text.
   final admission's records as context, the case's restrictions, the
   coverage, the visits and the provenance. A reference opened from a
   response is found and marked; one the evidence does not hold is said to
-  be missing.
+  be missing. The panel is resized by its edge, or its handle's arrow
+  keys, and the browser remembers its width.
+
+Labels, names and headings are in title case and sentences in sentence
+case. The names of concepts are shown in title case wherever they appear,
+in a response's text too, the rest of which is shown as released; the
+runtime record keeps the text exactly. Dates are shown as dates ("2 Jan
+2100") and the evidence's codes as words ("Final Admission").
 
 A question or an explanation is a job (`interface.jobs`): the page is
-answered at once, shows that the response is being written with the
-seconds so far, and asks after the job about once a second, every other
-part of the page staying usable meanwhile. A session reads only the jobs
-it started, and a finished job is kept for a quarter of an hour. A
-refusal is shown in words. The page follows the system's light or dark
-setting and fits a phone's screen.
+answered at once, shows Thinking with the seconds so far, and asks after
+the job about once a second, every other part of the page staying usable
+meanwhile. A session reads only the jobs it started, and a finished job
+is kept for a quarter of an hour. A refusal is shown in words.
+
+The page is made of glass panels, translucent, blurred and rimmed with
+light, floating over a soft backdrop; the conversation blurs and fades
+where it scrolls under the bars. It follows the system's light or dark
+setting; when the system asks for less transparency the glass turns
+frostier, and where a browser cannot blur it is solid. It fits a phone's
+screen.
 
 | Route | Returns |
 | --- | --- |
 | `GET /api/state` | The model's state, the cohorts, the question limit and the version |
 | `GET /api/case-sets/{case_set}/cases` | The cohort's patients, by pseudonym, with each case's number and visits |
-| `GET /api/case-sets/{case_set}/cases/{case_number}` | The case: its pseudonym, scopes, evidence and prepared prediction |
+| `GET /api/case-sets/{case_set}/cases/{case_number}` | The case: its pseudonym and greeting, its scopes with their visits' dates, its evidence and its predicted diagnosis |
 | `GET /api/case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The evidence of a scope, or of the prediction, in sections of facts, tables and notes |
 | `POST /api/questions` | Starts answering a question: `{"case_set", "case_number", "scope", "question"}`; returns the job |
 | `POST /api/explanations` | Starts explaining the prediction: `{"case_set", "case_number"}`; returns the job |

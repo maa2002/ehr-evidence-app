@@ -1,14 +1,14 @@
 // The page of the EHR evidence application (Phase 8, work items 49 to 52).
 //
-// The sidebar selects the case set and the case; the conversation asks
+// The sidebar selects the cohort and the patient; the conversation asks
 // questions about the selected case in the selected scope and explains its
-// prepared prediction; the panel shows the evidence. A question or an
+// predicted diagnosis; the panel shows the evidence. A question or an
 // explanation runs as a job that the page asks after, so that the page never
-// waits on the model. Changing the case starts a new conversation; changing
-// the scope keeps the earlier responses, greyed and labelled with the scope
-// they answered (decision D4). Everything shown is built as text through the
-// DOM, never parsed as markup; the words about values come from the
-// interface's operations.
+// waits on the model. Changing the patient starts a new conversation;
+// changing the scope keeps the earlier responses, greyed and labelled with
+// the scope they answered (decision D4). Everything shown is built as text
+// through the DOM, never parsed as markup; the words about values come from
+// the interface's operations.
 
 "use strict";
 
@@ -18,7 +18,12 @@ const STATE_SECONDS = {ready: 30, loading: 4, unavailable: 30, off: 30, unreacha
 // Evidence views kept in memory, and failed looks at a job before it fails.
 const EVIDENCE_KEPT = 24;
 const JOB_FAILURES = 6;
+// The evidence panel's width: its bounds, a keyboard step and where it is
+// remembered in this browser.
+const PANEL = {least: 360, most: 920, step: 24, standard: 480, key: "ehr.panel-width"};
+const CHECK_TEMPLATE = "Is  recorded?";
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const overlaid = window.matchMedia("(max-width: 1240px)");
 
 // ---------------------------------------------------------------------------
 // Elements
@@ -33,40 +38,43 @@ const ui = {
   menu: byId("menu-button"),
   sidebarClose: byId("sidebar-close"),
   newConversation: byId("new-conversation"),
-  caseSet: byId("case-set"),
+  cohortMenu: byId("cohort-menu"),
   filter: byId("case-filter"),
   caseList: byId("case-list"),
-  casesLabel: byId("cases-label"),
+  casesCount: byId("cases-count"),
   version: byId("version"),
   main: byId("main"),
   caseTitle: byId("case-title"),
   caseDetail: byId("case-detail"),
+  pseudonym: byId("pseudonym-tag"),
   evidenceButton: byId("evidence-button"),
-  conversation: byId("conversation"),
   banner: byId("banner"),
   bannerText: byId("banner-text"),
   bannerRetry: byId("banner-retry"),
   welcomeTitle: byId("welcome-title"),
-  welcomeDetail: byId("welcome-detail"),
+  welcomeTags: byId("welcome-tags"),
   thread: byId("thread"),
   announce: byId("announce"),
   composer: byId("composer"),
   question: byId("question"),
-  scope: byId("scope"),
+  scopeMenu: byId("scope-menu"),
   explain: byId("explain"),
   model: byId("model-state"),
   modelText: byId("model-text"),
   send: byId("send"),
   suggestions: byId("suggestions"),
+  suggestCheck: byId("suggest-check"),
   suggestExplain: byId("suggest-explain"),
   suggestEvidence: byId("suggest-evidence"),
   panel: byId("panel"),
-  evidenceKey: byId("evidence-key"),
+  resizer: byId("panel-resizer"),
+  evidenceMenu: byId("evidence-menu"),
   panelClose: byId("panel-close"),
   panelBody: byId("panel-body"),
+  menuLayer: byId("menu-layer"),
 };
 
-// Build an element: properties set attributes, text, classes, data and
+// Build an element: properties set attributes, classes, data and
 // listeners; children are nodes or text.
 function el(tag, props, ...children) {
   const node = document.createElement(tag);
@@ -99,17 +107,35 @@ function icon(name, className = "icon") {
 const sleep = (milliseconds) => new Promise((done) => setTimeout(done, milliseconds));
 const behaviour = () => (reducedMotion.matches ? "auto" : "smooth");
 
+// This tab remembers the cohort and patient; this browser, the panel's
+// width. Either store may be refused; the page works without them.
 function remember(name, value) {
   try {
     sessionStorage.setItem("ehr." + name, String(value));
   } catch {
-    // Storage may be refused; the page works without it.
+    // Refused: nothing is remembered.
   }
 }
 
 function recall(name) {
   try {
     return sessionStorage.getItem("ehr." + name);
+  } catch {
+    return null;
+  }
+}
+
+function keep(name, value) {
+  try {
+    localStorage.setItem(name, String(value));
+  } catch {
+    // Refused: the width is not kept.
+  }
+}
+
+function kept(name) {
+  try {
+    return localStorage.getItem(name);
   } catch {
     return null;
   }
@@ -142,7 +168,7 @@ async function request(path, options = {}) {
     });
   } catch {
     throw new Refusal("interface_unreachable",
-      "The interface is not answering. It may have stopped.", 0);
+      "The interface isn't answering. It may have stopped.", 0);
   }
   let body = null;
   try {
@@ -155,7 +181,7 @@ async function request(path, options = {}) {
       throw new Refusal(body.error, body.message || body.error, reply.status);
     }
     if (reply.status === 404) {
-      throw new Refusal("session_ended", "The session has ended. Open the link again.", 404);
+      throw new Refusal("session_ended", "Your session has ended. Open the link again.", 404);
     }
     throw new Refusal("interface_refused", "The interface refused the request.", reply.status);
   }
@@ -166,6 +192,192 @@ const get = (path) => request(path);
 const post = (path, body) => request(path, {method: "POST", body});
 const casePath = (caseSet, number) =>
   `/api/case-sets/${encodeURIComponent(caseSet)}/cases/${number}`;
+
+// ---------------------------------------------------------------------------
+// Menus: a button that opens a list of choices, in groups, each with what
+// it holds. The list is drawn above the page, so that no panel clips it.
+// ---------------------------------------------------------------------------
+
+let openMenu = null;
+let menuCount = 0;
+
+class Menu {
+  constructor(host, options) {
+    menuCount += 1;
+    this.options = options;
+    this.items = [];
+    this.value = null;
+    this.id = `menu-${menuCount}`;
+    this.button = el("button", {
+      type: "button",
+      className: "menu-button",
+      "aria-haspopup": "listbox",
+      "aria-expanded": "false",
+      "aria-controls": this.id,
+      "aria-label": options.label,
+    });
+    this.shown = el("span", {className: "menu-value"}, options.empty || "");
+    if (options.icon) this.button.append(icon(options.icon));
+    this.button.append(this.shown, icon("chevron", "icon menu-chevron"));
+    host.replaceChildren(this.button);
+    this.list = el("div", {
+      className: "menu-popover glass",
+      role: "listbox",
+      id: this.id,
+      tabindex: "-1",
+      "aria-label": options.label,
+      hidden: true,
+    });
+    ui.menuLayer.append(this.list);
+    this.button.addEventListener("click", () => (this.isOpen() ? this.close(true) : this.open()));
+    this.button.addEventListener("keydown", (event) => {
+      if (["ArrowDown", "ArrowUp"].includes(event.key)) {
+        event.preventDefault();
+        this.open();
+      }
+    });
+    this.list.addEventListener("keydown", (event) => this.key(event));
+  }
+
+  set(items, value) {
+    this.items = items;
+    this.value = value;
+    this.render();
+  }
+
+  enable(on) {
+    this.button.disabled = !on;
+    if (!on) this.close(false);
+  }
+
+  isOpen() {
+    return !this.list.hidden;
+  }
+
+  render() {
+    const current = this.items.find((item) => item.key === this.value);
+    this.shown.textContent = current ? current.label : this.options.empty || "";
+    this.button.title = current && current.detail ? `${current.label}: ${current.detail}` : "";
+    const groups = [];
+    for (const item of this.items) {
+      let group = groups.find((found) => found.name === (item.group || ""));
+      if (!group) groups.push(group = {name: item.group || "", items: []});
+      group.items.push(item);
+    }
+    this.list.replaceChildren(...groups.map((group) => el("div", {
+      role: "group",
+      className: "menu-group",
+      "aria-label": group.name || null,
+    },
+    group.name ? el("div", {className: "menu-group-label", "aria-hidden": "true"}, group.name) : null,
+    ...group.items.map((item) => el("div", {
+      role: "option",
+      className: "menu-option",
+      tabindex: "-1",
+      "aria-selected": String(item.key === this.value),
+      dataset: {key: item.key},
+      onclick: () => this.choose(item.key),
+    },
+    el("span", {className: "option-text"},
+      el("span", {className: "option-label"}, item.label),
+      item.detail ? el("span", {className: "option-detail"}, item.detail) : null),
+    icon("check", "icon option-check"))))));
+  }
+
+  open() {
+    if (this.button.disabled || !this.items.length) return;
+    if (openMenu && openMenu !== this) openMenu.close(false);
+    openMenu = this;
+    this.list.hidden = false;
+    this.button.setAttribute("aria-expanded", "true");
+    this.place();
+    const chosen = this.list.querySelector('[aria-selected="true"]')
+      || this.list.querySelector('[role="option"]');
+    if (chosen) chosen.focus();
+  }
+
+  place() {
+    const box = this.button.getBoundingClientRect();
+    this.list.style.minWidth = `${Math.max(box.width, 230)}px`;
+    const height = this.list.offsetHeight;
+    const width = this.list.offsetWidth;
+    const above = this.options.above && box.top - height - 8 > 8;
+    const top = above ? box.top - height - 8 : box.bottom + 8;
+    this.list.style.top = `${Math.max(8, Math.min(top, window.innerHeight - height - 8))}px`;
+    this.list.style.left = `${Math.max(8, Math.min(box.left, window.innerWidth - width - 8))}px`;
+  }
+
+  close(focus) {
+    if (!this.isOpen()) return;
+    this.list.hidden = true;
+    this.button.setAttribute("aria-expanded", "false");
+    if (openMenu === this) openMenu = null;
+    if (focus) this.button.focus();
+  }
+
+  choose(key) {
+    this.close(true);
+    if (key === this.value) return;
+    this.value = key;
+    this.render();
+    this.options.onSelect(key);
+  }
+
+  key(event) {
+    const options = [...this.list.querySelectorAll('[role="option"]')];
+    const index = options.indexOf(document.activeElement);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      (options[index + 1] || options[0]).focus();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      (options[index - 1] || options[options.length - 1]).focus();
+    } else if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      options[event.key === "Home" ? 0 : options.length - 1].focus();
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (index >= 0) this.choose(options[index].dataset.key);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      this.close(true);
+    } else if (event.key === "Tab") {
+      this.close(false);
+    }
+  }
+}
+
+document.addEventListener("pointerdown", (event) => {
+  if (openMenu && !openMenu.list.contains(event.target)
+      && !openMenu.button.contains(event.target)) openMenu.close(false);
+});
+document.addEventListener("scroll", (event) => {
+  if (openMenu && !openMenu.list.contains(event.target)) openMenu.close(false);
+}, true);
+window.addEventListener("resize", () => openMenu && openMenu.close(false));
+
+const menus = {
+  cohort: new Menu(ui.cohortMenu, {
+    label: "Cohort",
+    empty: "Loading",
+    onSelect: (key) => selectCaseSet(key),
+  }),
+  scope: new Menu(ui.scopeMenu, {
+    label: "Scope",
+    icon: "layers",
+    empty: "Scope",
+    above: true,
+    onSelect: (key) => {
+      state.scopeKey = key;
+      renderThread();
+    },
+  }),
+  evidence: new Menu(ui.evidenceMenu, {
+    label: "Show the Evidence Of",
+    empty: "Evidence",
+    onSelect: (key) => openPanel(key, null),
+  }),
+};
 
 // ---------------------------------------------------------------------------
 // State
@@ -232,7 +444,9 @@ async function refreshState() {
     const labels = found.case_sets.map((item) => item.id).join(" ");
     if (labels !== state.caseSets.map((item) => item.id).join(" ")) {
       state.caseSets = found.case_sets;
-      renderCaseSets();
+      menus.cohort.set(state.caseSets.map((item) => ({
+        key: item.id, label: item.label, detail: item.detail,
+      })), state.caseSet);
     }
     hideBanner("state");
     if (!state.caseSet && state.caseSets.length) {
@@ -241,21 +455,15 @@ async function refreshState() {
       await selectCaseSet(known ? saved : state.caseSets[0].id);
     }
   } catch (error) {
-    showModel({state: "unreachable", label: "Not connected", detail: error.message});
+    showModel({state: "unreachable", label: "Not Connected", detail: error.message});
     showBanner(error.message, "state", refreshState);
   }
   state.timer = setTimeout(refreshState, seconds * 1000);
 }
 
 // ---------------------------------------------------------------------------
-// Case sets and cases (work item 49)
+// Cohorts and patients (work item 49)
 // ---------------------------------------------------------------------------
-
-function renderCaseSets() {
-  ui.caseSet.replaceChildren(...state.caseSets.map((item) =>
-    el("option", {value: item.id, title: item.detail}, item.label)));
-  if (state.caseSet) ui.caseSet.value = state.caseSet;
-}
 
 // A patient is found by the pseudonym, or by the case's number.
 function matches(item, term) {
@@ -268,7 +476,7 @@ function matches(item, term) {
 function renderCases() {
   const term = state.filter.trim().toLowerCase();
   const shown = state.cases.filter((item) => matches(item, term));
-  ui.casesLabel.textContent = state.cases.length ? `Patients · ${state.cases.length}` : "Patients";
+  ui.casesCount.textContent = state.cases.length ? String(state.cases.length) : "";
   ui.caseList.replaceChildren(...shown.map((item) => el("button", {
     type: "button",
     className: "case-item",
@@ -280,13 +488,13 @@ function renderCases() {
   }, el("span", {className: "case-name"}, item.name), el("span", {className: "case-meta"}, item.detail))));
   if (!shown.length) {
     ui.caseList.append(el("p", {className: "list-note"},
-      state.cases.length ? "No patient matches." : "Loading the patients…"));
+      state.cases.length ? "No Matching Patients" : "Loading Patients"));
   }
 }
 
 async function selectCaseSet(id) {
   state.caseSet = id;
-  ui.caseSet.value = id;
+  menus.cohort.set(menus.cohort.items, id);
   remember("caseSet", id);
   state.cases = [];
   state.caseNumber = null;
@@ -299,7 +507,7 @@ async function selectCaseSet(id) {
     const saved = Number(recall("case." + id));
     const known = state.cases.some((item) => item.number === saved);
     if (state.cases.length) await selectCase(known ? saved : state.cases[0].number);
-    else showBanner("This cohort has no admitted patient.", "case", null);
+    else showBanner("This cohort has no admitted patients.", "case", null);
   } catch (error) {
     showBanner(error.message, "case", () => selectCaseSet(id));
   }
@@ -307,7 +515,7 @@ async function selectCaseSet(id) {
 
 async function selectCase(number) {
   if (number === state.caseNumber && state.current) return;
-  // A new case starts a new conversation: nothing carries over (D4).
+  // A new patient starts a new conversation: nothing carries over (D4).
   state.conversation += 1;
   const conversation = state.conversation;
   state.caseNumber = number;
@@ -338,24 +546,21 @@ async function selectCase(number) {
 function renderCase() {
   const current = state.current;
   const listed = state.cases.find((item) => item.number === state.caseNumber);
+  ui.pseudonym.hidden = !current;
   if (current) {
     ui.caseTitle.textContent = current.name;
     ui.caseDetail.textContent = current.subtitle;
     ui.welcomeTitle.textContent = current.greeting;
-    ui.welcomeDetail.textContent = current.introduction;
+    ui.welcomeTags.replaceChildren(...current.tags.map((tag) => el("span", {className: "tag"}, tag)));
     document.title = `${current.name} · EHR Evidence`;
   } else {
     ui.caseTitle.textContent = listed ? listed.name : "Loading";
     ui.caseDetail.textContent = listed ? listed.detail : "";
-    ui.welcomeTitle.textContent = "Opening the record";
-    ui.welcomeDetail.textContent = "";
+    ui.welcomeTitle.textContent = "Opening the Record";
+    ui.welcomeTags.replaceChildren();
   }
-  const scopes = current ? current.scopes : [];
-  ui.scope.replaceChildren(...scopes.map((scope) => el("option", {value: scope.key}, scope.label)));
-  if (state.scopeKey) ui.scope.value = state.scopeKey;
-  const evidence = current ? current.evidence : [];
-  ui.evidenceKey.replaceChildren(...evidence.map((item) =>
-    el("option", {value: item.key}, item.label)));
+  menus.scope.set(current ? current.scopes : [], state.scopeKey);
+  menus.evidence.set(current ? current.evidence : [], state.panel.key);
   updateControls();
 }
 
@@ -364,22 +569,22 @@ function updateControls() {
   const busy = pending();
   const explainable = Boolean(current && current.prediction);
   ui.question.disabled = !current;
-  ui.scope.disabled = !current;
+  menus.scope.enable(Boolean(current));
   ui.send.disabled = !current || busy || !ui.question.value.trim();
   ui.send.classList.toggle("is-busy", busy);
-  ui.send.setAttribute("aria-label", busy ? "Waiting for the response" : "Ask");
+  ui.send.setAttribute("aria-label", busy ? "Waiting for the Response" : "Ask");
   ui.explain.hidden = Boolean(current) && !explainable;
   ui.explain.disabled = !explainable || busy;
   ui.suggestExplain.hidden = !explainable;
   ui.suggestExplain.disabled = busy;
   for (const chip of ui.suggestions.querySelectorAll("[data-question]")) chip.disabled = !current || busy;
+  ui.suggestCheck.disabled = !current;
   ui.suggestEvidence.disabled = !current;
   ui.evidenceButton.disabled = !current;
   ui.newConversation.disabled = !state.thread.length;
   ui.main.classList.toggle("is-empty", state.thread.length === 0);
-  ui.question.placeholder = state.thread.length
-    ? "Ask another question about this case"
-    : "Ask which conditions are recorded, or whether one is";
+  ui.question.placeholder = !current ? "Ask About the Record"
+    : state.thread.length ? "Ask Another Question" : current.placeholder;
   resize();
 }
 
@@ -403,7 +608,7 @@ function ask(text) {
     kind: "question",
     asked: question,
     scopeKey: scope.key,
-    scopeName: scope.name,
+    scopeLabel: scope.label,
     evidenceKey: scope.key,
     path: "/api/questions",
     body: {
@@ -421,13 +626,23 @@ function explain() {
   if (!state.current || !state.current.prediction || pending()) return;
   begin({
     kind: "explanation",
-    asked: "Explain the prediction",
+    asked: "Generate & Explain Diagnosis",
     scopeKey: null,
-    scopeName: null,
+    scopeLabel: null,
     evidenceKey: "prediction",
     path: "/api/explanations",
     body: {case_set: state.current.case_set, case_number: state.current.number},
   });
+}
+
+// Put the frame of a condition question in the box, the cursor where the
+// condition goes.
+function checkCondition() {
+  if (!state.current) return;
+  ui.question.value = CHECK_TEMPLATE;
+  updateControls();
+  ui.question.focus();
+  ui.question.setSelectionRange(3, 3);
 }
 
 function begin(fields) {
@@ -498,7 +713,7 @@ function finish(turn, result) {
   turn.result = result;
   renderTurn(turn);
   updateControls();
-  ui.announce.textContent = `${result.outcome.label}. The response is ready.`;
+  ui.announce.textContent = `${result.outcome.label}: the response is ready.`;
   turn.node.scrollIntoView({block: "start", behavior: behaviour()});
 }
 
@@ -550,8 +765,7 @@ function turnNode(turn) {
   const earlier = turn.kind === "question" && turn.scopeKey !== state.scopeKey;
   const item = el("li", {className: earlier ? "turn is-earlier" : "turn"});
   if (earlier) {
-    item.append(el("p", {className: "earlier-label"},
-      `Asked about ${turn.scopeName}: an earlier scope, not the current one`));
+    item.append(el("p", {className: "earlier-label"}, `Earlier Scope · ${turn.scopeLabel}`));
   }
   item.append(el("div", {className: "ask"}, turn.asked));
   if (turn.status === "pending") item.append(thinking(turn));
@@ -564,8 +778,7 @@ function thinking(turn) {
   const seconds = Math.floor((Date.now() - turn.started) / 1000);
   return el("div", {className: "thinking", role: "status"},
     icon("mark", "mark"),
-    el("span", {className: "thinking-text"},
-      turn.kind === "explanation" ? "Writing the explanation" : "Writing the response"),
+    el("span", {className: "thinking-text"}, "Thinking"),
     el("span", {className: "elapsed"}, `${seconds} s`));
 }
 
@@ -573,7 +786,7 @@ function failure(turn) {
   return el("div", {className: "failure", role: "alert"},
     icon("alert"),
     el("p", {}, turn.error),
-    el("button", {type: "button", className: "text-button", onclick: () => retry(turn)}, "Try again"));
+    el("button", {type: "button", className: "text-button", onclick: () => retry(turn)}, "Try Again"));
 }
 
 function badge(outcome) {
@@ -584,8 +797,8 @@ function cite(ref, turn) {
   return el("button", {
     type: "button",
     className: "cite",
-    title: `Open ${ref} in the evidence`,
-    "aria-label": `Open reference ${ref} in the evidence`,
+    title: `Open ${ref} in the Evidence`,
+    "aria-label": `Open Reference ${ref} in the Evidence`,
     onclick: () => openPanel(turn.evidenceKey, ref),
   }, ref);
 }
@@ -618,13 +831,14 @@ function prose(lines, turn) {
   return body;
 }
 
-function predictionCard(prediction) {
-  return el("div", {className: "prediction"},
-    el("span", {className: "kicker"}, "Prepared prediction"),
+function predictionCard(prediction, generated) {
+  return el("div", {className: "prediction glass"},
+    el("span", {className: "kicker"}, "Predicted Diagnosis"),
     el("div", {className: "prediction-label"}, prediction.label),
     el("dl", {className: "numbers"}, ...prediction.facts.map((fact) =>
       el("div", {}, el("dt", {}, fact.label), el("dd", {}, fact.value)))),
-    el("p", {className: "fine"}, `${prediction.meaning} ${prediction.note}`));
+    el("p", {className: "fine"}, `${prediction.meaning} ${prediction.note}`),
+    generated ? el("p", {className: "fine"}, generated) : null);
 }
 
 function note(tone, text) {
@@ -634,7 +848,7 @@ function note(tone, text) {
 function conditionsBlock(conditions) {
   const body = el("div", {className: "block-body"}, el("p", {className: "fine"}, conditions.note));
   if (conditions.table) body.append(tableNode(conditions.table));
-  return el("details", {className: "block"},
+  return el("details", {className: "block glass"},
     el("summary", {}, conditions.title, icon("chevron")),
     body);
 }
@@ -644,8 +858,8 @@ function copyButton(text) {
   const button = el("button", {
     type: "button",
     className: "icon-button",
-    title: "Copy the response",
-    "aria-label": "Copy the response",
+    title: "Copy",
+    "aria-label": "Copy the Response",
   }, icon("copy"));
   button.addEventListener("click", async () => {
     try {
@@ -662,18 +876,19 @@ function copyButton(text) {
 function reply(turn) {
   const view = turn.result;
   const node = el("div", {className: "reply"}, badge(view.outcome));
-  if (turn.kind === "explanation" && view.prediction) node.append(predictionCard(view.prediction));
+  if (turn.kind === "explanation" && view.prediction) {
+    node.append(predictionCard(view.prediction, view.generated));
+  }
   if (view.lines.length) node.append(prose(view.lines, turn));
   if (view.withheld) node.append(note("muted", view.withheld));
   if (turn.kind === "explanation" && view.unsigned) node.append(note("info", view.unsigned));
   if (view.references.length) {
-    node.append(el("div", {className: "sources"}, "References",
+    node.append(el("div", {className: "sources"}, "Sources",
       ...view.references.map((ref) => cite(ref, turn))));
   }
   node.append(el("div", {className: "meta"},
     copyButton(view.text),
-    el("span", {className: "meta-text"},
-      `${view.scope.label} · ${view.author} · ${view.seconds}`)));
+    el("span", {className: "meta-text"}, `${view.scope.label} · ${view.author} · ${view.seconds}`)));
   if (turn.kind === "explanation" && view.conditions) node.append(conditionsBlock(view.conditions));
   return node;
 }
@@ -706,8 +921,8 @@ async function openPanel(key, ref) {
   const token = state.panel.request;
   ui.panel.hidden = false;
   ui.evidenceButton.setAttribute("aria-expanded", "true");
-  ui.evidenceKey.value = state.panel.key;
-  ui.panelBody.replaceChildren(el("div", {className: "skeleton", "aria-label": "Loading the evidence"},
+  menus.evidence.set(state.current.evidence, state.panel.key);
+  ui.panelBody.replaceChildren(el("div", {className: "skeleton", "aria-label": "Loading the Evidence"},
     ...Array.from({length: 9}, () => el("span"))));
   try {
     const view = await evidenceOf(state.current.case_set, state.current.number, state.panel.key);
@@ -720,7 +935,7 @@ async function openPanel(key, ref) {
     ui.panelBody.replaceChildren(el("div", {className: "failure", role: "alert"},
       icon("alert"), el("p", {}, error.message),
       el("button", {type: "button", className: "text-button", onclick: () => openPanel(key, ref)},
-        "Try again")));
+        "Try Again")));
   }
 }
 
@@ -774,6 +989,48 @@ function focusReference(ref) {
   target.scrollIntoView({block: "center", behavior: behaviour()});
 }
 
+// The panel's width follows its handle, within bounds that leave the
+// conversation room; the arrow keys move it too.
+function setPanelWidth(width, save) {
+  const room = overlaid.matches
+    ? window.innerWidth - 20
+    : Math.min(PANEL.most, window.innerWidth - ui.sidebar.offsetWidth - 480);
+  const found = Math.round(Math.max(PANEL.least, Math.min(width, Math.max(PANEL.least, room))));
+  ui.app.style.setProperty("--panel-width", `${found}px`);
+  ui.resizer.setAttribute("aria-valuenow", String(found));
+  if (save) keep(PANEL.key, found);
+  return found;
+}
+
+function bindResizer() {
+  setPanelWidth(Number(kept(PANEL.key)) || PANEL.standard, false);
+  ui.resizer.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    ui.resizer.setPointerCapture(event.pointerId);
+    document.body.classList.add("is-resizing");
+    const right = ui.panel.getBoundingClientRect().right;
+    const move = (moved) => setPanelWidth(right - moved.clientX, false);
+    const end = () => {
+      ui.resizer.removeEventListener("pointermove", move);
+      ui.resizer.removeEventListener("pointerup", end);
+      ui.resizer.removeEventListener("pointercancel", end);
+      document.body.classList.remove("is-resizing");
+      setPanelWidth(ui.panel.getBoundingClientRect().width, true);
+    };
+    ui.resizer.addEventListener("pointermove", move);
+    ui.resizer.addEventListener("pointerup", end);
+    ui.resizer.addEventListener("pointercancel", end);
+  });
+  ui.resizer.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const change = event.key === "ArrowLeft" ? PANEL.step : -PANEL.step;
+    setPanelWidth(ui.panel.getBoundingClientRect().width + change, true);
+  });
+  ui.resizer.addEventListener("dblclick", () => setPanelWidth(PANEL.standard, true));
+}
+
 // ---------------------------------------------------------------------------
 // The composer and the sidebar on small screens
 // ---------------------------------------------------------------------------
@@ -802,7 +1059,6 @@ function closeSidebar() {
 }
 
 function bind() {
-  ui.caseSet.addEventListener("change", () => selectCaseSet(ui.caseSet.value));
   ui.filter.addEventListener("input", () => {
     state.filter = ui.filter.value;
     renderCases();
@@ -814,11 +1070,6 @@ function bind() {
   ui.evidenceButton.addEventListener("click", () =>
     (state.panel.open ? closePanel() : openPanel(state.scopeKey, null)));
   ui.panelClose.addEventListener("click", closePanel);
-  ui.evidenceKey.addEventListener("change", () => openPanel(ui.evidenceKey.value, null));
-  ui.scope.addEventListener("change", () => {
-    state.scopeKey = ui.scope.value;
-    renderThread();
-  });
   ui.question.addEventListener("input", updateControls);
   window.addEventListener("resize", resize);
   ui.question.addEventListener("keydown", (event) => {
@@ -833,6 +1084,7 @@ function bind() {
   });
   ui.explain.addEventListener("click", explain);
   ui.suggestExplain.addEventListener("click", explain);
+  ui.suggestCheck.addEventListener("click", checkCondition);
   ui.suggestEvidence.addEventListener("click", () => openPanel(state.scopeKey, null));
   ui.suggestions.addEventListener("click", (event) => {
     const chip = event.target.closest("[data-question]");
@@ -844,10 +1096,11 @@ function bind() {
     if (retryWith) retryWith();
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
+    if (event.key !== "Escape" || openMenu) return;
     if (ui.app.classList.contains("sidebar-open")) closeSidebar();
     else if (state.panel.open) closePanel();
   });
+  bindResizer();
   setInterval(tick, 1000);
 }
 

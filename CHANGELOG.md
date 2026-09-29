@@ -60,7 +60,11 @@ evidence beside it
   switches the server's access log off and, when the interface is shared,
   admits the tunnel's requests only with the secret link's key or its
   session cookie. The default mode of `interface.app` makes every
-  operation of the page over loopback on the invented case set.
+  operation of the page over loopback on the invented case set. The page
+  is glass panels over a soft backdrop, frostier where less transparency
+  is asked for; its menus group the scopes with their visits' dates; the
+  evidence panel is resized by its edge; labels, names and the names of
+  concepts are in title case.
 - `api.launch`: starts the API and the interface on 127.0.0.1 with a fresh
   launch token, and stops both, the model worker included, on Ctrl+C or
   when it ends in any way; each process watches for the launcher by

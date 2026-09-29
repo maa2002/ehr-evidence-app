@@ -267,11 +267,16 @@ def create_app(client, jobs=None, log=None, version=__version__,
                              "cases": views.cases_view(case_set, found)})
 
     async def case(request):
-        """A case's scopes, evidence and prepared prediction."""
+        """A case's scopes, with its visits' dates, its evidence and its
+        predicted diagnosis."""
         case_set = case_set_of(request.path_params["case_set"])
         number = case_number_of(request.path_params["case_number"])
         found = await run_in_threadpool(client.case, case_set, number)
-        return JSONResponse(views.case_view(found))
+        visits = None
+        if any(scope["kind"] == "case_visits" for scope in found["scopes"]):
+            visits = (await run_in_threadpool(
+                client.evidence, case_set, number, "case_visits"))["visits"]
+        return JSONResponse(views.case_view(found, visits))
 
     async def evidence(request):
         """The evidence of a scope, or of the prediction."""
@@ -292,9 +297,16 @@ def create_app(client, jobs=None, log=None, version=__version__,
             body["question"])
 
         def work():
-            """Answer the question; return it as the page shows it."""
-            return views.response_view(client.ask(case_set, number, scope,
-                                                  question))
+            """Answer the question; return it as the page shows it, the
+            names of the scope's concepts in title case."""
+            result = client.ask(case_set, number, scope, question)
+            try:
+                known = views.names_of(client.evidence(
+                    case_set, number, scope["kind"],
+                    scope.get("visit_number")))
+            except clients.ClientError:
+                known = ()
+            return views.response_view(result, known)
 
         return JSONResponse({"job": jobs.submit(owner_of(request), work)},
                             status_code=202)
@@ -316,7 +328,9 @@ def create_app(client, jobs=None, log=None, version=__version__,
                                           "pre_target_history")
             except clients.ClientError:
                 history = None
-            return views.explanation_view(result, found, history)
+            known = views.names_of(client.evidence(case_set, number,
+                                                   views.PREDICTION))
+            return views.explanation_view(result, found, history, known)
 
         return JSONResponse({"job": jobs.submit(owner_of(request), work)},
                             status_code=202)

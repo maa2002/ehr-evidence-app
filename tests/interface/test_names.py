@@ -13,10 +13,10 @@ class NameTests(unittest.TestCase):
     def test_cohorts(self):
         """The served case sets and the invented ones have plain names;
         any other keeps its label."""
-        self.assertEqual(names.cohort("dev-30-v1"), "Development cohort")
-        self.assertEqual(names.cohort("pilot-10-v1"), "Pilot cohort")
+        self.assertEqual(names.cohort("dev-30-v1"), "Development Cohort")
+        self.assertEqual(names.cohort("pilot-10-v1"), "Pilot Cohort")
         self.assertEqual(names.cohort("synthetic-1-v1"),
-                         "Demonstration cohort")
+                         "Demonstration Cohort")
         self.assertEqual(names.cohort("other-5-v1"), "other-5-v1")
         self.assertTrue(names.invented("synthetic-1-v1"))
         self.assertFalse(names.invented("dev-30-v1"))

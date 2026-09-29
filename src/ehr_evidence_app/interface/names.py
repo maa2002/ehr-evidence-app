@@ -1,7 +1,8 @@
 """What the page calls the case sets and the patients (Phase 8, work
 item 49).
 
-A case set is shown as a cohort with a plain name. A patient is shown by
+A case set is shown as a cohort with a plain name, and no case set's
+label reaches the page. A patient is shown by
 a pseudonym, as case reports name one: a given name and an initial, such
 as "Jordan K.". The records hold no names, and a pseudonym is not drawn
 from them: it follows from the case set's label and the case's number
@@ -19,10 +20,10 @@ from __future__ import annotations
 import functools
 import hashlib
 
-COHORTS = {"dev-30-v1": "Development cohort",
-           "pilot-10-v1": "Pilot cohort"}
+COHORTS = {"dev-30-v1": "Development Cohort",
+           "pilot-10-v1": "Pilot Cohort"}
 INVENTED_PREFIX = "synthetic"
-INVENTED_COHORT = "Demonstration cohort"
+INVENTED_COHORT = "Demonstration Cohort"
 GIVEN_NAMES = (
     "Alex", "Arden", "Ari", "Avery", "Bailey", "Blair", "Brook", "Cameron",
     "Casey", "Charlie", "Dakota", "Dana", "Devon", "Drew", "Eden", "Ellis",

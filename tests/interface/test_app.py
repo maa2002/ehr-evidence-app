@@ -124,13 +124,15 @@ class OperationTests(InterfaceTestCase):
         state = self.call(server, "GET", "/api/state").json()
         self.assertEqual(state["model"]["state"], "ready")
         self.assertEqual(state["case_sets"][0]["label"],
-                         "Demonstration cohort")
+                         "Demonstration Cohort")
         self.assertEqual(state["question_chars"], 500)
         base = "/api/case-sets/%s/cases" % self.label
         cases = self.call(server, "GET", base).json()["cases"]
         self.assertEqual(cases[0]["name"], names.pseudonym(self.label, 1))
         case = self.call(server, "GET", base + "/1").json()
         self.assertEqual(case["scopes"][0]["key"], "pre_target_history")
+        self.assertEqual(case["scopes"][-1]["detail"],
+                         "3 Jan 2100 · Final Admission")
         self.assertEqual(case["prediction"]["ref"], "P1")
         found = self.call(server, "GET", base + "/1/evidence",
                           params={"kind": "selected_visit", "visit": 1})
@@ -147,7 +149,7 @@ class OperationTests(InterfaceTestCase):
         self.assertEqual(result["outcome"]["code"], "answer")
         self.assertEqual(result["references"], ["E1"])
         self.assertTrue(any(line["refs"] for line in result["lines"]))
-        self.assertEqual(result["scope"]["label"], "Pre-target history")
+        self.assertEqual(result["scope"]["label"], "Prior History")
 
     def test_explanation_is_a_job(self):
         """An explanation carries the prediction, the unsigned note and

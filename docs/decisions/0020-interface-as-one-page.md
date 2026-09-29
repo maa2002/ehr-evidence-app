@@ -54,12 +54,15 @@ tunnel's edge ends a request that has not been answered in 100 seconds.
    conditions recorded in the pre-target history in a block of their own.
    The evidence opens in a panel beside the conversation, on what a
    reference names.
-5. **Names.** A case set is shown as a cohort ("Development cohort",
-   "Pilot cohort"). A patient is shown by a pseudonym, as case reports
-   name one: a given name used for any sex and an initial, fixed by the
-   case set's label and the case's number alone, never drawn from the
-   records. The page says that the names are pseudonyms, and keeps each
-   case's number beside its name.
+5. **Names.** A case set is shown as a cohort ("Development Cohort",
+   "Pilot Cohort"), and no case set's label reaches the page. A patient is
+   shown by a pseudonym, as case reports name one: a given name used for
+   any sex and an initial, fixed by the case set's label and the case's
+   number alone, never drawn from the records. The page says that the
+   names are pseudonyms, and keeps each case's number beside its name.
+   Labels, names and headings are in title case, the names of concepts in
+   a response's text included; the runtime record keeps the text as
+   released.
 6. **Security.** Every response carries a content security policy that
    admits the page's own script, style sheet and icon only, with no inline
    code, and requires Trusted Types. A request that changes anything must
