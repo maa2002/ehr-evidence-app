@@ -140,8 +140,14 @@ metrics of Phase 9.
 
 ## Phase 8. API and interface
 
-- 47 Add FastAPI operations
-- 48 Configure the access boundary
+Described in [interface.md](interface.md) and decided in
+[ADR 0019](decisions/0019-api-and-interface.md). In progress: the API
+and its local boundary are in place; the interface, sharing through a
+secret link and the operator run follow.
+
+- 47 Add FastAPI operations (done: `api.service` and `api.app`)
+- 48 Configure the access boundary (local boundary done: `api.boundary`;
+  sharing through a Cloudflare Tunnel and a secret link to follow)
 - 49 Add the case and scope selector
 - 50 Add the QA panel
 - 51 Add the explanation panel

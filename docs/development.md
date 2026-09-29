@@ -55,6 +55,8 @@ work is always explicit:
 - `gnn.baseline` needs `--output`, `gnn.assets` writes only with `--write`,
   and `sources.exports` needs `--version-label`;
 - `sources.pilot` needs database credentials in the process environment;
+- `api.app` serves the development case sets only with `--serve`, and then
+  only on 127.0.0.1 with the launch token of its environment;
 - `tracking.connection`, `tracking.registration`, `tracking.aggregates`,
   `tracking.measurements` and `tracking.models` contact ClearML only with
   their explicit live flags.

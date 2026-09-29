@@ -11,10 +11,27 @@ The tracker becomes the project's experiment record
 ([ADR 0018](docs/decisions/0018-tracker-as-experiment-record.md)): its
 lineage tasks stay in view, every generation measurement is an experiment
 with its configuration and scalars, and the pinned model is kept there
-with its licence. No data is uploaded.
+with its licence. No data is uploaded. Phase 8 begins: a local API
+serves the development case sets behind its access boundary
+([ADR 0019](docs/decisions/0019-api-and-interface.md)).
 
 ### Added
 
+- `api` package (Phase 8, work items 47 and 48;
+  [docs/interface.md](docs/interface.md)): `api.service` answers
+  questions about a selected case and scope through `qa.answer`, explains
+  a case's prepared prediction through `validation.explanation` and shows
+  the evidence of a scope or of the prediction without native
+  identifiers, for `dev-30-v1` and `pilot-10-v1` only; each response is
+  the gate's, with who wrote it and the seconds it took, and writes its
+  protected runtime record. The model loads in the background, the
+  templates writing until it is ready, and writes one request at a time.
+  `api.app` serves it as a FastAPI application; `api.boundary` keeps it
+  on 127.0.0.1 behind a launch token, a Host check and a bounded body,
+  refuses cross-origin requests, marks every response not to be cached,
+  answers failures with bare codes and logs routes only. The default mode
+  checks every route and the boundary over a real loopback connection on
+  the invented case set.
 - `tracking.measurements`
   ([docs/experiment-tracking.md](docs/experiment-tracking.md#measurements)):
   each benchmark run of the generation is kept as a record in the
