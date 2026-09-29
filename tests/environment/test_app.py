@@ -128,7 +128,7 @@ class DeclarationTests(ScratchTestCase):
         path = self.write("pyproject.toml", "\n".join([
             "[project]", 'name = "synthetic"', 'version = "0"',
             'dependencies = ["fastapi", "uvicorn[standard]>=1", "pydantic",',
-            '  "streamlit", "torch==9.9"]',
+            '  "starlette", "requests", "numpy", "torch==9.9"]',
             "[project.optional-dependencies]", 'test = ["pytest"]', ""]))
         problems = check.declaration_problems(path)
         self.assertIn("pyproject.toml does not declare clearml", problems)

@@ -41,9 +41,10 @@ generation is in place: MedGemma 1.5 4B IT, run locally, writes the
 complete candidate of every answer and explanation from a structured
 view of its evidence, through an adapter that releases the template's
 candidate whenever the model's is not released, and every response
-writes a protected runtime record. The API and interface and the
-evaluation are planned; see the [roadmap](docs/roadmap.md) and the
-[changelog](CHANGELOG.md).
+writes a protected runtime record. The local API and its interface, a
+conversation about a selected patient with the evidence beside it, are
+in place (Phase 8); the evaluation is planned. See the
+[roadmap](docs/roadmap.md) and the [changelog](CHANGELOG.md).
 
 ## Architecture
 

@@ -1,435 +1,487 @@
-"""The application's interface (Phase 8, work items 49 to 52).
+"""The interface's web application (Phase 8, work items 49 to 52).
 
-A Streamlit page over the API (interface.client). The sidebar selects the
-case set, the case and the scope, and shows the model's state; the page
-shows one of three views: questions, the explanation and the evidence.
+One page, with its script, style sheet and icon, and the operations the
+page calls, each reaching the API only through interface.client:
 
-A question is answered for the selected case and scope only (decision
-D4). Changing the case clears every earlier response; changing the scope
-keeps them, greyed and labelled with the scope they answered, never shown
-as current. Each response shows its outcome, its text, the scope it
-answered, who wrote it and the seconds it took, and its references, each
-opening its record in the evidence view.
+    GET  /                  the page
+    GET  /static/...        its script, style sheet and icon
+    GET  /health            that the interface is serving
+    GET  /api/state         the model's state, the served case sets, the
+                            question limit and the version
+    GET  /api/case-sets/{case_set}/cases
+    GET  /api/case-sets/{case_set}/cases/{case_number}
+    GET  /api/case-sets/{case_set}/cases/{case_number}/evidence?kind=K&visit=N
+    POST /api/questions     a question about a case in a scope, as a job
+    POST /api/explanations  the explanation of a case's prediction, as a job
+    GET  /api/jobs/{job}    a job's state, and its result once done
 
-The explanation view shows the prepared prediction with its score's fixed
-meaning, the explanation of its drivers with their scores labelled
-unsigned and not causal, and the conditions recorded in the pre-target
-history in a block of their own (decision D5). The evidence view shows a
-scope's visits, records, coverage and provenance, or the prediction with
-every original attribution and its link status, so that missing linkage
-is visible (decision D6).
+What the operations return is what the page shows (interface.views). A
+question or an explanation is a job (interface.jobs): the page is
+answered at once and asks after the job until it is done, so that it
+never waits on the model, and no request outlives the tunnel's limit. A
+refusal is its code with what it means; any other failure is logged by
+its type only.
 
-interface.serve runs this page; it reaches the API only through
-interface.client.
+The gate (interface.gate) stands in front: the hosts, the secret link
+and its session, requests from other sites, and the headers of every
+response, among them a content security policy that admits this
+application's own script and style sheet only. The page builds
+everything it shows as text.
+
+The default mode serves the invented case set on free loopback ports,
+the API with its scripted model behind its boundary and this application
+behind its gate, and makes every operation as the page makes them, over a
+real connection; nothing is written.
+
+Usage:
+    python -m ehr_evidence_app.interface.app
 """
 
 from __future__ import annotations
 
-import collections
-import uuid
+import argparse
+import contextlib
+import hashlib
+import json
+import os
+import re
+import sys
+import time
 
-import streamlit as st
+from starlette.applications import Starlette
+from starlette.concurrency import run_in_threadpool
+from starlette.responses import HTMLResponse, JSONResponse
+from starlette.routing import Mount, Route
+from starlette.staticfiles import StaticFiles
 
+from ehr_evidence_app import __version__
+from ehr_evidence_app.evidence import contracts
 from ehr_evidence_app.interface import client as clients
-from ehr_evidence_app.interface import labels
+from ehr_evidence_app.interface import gate
+from ehr_evidence_app.interface import jobs as background
+from ehr_evidence_app.interface import views
 
-VIEWS = ("Questions", "Explanation", "Evidence")
-
-
-def api():
-    """Return the API client of this session."""
-    if "api" not in st.session_state:
-        st.session_state.api = clients.Client.from_environment()
-    return st.session_state.api
-
-
-def scope_key(scope):
-    """Return the menu key of a scope, or of the prediction."""
-    if scope.get("visit_number"):
-        return "%s:%d" % (scope["kind"], scope["visit_number"])
-    return scope["kind"]
-
-
-def key_scope(key):
-    """Return the scope of a menu key."""
-    kind, _, visit = key.partition(":")
-    return {"kind": kind, "visit_number": int(visit)} if visit else {
-        "kind": kind}
-
-
-def lines(text):
-    """Return text as Markdown that shows it as written, line by line."""
-    return "  \n".join(labels.escaped(line) for line in text.splitlines())
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "static")
+PAGE = "index.html"
+# The files the page names with a digest of their content, so that a
+# browser never uses an old one.
+ASSETS = ("app.css", "app.js", "mark.svg")
+MAX_BODY_BYTES = 4096
+MAX_QUESTION_CHARS = 4000
+CASE_SET = re.compile(r"^[a-z0-9][a-z0-9.-]{0,63}$")
+SCOPE_KINDS = ("pre_target_history", "selected_visit", "case_visits")
+EVIDENCE_KINDS = SCOPE_KINDS + (views.PREDICTION,)
+# The status of each refusal; a refusal of the API not named here keeps
+# the API's status when it is the request's fault, and is otherwise a bad
+# gateway.
+STATUS = {"case_set_not_served": 404, "case_unknown": 404,
+          "scope_unknown": 404, "prediction_missing": 404,
+          "job_unknown": 404, "scope_invalid": 422,
+          "request_invalid": 422, "request_media": 415,
+          "request_too_large": 413, "too_many_requests": 429,
+          "internal": 500}
 
 
-# --------------------------------------------------------------------------
-# The case, the scope and their context (work item 49)
-# --------------------------------------------------------------------------
+class Refusal(Exception):
+    """A request this application refuses; carries a short code."""
 
-def select(client, health):
-    """Show the case set, case and scope menus and the model's state;
-    return (case set, case, scope)."""
-    bar = st.sidebar
-    bar.title("EHR evidence")
-    sets = {item["case_set"]: item["cases"] for item in client.case_sets()}
-    case_set = bar.selectbox("Case set", list(sets), key="case_set",
-                             format_func=lambda label: "%s · %s" % (
-                                 label, labels.counted(sets[label], "case")))
-    visits = {item["case_number"]: item["visits"]
-              for item in client.cases(case_set)}
-    number = bar.selectbox("Case", list(visits), key="case-" + case_set,
-                           format_func=lambda value: "Case %d · %s" % (
-                               value, labels.counted(visits[value], "visit")))
-    case = client.case(case_set, number)
-    scopes = {scope_key(scope): scope for scope in case["scopes"]}
-    chosen = bar.selectbox("Scope", list(scopes),
-                           key="scope-%s-%d" % (case_set, number),
-                           format_func=lambda key: labels.scope_option(
-                               scopes[key]))
-    bar.caption("Model: " + labels.model(health["model"]))
-    bar.caption("Questions are answered from the case's records within the "
-                "selected scope only.")
-    return case_set, case, scopes[chosen]
+    def __init__(self, code):
+        super().__init__(code)
+        self.code = code
 
 
-def keep_context(case_set, case):
-    """Clear every earlier response when the case changes."""
-    context = "%s/%d" % (case_set, case["case_number"])
-    if st.session_state.get("context") != context:
-        st.session_state.context = context
-        st.session_state.responses = []
-        st.session_state.explained = None
-        st.session_state.focus = None
+def page_text(directory=STATIC_DIR):
+    """Return the page, naming its files with a digest of their
+    content."""
+    digest = hashlib.sha256()
+    for name in ASSETS:
+        with open(os.path.join(directory, name), "rb") as handle:
+            digest.update(handle.read())
+    with open(os.path.join(directory, PAGE), "r", encoding="utf-8") as handle:
+        return handle.read().replace("{{version}}", digest.hexdigest()[:16])
 
 
-def open_reference(key, case_set, case_number, scope):
-    """Open the reference chosen under a response in the evidence view,
-    in the scope the response answered."""
-    ref = st.session_state.get(key)
-    if ref:
-        st.session_state.focus = {"scope": scope, "ref": ref}
-        st.session_state["evidence-%s-%d" % (case_set, case_number)] = (
-            scope_key(scope))
-        st.session_state.view = "Evidence"
+def status_of(code, status=None):
+    """Return the HTTP status a refusal is answered with."""
+    if code in STATUS:
+        return STATUS[code]
+    if status is not None and 400 <= status < 500:
+        return status
+    return 502
 
 
-def show_references(response, key, case_set, case_number, scope):
-    """Show a response's references as choices that open the evidence."""
-    refs = labels.references(response)
-    if refs:
-        st.pills("References", refs, key=key, selection_mode="single",
-                 on_change=open_reference,
-                 args=(key, case_set, case_number, scope))
+def owner_of(request):
+    """Return whose a request is: its session's, or this machine's."""
+    return request.scope.get(gate.SESSION_SCOPE_KEY) or "local"
 
 
 # --------------------------------------------------------------------------
-# Questions (work item 50)
+# What a request names
 # --------------------------------------------------------------------------
 
-def show_response(item, current, case_set, case_number):
-    """Show one response: current, or greyed with the scope it
-    answered."""
-    result, response = item["result"], item["result"]["response"]
-    with st.container(border=True):
-        st.badge(labels.outcome(response["outcome"]),
-                 color=labels.tone(response["outcome"]) if current
-                 else "gray")
-        meta = "Asked about %s · %s · %s" % (
-            labels.scope(item["scope"]), labels.author(result),
-            labels.seconds(result["seconds"]))
-        if not current:
-            meta = "Earlier scope, not the current one. " + meta
-        st.caption(meta)
-        asked = "Question: " + labels.escaped(item["question"])
-        text = response.get("text")
-        said = lines(text) if text else labels.escaped(
-            "No text was released: " + labels.reasons(
-                response["reason_codes"]))
-        if current:
-            st.markdown("**%s**" % asked)
-            st.markdown(said)
-        else:
-            st.caption(asked)
-            st.caption(said)
-        show_references(response, "refs-" + item["id"], case_set,
-                        case_number, item["scope"])
+def case_set_of(value):
+    """Return a case set's label, or refuse one no case set could have."""
+    if not isinstance(value, str) or not CASE_SET.fullmatch(value):
+        raise Refusal("case_set_not_served")
+    return value
 
 
-def questions(client, case_set, case, scope):
-    """The question view."""
-    st.subheader("Questions")
-    st.caption("Ask which conditions are recorded, or whether a condition "
-               "is recorded, within %s. Each question is answered on its "
-               "own, for the case and scope selected now."
-               % labels.scope(scope))
-    with st.form("ask", clear_on_submit=True, border=False):
-        question = st.text_input("Question", key="question", max_chars=500,
-                                 placeholder="Which conditions are recorded?")
-        asked = st.form_submit_button("Ask", type="primary")
-    if asked and question.strip():
-        with st.spinner("Writing the response..."):
-            try:
-                result = client.ask(case_set, case["case_number"], scope,
-                                    question.strip())
-            except clients.ClientError as error:
-                st.error(labels.error(error.code))
-                result = None
-        if result is not None:
-            st.session_state.responses.insert(0, {
-                "id": uuid.uuid4().hex[:12], "question": question.strip(),
-                "scope": scope, "result": result})
-    for item in st.session_state.responses:
-        show_response(item, item["scope"] == scope, case_set,
-                      case["case_number"])
+def case_number_of(value):
+    """Return a case's number, or refuse a value that is not one."""
+    if (isinstance(value, bool) or not isinstance(value, int)
+            or not 1 <= value <= 10000):
+        raise Refusal("request_invalid")
+    return value
 
 
-# --------------------------------------------------------------------------
-# The explanation (work item 51)
-# --------------------------------------------------------------------------
-
-def show_prediction(prediction):
-    """Show the prepared prediction with its score's fixed meaning."""
-    with st.container(border=True):
-        st.markdown("**Prepared prediction:** " + labels.escaped(
-            prediction["label"] or "concept %d" % prediction["concept_id"]))
-        score, logit = st.columns(2)
-        score.metric("Score", labels.score(prediction["score"]))
-        logit.metric("Logit", labels.score(prediction["logit"]))
-        st.caption("The score is the %s. The label is one output of the "
-                   "model's multi-label prediction, not the only diagnosis "
-                   "it predicts." % labels.NOT_A_RISK)
-
-
-def recorded_conditions(client, case_set, case):
-    """Show the conditions recorded in the pre-target history, apart from
-    the prediction and its drivers."""
-    st.markdown("**Conditions recorded in the pre-target history**")
-    st.caption("What the case's records hold before the predicted "
-               "admission. These are records, not the model's prediction "
-               "or its drivers.")
-    view = client.evidence(case_set, case["case_number"],
-                           "pre_target_history")
-    counts, visits = collections.Counter(), collections.defaultdict(set)
-    for record in view["records"]:
-        name = record["concept_name"] or (
-            "No standard concept (source code %s)" % record["source_code"])
-        counts[name] += 1
-        visits[name].add(record["visit_number"])
-    if not counts:
-        st.caption("No condition is recorded in the pre-target history.")
-        return
-    st.dataframe([{"Condition": name, "Records": counts[name],
-                   "Visits": ", ".join(str(number) for number in sorted(
-                       visits[name]))} for name in sorted(counts)],
-                 hide_index=True)
+def scope_of(value):
+    """Return a scope as the API takes it, or refuse one that is not a
+    scope."""
+    if not isinstance(value, dict) or value.get("kind") not in SCOPE_KINDS:
+        raise Refusal("request_invalid")
+    visit = value.get("visit_number")
+    if value["kind"] == "selected_visit":
+        if set(value) != {"kind", "visit_number"} or isinstance(
+                visit, bool) or not isinstance(visit, int) or not (
+                1 <= visit <= 1000):
+            raise Refusal("request_invalid")
+        return {"kind": "selected_visit", "visit_number": visit}
+    if set(value) != {"kind"}:
+        raise Refusal("request_invalid")
+    return {"kind": value["kind"]}
 
 
-def explanation(client, case_set, case):
-    """The explanation view."""
-    st.subheader("Explanation")
-    prediction = case["prediction"]
-    if prediction is None:
-        st.info(labels.error("prediction_missing"))
-        return
-    show_prediction(prediction)
-    if st.button("Explain this prediction", type="primary", key="explain"):
-        with st.spinner("Writing the explanation..."):
-            try:
-                st.session_state.explained = {
-                    "id": uuid.uuid4().hex[:12],
-                    "result": client.explain(case_set,
-                                             case["case_number"])}
-            except clients.ClientError as error:
-                st.error(labels.error(error.code))
-    found = st.session_state.explained
-    if found:
-        result, response = found["result"], found["result"]["response"]
-        with st.container(border=True):
-            st.badge(labels.outcome(response["outcome"]),
-                     color=labels.tone(response["outcome"]))
-            st.caption("%s · %s" % (labels.author(result).capitalize(),
-                                    labels.seconds(result["seconds"])))
-            text = response.get("text")
-            st.markdown(lines(text) if text else labels.escaped(
-                "No text was released: " + labels.reasons(
-                    response["reason_codes"])))
-            st.caption(labels.UNSIGNED)
-            show_references(response, "refs-" + found["id"], case_set,
-                            case["case_number"], {"kind": "prediction"})
-    recorded_conditions(client, case_set, case)
+def question_of(value):
+    """Return a question, trimmed, or refuse an empty or overlong one.
+    The API answers a question over the configured limit with its own
+    outcome."""
+    if not isinstance(value, str) or not value.strip() or (
+            len(value) > MAX_QUESTION_CHARS):
+        raise Refusal("request_invalid")
+    return value.strip()
 
 
-# --------------------------------------------------------------------------
-# The evidence (work item 52)
-# --------------------------------------------------------------------------
-
-def record_rows(records):
-    """Return records as table rows."""
-    return [{"Ref": record["ref"], "Visit": record["visit_number"],
-             "Domain": record["domain"],
-             "Concept": record["concept_name"] or (
-                 "No standard concept" if record["name_status"] == "unmapped"
-                 else "Name unavailable"),
-             "Concept ID": record["concept_id"],
-             "Source code": record["source_code"],
-             "Start": record["start_date"], "End": record["end_date"]}
-            for record in records]
+def evidence_of(query):
+    """Return the kind and visit number a request for evidence names."""
+    kind, visit = query.get("kind"), query.get("visit")
+    if kind not in EVIDENCE_KINDS or set(query) - {"kind", "visit"}:
+        raise Refusal("scope_invalid")
+    if kind == "selected_visit":
+        if not visit or not visit.isdigit() or not 1 <= int(visit) <= 1000:
+            raise Refusal("scope_invalid")
+        return kind, int(visit)
+    if visit is not None:
+        raise Refusal("scope_invalid")
+    return kind, None
 
 
-def show_provenance(provenance):
-    """Show the digest of every input of the evidence."""
-    with st.expander("Provenance"):
-        st.dataframe([{"Input": name.replace("_", " "),
-                       "Name": item["name"], "SHA-256": item["sha256"]}
-                      for name, item in provenance["inputs"].items()],
-                     hide_index=True)
-        st.caption("Schema %s · %s" % (provenance["schema_version"],
-                                       provenance["builder"]))
-
-
-def show_coverage(coverage):
-    """Show a scope's coverage."""
-    st.markdown("**Coverage:** %s" % coverage["status"].replace("_", " "))
-    st.caption(coverage["statement"])
-    columns = st.columns(4)
-    columns[0].metric("Visits in scope", coverage["visits_in_scope"])
-    columns[1].metric("Records in scope", coverage["records_in_scope"])
-    columns[2].metric("Without a standard concept",
-                      len(coverage["records_without_a_standard_concept"]))
-    columns[3].metric("Final-admission records left out",
-                      coverage["final_admission_records_left_out"])
-
-
-def show_focus(ref, view):
-    """Show the record, visit, attribution or prediction a reference
-    names, or say that the evidence does not hold it."""
-    found = [item for name in ("records", "history_records",
-                               "final_admission_context", "attributions",
-                               "visits")
-             for item in view.get(name, []) if item["ref"] == ref]
-    if ref == "P1" and "prediction" in view:
-        found = [view["prediction"]]
-    if ref == "C1":
-        found = [view["coverage"]]
-    if not found:
-        st.warning("Reference %s is not in this evidence." % ref)
-        return
-    item = found[0]
-    st.info("Reference %s: %s" % (ref, labels.escaped(", ".join(
-        "%s %s" % (key.replace("_", " "), value)
-        for key, value in item.items()
-        if key != "ref" and value not in (None, "", [])))))
-
-
-def show_scope_evidence(view, ref):
-    """Show a scope's evidence."""
-    show_coverage(view["coverage"])
-    if ref:
-        show_focus(ref, view)
-    st.markdown("**Visits**")
-    st.dataframe([{"Ref": visit["ref"], "Visit": visit["visit_number"],
-                   "Role": visit["role"].replace("_", " "),
-                   "Start": visit["start_date"], "End": visit["end_date"]}
-                  for visit in view["visits"]], hide_index=True)
-    st.markdown("**Records**")
-    if view["records"]:
-        st.dataframe(record_rows(view["records"]), hide_index=True)
-    else:
-        st.caption("No record in this scope.")
-    show_provenance(view["provenance"])
-
-
-def show_prediction_evidence(view, ref):
-    """Show the prediction's evidence: every original attribution with
-    its link status, the linked records and the context."""
-    show_prediction(view["prediction"])
-    if ref:
-        show_focus(ref, view)
-    st.markdown("**Attributions**")
-    st.caption(labels.UNSIGNED)
-    st.dataframe([{"Ref": item["ref"], "Domain": item["domain"],
-                   "Concept": item["concept_name"] or "Name unavailable",
-                   "Score (unsigned)": item["score"],
-                   "Class": item["score_class"],
-                   "Attachment": item["attachment"].replace("_", " "),
-                   "Described": "yes" if item["narration_eligible"] else "no",
-                   "Link status": item["link_status"].replace("_", " "),
-                   "Linked records": ", ".join(item["linked_record_refs"])}
-                  for item in view["attributions"]], hide_index=True)
-    unlinked = sum(item["link_status"] != "verified"
-                   for item in view["attributions"])
-    if unlinked:
-        st.warning("%d of %d attributions have no verified link to a "
-                   "record: their concepts are inputs of the model, not "
-                   "dated events." % (unlinked, len(view["attributions"])))
-    st.markdown("**Linked history records**")
-    st.dataframe(record_rows(view["history_records"]), hide_index=True)
-    st.markdown("**Final admission, as context**")
-    st.dataframe(record_rows(view["final_admission_context"]),
-                 hide_index=True)
-    if view["restrictions"]:
-        st.caption("Restrictions of this case: " + labels.reasons(
-            view["restrictions"]))
-    show_coverage(view["coverage"])
-    show_provenance(view["provenance"])
-
-
-def evidence(client, case_set, case):
-    """The evidence view."""
-    st.subheader("Evidence")
-    options = [scope_key(scope) for scope in case["scopes"]]
-    if case["prediction"] is not None:
-        options.append("prediction")
-    chosen = st.selectbox(
-        "Show the evidence of", options,
-        key="evidence-%s-%d" % (case_set, case["case_number"]),
-        format_func=lambda key: "The prediction" if key == "prediction"
-        else labels.scope_option(key_scope(key)))
-    focus = st.session_state.focus
-    ref = focus["ref"] if focus and scope_key(focus["scope"]) == chosen \
-        else None
-    scope = key_scope(chosen)
-    view = client.evidence(case_set, case["case_number"], scope["kind"],
-                           scope.get("visit_number"))
-    if view["kind"] == "prediction":
-        show_prediction_evidence(view, ref)
-    else:
-        show_scope_evidence(view, ref)
-
-
-# --------------------------------------------------------------------------
-# The page
-# --------------------------------------------------------------------------
-
-def main():
-    """Show the page."""
-    st.set_page_config(page_title="EHR evidence", layout="wide")
+async def body_of(request, fields):
+    """Return a request's JSON object, read whole up to its bound, with
+    exactly the fields named."""
+    media = request.headers.get("content-type", "").split(";")[0]
+    if media.strip().lower() != "application/json":
+        raise Refusal("request_media")
+    length = request.headers.get("content-length")
+    if length is not None and (not length.isdigit()
+                               or int(length) > MAX_BODY_BYTES):
+        raise Refusal("request_too_large")
+    body = b""
+    async for chunk in request.stream():
+        body += chunk
+        if len(body) > MAX_BODY_BYTES:
+            raise Refusal("request_too_large")
     try:
-        client = api()
-        health = client.health()
-        case_set, case, scope = select(client, health)
-    except clients.ClientError as error:
-        st.error(labels.error(error.code))
-        st.stop()
-    keep_context(case_set, case)
-    st.caption("Case %d of %s · %s · scope: %s · model: %s" % (
-        case["case_number"], case_set, labels.counted(case["visits"],
-                                                      "visit"),
-        labels.scope(scope), labels.model(health["model"]).lower()))
-    if "view" not in st.session_state:
-        st.session_state.view = VIEWS[0]
-    view = st.segmented_control("View", VIEWS, key="view", required=True,
-                                label_visibility="collapsed")
-    try:
-        if view == "Explanation":
-            explanation(client, case_set, case)
-        elif view == "Evidence":
-            evidence(client, case_set, case)
-        else:
-            questions(client, case_set, case, scope)
-    except clients.ClientError as error:
-        st.error(labels.error(error.code))
+        value = json.loads(body.decode("utf-8"))
+    except ValueError:
+        raise Refusal("request_invalid") from None
+    if not isinstance(value, dict) or set(value) != set(fields):
+        raise Refusal("request_invalid")
+    return value
+
+
+# --------------------------------------------------------------------------
+# The application
+# --------------------------------------------------------------------------
+
+def create_app(client, jobs=None, log=None, version=__version__,
+               question_chars=None):
+    """Return the interface's application over an API client: the page,
+    its files and its operations; jobs runs its questions and
+    explanations, and log (a function of one line) names its failures by
+    type. Every job still running is left unread when the server shuts
+    down."""
+    log = log or (lambda line: None)
+    jobs = jobs or background.Jobs(log=log)
+    page = page_text()
+    if question_chars is None:
+        question_chars = contracts.load_limits().max_question_chars
+
+    @contextlib.asynccontextmanager
+    async def lifespan(app):
+        """Take no more jobs when the server shuts down."""
+        yield
+        jobs.close()
+
+    def guarded(endpoint):
+        """Return an endpoint that answers a refusal with its code and
+        any other failure as internal, logged by its type only."""
+        async def respond(request):
+            """Answer the request, or refuse it."""
+            try:
+                return await endpoint(request)
+            except Refusal as refused:
+                code, status = refused.code, None
+            except clients.ClientError as refused:
+                code, status = refused.code, refused.status
+            except background.JobError as refused:
+                code, status = refused.code, None
+            except Exception as failed:  # noqa: BLE001 - logged by type
+                log("interface operation failed: %s" % type(failed).__name__)
+                code, status = "internal", None
+            return JSONResponse(views.error_view(code),
+                                status_code=status_of(code, status))
+        return respond
+
+    async def index(request):
+        """The page."""
+        return HTMLResponse(page)
+
+    async def health(request):
+        """That the interface is serving."""
+        return JSONResponse({"status": "ok"})
+
+    async def state(request):
+        """The model's state, the served case sets, the question limit
+        and the version."""
+        found = await run_in_threadpool(client.health)
+        sets = await run_in_threadpool(client.case_sets)
+        return JSONResponse(dict(views.state_view(found, sets, version),
+                                 question_chars=question_chars))
+
+    async def cases(request):
+        """A case set's admitted cases."""
+        case_set = case_set_of(request.path_params["case_set"])
+        found = await run_in_threadpool(client.cases, case_set)
+        return JSONResponse({"case_set": case_set,
+                             "cases": views.cases_view(case_set, found)})
+
+    async def case(request):
+        """A case's scopes, evidence and prepared prediction."""
+        case_set = case_set_of(request.path_params["case_set"])
+        number = case_number_of(request.path_params["case_number"])
+        found = await run_in_threadpool(client.case, case_set, number)
+        return JSONResponse(views.case_view(found))
+
+    async def evidence(request):
+        """The evidence of a scope, or of the prediction."""
+        case_set = case_set_of(request.path_params["case_set"])
+        number = case_number_of(request.path_params["case_number"])
+        kind, visit = evidence_of(request.query_params)
+        found = await run_in_threadpool(client.evidence, case_set, number,
+                                        kind, visit)
+        return JSONResponse(views.evidence_view(found))
+
+    async def questions(request):
+        """Start answering a question about a case in a scope."""
+        body = await body_of(request, ("case_set", "case_number", "scope",
+                                       "question"))
+        case_set = case_set_of(body["case_set"])
+        number = case_number_of(body["case_number"])
+        scope, question = scope_of(body["scope"]), question_of(
+            body["question"])
+
+        def work():
+            """Answer the question; return it as the page shows it."""
+            return views.response_view(client.ask(case_set, number, scope,
+                                                  question))
+
+        return JSONResponse({"job": jobs.submit(owner_of(request), work)},
+                            status_code=202)
+
+    async def explanations(request):
+        """Start explaining a case's prepared prediction."""
+        body = await body_of(request, ("case_set", "case_number"))
+        case_set = case_set_of(body["case_set"])
+        number = case_number_of(body["case_number"])
+
+        def work():
+            """Explain the prediction; return it as the page shows it,
+            with the prediction and the conditions recorded in the
+            pre-target history."""
+            result = client.explain(case_set, number)
+            found = client.case(case_set, number)
+            try:
+                history = client.evidence(case_set, number,
+                                          "pre_target_history")
+            except clients.ClientError:
+                history = None
+            return views.explanation_view(result, found, history)
+
+        return JSONResponse({"job": jobs.submit(owner_of(request), work)},
+                            status_code=202)
+
+    async def job(request):
+        """A job's state, and its result once done."""
+        found = jobs.read(owner_of(request), request.path_params["job"])
+        if found is None:
+            raise Refusal("job_unknown")
+        return JSONResponse(found)
+
+    base = "/api/case-sets/{case_set}/cases"
+    return Starlette(routes=[
+        Route("/", index),
+        Route("/health", health),
+        Route("/api/state", guarded(state)),
+        Route(base, guarded(cases)),
+        Route(base + "/{case_number:int}", guarded(case)),
+        Route(base + "/{case_number:int}/evidence", guarded(evidence)),
+        Route("/api/questions", guarded(questions), methods=["POST"]),
+        Route("/api/explanations", guarded(explanations), methods=["POST"]),
+        Route("/api/jobs/{job}", guarded(job)),
+        Mount("/static", StaticFiles(directory=STATIC_DIR), name="static")],
+        lifespan=lifespan)
+
+
+# --------------------------------------------------------------------------
+# Synthetic default mode (invented fixtures only)
+# --------------------------------------------------------------------------
+
+def run_synthetic():
+    """Serve the invented case set through the API and this application
+    on loopback, and make every operation as the page makes them; return
+    (requests made, problems). Nothing is written."""
+    import requests
+
+    from ehr_evidence_app.api import app as api
+    from ehr_evidence_app.api import boundary
+    service = api.invented_service()
+    token, lines = boundary.new_token(), []
+    problems, made = [], [0]
+    with api.LoopbackServer(lambda port: api.create_app(
+            service, token, boundary.loopback_hosts(port))) as backend:
+        client = clients.Client(backend.url, token)
+        with api.LoopbackServer(lambda port: gate.Gate(
+                create_app(client, log=lines.append),
+                gate.local_hosts(port), log=lines.append)) as server:
+            http = requests.Session()
+            http.trust_env = False
+            origin = {"Origin": server.url}
+
+            def call(method, path, expected, **options):
+                """Make one request and check its status; return it."""
+                made[0] += 1
+                reply = http.request(method, server.url + path, timeout=30,
+                                     allow_redirects=False, **options)
+                if reply.status_code != expected:
+                    problems.append("%s %s answered %d, not %d" % (
+                        method, path.split("?")[0], reply.status_code,
+                        expected))
+                if "default-src 'none'" not in reply.headers.get(
+                        "content-security-policy", ""):
+                    problems.append("%s has no content security policy"
+                                    % path.split("?")[0])
+                return reply
+
+            def finish(reply):
+                """Ask after a job until it is done; return its state."""
+                key = reply.json().get("job", "")
+                deadline = time.monotonic() + 60
+                while time.monotonic() < deadline:
+                    found = call("GET", "/api/jobs/" + key, 200).json()
+                    if found["state"] != "running":
+                        return found
+                    time.sleep(0.1)
+                problems.append("a job did not finish")
+                return {"state": "running"}
+
+            page = call("GET", "/", 200)
+            if page.headers.get("cache-control") != "no-store" or (
+                    "/static/app.js?v=" not in page.text):
+                problems.append("the page is cached or names no script")
+            for name in ASSETS:
+                reply = call("GET", "/static/%s" % name, 200)
+                if reply.headers.get("cache-control") != "no-cache":
+                    problems.append("%s is not checked before use" % name)
+            call("GET", "/health", 200)
+            found = call("GET", "/api/state", 200).json()
+            if found["model"]["state"] != "ready" or not found["case_sets"]:
+                problems.append("the state lacks the model or a case set")
+            label = found["case_sets"][0]["id"]
+            base = "/api/case-sets/%s/cases" % label
+            if not call("GET", base, 200).json()["cases"]:
+                problems.append("the case set lists no case")
+            case = call("GET", base + "/1", 200).json()
+            if not case["scopes"] or case["prediction"] is None:
+                problems.append("the case lacks its scopes or prediction")
+            scope = case["scopes"][0]
+            shown = call("GET", base + "/1/evidence?kind=prediction", 200)
+            history = call("GET", base + "/1/evidence?kind=%s"
+                           % scope["scope"]["kind"], 200)
+            text = shown.text + history.text
+            if "native_id" in text or "visit_occurrence_id" in text:
+                problems.append("the evidence shows a native identifier")
+            asked = finish(call("POST", "/api/questions", 202, headers=origin,
+                                json={"case_set": label, "case_number": 1,
+                                      "scope": scope["scope"],
+                                      "question": "Which conditions are "
+                                                  "recorded?"}))
+            result = asked.get("result") or {}
+            if asked["state"] != "done" or result.get("outcome", {}).get(
+                    "code") != "answer" or not any(
+                    line["refs"] for line in result.get("lines", [])):
+                problems.append("the question was not answered with "
+                                "references in its lines")
+            explained = finish(call("POST", "/api/explanations", 202,
+                                    headers=origin,
+                                    json={"case_set": label,
+                                          "case_number": 1}))
+            result = explained.get("result") or {}
+            refs = {row["ref"] for section in shown.json()["sections"]
+                    for block in section["blocks"]
+                    if block["type"] == "table" for row in block["rows"]} | {
+                section["ref"] for section in shown.json()["sections"]}
+            if (explained["state"] != "done"
+                    or result.get("outcome", {}).get("code") != "explanation"
+                    or not result.get("conditions", {}).get("table")
+                    or not set(result.get("references", [])) <= refs):
+                problems.append("the explanation lacks its prediction, "
+                                "conditions or evidence")
+            question = {"case_set": label, "case_number": 1,
+                        "scope": scope["scope"], "question": "x"}
+            call("POST", "/api/questions", 403, json=question)
+            call("POST", "/api/questions", 403, json=question, headers={
+                "Origin": "http://rebound.example"})
+            call("POST", "/api/questions", 415, headers=origin,
+                 data=json.dumps(question))
+            call("POST", "/api/questions", 413, headers=dict(
+                origin, **{"Content-Type": "application/json"}),
+                 data="x" * (MAX_BODY_BYTES + 1))
+            call("POST", "/api/questions", 422, headers=origin,
+                 json=dict(question, scope={"kind": "selected_visit"}))
+            call("GET", "/api/jobs/" + "x" * 22, 404)
+            call("GET", base + "/1/evidence?kind=other", 422)
+            call("GET", "/api/case-sets/eval-100-v1/cases", 404)
+            call("GET", "/", 403, headers={"Host": "rebound.example"})
+    logged = "\n".join(lines)
+    for secret in (token, label, "Which conditions"):
+        if secret in logged:
+            problems.append("the interface's log holds more than its "
+                            "decisions")
+    return made[0], problems
+
+
+def main(argv=None):
+    """Run the default mode."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.parse_args(argv)
+    made, problems = run_synthetic()
+    for problem in problems:
+        print("PROBLEM: %s" % problem)
+    print("requests checked over loopback: %d" % made)
+    print("RESULT: %s" % ("FAIL" if problems else "PASS"))
+    return 1 if problems else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

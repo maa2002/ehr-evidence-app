@@ -4,8 +4,9 @@ Phase 8 puts the application in front of a person
 ([ADR 0019](decisions/0019-api-and-interface.md)). A local API serves the
 development case sets: it answers questions about a selected case and
 scope, explains a case's prepared prediction and shows the evidence
-behind both. A Streamlit interface, a separate process, reaches it only
-over HTTP, and one launcher starts both on 127.0.0.1. Nothing in the
+behind both. The interface, one page served by a separate process,
+reaches it only over HTTP, and one launcher starts both on 127.0.0.1.
+Nothing in the
 evidence, the generation or the release gate changes: the API returns the
 gate's response exactly, and nothing the gate withheld. Command examples
 assume the session set-up in
@@ -95,59 +96,100 @@ log audit reads it with the other routine logs
 
 ## The interface
 
-`ehr_evidence_app.interface.app` is the Streamlit page; it reaches the API
-only through `interface.client`, on 127.0.0.1 with the launch token, and
-ignores proxy settings so that no request leaves the machine.
+`ehr_evidence_app.interface` is one page, HTML, CSS and JavaScript without
+a build step, served by the interface's own process
+([ADR 0020](decisions/0020-interface-as-one-page.md)). The page calls the
+interface's operations under `/api`, which reach the API only through
+`interface.client`, on 127.0.0.1 with the launch token, ignoring proxy
+settings so that no request leaves the machine. What the operations
+return is what the page shows (`interface.views`), every word about a
+value chosen there; the page builds everything it shows as text.
 
-- **The selector** (work item 49). The sidebar selects the case set, the
-  case (with its number of visits) and the scope: the pre-target history,
-  a visit, or all case visits. The top of the page names the active case,
-  scope and model state.
-- **Context.** A question is answered for the selected case and scope
-  only, and nothing carries over from an earlier one. Changing the case
-  clears every earlier response. Changing the scope keeps them, greyed,
-  marked as an earlier scope and labelled with the scope they answered,
-  never shown as current.
+- **The patients** (work item 49). The sidebar selects the cohort, a case
+  set by its plain name ("Development cohort" for `dev-30-v1`, "Pilot
+  cohort" for `pilot-10-v1`), and the patient. A patient is shown by a
+  pseudonym, as case reports name one: a given name used for any sex and
+  an initial, such as "Jordan K.", fixed by the case set's label and the
+  case's number alone and never drawn from the records
+  (`interface.names`). No given name comes twice among a case set's first
+  sixty cases. The case's number stays beside the pseudonym, the page says
+  that the names are pseudonyms, and a patient can be found by either.
+- **The conversation.** The questions and responses about the selected
+  case form a thread; the composer below it holds the question, the scope
+  (the pre-target history, a visit, or all case visits) and the model's
+  state. A question is answered for the selected case and scope only, and
+  nothing carries over from an earlier one. Selecting another patient
+  starts a new conversation. Changing the scope keeps the earlier
+  responses, greyed and labelled with the scope they answered, never shown
+  as current.
 - **Questions** (work item 50). Each response shows its outcome (answer,
   not recorded, clarification needed, abstained, case rejected, withheld
-  by validation or operational error), the scope it answered, who wrote
-  it (the model, or the template and why), the seconds it took, its text,
-  and its references; choosing a reference opens its record in the
-  evidence view, in the scope the response answered.
-- **The explanation** (work item 51). The prepared prediction shows its
-  label, score and logit, with the score's fixed meaning, "uncalibrated
-  sigmoid of the logit; not a clinical risk", and never as a percentage.
-  The explanation of the selected drivers follows, with a note that
-  attribution scores are unsigned and not causal, and its references. The
-  conditions recorded in the pre-target history stand in a block of their
-  own, as records rather than the model's prediction or drivers.
-- **The evidence** (work item 52). For a scope: its coverage, with the
-  records without a standard concept and the final-admission records
-  left out, its visits and records, and its provenance. For the
-  prediction: every original attribution with its unsigned score,
-  attachment and link status, a warning naming how many have no verified
-  link to a record, the linked history records, the final admission's
-  records as context, the case's restrictions, the coverage and the
-  provenance. A reference opened from a response is shown first; one the
-  evidence does not hold is said to be missing.
+  by validation or operational error), its text with the references of
+  each claim at the line that states it, the scope it answered, who wrote
+  it (the model, or the template and why) and the seconds it took.
+  Choosing a reference opens its record in the evidence panel, in the
+  scope the response answered.
+- **The explanation** (work item 51). The explanation shows the prepared
+  prediction first: its label, score and logit, with the score's fixed
+  meaning, "uncalibrated sigmoid of the logit; not a clinical risk", and
+  never as a percentage. The explanation of the selected drivers follows,
+  with its references and a note that attribution scores are unsigned and
+  not causal. The conditions recorded in the pre-target history stand in
+  a block of their own, as records rather than the model's prediction or
+  drivers.
+- **The evidence** (work item 52). A panel beside the conversation shows,
+  for a scope, its coverage, with the records without a standard concept
+  and the final-admission records left out, its visits and records, and
+  its provenance; for the prediction, every original attribution with its
+  unsigned score, attachment and link status, a warning naming how many
+  have no verified link to a record, the linked history records, the
+  final admission's records as context, the case's restrictions, the
+  coverage, the visits and the provenance. A reference opened from a
+  response is found and marked; one the evidence does not hold is said to
+  be missing.
 
-A refusal of the API is shown in words. `interface.serve` serves the
-page with Streamlit on 127.0.0.1 behind the interface's access checks:
-Streamlit's usage statistics are off, no error detail reaches the
-browser, no file is watched, and a failure of the page is logged by its
-type only.
+A question or an explanation is a job (`interface.jobs`): the page is
+answered at once, shows that the response is being written with the
+seconds so far, and asks after the job about once a second, every other
+part of the page staying usable meanwhile. A session reads only the jobs
+it started, and a finished job is kept for a quarter of an hour. A
+refusal is shown in words. The page follows the system's light or dark
+setting and fits a phone's screen.
+
+| Route | Returns |
+| --- | --- |
+| `GET /api/state` | The model's state, the cohorts, the question limit and the version |
+| `GET /api/case-sets/{case_set}/cases` | The cohort's patients, by pseudonym, with each case's number and visits |
+| `GET /api/case-sets/{case_set}/cases/{case_number}` | The case: its pseudonym, scopes, evidence and prepared prediction |
+| `GET /api/case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The evidence of a scope, or of the prediction, in sections of facts, tables and notes |
+| `POST /api/questions` | Starts answering a question: `{"case_set", "case_number", "scope", "question"}`; returns the job |
+| `POST /api/explanations` | Starts explaining the prediction: `{"case_set", "case_number"}`; returns the job |
+| `GET /api/jobs/{job}` | The job's state, and its result once done |
+
+`interface.serve` serves the page and its operations on 127.0.0.1 behind
+the interface's access checks: no access log, no server or date header,
+no websocket, and a failure of an operation logged by its type only.
 
 ## The access checks of the interface
 
-`ehr_evidence_app.interface.gate` stands in front of Streamlit, in the same
-process:
+`ehr_evidence_app.interface.gate` stands in front of the page and its
+operations, in the same process:
 
 - a request must name one host the interface answers to: 127.0.0.1 or
   localhost at its port and, when the interface is shared, the tunnel's
   public host;
-- every response is marked `X-Content-Type-Options: nosniff`,
-  `Referrer-Policy: no-referrer` and `X-Frame-Options: DENY`, and every one
-  but Streamlit's static files `Cache-Control: no-store`;
+- a request that changes anything (any method but GET and HEAD) must come
+  from the page itself: its `Origin` must be the host it was sent to, so
+  that another site cannot make a browser send it;
+- every response carries a content security policy that admits the
+  page's own script, style sheet and icon only, with no inline code, and
+  requires Trusted Types; it is marked `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`,
+  `Cross-Origin-Opener-Policy: same-origin` and
+  `X-Robots-Tag: noindex, nofollow`, and every one but the page's static
+  files `Cache-Control: no-store`; the static files are named by a digest
+  of their content and checked again before each use;
+- no websocket opens;
 - the server's access log is switched off, and the gate's own log,
   `outputs\logs\interface\interface-<date>.log`, names only what it
   decided, never a path, a query or a key.
@@ -158,9 +200,9 @@ session. The first visit opens the secret link, whose key, the query
 parameter `k`, is checked against its SHA-256 in constant time; the gate
 sets a session cookie (`HttpOnly`, `Secure`, `SameSite=Lax`, because the
 link is opened from another site) and redirects to the page without the
-key. Anything else is answered as not found, and a websocket without a
-session is closed before it opens. Sessions end after a day, or when the
-interface stops.
+key. Anything else is answered as not found. Sessions end after a day,
+or when the interface stops; a job started through the tunnel belongs to
+its session.
 
 ## Sharing through the tunnel
 
@@ -216,12 +258,16 @@ processes on 127.0.0.1, with a fresh launch token that each receives in
 its process environment only; waits until the API answers, then the
 interface; prints the interface's address; and stops both together on
 Ctrl+C, or when either stops. Each runs in a process group of its own,
-so that Ctrl+C reaches the launcher only; the launcher holds each one's
-standard input open and asks it to stop by closing it, and a process also
-stops when the launcher ends in any other way, the API stopping the model
-worker as it does. Every process is also in a Windows job that ends it
-when the launcher ends, however it ends. Their own output is discarded. The development case sets take about 20
-seconds to load and verify, and the model about 16 seconds more.
+so that Ctrl+C reaches the launcher only. The launcher holds each one's
+standard input open and asks it to stop by closing it; a process watches
+for that by polling the pipe, never reading it, because on Windows a read
+left waiting on a pipe holds up every other use of it, the start-up of
+the next native library a process loads included. A process also stops
+when the launcher ends in any other way, the API stopping the model
+worker as it does, and every process is in a Windows job that ends it
+when the launcher ends, however it ends. Their own output is discarded.
+The development case sets take about 20 seconds to load and verify, and
+the model about 16 seconds more.
 
 By default the API serves the invented case set with its scripted model,
 reading and writing nothing: a demonstration without data.
@@ -241,6 +287,15 @@ real connection; nothing is written:
 
 ```powershell
 & $AppPython -m ehr_evidence_app.api.app
+```
+
+The interface's default mode serves the invented case set through the API
+and the page's operations on free loopback ports, and makes every
+operation as the page makes it, the gate's refusals included; nothing is
+written:
+
+```powershell
+& $AppPython -m ehr_evidence_app.interface.app
 ```
 
 `--serve` serves on 127.0.0.1, taking the launch token from

@@ -64,7 +64,7 @@ attribution.
 | Question interpretation, concept and scope resolution, scoped answers | implemented (rule-based); held-out and written wording tests done |
 | Validation and the release gate | implemented; mutation suite version 4 covers model-written candidates, driver selection and scores as shown |
 | LLM generation | implemented (release 0.9.0): the compact output shape with syntax-only decoding, the model's structured view of the evidence, the prompt, adapter, limits and fallback, the pinned model's worker in its own environment, protected runtime records, the log audit and tracker aggregates; measured on the development case sets |
-| API and interface | in progress (Phase 8): the local API, its access boundary, the Streamlit interface and the launcher are implemented |
+| API and interface | in progress (Phase 8): the local API, its access boundary, the interface's page and its operations, the launcher and sharing through the tunnel are implemented |
 | Evaluation | planned |
 
 See [roadmap.md](roadmap.md) for the planned work.
@@ -85,7 +85,7 @@ interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 | `validation` | Candidate contract, checks before generation, structure and reference checks, support of QA statements, wording rules, template explanation and its preservation checks, release gate, mutation suite | `candidate`, `evidence`, `structure`, `support`, `language`, `explanation`, `gate`, `mutations` |
 | `generation` | Candidates written by the language model: the document shape and its schema, the model's compact view of the evidence, the prompt, the adapter with its limits and the template fallback, the pinned model's runtime and its worker (which runs in the model environment), development measurement, protected runtime records | `shape`, `projection`, `prompt`, `adapter`, `runtime`, `worker`, `measure`, `records` |
 | `api` | The application's operations for the interface, served as a local HTTP API behind its access boundary; the launcher | `service`, `app`, `boundary`, `launch` |
-| `interface` | The Streamlit page over the API: the selector, questions, the explanation and the evidence; its client, access checks and server; the secret link and the tunnel's parts | `app`, `client`, `labels`, `gate`, `serve`, `share` |
+| `interface` | The page over the API, a conversation about a selected patient with the evidence beside it; its operations, what it shows, its jobs, names, client, access checks and server; the secret link and the tunnel's parts | `app`, `views`, `jobs`, `names`, `labels`, `client`, `gate`, `serve`, `share`, `static` |
 | `tracking` | Tracker policy, ClearML connection checks, controlled tracking, input registration, runtime aggregates, measurements, the pinned model in the tracker, lineage records | `policy`, `connection`, `controlled`, `registration`, `aggregates`, `measurements`, `models`, `lineage` |
 | `environment` | Verification of the application environment; capture of the GNN environment | `app`, `gnn` |
 | `quality` | Publication audit of repository content and Git history; release metadata checks | `publication`, `release` |

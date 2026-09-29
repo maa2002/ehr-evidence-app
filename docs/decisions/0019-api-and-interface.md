@@ -1,6 +1,8 @@
 # 0019. The API and the interface (Phase 8)
 
-Status: accepted (2026-09-29).
+Status: accepted (2026-09-29). Points 1 and 7 amended by
+[ADR 0020](0020-interface-as-one-page.md): the interface is one page
+served by its own process, and no longer Streamlit.
 
 ## Context
 

@@ -463,6 +463,17 @@ class RuleTestCase(unittest.TestCase):
                 ("id_rsa", ["forbidden_name"]),
                 ("notebook.ipynb", ["unapproved_type"]),
                 ("image.png", ["unapproved_type"]),
+                ("src/ehr_evidence_app/interface/static/app.js", []),
+                ("src/ehr_evidence_app/interface/static/index.html", []),
+                ("src/ehr_evidence_app/interface/static/app.css", []),
+                ("src/ehr_evidence_app/interface/static/mark.svg", []),
+                ("src/ehr_evidence_app/interface/static/nested/app.js",
+                 ["unapproved_type"]),
+                ("src/ehr_evidence_app/interface/static/image.png",
+                 ["unapproved_type"]),
+                ("docs/report.html", ["unapproved_type"]),
+                ("src/ehr_evidence_app/interface/app.js",
+                 ["unapproved_type"]),
                 ("outputs/model.pt", ["forbidden_directory",
                                       "forbidden_extension"])):
             with self.subTest(path=path):

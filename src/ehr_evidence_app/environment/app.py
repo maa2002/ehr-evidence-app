@@ -65,8 +65,10 @@ MAX_PROBE_OUTPUT_BYTES = 1024 * 1024
 IMPORT_CHECKS = (
     ("fastapi", "fastapi"),
     ("uvicorn", "uvicorn"),
+    ("starlette", "starlette"),
     ("pydantic", "pydantic"),
-    ("streamlit", "streamlit"),
+    ("requests", "requests"),
+    ("numpy", "numpy"),
     ("clearml", "clearml"),
     ("pytest", "pytest"),
 )
@@ -92,8 +94,7 @@ ROUTED_VARIABLES = ("TEMP", "TMP", "TMPDIR", "HOME", "USERPROFILE",
                     "APPDATA", "LOCALAPPDATA", "XDG_CACHE_HOME",
                     "CLEARML_CACHE_DIR", "MPLCONFIGDIR")
 SYNTHETIC_USERNAME = "app-smoke"
-FIXED_VARIABLES = {"CLEARML_OFFLINE_MODE": "1",
-                   "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false"}
+FIXED_VARIABLES = {"CLEARML_OFFLINE_MODE": "1"}
 CLEARML_CONFIG_NAME = "clearml.conf"
 SYSTEM_PATH_DIRS = ("System32", "", "System32\\Wbem")
 

@@ -9,14 +9,28 @@ from ehr_evidence_app.interface import labels
 
 
 class LabelTests(unittest.TestCase):
-    """Outcomes, scopes, authors, scores and escaping."""
+    """Outcomes, scopes, authors, the model's state, scores and
+    references."""
 
     def test_every_outcome_and_fallback_has_words(self):
-        """Every outcome has a name and a colour, and every fallback a
-        reason."""
+        """Every outcome has a name and a tone the page knows, and every
+        fallback a reason."""
         self.assertEqual(set(labels.OUTCOMES), set(vocab.OUTCOMES))
         self.assertEqual(set(labels.TONES), set(vocab.OUTCOMES))
+        self.assertLessEqual(set(labels.TONES.values()),
+                             {"good", "info", "neutral", "warn", "bad"})
+        self.assertEqual(labels.tone("answer"), "good")
+        self.assertEqual(labels.tone("unknown"), "neutral")
         self.assertEqual(set(labels.FALLBACKS), set(adapter.FALLBACKS))
+
+    def test_model_states(self):
+        """Every state of the model has a short name and a meaning."""
+        from ehr_evidence_app.api import service
+        for state in service.MODEL_STATES:
+            name, meaning = labels.model(state)
+            self.assertTrue(name and meaning)
+        self.assertEqual(labels.model("ready"),
+                         ("Model ready", "The model writes the responses."))
 
     def test_scopes(self):
         """A scope is named as a sentence and as a menu names it."""
@@ -59,16 +73,16 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(labels.counted(26, "case"), "26 cases")
         self.assertEqual(labels.counted(0, "visit"), "0 visits")
 
-    def test_references_and_escaping(self):
-        """References keep their first order, once each; Markdown's
-        characters show as written."""
+    def test_references_and_refusals(self):
+        """References keep their first order, once each; a refusal says
+        what it means."""
         self.assertEqual(labels.references({"claims": [
             {"refs": ["E2", "E1"]}, {"refs": ["E1", "P1"]}]}),
                          ["E2", "E1", "P1"])
-        self.assertEqual(labels.escaped("*a* [b](c) 1.5"),
-                         r"\*a\* \[b\]\(c\) 1\.5")
         self.assertIn("not answering", labels.error("api_unreachable"))
         self.assertIn("other code", labels.error("other_code"))
+        self.assertEqual(labels.words("final_admission"),
+                         "final admission")
 
 
 if __name__ == "__main__":

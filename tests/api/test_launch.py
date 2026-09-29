@@ -91,6 +91,37 @@ class LaunchTests(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 30)
         self.assertIsNotNone(watcher.poll())
 
+    def test_watching_leaves_native_libraries_free_to_load(self):
+        """A process watching for the launcher still loads a native
+        library: nothing waits on its standard input meanwhile, which on
+        Windows would stall the library's start-up and the process with
+        it."""
+        try:
+            import numpy  # noqa: F401 - only to learn that it is there
+        except ImportError:
+            self.skipTest("NumPy is not installed")
+        env = launch.environment(boundary.new_token(), 8601)
+        with tempfile.TemporaryDirectory() as directory:
+            marker = os.path.join(directory, "loaded")
+            watcher = launch.start([sys.executable, "-c", (
+                "import sys, time\n"
+                "from ehr_evidence_app.api import launch\n"
+                "launch.exit_with_launcher()\n"
+                "time.sleep(0.5)\n"
+                "import numpy\n"
+                "open(sys.argv[1], 'w').close()\n"
+                "time.sleep(120)\n"), marker], env)
+            try:
+                deadline = time.monotonic() + 60
+                while not os.path.exists(marker) and (
+                        time.monotonic() < deadline
+                        and watcher.poll() is None):
+                    time.sleep(0.1)
+                self.assertTrue(os.path.exists(marker))
+            finally:
+                launch.stop(watcher, seconds=30)
+        self.assertIsNotNone(watcher.poll())
+
     def test_wait_until_notices_a_stopped_process(self):
         """Waiting ends when the process has stopped."""
         process = subprocess.Popen([sys.executable, "-c", "pass"])
@@ -149,8 +180,8 @@ class StartTests(unittest.TestCase):
 
     def test_both_processes(self):
         """The API and the interface answer on 127.0.0.1, the interface's
-        page is marked not to be cached, another host is refused, and both
-        stop when asked."""
+        page carries its content security policy and is marked not to be
+        cached, another host is refused, and both stop when asked."""
         api_port, port = free_port(), free_port()
         env = launch.environment(boundary.new_token(), api_port)
         api_command, interface_command = launch.commands(api_port, port)
@@ -160,13 +191,18 @@ class StartTests(unittest.TestCase):
             launch.wait_until("http://127.0.0.1:%d/health" % api_port,
                               processes[0], seconds=120)
             processes.append(launch.start(interface_command, env))
-            launch.wait_until("http://127.0.0.1:%d/_stcore/health" % port,
+            launch.wait_until("http://127.0.0.1:%d/health" % port,
                               processes[1], seconds=120)
             session = requests.Session()
             session.trust_env = False
             page = session.get("http://127.0.0.1:%d/" % port, timeout=30)
             self.assertEqual(page.status_code, 200)
             self.assertEqual(page.headers["cache-control"], "no-store")
+            self.assertIn("default-src 'none'",
+                          page.headers["content-security-policy"])
+            state = session.get("http://127.0.0.1:%d/api/state" % port,
+                                timeout=30)
+            self.assertEqual(state.json()["model"]["state"], "ready")
             self.assertEqual(session.get(
                 "http://127.0.0.1:%d/" % port, timeout=30,
                 headers={"Host": "rebound.example"}).status_code, 403)

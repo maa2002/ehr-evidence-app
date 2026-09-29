@@ -59,6 +59,9 @@ INTERFACE_PORT = 8501
 START_SECONDS = 300
 STOP_SECONDS = 30
 WATCH_VARIABLE = "EHR_EXIT_WITH_LAUNCHER"
+# How often a process the launcher started looks for the launcher's end
+# of its standard input to close.
+WATCH_SECONDS = 0.25
 say = functools.partial(print, flush=True)
 
 
@@ -86,23 +89,73 @@ def environment(token, api_port, base=None):
     return found
 
 
-def exit_with_launcher(stream=None, environ=None):
+def pipe_watcher(handle):
+    """Return a function that says whether the other end of a Windows
+    pipe is still open, without reading from it or waiting; None when the
+    handle is not a pipe."""
+    import ctypes
+    from ctypes import wintypes
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.GetFileType.argtypes = (wintypes.HANDLE,)
+    kernel32.GetFileType.restype = wintypes.DWORD
+    kernel32.PeekNamedPipe.argtypes = (
+        wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p,
+        ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p)
+    kernel32.PeekNamedPipe.restype = wintypes.BOOL
+    # FILE_TYPE_PIPE
+    if kernel32.GetFileType(handle) != 3:
+        return None
+    waiting = wintypes.DWORD()
+
+    def still_open():
+        """Return False once the pipe is broken or closed."""
+        return bool(kernel32.PeekNamedPipe(handle, None, 0, None,
+                                           ctypes.byref(waiting), None))
+    return still_open
+
+
+def exit_with_launcher(stream=None, environ=None, seconds=WATCH_SECONDS):
     """In a process the launcher started, stop gracefully when the
     launcher's end of the standard input closes; return the watching
-    thread, or None in any other process."""
+    thread, or None in any other process.
+
+    On Windows the pipe is polled, never read. A read left waiting on it
+    would hold the pipe: Windows queues every other use of it behind that
+    read, a native library's start-up included, so that the first library
+    loaded afterwards (NumPy's, for one) would stall the process for as
+    long as the launcher ran."""
     environ = os.environ if environ is None else environ
     if environ.get(WATCH_VARIABLE) != "1":
         return None
     stream = sys.stdin if stream is None else stream
+    if stream is None:
+        return None
+    if os.name == "nt":
+        import msvcrt
+        try:
+            still_open = pipe_watcher(msvcrt.get_osfhandle(stream.fileno()))
+        except (OSError, ValueError):
+            still_open = None
+        if still_open is None:
+            return None
+
+        def wait():
+            """Poll until the launcher lets go."""
+            while still_open():
+                time.sleep(seconds)
+    else:
+        def wait():
+            """Read until the launcher lets go."""
+            try:
+                while stream.read(1024):
+                    pass
+            except (OSError, ValueError):
+                pass
 
     def watch():
-        """Read until the launcher lets go, then ask this process to
+        """Wait for the launcher to let go, then ask this process to
         stop."""
-        try:
-            while stream.read(1024):
-                pass
-        except (OSError, ValueError):
-            pass
+        wait()
         signal.raise_signal(getattr(signal, "SIGBREAK", signal.SIGTERM))
 
     thread = threading.Thread(target=watch, name="launcher-watch",
@@ -313,7 +366,7 @@ def launch(api_port=API_PORT, interface_port=INTERFACE_PORT, real=False,
             "the invented case set", api_port,
             "" if not real else "; the model is loading" if model
             else ", with the templates only"))
-        wait_until("http://127.0.0.1:%d/_stcore/health" % interface_port,
+        wait_until("http://127.0.0.1:%d/health" % interface_port,
                    begin(interface_command, env))
         say("Open the interface at http://127.0.0.1:%d/" % interface_port)
         if shared:

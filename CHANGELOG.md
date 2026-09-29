@@ -13,7 +13,10 @@ lineage tasks stay in view, every generation measurement is an experiment
 with its configuration and scalars, and the pinned model is kept there
 with its licence. No data is uploaded. Phase 8 begins: a local API
 serves the development case sets behind its access boundary
-([ADR 0019](docs/decisions/0019-api-and-interface.md)).
+([ADR 0019](docs/decisions/0019-api-and-interface.md)), and the interface
+is one page over it: a conversation about a selected patient, with the
+evidence beside it
+([ADR 0020](docs/decisions/0020-interface-as-one-page.md)).
 
 ### Added
 
@@ -33,25 +36,37 @@ serves the development case sets behind its access boundary
   checks every route and the boundary over a real loopback connection on
   the invented case set.
 - `interface` package (Phase 8, work items 48 to 52;
-  [docs/interface.md](docs/interface.md#the-interface)): the Streamlit
-  page (`interface.app`) with the case, scope and model state in the
-  sidebar and three views. Questions: each response with its outcome,
-  scope, author, seconds, text and references, the context cleared on a
-  case change and greyed, labelled with its scope, on a scope change. The
-  explanation: the prepared prediction with its score's fixed meaning,
-  never a percentage, the explanation with attribution labelled unsigned
-  and not causal, and the recorded conditions apart. The evidence: a
-  scope's coverage, visits, records and provenance, or every original
-  attribution with its link status. `interface.client` reaches the API
-  on 127.0.0.1 only; `interface.gate` checks the host, marks responses,
+  [docs/interface.md](docs/interface.md#the-interface)): one page, HTML,
+  CSS and JavaScript without a build step or a library, served by the
+  interface's own process (`interface.app`, `interface.serve`). The
+  sidebar selects the cohort and the patient, shown by a pseudonym beside
+  the case's number (`interface.names`); the conversation asks questions
+  about the selected case in the selected scope and explains its prepared
+  prediction; a panel beside it shows the evidence. Each response shows
+  its outcome, its text with each claim's references at the line that
+  states it, its scope, who wrote it and the seconds it took; a case
+  change starts a new conversation, and a scope change greys the earlier
+  responses, labelled with their scope. The explanation shows the
+  prediction with its score's fixed meaning, never a percentage, the note
+  that attribution is unsigned and not causal, and the recorded
+  conditions apart. The evidence: a scope's coverage, visits, records and
+  provenance, or every original attribution with its link status. A
+  question or an explanation runs as a job the page asks after
+  (`interface.jobs`), so that nothing waits on the model; what the page
+  shows is shaped and worded in `interface.views`. `interface.client`
+  reaches the API on 127.0.0.1 only; `interface.gate` checks the host,
+  admits changes from the page's own origin only, refuses websockets,
+  sets a content security policy that admits the page's own files only,
   switches the server's access log off and, when the interface is shared,
   admits the tunnel's requests only with the secret link's key or its
-  session cookie; `interface.serve` serves the page with Streamlit on
-  127.0.0.1 without usage statistics or error details.
+  session cookie. The default mode of `interface.app` makes every
+  operation of the page over loopback on the invented case set.
 - `api.launch`: starts the API and the interface on 127.0.0.1 with a fresh
   launch token, and stops both, the model worker included, on Ctrl+C or
-  when it ends in any way; the invented case set by default, the
-  development case sets with `--operator-real`. `--share` also starts the
+  when it ends in any way; each process watches for the launcher by
+  polling its standard input's pipe, never reading it, so that no native
+  library's start-up waits on the pipe; the invented case set by default,
+  the development case sets with `--operator-real`. `--share` also starts the
   Cloudflare tunnel's connector with its token file and checks that the
   public address answers as the gate does.
 - `interface.share`
@@ -89,6 +104,12 @@ serves the development case sets behind its access boundary
 
 ### Changed
 
+- The application's dependencies no longer include Streamlit: the lock
+  pins 40 packages instead of 56, and Starlette, Requests and NumPy,
+  which the code imports, are declared directly
+  ([docs/environments.md](docs/environments.md)).
+- The publication audit admits HTML, CSS, JavaScript and SVG in the
+  interface's page directory only.
 - The inherited input registration and the runtime aggregates are no
   longer archived: each task is read back and marked completed, and the
   aggregates task carries its configuration fields and scalars. Only the

@@ -1,10 +1,11 @@
 """What the interface calls things (Phase 8, decisions D4 to D6).
 
 Plain functions from the API's values to the words the page shows: the
-outcome of a response, the scope it answered, who wrote it, the model's
-state, a score and the API's refusals. A score is shown as the number it
-is, never as a percentage; an attribution score is always labelled
-unsigned and not causal.
+outcome of a response and its tone, the scope it answered, who wrote it,
+the model's state, a score and the refusals. A score is shown as the
+number it is, never as a percentage; an attribution score is always
+labelled unsigned and not causal. The page shows every word as text,
+never as markup.
 """
 
 from __future__ import annotations
@@ -15,12 +16,12 @@ OUTCOMES = {"answer": "Answer", "not_recorded": "Not recorded",
             "abstention": "Abstained", "case_rejection": "Case rejected",
             "validation_rejection": "Withheld by validation",
             "operational_error": "Operational error"}
-# The badge colour of each outcome: released, asked back or refused, and
-# withheld or failed.
-TONES = {"answer": "green", "not_recorded": "green", "explanation": "green",
-         "clarification": "blue", "abstention": "gray",
-         "case_rejection": "orange", "validation_rejection": "red",
-         "operational_error": "red"}
+# The tone of each outcome's badge: released (good), asked back (info),
+# declined (neutral), refused (warn), and withheld or failed (bad).
+TONES = {"answer": "good", "not_recorded": "good", "explanation": "good",
+         "clarification": "info", "abstention": "neutral",
+         "case_rejection": "warn", "validation_rejection": "bad",
+         "operational_error": "bad"}
 FALLBACKS = {"no_model": "the model had not loaded",
              "busy": "the model was writing another response",
              "prompt_over_budget": "the evidence was over the prompt limit",
@@ -32,10 +33,15 @@ FALLBACKS = {"no_model": "the model had not loaded",
              "malformed": "the model's reply was not a valid document",
              "schema_violated": "the model's reply broke its schema",
              "gate_rejected": "validation withheld the model's reply"}
-MODEL_STATES = {"ready": "Ready",
-                "loading": "Loading; the templates answer until it is ready",
-                "unavailable": "Unavailable; the templates answer",
-                "off": "Off; the templates answer"}
+# The model's state: a short name and what it means for the responses.
+MODEL_STATES = {"ready": ("Model ready", "The model writes the responses."),
+                "loading": ("Model loading", "The templates answer until "
+                                             "the model is ready."),
+                "unavailable": ("Templates only", "The model is "
+                                                  "unavailable; the "
+                                                  "templates answer."),
+                "off": ("Templates only", "The model is off; the templates "
+                                          "answer.")}
 ERRORS = {"api_not_configured": "The interface was started without the "
                                 "API's address; start the application with "
                                 "the launcher.",
@@ -45,11 +51,20 @@ ERRORS = {"api_not_configured": "The interface was started without the "
           "case_set_not_served": "This case set is not served.",
           "case_unknown": "This case is not among the admitted cases.",
           "scope_unknown": "This case has no such scope.",
-          "prediction_missing": "This case has no prepared prediction."}
+          "scope_invalid": "This is not a scope a case can be asked in.",
+          "prediction_missing": "This case has no prepared prediction.",
+          "request_invalid": "The request was not understood.",
+          "request_too_large": "The request is too long.",
+          "too_many_requests": "Too many requests are running; ask again "
+                               "when one has finished.",
+          "job_unknown": "This request is no longer known; ask again.",
+          "internal": "Something went wrong in the interface."}
 UNSIGNED = ("Attribution scores are unsigned: they measure how sensitive "
             "the model's output was to each input, not whether a driver "
             "raised or lowered the prediction, and not that it caused it.")
 NOT_A_RISK = "uncalibrated sigmoid of the logit; not a clinical risk"
+ONE_OUTPUT = ("The label is one output of the model's multi-label "
+              "prediction, not the only diagnosis it predicts.")
 
 
 def outcome(value):
@@ -58,8 +73,8 @@ def outcome(value):
 
 
 def tone(value):
-    """Return the badge colour of an outcome."""
-    return TONES.get(value, "gray")
+    """Return the tone of an outcome's badge."""
+    return TONES.get(value, "neutral")
 
 
 def scope(value):
@@ -93,8 +108,9 @@ def author(result):
 
 
 def model(state):
-    """Return what the model is doing."""
-    return MODEL_STATES.get(state, state)
+    """Return the model's state: its short name and what it means."""
+    return MODEL_STATES.get(state, (state.replace("_", " ").capitalize(),
+                                    ""))
 
 
 def reasons(codes):
@@ -103,7 +119,7 @@ def reasons(codes):
 
 
 def error(code):
-    """Return what an API refusal means."""
+    """Return what a refusal means."""
     return ERRORS.get(code, "The API refused the request (%s)."
                       % code.replace("_", " "))
 
@@ -124,6 +140,12 @@ def counted(number, noun):
     return "%d %s%s" % (number, noun, "" if number == 1 else "s")
 
 
+def words(value):
+    """Return a code as words: underscores as spaces; nothing for no
+    code."""
+    return "" if value is None else str(value).replace("_", " ")
+
+
 def references(response):
     """Return the references a response cites, in their first order."""
     found = []
@@ -132,11 +154,3 @@ def references(response):
             if ref not in found:
                 found.append(ref)
     return found
-
-
-def escaped(text):
-    """Return text with Markdown's special characters escaped, so that a
-    question or a record's name shows as written."""
-    special = "\\`*_{}[]()#+-.!|<>~$:"
-    return "".join("\\" + char if char in special else char
-                   for char in text)

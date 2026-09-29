@@ -26,7 +26,9 @@ refused because its history would be incomplete. Four checks run:
    tree. Nothing is checked out. A repository without commits reports zero.
 
 Every path is checked for sensitive, generated and unapproved categories,
-even when force-added or present only in history. Publishable files and
+even when force-added or present only in history. The interface's page
+(HTML, CSS, JavaScript and an SVG icon) is a publishable type in the page's
+own directory only, a fixed rule the policy cannot widen. Publishable files and
 history objects must be bounded UTF-8 text and are scanned for
 high-confidence secret signatures, private keys, credential-bearing URIs,
 quoted and unquoted secret assignments, machine-specific user-profile paths
@@ -127,6 +129,9 @@ PUBLISHABLE_EXTENSIONS = (".cfg", ".ini", ".json", ".md", ".ps1", ".py",
                           ".pyi", ".sql", ".toml", ".txt", ".yaml", ".yml")
 PUBLISHABLE_NAMES = (".editorconfig", ".env.example", ".gitattributes",
                      ".gitignore", "license", "notice")
+# The interface's page files are publishable in its own directory only.
+PAGE_DIRECTORY = "src/ehr_evidence_app/interface/static"
+PAGE_EXTENSIONS = (".css", ".html", ".js", ".svg")
 FORBIDDEN_NAME_EXCEPTIONS = (".env.example",)
 
 # Mandatory minimums: the policy must list at least these. Names that are
@@ -819,8 +824,10 @@ def path_findings(relative, rules):
             and any(fnmatch.fnmatchcase(name, glob)
                     for glob in rules.name_globs)):
         found.append("forbidden_name")
+    page = (posixpath.dirname(relative) == PAGE_DIRECTORY
+            and extension in PAGE_EXTENSIONS)
     if (not found and name not in rules.publishable_names
-            and extension not in rules.publishable_extensions):
+            and extension not in rules.publishable_extensions and not page):
         found.append("unapproved_type")
     return found
 

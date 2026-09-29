@@ -16,10 +16,11 @@ Command examples assume the session set-up in
 - Python 3.12.8 virtual environment created with uv from an existing,
   non-GNN Python 3.12.8 interpreter (uv-managed Python downloads disabled).
 - `pyproject.toml` declares the direct dependencies: FastAPI, Uvicorn,
-  Pydantic 2, Streamlit and the ClearML SDK, plus pytest in the `test` extra.
-- `requirements/app.lock.txt` pins 56 packages exactly, with SHA-256 hashes,
+  Starlette, Pydantic 2, Requests, NumPy and the ClearML SDK, plus pytest
+  in the `test` extra.
+- `requirements/app.lock.txt` pins 40 packages exactly, with SHA-256 hashes,
   for Windows x86-64 and Python 3.12.8 (lock SHA-256
-  `9386863C9763E589C8F69DE9CE458A67867FDCB9F587651625E84FAEADB0BCC9`).
+  `41AEBA469136D200D254CAA0C5FAFA651725C6C8B3D1D981DFF3CF6A74A5C2B7`).
 - PyTorch, PyG, CUDA packages, model weights and LLM runtimes are excluded;
   the language model runs in the model environment, reached through
   `generation.runtime` over the worker's standard input and output.
@@ -30,8 +31,10 @@ Command examples assume the session set-up in
 | --- | --- |
 | FastAPI | 0.141.1 |
 | Uvicorn | 0.53.0 |
+| Starlette | 1.7.0 |
 | Pydantic | 2.13.5 |
-| Streamlit | 1.64.0 |
+| Requests | 2.34.2 |
+| NumPy | 2.5.3 |
 | ClearML SDK | 2.1.12 |
 | pytest | 9.1.1 |
 

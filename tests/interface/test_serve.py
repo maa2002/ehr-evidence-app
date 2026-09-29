@@ -10,16 +10,26 @@ from ehr_evidence_app.interface import gate, serve
 
 
 class ServeTests(unittest.TestCase):
-    """The configuration, sharing and the refusals before serving."""
+    """The server's settings, sharing and the refusals before serving."""
 
-    def test_configuration(self):
-        """Loopback only, no usage statistics, no error detail and no
-        file watching."""
-        self.assertEqual(serve.CONFIG["server.address"], "127.0.0.1")
-        self.assertFalse(serve.CONFIG["browser.gatherUsageStats"])
-        self.assertEqual(serve.CONFIG["client.showErrorDetails"], "none")
-        self.assertEqual(serve.CONFIG["server.fileWatcherType"], "none")
-        self.assertTrue(serve.CONFIG["server.enableXsrfProtection"])
+    def test_server_settings(self):
+        """Loopback only, no access log, no server or date header and no
+        websocket."""
+        self.assertEqual(serve.SERVER["host"], "127.0.0.1")
+        self.assertFalse(serve.SERVER["access_log"])
+        self.assertFalse(serve.SERVER["server_header"])
+        self.assertFalse(serve.SERVER["date_header"])
+        self.assertEqual(serve.SERVER["ws"], "none")
+
+    def test_build(self):
+        """The application stands behind its gate, which answers to this
+        machine's host at the port and to the tunnel's public host."""
+        share = gate.Share("ehr.example.org", "a" * 64)
+        built = serve.build(8501, clients.Client("http://127.0.0.1:8601",
+                                                 "t" * 43), share)
+        self.assertIsInstance(built, gate.Gate)
+        self.assertEqual(built.hosts, {"127.0.0.1:8501", "localhost:8501",
+                                       "ehr.example.org"})
 
     def test_share(self):
         """Sharing needs a host name and a digest, both well formed."""

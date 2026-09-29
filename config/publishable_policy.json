@@ -8,7 +8,8 @@
     "A named group 'secret' marks the value checked against the placeholder rules; otherwise the whole match is checked. Private-key and token-shape signatures are never exempt.",
     "Placeholder markers count only as whole tokens with no letter or digit on either side; placeholder patterns must match the whole value.",
     "The unquoted_assignment category is not applied to Python sources, where an unquoted value is an expression; quoted Python literals are covered by secret_assignment.",
-    "Synthetic-fixture exemption applies to the patient-identifier rule only: a file beneath a fixture root whose name has synthetic as a whole token, or a test module whose opening docstring line declares it synthetic."
+    "Synthetic-fixture exemption applies to the patient-identifier rule only: a file beneath a fixture root whose name has synthetic as a whole token, or a test module whose opening docstring line declares it synthetic.",
+    "The interface's page files (.css, .html, .js, .svg) are publishable in src/ehr_evidence_app/interface/static only, a fixed rule of the script that this file cannot widen."
   ],
   "max_candidate_bytes": 1048576,
   "publishable": {

@@ -141,18 +141,23 @@ metrics of Phase 9.
 ## Phase 8. API and interface
 
 Described in [interface.md](interface.md) and decided in
-[ADR 0019](decisions/0019-api-and-interface.md). In progress: the API,
-its boundary, the interface, the launcher and sharing through the tunnel
-are in place; the operator run and release 0.10.0 follow.
+[ADR 0019](decisions/0019-api-and-interface.md) and
+[ADR 0020](decisions/0020-interface-as-one-page.md). In progress: the
+API, its boundary, the interface, the launcher and sharing through the
+tunnel are in place; the link through the tunnel and release 0.10.0
+follow.
 
 - 47 Add FastAPI operations (done: `api.service` and `api.app`)
 - 48 Configure the access boundary (done: `api.boundary`,
   `interface.gate`, and sharing through the Cloudflare tunnel with a
   secret link, `interface.share` and `api.launch --share`)
-- 49 Add the case and scope selector (done: `interface.app`)
-- 50 Add the QA panel (done)
-- 51 Add the explanation panel (done)
-- 52 Add the evidence viewer (done)
+- 49 Add the case and scope selector (done: the sidebar's cohorts and
+  patients and the composer's scope, `interface.app` and
+  `interface.names`)
+- 50 Add the QA panel (done: the conversation)
+- 51 Add the explanation panel (done: the explanation in the
+  conversation)
+- 52 Add the evidence viewer (done: the evidence panel)
 
 ## Phase 9. Evaluation
 
