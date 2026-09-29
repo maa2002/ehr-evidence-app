@@ -142,13 +142,13 @@ metrics of Phase 9.
 
 Described in [interface.md](interface.md) and decided in
 [ADR 0019](decisions/0019-api-and-interface.md). In progress: the API,
-its boundary, the interface and the launcher are in place; the tunnel's
-configuration, the secret link and the operator run follow.
+its boundary, the interface, the launcher and sharing through the tunnel
+are in place; the operator run and release 0.10.0 follow.
 
 - 47 Add FastAPI operations (done: `api.service` and `api.app`)
-- 48 Configure the access boundary (done locally: `api.boundary` and
-  `interface.gate`, the secret link's checks included; the tunnel and the
-  link to follow)
+- 48 Configure the access boundary (done: `api.boundary`,
+  `interface.gate`, and sharing through the Cloudflare tunnel with a
+  secret link, `interface.share` and `api.launch --share`)
 - 49 Add the case and scope selector (done: `interface.app`)
 - 50 Add the QA panel (done)
 - 51 Add the explanation panel (done)

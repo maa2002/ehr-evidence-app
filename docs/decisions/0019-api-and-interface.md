@@ -87,3 +87,7 @@ point on 2026-09-29.
   served: it is kept to the private repository's issue, and a new key
   retires it after marking.
 - The laptop must be on, awake and online while the link is in use.
+- The tunnel's token stays in the workspace, read by cloudflared alone;
+  the link's key is kept only as its digest. Every process the launcher
+  starts, cloudflared and the model worker included, ends when the
+  launcher ends.

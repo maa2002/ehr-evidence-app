@@ -49,9 +49,16 @@ serves the development case sets behind its access boundary
   session cookie; `interface.serve` serves the page with Streamlit on
   127.0.0.1 without usage statistics or error details.
 - `api.launch`: starts the API and the interface on 127.0.0.1 with a fresh
-  launch token, and stops both, the model worker included, on Ctrl+C;
-  the invented case set by default, the development case sets with
-  `--operator-real`.
+  launch token, and stops both, the model worker included, on Ctrl+C or
+  when it ends in any way; the invented case set by default, the
+  development case sets with `--operator-real`. `--share` also starts the
+  Cloudflare tunnel's connector with its token file and checks that the
+  public address answers as the gate does.
+- `interface.share`
+  ([docs/interface.md](docs/interface.md#sharing-through-the-tunnel)):
+  `--new-link HOST` makes a new secret link, keeping only its key's
+  digest and printing the link once; `--check` checks the link's record,
+  the tunnel's token file (by `lstat` only) and cloudflared.
 - `tracking.measurements`
   ([docs/experiment-tracking.md](docs/experiment-tracking.md#measurements)):
   each benchmark run of the generation is kept as a record in the

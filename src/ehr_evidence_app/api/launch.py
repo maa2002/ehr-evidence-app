@@ -10,39 +10,56 @@ own output is discarded: their routine logs are in the workspace, and
 nothing either prints reaches this console.
 
 Each process runs in a process group of its own, so that Ctrl+C reaches
-only the launcher, which then asks each to stop (Ctrl+Break), letting the
-API stop the model worker, and ends a process that does not.
+only the launcher. The launcher holds each process's standard input open;
+a process stops, gracefully, when that closes: when the launcher asks it
+to, or when the launcher ends in any way, so that no process outlives it.
+A process that does not stop in time is ended.
 
 By default the API serves the invented case set and its scripted model,
 reading and writing nothing: a demonstration without data.
 --operator-real serves the development case sets with the model, or with
 --no-model with the templates only.
 
+--share also shares the interface through the Cloudflare tunnel
+(interface.share): the launcher checks the secret link's record, the
+tunnel's token file and cloudflared, gives the interface the public host
+and the key's digest, starts cloudflared with the token file, and checks
+that the public address answers as the gate answers a visit without the
+key. Every process is in a Windows job that ends it when the launcher
+ends, cloudflared and the model worker included.
+
 Usage:
     python -m ehr_evidence_app.api.launch
     python -m ehr_evidence_app.api.launch --operator-real
     python -m ehr_evidence_app.api.launch --operator-real --no-model
+    python -m ehr_evidence_app.api.launch --operator-real --share
 """
 
 from __future__ import annotations
 
 import argparse
+import functools
 import os
 import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 
 import requests
 
 from ehr_evidence_app.api import boundary
 from ehr_evidence_app.interface import client as clients
+from ehr_evidence_app.interface import serve
+from ehr_evidence_app.interface import share as sharing
 
 API_PORT = 8601
 INTERFACE_PORT = 8501
 START_SECONDS = 300
 STOP_SECONDS = 30
+WATCH_VARIABLE = "EHR_EXIT_WITH_LAUNCHER"
+say = functools.partial(print, flush=True)
 
 
 class LaunchError(Exception):
@@ -60,12 +77,38 @@ def port_free(port):
 
 
 def environment(token, api_port, base=None):
-    """Return the processes' environment: this one, with the launch token
-    and the API's address."""
+    """Return the processes' environment: this one, with the launch token,
+    the API's address and the instruction to stop with the launcher."""
     found = dict(os.environ if base is None else base)
     found[boundary.TOKEN_VARIABLE] = token
     found[clients.URL_VARIABLE] = "http://127.0.0.1:%d" % api_port
+    found[WATCH_VARIABLE] = "1"
     return found
+
+
+def exit_with_launcher(stream=None, environ=None):
+    """In a process the launcher started, stop gracefully when the
+    launcher's end of the standard input closes; return the watching
+    thread, or None in any other process."""
+    environ = os.environ if environ is None else environ
+    if environ.get(WATCH_VARIABLE) != "1":
+        return None
+    stream = sys.stdin if stream is None else stream
+
+    def watch():
+        """Read until the launcher lets go, then ask this process to
+        stop."""
+        try:
+            while stream.read(1024):
+                pass
+        except (OSError, ValueError):
+            pass
+        signal.raise_signal(getattr(signal, "SIGBREAK", signal.SIGTERM))
+
+    thread = threading.Thread(target=watch, name="launcher-watch",
+                              daemon=True)
+    thread.start()
+    return thread
 
 
 def commands(api_port, interface_port, real=False, model=True,
@@ -85,26 +128,104 @@ def commands(api_port, interface_port, real=False, model=True,
     return api, interface
 
 
+class Job:
+    """A Windows job whose processes end when the launcher ends, however
+    it ends, their children included; elsewhere, or where a job cannot be
+    made, it holds nothing."""
+
+    def __init__(self):
+        """Make the job, set to end its processes when it closes."""
+        self.handle = None
+        if os.name != "nt":
+            return
+        import ctypes
+        from ctypes import wintypes
+
+        class Basic(ctypes.Structure):
+            """JOBOBJECT_BASIC_LIMIT_INFORMATION."""
+
+            _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64),
+                        ("PerJobUserTimeLimit", ctypes.c_int64),
+                        ("LimitFlags", wintypes.DWORD),
+                        ("MinimumWorkingSetSize", ctypes.c_size_t),
+                        ("MaximumWorkingSetSize", ctypes.c_size_t),
+                        ("ActiveProcessLimit", wintypes.DWORD),
+                        ("Affinity", ctypes.c_size_t),
+                        ("PriorityClass", wintypes.DWORD),
+                        ("SchedulingClass", wintypes.DWORD)]
+
+        class Counters(ctypes.Structure):
+            """IO_COUNTERS."""
+
+            _fields_ = [(name, ctypes.c_uint64) for name in (
+                "ReadOperationCount", "WriteOperationCount",
+                "OtherOperationCount", "ReadTransferCount",
+                "WriteTransferCount", "OtherTransferCount")]
+
+        class Extended(ctypes.Structure):
+            """JOBOBJECT_EXTENDED_LIMIT_INFORMATION."""
+
+            _fields_ = [("BasicLimitInformation", Basic),
+                        ("IoInfo", Counters),
+                        ("ProcessMemoryLimit", ctypes.c_size_t),
+                        ("JobMemoryLimit", ctypes.c_size_t),
+                        ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                        ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        kernel32.CreateJobObjectW.argtypes = (ctypes.c_void_p,
+                                              wintypes.LPCWSTR)
+        kernel32.SetInformationJobObject.argtypes = (
+            wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+        kernel32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE,
+                                                      wintypes.HANDLE)
+        kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+        handle = kernel32.CreateJobObjectW(None, None)
+        info = Extended()
+        # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, set through
+        # JobObjectExtendedLimitInformation (9).
+        info.BasicLimitInformation.LimitFlags = 0x2000
+        if handle and kernel32.SetInformationJobObject(
+                handle, 9, ctypes.byref(info), ctypes.sizeof(info)):
+            self.kernel32, self.handle = kernel32, handle
+        elif handle:
+            kernel32.CloseHandle(handle)
+
+    def add(self, process):
+        """Put a process in the job; return False when it cannot be."""
+        if self.handle is None:
+            return False
+        return bool(self.kernel32.AssignProcessToJobObject(
+            self.handle, int(process._handle)))
+
+    def close(self):
+        """Close the job, ending any process still in it."""
+        if self.handle is not None:
+            self.kernel32.CloseHandle(self.handle)
+            self.handle = None
+
+
 def start(command, env):
-    """Start one process in a process group of its own, sharing this
-    console so that it can be asked to stop, its output discarded."""
+    """Start one process in a process group of its own, its standard
+    input held open by the launcher, its output discarded."""
     return subprocess.Popen(
-        command, env=env, stdin=subprocess.DEVNULL,
+        command, env=env, stdin=subprocess.PIPE,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
 
 
-def stop(process):
-    """Ask a process to stop; end it when it does not."""
-    if process.poll() is not None:
-        return
+def stop(process, seconds=STOP_SECONDS):
+    """Ask a process to stop by closing its standard input; end it when
+    it does not stop in time."""
     try:
-        if hasattr(signal, "CTRL_BREAK_EVENT"):
-            process.send_signal(signal.CTRL_BREAK_EVENT)
-        else:
-            process.terminate()
-        process.wait(timeout=STOP_SECONDS)
-    except (OSError, subprocess.TimeoutExpired):
+        if process.stdin is not None:
+            process.stdin.close()
+    except OSError:
+        pass
+    try:
+        process.wait(timeout=seconds)
+    except subprocess.TimeoutExpired:
         process.kill()
         process.wait()
 
@@ -126,35 +247,97 @@ def wait_until(url, process, seconds=START_SECONDS):
     raise LaunchError("start_timeout")
 
 
+def confirm_shared(host, seconds=60):
+    """Return True once the public address answers through the tunnel as
+    the gate answers a visit without the key: not found, and marked by
+    the gate."""
+    session = requests.Session()
+    session.trust_env = False
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        try:
+            reply = session.get("https://%s/" % host, timeout=10,
+                                allow_redirects=False)
+            if reply.status_code == 404 and reply.headers.get(
+                    "x-frame-options") == "DENY":
+                return True
+        except requests.RequestException:
+            pass
+        time.sleep(2)
+    return False
+
+
+def tunnel_environment(base=None):
+    """Return cloudflared's environment: this one, without the launch
+    token or anything else the application's processes are given."""
+    found = dict(os.environ if base is None else base)
+    for name in (boundary.TOKEN_VARIABLE, clients.URL_VARIABLE,
+                 WATCH_VARIABLE, serve.SHARE_HOST_VARIABLE,
+                 serve.SHARE_DIGEST_VARIABLE):
+        found.pop(name, None)
+    return found
+
+
 def launch(api_port=API_PORT, interface_port=INTERFACE_PORT, real=False,
-           model=True, say=print):
-    """Start both processes and serve until Ctrl+C or until one stops."""
+           model=True, share=False, cloudflared=sharing.CLOUDFLARED,
+           directory=sharing.SHARING_DIR, say=say):
+    """Start the processes and serve until Ctrl+C or until one stops."""
     for port in (api_port, interface_port):
         if not port_free(port):
             raise LaunchError("port_in_use: %d" % port)
     env = environment(boundary.new_token(), api_port)
+    shared = None
+    if share:
+        found = sharing.problems(directory, cloudflared)
+        if found:
+            raise LaunchError(found[0])
+        shared = sharing.read_link(directory)
+        env[serve.SHARE_HOST_VARIABLE] = shared.host
+        env[serve.SHARE_DIGEST_VARIABLE] = shared.key_sha256
     api_command, interface_command = commands(api_port, interface_port,
                                               real, model)
-    processes = []
+    job, processes, tunnel = Job(), [], []
+
+    def begin(command, environ):
+        """Start a process in the job."""
+        process = start(command, environ)
+        job.add(process)
+        processes.append(process)
+        return process
+
     try:
-        processes.append(start(api_command, env))
-        wait_until("http://127.0.0.1:%d/health" % api_port, processes[0])
+        wait_until("http://127.0.0.1:%d/health" % api_port,
+                   begin(api_command, env))
         say("The API is serving %s on 127.0.0.1:%d%s." % (
             "the development case sets" if real else
             "the invented case set", api_port,
             "" if not real else "; the model is loading" if model
             else ", with the templates only"))
-        processes.append(start(interface_command, env))
         wait_until("http://127.0.0.1:%d/_stcore/health" % interface_port,
-                   processes[1])
+                   begin(interface_command, env))
         say("Open the interface at http://127.0.0.1:%d/" % interface_port)
+        if shared:
+            tunnel.append(begin(sharing.tunnel_command(cloudflared, directory),
+                                tunnel_environment()))
+            if confirm_shared(shared.host):
+                say("Shared through the tunnel at https://%s/: only the "
+                    "secret link opens it." % shared.host)
+            else:
+                say("The tunnel has not answered yet; check it in "
+                    "Cloudflare's dashboard.")
         say("Press Ctrl+C to stop.")
         while all(process.poll() is None for process in processes):
             time.sleep(1)
         raise LaunchError("process_stopped")
     finally:
+        # The tunnel first, so that nothing is reachable while the rest
+        # stops; cloudflared does not watch its input, so it is ended.
+        for process in tunnel:
+            stop(process, seconds=5)
         for process in reversed(processes):
-            stop(process)
+            if process not in tunnel:
+                stop(process)
+        job.close()
 
 
 def main(argv=None):
@@ -169,6 +352,11 @@ def main(argv=None):
     parser.add_argument("--no-model", action="store_true",
                         help="answer the development case sets with the "
                              "templates only")
+    parser.add_argument("--share", action="store_true",
+                        help="also share the interface through the tunnel, "
+                             "for the secret link only")
+    parser.add_argument("--cloudflared", default=sharing.CLOUDFLARED,
+                        help="the path of cloudflared.exe")
     args = parser.parse_args(argv)
     if not all(1024 <= port <= 65535 for port in (args.api_port, args.port)) \
             or args.api_port == args.port:
@@ -179,7 +367,8 @@ def main(argv=None):
         return 2
     try:
         launch(args.api_port, args.port, real=args.operator_real,
-               model=not args.no_model)
+               model=not args.no_model, share=args.share,
+               cloudflared=args.cloudflared)
     except KeyboardInterrupt:
         print("Stopped.")
         return 0

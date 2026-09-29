@@ -312,8 +312,10 @@ def serve(port, real=False, model=True):
         if model:
             from ehr_evidence_app.generation import runtime
             service.use_backend(runtime.WorkerBackend())
+    from ehr_evidence_app.api import launch
     app = create_app(service, token, boundary.loopback_hosts(port), log)
     boundary.quiet_access_log()
+    launch.exit_with_launcher()
     try:
         uvicorn.run(app, host="127.0.0.1", port=port, log_config=None,
                     access_log=False, log_level="warning",

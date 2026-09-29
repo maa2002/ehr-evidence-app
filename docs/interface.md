@@ -162,15 +162,65 @@ key. Anything else is answered as not found, and a websocket without a
 session is closed before it opens. Sessions end after a day, or when the
 interface stops.
 
+## Sharing through the tunnel
+
+`ehr_evidence_app.interface.share` keeps the parts of the sharing, all in
+the workspace's `sharing` directory or the runtime root and none in the
+repository:
+
+- the secret link's record, `sharing\share-link.json`: the public host,
+  the SHA-256 of the link's key and the date. `--new-link HOST` makes a new
+  key, keeps its digest only, and prints the link,
+  `https://HOST/?k=<key>`, once; a new link retires the one before it;
+- the tunnel's token, `sharing\tunnel-token.txt`, saved by the owner and
+  read by cloudflared alone (`--token-file`); this project checks it with
+  `lstat` only and never reads, prints or copies it;
+- cloudflared, the tunnel's connector, version 2025.4.0 or later, at
+  `tools\cloudflared.exe` under the runtime root.
+
+`--check` checks the three and prints the host and findings only. The
+launcher's `--share` checks them too, gives the interface the host and
+the key's digest, and starts cloudflared (`tunnel --no-autoupdate
+--loglevel warn run --token-file …`) in an environment without the launch
+token; it then checks that the public address answers as the gate
+answers a visit without the key. The tunnel stops first when the launcher
+stops.
+
+Setting the tunnel up is the owner's, once:
+
+1. Put a domain on Cloudflare.
+2. In Cloudflare's dashboard, create a tunnel of the cloudflared kind,
+   skip installing its connector, and save the token from the install
+   command, alone, in `sharing\tunnel-token.txt` in the workspace.
+3. Give the tunnel a public hostname on the domain, such as `ehr`, with
+   the service `http://127.0.0.1:8501`, leaving the HTTP Host header as it
+   is.
+4. Save `cloudflared.exe` from Cloudflare's releases in `tools` under the
+   runtime root.
+5. Check the parts, make the link and share:
+
+   ```powershell
+   & $AppPython -m ehr_evidence_app.interface.share --check
+   & $AppPython -m ehr_evidence_app.interface.share --new-link ehr.example.org
+   & $AppPython -m ehr_evidence_app.api.launch --operator-real --share
+   ```
+
+6. Put the link in an issue of the private repository for the
+   supervisor, never in a committed file, and make a new link once the
+   marking is over. The supervisor must hold MIMIC-IV credentialed access.
+
 ## Starting the application
 
 `ehr_evidence_app.api.launch` starts the API and the interface as two
 processes on 127.0.0.1, with a fresh launch token that each receives in
 its process environment only; waits until the API answers, then the
 interface; prints the interface's address; and stops both together on
-Ctrl+C, or when either stops. Each runs in a process group of its own and
-is asked to stop with Ctrl+Break, so that the API stops the model worker;
-their own output is discarded. The development case sets take about 20
+Ctrl+C, or when either stops. Each runs in a process group of its own,
+so that Ctrl+C reaches the launcher only; the launcher holds each one's
+standard input open and asks it to stop by closing it, and a process also
+stops when the launcher ends in any other way, the API stopping the model
+worker as it does. Every process is also in a Windows job that ends it
+when the launcher ends, however it ends. Their own output is discarded. The development case sets take about 20
 seconds to load and verify, and the model about 16 seconds more.
 
 By default the API serves the invented case set with its scripted model,

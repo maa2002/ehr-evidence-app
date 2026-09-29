@@ -119,6 +119,11 @@ def seconds(value):
     return "%.1f s" % value
 
 
+def counted(number, noun):
+    """Return a number with its noun, singular or plural."""
+    return "%d %s%s" % (number, noun, "" if number == 1 else "s")
+
+
 def references(response):
     """Return the references a response cites, in their first order."""
     found = []

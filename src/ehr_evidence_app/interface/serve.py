@@ -40,7 +40,7 @@ CONFIG = {"server.address": "127.0.0.1", "server.headless": True,
           "client.showErrorDetails": "none", "client.toolbarMode": "minimal",
           "server.fileWatcherType": "none", "server.runOnSave": False,
           "server.enableCORS": True, "server.enableXsrfProtection": True,
-          "logger.level": "error"}
+          "logger.level": "error", "theme.primaryColor": "#15847c"}
 
 
 class ServeError(Exception):
@@ -92,9 +92,11 @@ def main(argv=None, environ=None):
     except (clients.ClientError, ServeError) as error:
         print("FAILED: %s" % error)
         return 2
+    from ehr_evidence_app.api import launch
     app = build(args.port, share, None if args.no_log
                 else boundary.file_log(LOG_DIR, "interface"))
     gate.quiet_access_log()
+    launch.exit_with_launcher(environ=environ)
     app.run(config=dict(CONFIG, **{"server.port": args.port}))
     return 0
 

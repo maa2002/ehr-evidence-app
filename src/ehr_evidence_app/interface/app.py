@@ -73,13 +73,13 @@ def select(client, health):
     bar.title("EHR evidence")
     sets = {item["case_set"]: item["cases"] for item in client.case_sets()}
     case_set = bar.selectbox("Case set", list(sets), key="case_set",
-                             format_func=lambda label: "%s · %d cases" % (
-                                 label, sets[label]))
+                             format_func=lambda label: "%s · %s" % (
+                                 label, labels.counted(sets[label], "case")))
     visits = {item["case_number"]: item["visits"]
               for item in client.cases(case_set)}
     number = bar.selectbox("Case", list(visits), key="case-" + case_set,
-                           format_func=lambda value: "Case %d · %d visits"
-                           % (value, visits[value]))
+                           format_func=lambda value: "Case %d · %s" % (
+                               value, labels.counted(visits[value], "visit")))
     case = client.case(case_set, number)
     scopes = {scope_key(scope): scope for scope in case["scopes"]}
     chosen = bar.selectbox("Scope", list(scopes),
@@ -412,8 +412,9 @@ def main():
         st.error(labels.error(error.code))
         st.stop()
     keep_context(case_set, case)
-    st.caption("Case %d of %s · %d visits · scope: %s · model: %s" % (
-        case["case_number"], case_set, case["visits"],
+    st.caption("Case %d of %s · %s · scope: %s · model: %s" % (
+        case["case_number"], case_set, labels.counted(case["visits"],
+                                                      "visit"),
         labels.scope(scope), labels.model(health["model"]).lower()))
     if "view" not in st.session_state:
         st.session_state.view = VIEWS[0]

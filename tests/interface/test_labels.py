@@ -53,6 +53,12 @@ class LabelTests(unittest.TestCase):
         self.assertIn("unsigned", labels.UNSIGNED)
         self.assertIn("not that it caused it", labels.UNSIGNED)
 
+    def test_counts(self):
+        """A count takes its noun in the singular or the plural."""
+        self.assertEqual(labels.counted(1, "case"), "1 case")
+        self.assertEqual(labels.counted(26, "case"), "26 cases")
+        self.assertEqual(labels.counted(0, "visit"), "0 visits")
+
     def test_references_and_escaping(self):
         """References keep their first order, once each; Markdown's
         characters show as written."""
