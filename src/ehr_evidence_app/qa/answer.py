@@ -318,6 +318,16 @@ def record_matches(bundle, resolution, vocab):
     return found
 
 
+def well_formed(question):
+    """Return a question as text that can be written: an unpaired
+    surrogate, which no encoding holds, becomes the replacement
+    character."""
+    if not question:
+        return question
+    return question.encode("utf-16", "surrogatepass").decode("utf-16",
+                                                              "replace")
+
+
 def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
            request_id, limits, writer=None, recorder=None, records=None):
     """Return the Result for one question about the active case and scope;
@@ -327,6 +337,7 @@ def answer(question, case_set, case_number, active_scope, bundle_set, vocab,
     protected record of the response. records (a
     qa.record_answer.RecordContext), when given, answers questions about
     the whole record."""
+    question = well_formed(question)
     result = result_of(question, case_set, case_number, active_scope,
                        bundle_set, vocab, request_id, limits, writer,
                        records)
@@ -359,6 +370,7 @@ def record_result(question, case, active_scope, bundle_set, vocab,
     """Return the Result of a question read as one about the whole record,
     or None when it is not one (with tasks_only, unless it is read as a
     task)."""
+    question = well_formed(question)
     reading = record_interpret.interpret(question, records.terms)
     if reading.status == "none" or (tasks_only
                                     and reading.status != "task"):
@@ -421,6 +433,7 @@ def result_of(question, case_set, case_number, active_scope, bundle_set,
               vocab, request_id, limits, writer=None, records=None):
     """Return the Result for one question (see answer)."""
     case = contracts.CaseRef(case_set=case_set, case_number=case_number)
+    question = well_formed(question)
     if len(question or "") > limits.max_question_chars:
         return Result(respond(request_id, case, active_scope,
                               "operational_error",

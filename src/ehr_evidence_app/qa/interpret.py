@@ -2,14 +2,17 @@
 
 A closed, rule-based interpreter for one question about the active case.
 The same question always gets the same result, and no model is involved.
-The question is normalised and its scope phrases are set aside (qa.scope);
-then:
+The question is normalised, a polite opening ("please", "can you tell
+me", "I'd like to know", with the "if" or "whether" after it) is removed
+(version 5), and its scope phrases are set aside (qa.scope); then:
 
 1. a presence frame ("is X recorded", "does the patient have X", "any
    history of X", "check whether ...") gives a presence check and the
    condition phrase X; a list frame ("list the conditions", "what diagnoses
    are recorded", "what has the patient been diagnosed with") gives a list;
-   a short phrase on its own is a presence check;
+   a short phrase on its own is a presence check, unless it states
+   that something was given, measured or done ("heparin was given"),
+   which is read as its question form is (version 5);
 2. the words outside the condition phrase are checked for requests outside
    the supported tasks: an explanation of a prediction (clarification:
    select a prediction in the explanation workflow), another patient
@@ -64,7 +67,7 @@ import unicodedata
 
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "question-interpretation-v4"
+RULES_VERSION = "question-interpretation-v5"
 CONTRACTIONS = {"what's": "what is", "isn't": "is not", "wasn't": "was not",
                 "doesn't": "does not", "didn't": "did not",
                 "hasn't": "has not", "haven't": "have not",
@@ -156,6 +159,25 @@ DATA_CONDITIONS = re.compile(
     r"withdrawal|addiction|misuse|overuse|eruption|rash|fever|"
     r"complications?|resistant|resistance|seeking|seeker))\b")
 
+# A polite opening, removed before a question is read (version 5):
+# "please" or "kindly", then "can you tell me", "I'd like to know (about)",
+# "do you know" and the like, with the "if" or "whether" after it; not
+# before "about" or "more", so that "tell me about the patient" stays as
+# asked.
+COURTESY = re.compile(
+    r"^(?:(?:please|kindly) )*"
+    r"(?:(?:(?:(?:can|could|would|will) you (?:please )?)?(?:tell me|let "
+    r"me know)|i (?:(?:would|d) like|want|need|wish) to know(?: about)?|"
+    r"i (?:am |m )?wonder(?:ing)?|do you know) "
+    r"(?:(?:if|whether)(?: or not)? )?(?!(?:about|more)\b))?")
+# A statement that something was given, measured or done ("heparin was
+# given") asks about the record as its question form does; it is not a
+# condition phrase (version 5).
+RECORD_STATEMENT = re.compile(
+    r"\b(?:was|were|is|are|been) (?:ever |previously |also |already |not |"
+    r"never )?(?:given|administered|prescribed|taken|started|stopped|"
+    r"measured|checked|tested|drawn|done|performed|ordered|charted|"
+    r"obtained|collected|sent|grown|placed|inserted|received)\b")
 WRAPPER = re.compile(
     r"^(?:can you |could you |please |would you )?(?:check|find out|tell me|"
     r"confirm|verify|see|determine|show me|let me know) (?:if|whether)"
@@ -360,6 +382,11 @@ def normalize(question):
     return " ".join(text.split())
 
 
+def courteous(text):
+    """Return a normalised question without its polite opening."""
+    return COURTESY.sub("", text, count=1)
+
+
 def peel(phrase):
     """Return a condition phrase's candidates, longest first, and the
     question words removed from its ends.
@@ -425,9 +452,11 @@ def guard_of(text):
 
 
 def is_bare(text):
-    """Return True when the text is a short phrase without a question."""
+    """Return True when the text is a short phrase without a question,
+    and does not state that something was given, measured or done."""
     return bool(text) and len(text.split()) <= MAX_BARE_WORDS and not (
-        QUESTION_START.match(text) or is_list(text))
+        QUESTION_START.match(text) or is_list(text)
+        or RECORD_STATEMENT.search(text))
 
 
 def two_tasks(question):
@@ -481,7 +510,7 @@ def unsafe(outside, peeled, listing):
 
 def interpret(question):
     """Interpret one question about the active case."""
-    text = normalize(question)
+    text = courteous(normalize(question))
     found = scopes.mentions(text)
     if not text:
         return Interpretation("clarify", reason="task_ambiguous",

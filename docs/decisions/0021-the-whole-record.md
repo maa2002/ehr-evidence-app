@@ -5,7 +5,9 @@ Status: accepted (2026-09-29). Amends [ADR 0016](0016-evaluation-metrics.md)
 interface shows). Points 5 to 7 amended by
 [ADR 0022](0022-record-edge-cases.md): medications without a standard
 concept found by drug class, notices tied to their tasks, and the rules'
-second versions.
+second versions. Point 7 amended by
+[ADR 0023](0023-consistency-and-junk-input.md): ICU stays and transfers
+listed in time order.
 
 ## Context
 

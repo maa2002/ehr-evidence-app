@@ -79,10 +79,17 @@ absence.
 
 The question is normalised as the vocabulary is: accents removed, case
 folded, "&" read as "and", possessives and symbols dropped, dots inside
-codes kept. Scope phrases are set aside (see [Scope](#scope)). This
-section describes rules version 4 (`question-interpretation-v4`);
-release 0.6.0 had version 1 and release 0.7.0 version 2, and version 3
-was measured but not released.
+codes kept. A polite opening is removed: "please" or "kindly", then "can
+you tell me", "tell me", "let me know", "I'd like to know (about)", "I
+want to know", "I wonder" or "do you know", with the "if" or "whether"
+after it, but not before "about" or "more", so "tell me about the
+patient" stays as asked. Scope phrases are set aside (see
+[Scope](#scope)). This section describes rules version 5
+(`question-interpretation-v5`), which adds the polite opening and the
+statement form below to version 4
+([ADR 0023](decisions/0023-consistency-and-junk-input.md)); release
+0.6.0 had version 1 and release 0.7.0 version 2, and version 3 was
+measured but not released.
 
 - **Presence frames** give a presence check and the condition phrase:
   "is X recorded", "was X documented", "does the patient have X", "has the
@@ -101,7 +108,9 @@ was measured but not released.
   "Which X diagnoses are recorded" checks X.
 - **A short phrase on its own** (up to six words, not starting with a
   question word or a request verb such as "diagnose" or "treat") is a
-  presence check.
+  presence check, unless it states that something was given, measured or
+  done ("heparin was given?"): that is read as its question form is ("was
+  heparin given?").
 
 The words outside the condition phrase are checked for requests outside
 the supported tasks:
@@ -309,6 +318,14 @@ still gives 1,892 of 1,892 on `dev-30-v1` and 784 of 784 on the pilot
 (summary SHA-256
 `71582efeb765ca1202a5351c4cb619128c5b00d9baffeea82f834995ad398a4a` and
 `178614e2c8eb056dc291f4749c58f1f222138667b9773d960a3f7f2545ced925`).
+With rules version 5 (`question-interpretation-v5`) it gives the same
+counts (summary SHA-256
+`b659c68d2d0881be8b6da1d7f91466bcc7dc822014cc38825e2e48e034c7de73` and
+`79d5e9db8810c10061d000d6a8a7f622c1573a996980fb0d728583a07ff78180`);
+run under version 4's name, it gives the two digests above byte for
+byte, so nothing but the name of the rules changed. The written wording
+sets and the held-out test are not scored again with version 5, since
+each is scored once.
 
 These results show that interpretation, scope binding, resolution,
 matching, coverage and citations agree with an independent computation on
@@ -568,7 +585,8 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v2`); so are a dose question, a past question
+(rules `record-questions-v3`, which removes a polite opening as the
+condition rules do); so are a dose question, a past question
 about death and a question about a first or last result. A request for
 advice, a question about the future and a ranking of conditions keep
 their refusals.
@@ -678,6 +696,58 @@ slowest 1.33 s). Seventeen condition questions, asked in every scope,
 get the same response with and without the record. The answers' checks
 were broken the same way on 300 of these answers (see
 [validation.md](validation.md#mutants-of-answers-about-the-whole-record)).
+
+### Consistency and junk input
+
+Two more tests need no answer key
+([ADR 0023](decisions/0023-consistency-and-junk-input.md)).
+`tests/qa/test_consistency.py` asks each of 133 questions (the edge
+questions and seven about conditions) in 13 rewordings: small letters,
+capitals, no question mark, two, a full stop, more spaces, a tab, a
+non-breaking space, a typographic apostrophe, "please" first and last,
+"can you tell me" and "I'd like to know". Each must get the same
+response. It also compares each question's answers in nested scopes:
+what a visit or the history records, all visits record; a list of a
+larger scope holds every item of a smaller one's; a count is never
+smaller, a first time never later, a last time never earlier, a highest
+value never lower and a lowest never higher; and a visit's or the
+person's details are the same in every scope that holds them. On the
+invented case set and record, 6,040 rewordings and 1,032 pairs of nested
+scopes are compared. The rewordings found that the condition rules did
+not read a polite opening: "Please, which conditions are recorded?" and
+"Can you tell me which conditions are recorded?" were answered as
+questions about the whole record (the same list, under another task and
+never written by the model), and "I'd like to know which conditions are
+recorded" was not understood. Rules version 5 removes a polite opening
+before either reading, and reads a statement that something was given,
+measured or done ("heparin was given?") as its question form.
+
+`tests/qa/test_junk_input.py` asks 1,500 junk questions drawn with a
+fixed seed: random characters of every kind (accents, symbols, emoji,
+other scripts, combining marks, invisible and control characters,
+unpaired surrogates), shuffled and misspelt words of real questions,
+real questions with junk inserted, placeholders, format strings, markup
+and query syntax, and long repetitions up to the length limit. It asks
+them through the service, with every response recorded, and of the
+invented record. Every one must end in an outcome a question may end in,
+in text that can be sent and recorded, within two seconds, and the same
+when asked again. It found that a question holding an unpaired surrogate
+raised an error; such a character is now read, and recorded, as the
+replacement character. Junk questions and malformed bodies, paths,
+queries and methods also go over HTTP to the API and to the interface's
+server (`tests/api/test_junk_requests.py`,
+`tests/interface/test_junk_requests.py`): none is an internal error, and
+every refusal now carries its code.
+
+On the development case sets, with aggregate output only, through the
+service without the model and without runtime records:
+
+| Check | Requests | Result |
+| --- | --- | --- |
+| Nested scopes: every question of the test in every scope of every case | 25,669 | 20,475 pairs of nested scopes compared, none contradicting |
+| Rewordings: the 133 questions in 13 rewordings, in the history and all visits of 3 cases of each set | 18,828 | none answered otherwise |
+| Junk: 3,000 junk questions in the history and all visits of 2 cases of each set | 24,000 | no error or exception; 160 over the length limit, each `limit_exceeded`; median 0.055 s, the slowest 1.14 s |
+| The edge questions again, in every scope of every case | 31,652 | the same outcomes as before the rules changed; no condition question answered otherwise with the record |
 
 ## Limits
 

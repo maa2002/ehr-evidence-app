@@ -150,7 +150,8 @@ them (`validation.record_text`), so no value, time, date or age is typed.
 Its statement kinds, their citations and their order are checked like
 the others, and `validation.record_support` decides whether the right
 records were chosen and none was left out: a list names every item of
-the kind once and cites each record once; a presence answer cites every
+the kind once and cites each record once, ICU stays and transfers in time
+order; a presence answer cites every
 record that matches, each by the match kind the resolver finds; a time
 answer's first and last records are the earliest and latest; a count is
 the number of matching records; a value is the one its selector picks
@@ -392,20 +393,64 @@ out or repeated, a digit typed into a wording, a count, selector, match
 kind, field, kind, visit, value, time or named item changed, a reference
 dropped, added or swapped for a record of another item, a notice
 replaced or added, the outcome, the disclosure, the scope, the case or
-the bundle changed, and a summary moved after its items. A mutant is
+the bundle changed, a summary moved after its items, and two ICU stays
+or transfers swapped. A mutant is
 withheld when the gate rejects it or it does not parse; the originals
 and the controls (a list or presence item named by another of its own
 records) must be released.
 
 | Samples | Answers | Mutants withheld | Controls released |
 | --- | --- | --- | --- |
-| Invented edge record (every task and outcome) | 38 | 1,479 of 1,479 | all |
-| Development case sets (3 cases of each, all visits and the history, 25 questions) | 300 | 30,703 of 30,703 | 762 of 762 |
+| Invented edge record (every task and outcome) | 38 | 1,481 of 1,481 | all |
+| Development case sets (3 cases of each, all visits and the history, 25 questions) | 300 | 30,719 of 30,719 | 762 of 762 |
 
 On their first run the tests found two faults, now refused: a visit's or
 the person's field of another statement kind failed the rendering (an
 operational error instead of a rejection), and a single record stated
-as the highest passed.
+as the highest passed. The swapped stays were added with
+[ADR 0023](decisions/0023-consistency-and-junk-input.md) (the counts
+before it were 1,479 and 30,703).
+
+### Wrong answers that agree with themselves
+
+A writer can get more than one fact wrong at once, and at worst in a way
+that agrees with itself: a record left out and every count lowered to
+match, which no check of the answer against itself finds.
+`tests/validation/test_consistent_mistakes.py`
+([ADR 0023](decisions/0023-consistency-and-junk-input.md)) makes three
+kinds of such answers from correct ones of every task, about the whole
+record and about conditions (lists, presence checks and explanations):
+
+- two mistakes at once: a one-fact mutant broken again by a second;
+- an answer the templates write from a copy of the record with one
+  record misread (left out, moved after or before every other record,
+  given a higher or lower value, its flag turned, taken for each of up
+  to three other items, or moved to another visit), so its counts,
+  references and times agree with each other, checked against the real
+  record;
+- the right answer to another question, scope or condition, given as
+  this one's.
+
+Each must be withheld unless it states what the correct answer states:
+a list or presence item may be named by any of its own records, and the
+groups of different items and the notices may come in any order, since
+no reader relies on it. A misreading that leaves the answer as it was is
+not a mistake and is not counted.
+
+| Samples | Two mistakes at once | From a misread record | Another's answer |
+| --- | --- | --- | --- |
+| Invented edge record: 38 answers about the record | 1,761 of 1,761 withheld | 688 of 688 | 320 of 320 |
+| Invented case set: 14 condition answers | 651 of 651 | 29 of 29 | 62 of 62 |
+| Development case sets: 300 answers about the record | 13,965 of 13,965 withheld | 4,012 of 4,012 | 2,230 of 2,230 |
+| Development case sets: 576 condition answers | 13,643 of 13,643 withheld | 7,191 of 7,191 | 6,846 of 6,846 |
+
+On their first run the tests found that a list of ICU stays or transfers
+out of time order was released: the check counted every stay but not
+their order, which for transfers is the patient's path through the
+hospital. It is checked now, and a one-fact mutant swaps two stays. On
+the development case sets 6 answers of the first run were released
+that list the groups of flagged results in another order, each group
+with exactly its item's results: the same answer, in another order.
 
 ## Commands
 

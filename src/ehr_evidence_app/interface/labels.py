@@ -90,6 +90,8 @@ ERRORS = {"api_not_configured": "The interface was started without the "
           "too_many_requests": "Too many requests are running. Ask again "
                                "when one has finished.",
           "job_unknown": "This request has expired. Ask again.",
+          "not_found": "There is no such page or operation.",
+          "method_not_allowed": "That operation isn't available here.",
           "internal": "Something went wrong in the interface."}
 UNSIGNED = ("Attribution scores are unsigned: they show how sensitive the "
             "prediction was to each input, not whether an input raised or "

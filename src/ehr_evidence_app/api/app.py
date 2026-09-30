@@ -51,6 +51,7 @@ from fastapi import FastAPI, Path, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.exceptions import HTTPException as FrameworkRefusal
 
 from ehr_evidence_app import __version__
 from ehr_evidence_app.api import boundary
@@ -59,6 +60,9 @@ from ehr_evidence_app.evidence import contracts
 from ehr_evidence_app.qa import answer
 
 CASE_SET = r"^[a-z0-9][a-z0-9.-]{0,63}$"
+# The codes of requests the framework refuses before a route runs.
+FRAMEWORK_CODES = {400: "request_invalid", 404: "not_found",
+                   405: "method_not_allowed"}
 
 
 class QuestionBody(BaseModel):
@@ -111,6 +115,16 @@ def create_app(service, token, hosts, log=None):
                          for item in error.errors()})
         return JSONResponse({"error": "request_invalid", "fields": fields},
                             status_code=422)
+
+    @api.exception_handler(FrameworkRefusal)
+    async def framework_refused(request, error):
+        """Answer a request the framework refuses (a body that cannot be
+        read, an unknown route, a method a route does not take) with a
+        bare code, as every other refusal."""
+        return JSONResponse({"error": FRAMEWORK_CODES.get(
+            error.status_code, "request_refused")},
+            status_code=error.status_code,
+            headers=getattr(error, "headers", None))
 
     @api.exception_handler(answer.AnswerError)
     async def failed(request, error):

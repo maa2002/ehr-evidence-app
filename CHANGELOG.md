@@ -49,6 +49,21 @@ evidence beside it
   vocabulary, the rendering, the bundle cache under threads and the
   evidence panel at their edges; the same questions and mutants on the
   development case sets.
+- Tests of answers against each other, of compound mistakes and of
+  junk input
+  ([ADR 0023](docs/decisions/0023-consistency-and-junk-input.md)):
+  `tests/qa/test_consistency.py` asks every question in 13 rewordings
+  and checks that a larger scope never finds less;
+  `tests/validation/test_consistent_mistakes.py` checks that the gate
+  withholds answers with two mistakes, answers written from a copy of
+  the record with one record misread (so that their counts and
+  references agree with each other), and the right answer to another
+  question, scope or condition, for answers about the record and for
+  condition lists, presence checks and explanations;
+  `tests/qa/test_junk_input.py` and `tests/api/test_junk_requests.py`
+  ask junk questions of every kind, with protected records written, and
+  send malformed requests over HTTP. The same checks ran on the
+  development case sets with aggregate output only.
 - Record vocabulary version 2 (`record-vocabulary-athena-20260831-v2`):
   each ATC class's ingredients from the pinned Athena hierarchy, every
   version 1 file unchanged byte for byte. A medication without a
@@ -146,6 +161,16 @@ evidence beside it
 
 ### Changed
 
+- Rules `question-interpretation-v5` and `record-questions-v3`: a
+  polite opening ("please", "can you tell me", "I'd like to know", "do
+  you know if") is removed before a question is read, and a statement
+  that something was given, measured or done ("heparin was given?") is
+  read as its question form is, not as a condition name.
+- A list of ICU stays or transfers must be in time order to pass the
+  gate, as the templates write it.
+- A request the web framework refuses (a body that cannot be read, an
+  unknown route or method) is answered by the API with a bare code and
+  by the interface with a code and its meaning, as every other refusal.
 - Rules `record-questions-v2`: a negation asks the same presence (a
   filter in a question about a whole kind); two items at once, flags a
   kind does not carry, and a day or the ICU named as a time get a
@@ -206,6 +231,12 @@ evidence beside it
 
 ### Fixed
 
+- A condition question with a polite opening ("Please, which conditions
+  are recorded?", "Can you tell me which conditions are recorded?") was
+  read as a question about the whole record: answered by the templates
+  under another task, never by the model, or not understood.
+- A question holding an unpaired surrogate raised an error in the
+  service; it is read, and recorded, with the replacement character.
 - A condition question the condition rules could not resolve ("is
   diabetes recorded?") was answered from the whole record when the words
   of procedure names held its phrase, as "not recorded"; words alone no

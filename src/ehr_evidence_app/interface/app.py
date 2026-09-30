@@ -80,7 +80,9 @@ STATUS = {"case_set_not_served": 404, "case_unknown": 404,
           "job_unknown": 404, "scope_invalid": 422,
           "request_invalid": 422, "request_media": 415,
           "request_too_large": 413, "too_many_requests": 429,
-          "internal": 500}
+          "not_found": 404, "method_not_allowed": 405, "internal": 500}
+# The codes of requests no route takes.
+UNROUTED = {404: "not_found", 405: "method_not_allowed"}
 
 
 class Refusal(Exception):
@@ -342,6 +344,14 @@ def create_app(client, jobs=None, log=None, version=__version__,
             raise Refusal("job_unknown")
         return JSONResponse(found)
 
+    async def unrouted(request, error):
+        """Answer a request no route takes, or a missing file, with a code
+        and its meaning."""
+        code = UNROUTED[error.status_code]
+        return JSONResponse(views.error_view(code),
+                            status_code=error.status_code,
+                            headers=getattr(error, "headers", None))
+
     base = "/api/case-sets/{case_set}/cases"
     return Starlette(routes=[
         Route("/", index),
@@ -354,6 +364,7 @@ def create_app(client, jobs=None, log=None, version=__version__,
         Route("/api/explanations", guarded(explanations), methods=["POST"]),
         Route("/api/jobs/{job}", guarded(job)),
         Mount("/static", StaticFiles(directory=STATIC_DIR), name="static")],
+        exception_handlers={status: unrouted for status in UNROUTED},
         lifespan=lifespan)
 
 

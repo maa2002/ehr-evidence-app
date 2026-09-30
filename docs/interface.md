@@ -65,7 +65,9 @@ and the provenance, again without native identifiers.
 A request the service cannot serve is answered with a bare code:
 `case_set_not_served`, `case_unknown`, `scope_unknown`, `scope_invalid`,
 `prediction_missing`, or `request_invalid` with the names of the fields
-at fault, never their values.
+at fault, never their values. A body that cannot be read as JSON (not
+UTF-8, or nested too deeply) is `request_invalid` too, an unknown route
+`not_found` and a method a route does not take `method_not_allowed`.
 
 ## The boundary
 
@@ -192,6 +194,10 @@ screen.
 | `POST /api/questions` | Starts answering a question: `{"case_set", "case_number", "scope", "question"}`; returns the job |
 | `POST /api/explanations` | Starts explaining the prediction: `{"case_set", "case_number"}`; returns the job |
 | `GET /api/jobs/{job}` | The job's state, and its result once done |
+
+What the page could not have sent is refused with a code and what it
+means (`{"error", "message"}`), an unknown route or file as `not_found`
+and a method a route does not take as `method_not_allowed`.
 
 `interface.serve` serves the page and its operations on 127.0.0.1 behind
 the interface's access checks: no access log, no server or date header,

@@ -5,7 +5,8 @@ every task and outcome, are broken one fact at a time: a statement left
 out or repeated, a count, selector, match kind, field, kind, visit, value,
 time or named item changed, a reference dropped, added or swapped for a
 record of another item, a notice replaced or added, the outcome, the
-reason codes, the scope, the case or the bundle changed, a summary moved.
+reason codes, the scope, the case or the bundle changed, a summary moved,
+stays listed out of time order.
 A writer that is not the templates can make each of these mistakes; the
 gate must withhold every one (a validation rejection, or a document that
 does not parse), and must release every original and every control (a
@@ -252,6 +253,14 @@ def mutants(sample):
             "case_number": good.case.case_number % 999 + 1})})))
     found.append(("another bundle digest", good.model_copy(update={
         "bundle": good.bundle.model_copy(update={"sha256": "0" * 64})})))
+    stays = [index for index, statement in enumerate(statements)
+             if statement.kind == "record_stay_item"]
+    if len(stays) > 1:
+        swapped = list(statements)
+        swapped[stays[0]], swapped[stays[1]] = (swapped[stays[1]],
+                                                swapped[stays[0]])
+        found.append(("stays out of time order", good.model_copy(
+            update={"statements": tuple(swapped)})))
     first = statements[0]
     body = [index for index, statement in enumerate(statements)
             if statement.kind != "notice"]

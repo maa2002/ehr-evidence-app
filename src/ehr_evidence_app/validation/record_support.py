@@ -8,8 +8,9 @@ claim_unsupported:
 
 * a list names every item of the kind within the scope once and cites
   each of its records once; an item's count and visits are its records';
-  its summary counts the items and the records; an empty list needs no
-  record of the kind in the scope;
+  ICU stays and transfers are listed in time order; its summary counts
+  the items and the records; an empty list needs no record of the kind
+  in the scope;
 * a presence answer cites every record that matches the question's
   phrase, each by the match kind the resolver finds
   (qa.record_resolve), and names the phrase's resolution; "not
@@ -147,6 +148,9 @@ def list_supported(candidate, bundle, check, records):
         if not all(statement.refs == (statement.slots.item.record,)
                    and statement.slots.value == statement.refs[0]
                    for statement in stays):
+            return False
+        times = [timed(records[statement.refs[0]]) for statement in stays]
+        if times != sorted(times):
             return False
     else:
         if not all(group_supported(statement, bundle, records)

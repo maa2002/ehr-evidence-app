@@ -173,6 +173,13 @@ follow.
   checks broken one fact at a time, and the same on the development case
   sets; medications without a standard concept matched by drug class
   (record vocabulary version 2), and the faults the review found fixed
+- 52.9 Test answers against each other, compound mistakes and junk input
+  ([ADR 0023](decisions/0023-consistency-and-junk-input.md); done): the
+  same question reworded, nested scopes compared, answers wrong in two
+  facts or wrong in a way that agrees with itself, junk questions and
+  malformed requests, on invented data and the development case sets;
+  polite openings, statement forms, stays in time order, unpaired
+  surrogates and the framework's refusals fixed
 
 ## Phase 9. Evaluation
 

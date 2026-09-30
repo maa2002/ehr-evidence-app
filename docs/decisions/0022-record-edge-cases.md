@@ -2,7 +2,9 @@
 
 Status: accepted (2026-09-30). Amends [ADR 0021](0021-the-whole-record.md)
 (points 5 to 7: terms, answers and checks), before any request of
-`eval-100-v1` is written.
+`eval-100-v1` is written. Decision 7 amended by
+[ADR 0023](0023-consistency-and-junk-input.md): a polite opening is
+removed before a question is read (`record-questions-v3`).
 
 ## Context
 

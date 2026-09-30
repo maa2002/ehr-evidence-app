@@ -3,11 +3,11 @@
 Questions about conditions are read by the condition rules
 (qa.interpret) exactly as before. A question those rules refuse, or
 whose condition phrase names no condition, is read here (rules
-record-questions-v2), by fixed rules and without a model:
+record-questions-v3), by fixed rules and without a model:
 
-1. The question is normalised as condition questions are, "ICU" and
-   "intensive care" are marked, and scope phrases are set aside
-   (qa.scope).
+1. The question is normalised as condition questions are, its polite
+   opening is removed as theirs is, "ICU" and "intensive care" are
+   marked, and scope phrases are set aside (qa.scope).
 2. A question about the person (sex, age, race, language, insurance,
    marital status, death) asks for the person's details; one about the
    visits (how many, when admitted or discharged, how long, the type of
@@ -48,7 +48,8 @@ record-questions-v2), by fixed rules and without a model:
    clarification. A question about the doses of the medications asks
    for their values.
 
-Version 2 adds rules 6 to 8.
+Version 2 adds rules 6 to 8; version 3 removes the polite opening
+(rule 1).
 """
 
 from __future__ import annotations
@@ -60,7 +61,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v2"
+RULES_VERSION = "record-questions-v3"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -446,7 +447,7 @@ def interpret(question, terms):
     """Read one question about the record; terms resolves phrases. A
     request for advice, or a question about the future, is not one about
     the record."""
-    text = marked(conditions.normalize(question))
+    text = marked(conditions.courteous(conditions.normalize(question)))
     if not text or ADVICE.search(text):
         return RecordQuestion("none")
     found = scopes.mentions(text)
