@@ -882,6 +882,8 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   .timeline .arrow { align-self: flex-start; margin-left: 14px; transform: rotate(90deg); }
 }
 
+.record-check { display: grid; gap: 4px; margin: 2px 0; }
+
 .intro { display: grid; gap: 4px; }
 .intro p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
 .notes { display: grid; gap: 6px; padding-top: 2px; }

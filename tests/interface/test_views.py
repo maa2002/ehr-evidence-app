@@ -230,6 +230,50 @@ class ResponseTests(InventedTestCase):
         self.assertIsNone(unread["conditions"]["table"])
         self.assertIn("could not be read", unread["conditions"]["note"])
 
+    def test_the_prediction_against_the_record(self):
+        """Whether the predicted diagnosis is recorded for the final
+        admission: the diagnosis itself first, then under an ICD code,
+        then a more specific diagnosis; "not recorded" only with complete
+        records."""
+        def check(matches, coverage="complete"):
+            """Return the page's record check of some matches."""
+            return views.record_check({"visit_number": 3,
+                                       "coverage": coverage,
+                                       "matches": matches})
+        exact = {"ref": "E1", "match": "exact", "concept_name": "A",
+                 "source_code": None}
+        icd = dict(exact, match="icd_description", concept_name=None)
+        specific = dict(exact, match="more_specific",
+                        concept_name="hypertensive heart disease")
+        self.assertEqual(check([exact, exact, specific]), {
+            "tone": "good", "text": labels.RECORD_EXACT.format(
+                records="2 records", visit=3)})
+        self.assertEqual(check([icd, specific])["text"],
+                         labels.RECORD_ICD.format(records="1 record",
+                                                  visit=3))
+        self.assertEqual(check([specific]), {
+            "tone": "info", "text": labels.RECORD_MORE_SPECIFIC.format(
+                names="Hypertensive Heart Disease")})
+        self.assertEqual(check([]), {
+            "tone": "neutral", "text": labels.RECORD_ABSENT.format(
+                visit=3)})
+        self.assertEqual(check([], "complete_empty")["tone"], "neutral")
+        self.assertEqual(check([], "failed"), {
+            "tone": "muted", "text": labels.RECORD_UNKNOWN.format(
+                visit=3)})
+        self.assertIsNone(views.record_check(None))
+        # The evidence of the invented prediction carries the check, and
+        # the explanation and the evidence panel show it.
+        view = self.service.evidence(self.label, 1, "prediction")
+        found = views.explanation_view(
+            self.service.explain(self.label, 1), self.case, None, (),
+            view["visits"], view["in_record"])
+        self.assertEqual(found["prediction"]["record"],
+                         views.record_check(view["in_record"]))
+        section = views.evidence_view(view)["sections"][0]
+        self.assertIn(found["prediction"]["record"]["text"],
+                      [block.get("text") for block in section["blocks"]])
+
 
 class EvidenceTests(InventedTestCase):
     """The evidence panel's sections."""

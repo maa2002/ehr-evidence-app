@@ -116,6 +116,20 @@ TARGET = ("A prediction of a diagnosis recorded for the final admission"
           "admission and that admission's other records, such as its "
           "procedures and medications, but not the diagnoses recorded for "
           "it.")
+# Whether the predicted diagnosis is recorded for the final admission,
+# from that visit's records (the page's record check).
+RECORD_EXACT = ("Recorded for the final admission: {records} of this "
+                "diagnosis in visit {visit}.")
+RECORD_ICD = ("Recorded for the final admission under an ICD code whose "
+              "description names it: {records} in visit {visit}.")
+RECORD_MORE_SPECIFIC = ("Not recorded as such for the final admission, but "
+                        "a more specific diagnosis is: {names}.")
+RECORD_ABSENT = ("Not recorded for the final admission: no record of visit "
+                 "{visit} is this diagnosis or a more specific one. This "
+                 "means not recorded in that visit's records; it is not a "
+                 "statement of clinical absence.")
+RECORD_UNKNOWN = ("Whether it is recorded for the final admission cannot be "
+                  "told: the records of visit {visit} are not complete.")
 SCORE_PLAIN = ("Scores run from 0 to 1: the higher the score, the more the "
                "model favoured this diagnosis. It is not a probability.")
 GLOSSARY = (

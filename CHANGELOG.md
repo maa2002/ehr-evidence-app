@@ -159,6 +159,16 @@ evidence beside it
   fields, configuration fields and scalar metrics, each from a fixed
   allowlist (`tracking.controlled`).
 
+### Added
+
+- The predicted diagnosis against the record
+  ([ADR 0025](docs/decisions/0025-prediction-against-the-record.md)):
+  the page says whether the predicted diagnosis is recorded for the final
+  admission (the diagnosis itself, under an ICD code whose description
+  names it, or only as a more specific diagnosis), from the API's check
+  of that visit's records with the condition rules' matching. It stands
+  apart from the explanation and never reaches the language model.
+
 ### Changed
 
 - No fine-tuning ([ADR 0024](docs/decisions/0024-no-fine-tuning.md)):

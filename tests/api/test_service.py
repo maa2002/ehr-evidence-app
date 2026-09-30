@@ -44,6 +44,38 @@ class ServiceTests(unittest.TestCase):
                          "clinical risk")
         self.assertTrue(case["explanation_eligible"])
 
+    def test_the_prediction_against_the_record(self):
+        """The evidence of a prediction says whether its diagnosis is
+        recorded for the final admission, from that visit's QA bundle by
+        the condition rules' matching."""
+        view = self.service.evidence(self.label, 1, "prediction")
+        found = view["in_record"]
+        self.assertEqual(found["visit_number"], 3)
+        self.assertIn(found["coverage"], ("complete", "complete_empty"))
+        source = self.service.sources[self.label]
+        bundle, _ = source.explanations[1]
+        visit, _ = source.bundle_set.qa_bundle(1, contracts.ScopeRef(
+            kind="selected_visit", visit_number=3))
+        self.assertEqual({item["ref"] for item in found["matches"]}, {
+            event.ref for event in visit.events
+            if event.concept.concept_id
+            == bundle.prediction.concept.concept_id})
+        # A prediction of a concept the final admission records matches
+        # that visit's records of it exactly.
+        event = next(event for event in visit.events
+                     if event.concept.concept_id)
+        recorded = bundle.model_copy(update={
+            "prediction": bundle.prediction.model_copy(update={
+                "concept": event.concept})})
+        found = services.prediction_record(source.bundle_set,
+                                           self.service.vocabulary, 1,
+                                           recorded)
+        self.assertIn({"ref": event.ref, "match": "exact",
+                       "concept_name": event.concept.name,
+                       "source_code": event.source_concept.code
+                       if event.source_concept else None},
+                      found["matches"])
+
     def test_refusals(self):
         """Another case set, an unknown case or scope and a case without a
         prediction are refused by code."""

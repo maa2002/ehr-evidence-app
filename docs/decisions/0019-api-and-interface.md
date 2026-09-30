@@ -2,7 +2,9 @@
 
 Status: accepted (2026-09-29). Points 1 and 7 amended by
 [ADR 0020](0020-interface-as-one-page.md): the interface is one page
-served by its own process, and no longer Streamlit.
+served by its own process, and no longer Streamlit. Point 5 added to by
+[ADR 0025](0025-prediction-against-the-record.md): whether the predicted
+diagnosis is recorded for the final admission, shown beside it.
 
 ## Context
 

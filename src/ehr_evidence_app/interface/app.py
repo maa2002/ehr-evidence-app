@@ -333,7 +333,8 @@ def create_app(client, jobs=None, log=None, version=__version__,
             evidence = client.evidence(case_set, number, views.PREDICTION)
             return views.explanation_view(result, found, history,
                                           views.names_of(evidence),
-                                          evidence.get("visits"))
+                                          evidence.get("visits"),
+                                          evidence.get("in_record"))
 
         return JSONResponse({"job": jobs.submit(owner_of(request), work)},
                             status_code=202)

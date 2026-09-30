@@ -104,7 +104,13 @@ class LabelTests(unittest.TestCase):
         # (The final admission's date in the target comes from the record,
         # as every date the page shows does; the rules are for typed ones.)
         for text in (labels.EXPLANATION_INTRO, labels.SCORE_PLAIN,
-                     labels.TARGET.format(visit="")
+                     labels.TARGET.format(visit=""),
+                     labels.RECORD_EXACT.format(records="2 records", visit=3),
+                     labels.RECORD_ICD.format(records="1 record", visit=3),
+                     labels.RECORD_MORE_SPECIFIC.format(
+                         names="Hypertensive Heart Disease"),
+                     labels.RECORD_ABSENT.format(visit=3),
+                     labels.RECORD_UNKNOWN.format(visit=3)
                      ) + tuple(meaning for _, meaning in labels.GLOSSARY):
             self.assertEqual(language.findings(text, "explanation",
                                                "notice"), [], text)

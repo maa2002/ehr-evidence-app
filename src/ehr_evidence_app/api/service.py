@@ -37,7 +37,7 @@ import uuid
 
 from ehr_evidence_app.evidence import contracts
 from ehr_evidence_app.generation import adapter, records
-from ehr_evidence_app.qa import answer, record_answer
+from ehr_evidence_app.qa import answer, record_answer, resolve
 from ehr_evidence_app.validation import explanation
 
 SERVED = ("dev-30-v1", "pilot-10-v1")
@@ -298,6 +298,37 @@ def prediction_evidence_view(bundle):
             "provenance": provenance_view(bundle.provenance)}
 
 
+def prediction_record(bundle_set, vocabulary, case_number, bundle):
+    """Return whether an explanation bundle's predicted diagnosis is
+    recorded for the final admission: that visit's number, its coverage,
+    and its records that match the diagnosis with how (exact, a more
+    specific concept, or an ICD code whose description names it), by the
+    condition rules' matching over its QA bundle; None when the final
+    admission's QA bundle cannot be read. It is shown beside the
+    prediction, and never reaches the language model."""
+    final = next((visit for visit in bundle.visits
+                  if visit.role == "final_admission"), None)
+    if final is None:
+        return None
+    scope = contracts.ScopeRef(kind="selected_visit",
+                               visit_number=final.visit_number)
+    try:
+        visit_bundle, _ = bundle_set.qa_bundle(case_number, scope)
+    except answer.AnswerError:
+        return None
+    resolution = resolve.Resolution(
+        "", "resolved", "concepts",
+        concepts=(bundle.prediction.concept.concept_id,))
+    return {"visit_number": final.visit_number,
+            "coverage": visit_bundle.coverage.status,
+            "matches": [{"ref": event.ref, "match": kind,
+                         "concept_name": event.concept.name,
+                         "source_code": event.source_concept.code
+                         if event.source_concept else None}
+                        for event, kind in answer.record_matches(
+                            visit_bundle, resolution, vocabulary)]}
+
+
 def written_view(response, written, seconds):
     """Return what a request returns: the gate's response, who wrote it
     (the model, or the template with the fallback and its category) and
@@ -462,7 +493,10 @@ class Service:
             found = source.explanations.get(case_number)
             if found is None:
                 raise ServiceError("prediction_missing")
-            return prediction_evidence_view(found[0])
+            view = prediction_evidence_view(found[0])
+            view["in_record"] = prediction_record(
+                source.bundle_set, self.vocabulary, case_number, found[0])
+            return view
         try:
             scope = contracts.ScopeRef(kind=kind, visit_number=visit_number)
         except ValueError:

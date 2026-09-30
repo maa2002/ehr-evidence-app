@@ -837,6 +837,9 @@ function predictionCard(prediction) {
     el("div", {className: "prediction-label"}, prediction.label),
     prediction.timeline ? timelineRow(prediction.timeline) : null,
     prediction.target ? el("p", {className: "plain"}, prediction.target) : null,
+    prediction.record ? el("div", {className: "record-check"},
+      el("span", {className: "kicker"}, "In the Record"),
+      note(prediction.record.tone, prediction.record.text)) : null,
     el("dl", {className: "numbers"}, ...prediction.facts.map((fact) =>
       el("div", {}, el("dt", {}, fact.label), el("dd", {}, fact.value)))),
     prediction.plain ? el("p", {className: "plain"}, prediction.plain) : null,

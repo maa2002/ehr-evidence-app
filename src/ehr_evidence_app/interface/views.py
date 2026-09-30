@@ -209,10 +209,48 @@ def timeline_of(visits):
                 final["start_date"]))}
 
 
-def prediction_view(prediction, visits=None):
+def records_text(count):
+    """Return a number of records in words."""
+    return "%d record%s" % (count, "" if count == 1 else "s")
+
+
+def record_check(found):
+    """Return whether the predicted diagnosis is recorded for the final
+    admission, as the page says it (its tone and sentence), from the
+    API's check of that visit's records; None when it was not made. A
+    record of the concept itself comes first, then one under an ICD code
+    whose description names it, then a more specific concept; "not
+    recorded" needs that visit's records complete."""
+    if not found:
+        return None
+    visit, matches = found["visit_number"], found["matches"]
+    kinds = {kind: [item for item in matches if item["match"] == kind]
+             for kind in ("exact", "icd_description", "more_specific")}
+    if kinds["exact"]:
+        return {"tone": "good", "text": labels.RECORD_EXACT.format(
+            records=records_text(len(kinds["exact"])), visit=visit)}
+    if kinds["icd_description"]:
+        return {"tone": "good", "text": labels.RECORD_ICD.format(
+            records=records_text(len(kinds["icd_description"])),
+            visit=visit)}
+    if kinds["more_specific"]:
+        names = sorted({labels.title(item["concept_name"])
+                        or "Name Unavailable"
+                        for item in kinds["more_specific"]})
+        return {"tone": "info", "text": labels.RECORD_MORE_SPECIFIC.format(
+            names=", ".join(names))}
+    if found["coverage"] not in ("complete", "complete_empty"):
+        return {"tone": "muted",
+                "text": labels.RECORD_UNKNOWN.format(visit=visit)}
+    return {"tone": "neutral",
+            "text": labels.RECORD_ABSENT.format(visit=visit)}
+
+
+def prediction_view(prediction, visits=None, in_record=None):
     """Return the predicted diagnosis: its label, what it is and where it
-    applies among the visits, its score and logit, never as a
-    percentage, and the score's fixed meaning."""
+    applies among the visits, whether it is recorded for the final
+    admission (in_record, the API's check), its score and logit, never
+    as a percentage, and the score's fixed meaning."""
     timeline = timeline_of(visits)
     return {"ref": prediction["ref"],
             "label": labels.title(prediction["label"]) or (
@@ -220,6 +258,7 @@ def prediction_view(prediction, visits=None):
             "timeline": timeline,
             "target": labels.TARGET.format(
                 visit=timeline["visit"] if timeline else ""),
+            "record": record_check(in_record),
             "facts": [{"label": "Score",
                        "value": labels.score(prediction["score"])},
                       {"label": "Logit",
@@ -432,21 +471,23 @@ def notes_of(lines):
     return statements, notes
 
 
-def explanation_view(result, case, history, known=(), visits=None):
+def explanation_view(result, case, history, known=(), visits=None,
+                     in_record=None):
     """Return an explanation as the conversation shows it: what it is, in
     plain words; the predicted diagnosis and its score's meaning; the
     response's statements, its fixed notes apart, and a glossary; the note
     that attribution scores are unsigned when no note of the response says
     so; and the conditions recorded in the prior history in a block of
     their own (decision D5). The response's text is kept whole; visits
-    are the prediction's visits, which show where it applies."""
+    are the prediction's visits, which show where it applies, and
+    in_record the API's check of the final admission's records."""
     found = response_view(result, known)
     prediction = case.get("prediction")
     statements, notes = notes_of(found["lines"])
     found.update(evidence=PREDICTION,
                  intro=labels.EXPLANATION_INTRO,
-                 prediction=prediction_view(prediction, visits) if prediction
-                 else None,
+                 prediction=prediction_view(prediction, visits, in_record)
+                 if prediction else None,
                  lines=statements, notes=notes,
                  glossary=[{"term": term, "meaning": meaning}
                            for term, meaning in labels.GLOSSARY],
@@ -743,7 +784,8 @@ def prediction_evidence_view(view):
     seen, the linked history records, the final admission's records as
     context, the restrictions, the coverage, the visits and the
     provenance (decision D6)."""
-    prediction = prediction_view(view["prediction"], view.get("visits"))
+    prediction = prediction_view(view["prediction"], view.get("visits"),
+                                 view.get("in_record"))
     attributions = view["attributions"]
     unlinked = sum(item["link_status"] != "verified"
                    for item in attributions)
@@ -766,7 +808,10 @@ def prediction_evidence_view(view):
             facts([("Label", prediction["label"])] + [
                 (item["label"], item["value"])
                 for item in prediction["facts"]]),
-            note("info", prediction["target"]),
+            note("info", prediction["target"])] + ([
+                note(prediction["record"]["tone"],
+                     prediction["record"]["text"])]
+                if prediction["record"] else []) + [
             note("muted", prediction["meaning"]),
             note("muted", prediction["note"])], ref=prediction["ref"]),
         section("Attributions", blocks),

@@ -47,6 +47,11 @@ a second request meanwhile gets the template's response at once
 | `POST /questions` | The response to a question about a case in a scope: `{"case_set", "case_number", "scope", "question"}` |
 | `POST /explanations` | The explanation of a case's prepared prediction: `{"case_set", "case_number"}` |
 
+The evidence of a prediction also holds `in_record`: the final
+admission's visit number, the coverage of its records, and those of its
+records that match the predicted diagnosis, with how, by the condition
+rules' matching ([ADR 0025](decisions/0025-prediction-against-the-record.md)).
+
 The evidence of a scope holds its visits (reference, number, role and
 dates), its records (reference, visit number, domain, concept, source
 code and dates), its coverage, with the references of the records without
@@ -150,7 +155,13 @@ value chosen there; the page builds everything it shows as text.
   of a diagnosis recorded for the final admission, the one of the 275
   diagnoses the GNN model scores that it scored highest, made from the
   earlier visits and the final admission's other records but not its
-  diagnoses; its score and logit, with the score in plain words and its
+  diagnoses; In the Record, whether it is recorded for the final
+  admission, which the API checks in that visit's records with the
+  condition rules' matching (the diagnosis itself, a record under an ICD
+  code whose description names it, or a more specific diagnosis; "not
+  recorded" only when that visit's records are complete, and never as
+  clinical absence), apart from the explanation and never given to the
+  language model; its score and logit, with the score in plain words and its
   fixed meaning, "Uncalibrated sigmoid of the logit; not a clinical
   risk", never as a percentage. Then
   the explanation of the selected drivers with its references, its fixed
