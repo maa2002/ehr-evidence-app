@@ -809,7 +809,9 @@ function prose(lines, turn) {
   const body = el("div", {className: "prose"});
   let lists = [];
   for (const line of lines) {
-    const content = [line.text, ...line.refs.map((ref) => cite(ref, turn))];
+    const content = [line.text, line.refs.length
+      ? el("span", {className: "refs"}, ...line.refs.map((ref) => cite(ref, turn)))
+      : null];
     if (line.depth === null) {
       lists = [];
       body.append(el("p", {}, ...content));
@@ -826,6 +828,9 @@ function prose(lines, turn) {
       }
       lists.push(list);
     }
+    // An item numbered in its text needs no bullet as well.
+    const numbered = /^\d+\.\s/.test(line.text);
+    if (numbered) lists[lists.length - 1].classList.add("numbered");
     lists[lists.length - 1].append(el("li", {}, ...content));
   }
   return body;
@@ -833,17 +838,19 @@ function prose(lines, turn) {
 
 function predictionCard(prediction) {
   return el("div", {className: "prediction glass"},
-    el("span", {className: "kicker"}, "Predicted Diagnosis"),
+    el("div", {className: "prediction-head"},
+      el("span", {className: "kicker"}, "Predicted Diagnosis"),
+      el("dl", {className: "numbers"}, ...prediction.facts.map((fact) =>
+        el("div", {}, el("dt", {}, fact.label), el("dd", {}, fact.value))))),
     el("div", {className: "prediction-label"}, prediction.label),
     prediction.timeline ? timelineRow(prediction.timeline) : null,
     prediction.target ? el("p", {className: "plain"}, prediction.target) : null,
-    prediction.record ? el("div", {className: "record-check"},
-      el("span", {className: "kicker"}, "In the Record"),
-      note(prediction.record.tone, prediction.record.text)) : null,
-    el("dl", {className: "numbers"}, ...prediction.facts.map((fact) =>
-      el("div", {}, el("dt", {}, fact.label), el("dd", {}, fact.value)))),
-    prediction.plain ? el("p", {className: "plain"}, prediction.plain) : null,
-    el("p", {className: "fine"}, `${prediction.meaning} ${prediction.note}`));
+    prediction.record ? el("div", {className: `record-check tone-${prediction.record.tone}`},
+      el("span", {className: "record-label"}, "In the Record"),
+      el("span", {className: "record-text"}, prediction.record.text)) : null,
+    el("div", {className: "fine-group"},
+      prediction.plain ? el("p", {className: "fine"}, prediction.plain) : null,
+      el("p", {className: "fine"}, `${prediction.meaning} ${prediction.note}`)));
 }
 
 // Where a prediction applies: after the earlier visits, at the final
@@ -921,7 +928,6 @@ function reply(turn) {
   if (view.withheld) node.append(note("muted", view.withheld));
   if (explained && view.notes && view.notes.length) node.append(notesBlock(view.notes));
   if (explained && view.unsigned) node.append(note("info", view.unsigned));
-  if (explained && view.glossary) node.append(glossaryBlock(view.glossary));
   if (view.references.length) {
     node.append(el("div", {className: "sources"}, "Sources",
       ...view.references.map((ref) => cite(ref, turn))));
@@ -929,7 +935,9 @@ function reply(turn) {
   node.append(el("div", {className: "meta"},
     copyButton(view.text),
     el("span", {className: "meta-text"}, `${view.scope.label} · ${view.author} · ${view.seconds}`)));
-  if (turn.kind === "explanation" && view.conditions) node.append(conditionsBlock(view.conditions));
+  // The folded blocks close the reply, after its sources and who wrote it.
+  if (explained && view.glossary) node.append(glossaryBlock(view.glossary));
+  if (explained && view.conditions) node.append(conditionsBlock(view.conditions));
   return node;
 }
 

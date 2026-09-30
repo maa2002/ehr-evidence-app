@@ -171,6 +171,13 @@ evidence beside it
 
 ### Changed
 
+- The page, polished: replies in the interface's own typeface at a
+  regular weight; one marker per list item, and a line's references kept
+  together in quieter tags; the prediction card with its score and logit
+  in its header, In the Record as one tinted line and its fine print
+  under a rule; the notes set apart; a shorter welcome, with the
+  suggestions that repeat the composer's and the top bar's buttons shown
+  only where those show icons alone.
 - No fine-tuning ([ADR 0024](docs/decisions/0024-no-fine-tuning.md)):
   the pinned model is evaluated in its frozen configuration, and the
   training and validation partitions of MIMIC-IV-Ext-Instr are not used.

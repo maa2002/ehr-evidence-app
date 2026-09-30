@@ -749,32 +749,44 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .prose {
   color: var(--ink);
-  font-family: var(--font-serif);
-  font-size: 17px;
-  line-height: 1.7;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.65;
   overflow-wrap: anywhere;
 }
-.prose p { margin: 0 0 0.55em; }
+.prose p { margin: 0 0 0.6em; }
 .prose p:last-child { margin-bottom: 0; }
-.prose ul { margin: 0.15em 0 0.65em; padding-left: 1.35em; }
-.prose ul ul { margin: 0.15em 0 0.2em; }
-.prose li { margin: 0.22em 0; padding-left: 0.15em; }
+.prose ul { margin: 0.2em 0 0.7em; padding-left: 1.2em; list-style-type: disc; }
+.prose ul:last-child { margin-bottom: 0; }
+/* A list whose items are numbered in their text shows no bullet too. */
+.prose ul.numbered { list-style: none; padding-left: 0; }
+.prose ul ul {
+  margin: 0.3em 0 0.4em 0.15em;
+  padding-left: 0.85em;
+  border-left: 2px solid var(--line);
+  color: var(--ink-2);
+  list-style: none;
+}
+.prose li { margin: 0.3em 0; }
 .prose li::marker { color: var(--muted); }
+/* A line's references stay together, after its last word. */
+.refs { white-space: nowrap; }
 
 .cite {
   display: inline-flex;
   align-items: center;
-  height: 19px;
-  margin-left: 5px;
-  padding: 0 6px;
-  border: 0;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font: 650 11.5px/1 var(--font-mono);
-  vertical-align: 2px;
+  background: var(--fill);
+  color: var(--muted);
+  font: 600 11px/1 var(--font-mono);
+  vertical-align: 1px;
 }
-.cite:hover { background: var(--accent); color: var(--on-accent); }
+.refs .cite:first-child { margin-left: 7px; }
+.cite:hover, .cite:focus-visible { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
 
 .sources {
   display: flex;
@@ -882,11 +894,27 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   .timeline .arrow { align-self: flex-start; margin-left: 14px; transform: rotate(90deg); }
 }
 
-.record-check { display: grid; gap: 4px; margin: 2px 0; }
+.prediction-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.prediction .numbers { margin: 0; }
+/* In the Record: one line, tinted by what the record holds. */
+.record-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--tone-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.record-label { color: var(--tone); font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.record-text { flex: 1 1 22em; min-width: 0; color: var(--ink-2); }
+.fine-group { display: grid; gap: 4px; margin-top: 2px; padding-top: 10px; border-top: 1px solid var(--line); }
 
 .intro { display: grid; gap: 4px; }
 .intro p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
-.notes { display: grid; gap: 6px; padding-top: 2px; }
+.notes { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
 .glossary { margin: 0; }
 .glossary div { display: grid; gap: 2px; }
 .glossary dt { color: var(--ink); font-size: 13.5px; font-weight: 650; }
@@ -1014,7 +1042,8 @@ button.tool:hover:not(:disabled) { background: var(--glass-strong); color: var(-
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  max-width: var(--column);
+  /* Narrow enough that the four questions wrap two by two. */
+  max-width: min(var(--column), 480px);
   margin: 16px auto 0;
 }
 
@@ -1034,6 +1063,11 @@ button.tool:hover:not(:disabled) { background: var(--glass-strong); color: var(-
   font-weight: 550;
 }
 .chip:hover:not(:disabled) { background: var(--glass-strong); color: var(--ink); }
+/* The composer and the top bar name these actions where they show their
+   words; the chips stand in for them where they show icons alone. */
+@container (min-width: 601px) {
+  #suggest-explain, #suggest-evidence { display: none; }
+}
 .chip:disabled { opacity: 0.5; }
 
 .footnote {
@@ -1236,7 +1270,7 @@ tr.is-focus td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 @media (max-width: 560px) {
   :root { --gap: 6px; }
   .ask { max-width: 92%; }
-  .prose { font-size: 16px; }
+  .prose { font-size: 15.5px; }
   .welcome-hint { font-size: 13.5px; }
 }
 
