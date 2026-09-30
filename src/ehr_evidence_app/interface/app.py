@@ -330,9 +330,10 @@ def create_app(client, jobs=None, log=None, version=__version__,
                                           "pre_target_history")
             except clients.ClientError:
                 history = None
-            known = views.names_of(client.evidence(case_set, number,
-                                                   views.PREDICTION))
-            return views.explanation_view(result, found, history, known)
+            evidence = client.evidence(case_set, number, views.PREDICTION)
+            return views.explanation_view(result, found, history,
+                                          views.names_of(evidence),
+                                          evidence.get("visits"))
 
         return JSONResponse({"job": jobs.submit(owner_of(request), work)},
                             status_code=202)

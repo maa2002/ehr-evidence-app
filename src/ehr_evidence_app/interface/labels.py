@@ -98,25 +98,32 @@ UNSIGNED = ("Attribution scores are unsigned: they show how sensitive the "
             "lowered it, and not that it caused it.")
 NOT_A_RISK = "uncalibrated sigmoid of the logit; not a clinical risk"
 ONE_OUTPUT = ("One output of a multi-label prediction, made in advance by "
-              "the diagnosis model.")
+              "the GNN model.")
 # The explanation in plain words: what it is, what its score means, and
 # how to read its parts. Each keeps the wording rules the responses keep
 # (tests/interface/test_views.py).
 EXPLANATION_INTRO = (
-    "A research model from an earlier project read this patient's record, "
-    "with the diagnoses of the final admission hidden, and scored each of "
-    "the 275 diagnoses it covers for that admission. Shown here are the "
-    "diagnosis it selected, the one it scored highest, and the recorded "
-    "concepts its score was sensitive to, in order of their attribution "
-    "scores. It is a model's output to inspect, not a diagnosis of the "
-    "patient and not advice.")
+    "A GNN model that predicts diagnoses read this patient's record and "
+    "predicted a diagnosis for the final admission. Shown here are that "
+    "prediction and the recorded concepts its score was sensitive to, in "
+    "order of their attribution scores. It is a model's output to inspect, "
+    "not a diagnosis of the patient and not advice.")
+# What the predicted diagnosis is, and where it applies; visit is the
+# final admission's number and date, in brackets, when they are known.
+TARGET = ("A prediction of a diagnosis recorded for the final admission"
+          "{visit}: of the 275 diagnoses the GNN model scores, the one it "
+          "scored highest. The model saw the visits before the final "
+          "admission and that admission's other records, such as its "
+          "procedures and medications, but not the diagnoses recorded for "
+          "it.")
 SCORE_PLAIN = ("Scores run from 0 to 1: the higher the score, the more the "
                "model favoured this diagnosis. It is not a probability.")
 GLOSSARY = (
     ("Predicted Diagnosis",
-     "The diagnosis the model selected for the final admission: the one it "
-     "scored highest. The model scores 275 diagnoses together, and this is "
-     "one of them."),
+     "The model's prediction of a diagnosis recorded for the final "
+     "admission: of the 275 diagnoses it scores together, the one it "
+     "scored highest. It is a prediction, not a diagnosis of the "
+     "patient, and not necessarily the reason for the admission."),
     ("Score",
      "The model's output for this diagnosis, from 0 to 1 (the uncalibrated "
      "sigmoid of the logit). The higher it is, the more the model favoured "

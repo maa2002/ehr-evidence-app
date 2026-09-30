@@ -165,10 +165,12 @@ evidence beside it
   the pinned model is evaluated in its frozen configuration, and the
   training and validation partitions of MIMIC-IV-Ext-Instr are not used.
 - The explanation on the page says what it is for, in plain words: the
-  button is Explain the Predicted Diagnosis; the reply opens with what
-  the prediction is (a research model's selected diagnosis for the final
-  admission, not a diagnosis of the patient), gives the score in plain
-  words beside its fixed meaning, keeps the response's fixed notes apart
+  button is Generate the Predicted Diagnosis; the reply opens with what
+  the prediction is (the GNN model's prediction of a diagnosis recorded
+  for the final admission, not a diagnosis of the patient), shows where
+  it applies (the final admission, after the earlier visits, with their
+  dates), gives the score in plain words beside its fixed meaning, keeps
+  the response's fixed notes apart
   under Notes without repeating the one on attribution, and ends with How
   to Read This, a glossary of its parts. The response itself, the model,
   the prompt and the gate are unchanged.

@@ -177,17 +177,54 @@ def cases_view(case_set, cases):
             for item in cases]
 
 
-def prediction_view(prediction):
-    """Return the predicted diagnosis: its label, its score and logit,
-    never as a percentage, and the score's fixed meaning."""
+def sentence(text):
+    """Return text with its first letter in upper case."""
+    return text[:1].upper() + text[1:]
+
+
+def timeline_of(visits):
+    """Return where a prediction applies among the case's visits: the
+    earlier visits, and the final admission whose diagnoses it predicts;
+    None when the visits are not known."""
+    ordered = sorted(visits or [], key=lambda visit: visit["visit_number"])
+    final = next((visit for visit in ordered
+                  if visit["role"] == "final_admission"), None)
+    if final is None:
+        return None
+    earlier = [visit for visit in ordered
+               if visit["visit_number"] < final["visit_number"]]
+    before = None
+    if len(earlier) == 1:
+        before = "Visit %d · %s" % (earlier[0]["visit_number"], labels.date(
+            earlier[0]["start_date"]))
+    elif earlier:
+        before = "Visits %d to %d · %s to %s" % (
+            earlier[0]["visit_number"], earlier[-1]["visit_number"],
+            labels.date(earlier[0]["start_date"]),
+            labels.date(earlier[-1]["start_date"]))
+    return {"earlier": before,
+            "final": "Visit %d · %s" % (final["visit_number"], labels.date(
+                final["start_date"])),
+            "visit": " (visit %d, %s)" % (final["visit_number"], labels.date(
+                final["start_date"]))}
+
+
+def prediction_view(prediction, visits=None):
+    """Return the predicted diagnosis: its label, what it is and where it
+    applies among the visits, its score and logit, never as a
+    percentage, and the score's fixed meaning."""
+    timeline = timeline_of(visits)
     return {"ref": prediction["ref"],
             "label": labels.title(prediction["label"]) or (
                 "Concept %d" % prediction["concept_id"]),
+            "timeline": timeline,
+            "target": labels.TARGET.format(
+                visit=timeline["visit"] if timeline else ""),
             "facts": [{"label": "Score",
                        "value": labels.score(prediction["score"])},
                       {"label": "Logit",
                        "value": labels.score(prediction["logit"])}],
-            "meaning": "Score: %s." % labels.NOT_A_RISK,
+            "meaning": "Score: %s." % sentence(labels.NOT_A_RISK),
             "note": labels.ONE_OUTPUT,
             "plain": labels.SCORE_PLAIN}
 
@@ -395,19 +432,20 @@ def notes_of(lines):
     return statements, notes
 
 
-def explanation_view(result, case, history, known=()):
+def explanation_view(result, case, history, known=(), visits=None):
     """Return an explanation as the conversation shows it: what it is, in
     plain words; the predicted diagnosis and its score's meaning; the
     response's statements, its fixed notes apart, and a glossary; the note
     that attribution scores are unsigned when no note of the response says
     so; and the conditions recorded in the prior history in a block of
-    their own (decision D5). The response's text is kept whole."""
+    their own (decision D5). The response's text is kept whole; visits
+    are the prediction's visits, which show where it applies."""
     found = response_view(result, known)
     prediction = case.get("prediction")
     statements, notes = notes_of(found["lines"])
     found.update(evidence=PREDICTION,
                  intro=labels.EXPLANATION_INTRO,
-                 prediction=prediction_view(prediction) if prediction
+                 prediction=prediction_view(prediction, visits) if prediction
                  else None,
                  lines=statements, notes=notes,
                  glossary=[{"term": term, "meaning": meaning}
@@ -705,7 +743,7 @@ def prediction_evidence_view(view):
     seen, the linked history records, the final admission's records as
     context, the restrictions, the coverage, the visits and the
     provenance (decision D6)."""
-    prediction = prediction_view(view["prediction"])
+    prediction = prediction_view(view["prediction"], view.get("visits"))
     attributions = view["attributions"]
     unlinked = sum(item["link_status"] != "verified"
                    for item in attributions)
@@ -728,6 +766,7 @@ def prediction_evidence_view(view):
             facts([("Label", prediction["label"])] + [
                 (item["label"], item["value"])
                 for item in prediction["facts"]]),
+            note("info", prediction["target"]),
             note("muted", prediction["meaning"]),
             note("muted", prediction["note"])], ref=prediction["ref"]),
         section("Attributions", blocks),

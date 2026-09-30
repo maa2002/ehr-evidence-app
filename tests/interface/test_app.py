@@ -162,7 +162,9 @@ class OperationTests(InterfaceTestCase):
         self.assertEqual(result["outcome"]["code"], "explanation")
         self.assertEqual(result["prediction"]["label"], "SYNTHETIC LABEL")
         self.assertTrue(any("unsigned" in note for note in result["notes"]))
-        self.assertIn("research model", result["intro"])
+        self.assertIn("GNN model", result["intro"])
+        self.assertEqual(result["prediction"]["timeline"]["final"],
+                         "Visit 3 · 3 Jan 2100")
         self.assertTrue(result["conditions"]["table"]["rows"])
 
     def test_refusals(self):

@@ -88,7 +88,7 @@ class SidebarTests(InventedTestCase):
         prediction = found["prediction"]
         self.assertEqual([fact["value"] for fact in prediction["facts"]],
                          ["0.818", "1.5"])
-        self.assertIn(labels.NOT_A_RISK, prediction["meaning"])
+        self.assertIn(views.sentence(labels.NOT_A_RISK), prediction["meaning"])
         text = json.dumps(found)
         self.assertNotIn("%", text)
         self.assertNotIn(self.label, text.replace(
@@ -186,6 +186,21 @@ class ResponseTests(InventedTestCase):
         self.assertEqual(found["evidence"], "prediction")
         self.assertEqual(found["prediction"]["label"], "SYNTHETIC LABEL")
         self.assertEqual(found["prediction"]["plain"], labels.SCORE_PLAIN)
+        self.assertTrue(found["prediction"]["meaning"].startswith(
+            "Score: Uncalibrated sigmoid"))
+        # Without the visits the prediction still says what it is.
+        self.assertIn("final admission: of the 275",
+                      found["prediction"]["target"])
+        self.assertIsNone(found["prediction"]["timeline"])
+        visits = self.service.evidence(self.label, 1, "prediction")["visits"]
+        placed = views.explanation_view(self.service.explain(self.label, 1),
+                                        self.case, history, known, visits)
+        self.assertEqual(placed["prediction"]["timeline"], {
+            "earlier": "Visits 1 to 2 · 1 Jan 2100 to 2 Jan 2100",
+            "final": "Visit 3 · 3 Jan 2100",
+            "visit": " (visit 3, 3 Jan 2100)"})
+        self.assertIn("recorded for the final admission (visit 3, 3 Jan "
+                      "2100)", placed["prediction"]["target"])
         self.assertEqual(found["intro"], labels.EXPLANATION_INTRO)
         self.assertEqual([item["term"] for item in found["glossary"]],
                          [term for term, _ in labels.GLOSSARY])

@@ -626,7 +626,7 @@ function explain() {
   if (!state.current || !state.current.prediction || pending()) return;
   begin({
     kind: "explanation",
-    asked: "Explain the Predicted Diagnosis",
+    asked: "Generate the Predicted Diagnosis",
     scopeKey: null,
     scopeLabel: null,
     evidenceKey: "prediction",
@@ -835,10 +835,23 @@ function predictionCard(prediction) {
   return el("div", {className: "prediction glass"},
     el("span", {className: "kicker"}, "Predicted Diagnosis"),
     el("div", {className: "prediction-label"}, prediction.label),
+    prediction.timeline ? timelineRow(prediction.timeline) : null,
+    prediction.target ? el("p", {className: "plain"}, prediction.target) : null,
     el("dl", {className: "numbers"}, ...prediction.facts.map((fact) =>
       el("div", {}, el("dt", {}, fact.label), el("dd", {}, fact.value)))),
     prediction.plain ? el("p", {className: "plain"}, prediction.plain) : null,
     el("p", {className: "fine"}, `${prediction.meaning} ${prediction.note}`));
+}
+
+// Where a prediction applies: after the earlier visits, at the final
+// admission.
+function timelineRow(timeline) {
+  const stop = (kind, text, target) => el("span", {className: target ? "stop is-target" : "stop"},
+    el("span", {className: "stop-kind"}, kind), el("span", {}, text));
+  return el("div", {className: "timeline"},
+    timeline.earlier ? stop("Earlier Visits", timeline.earlier, false) : null,
+    timeline.earlier ? el("span", {className: "arrow", "aria-hidden": "true"}, "→") : null,
+    stop("Final Admission · Predicted Here", timeline.final, true));
 }
 
 // What an explanation is, in plain words, before it.

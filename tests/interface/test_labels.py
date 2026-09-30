@@ -101,8 +101,11 @@ class LabelTests(unittest.TestCase):
         # The plain words about an explanation keep the rules the responses
         # keep: nothing hedged, ranked or counted in words.
         from ehr_evidence_app.validation import language
-        for text in (labels.EXPLANATION_INTRO, labels.SCORE_PLAIN) + tuple(
-                meaning for _, meaning in labels.GLOSSARY):
+        # (The final admission's date in the target comes from the record,
+        # as every date the page shows does; the rules are for typed ones.)
+        for text in (labels.EXPLANATION_INTRO, labels.SCORE_PLAIN,
+                     labels.TARGET.format(visit="")
+                     ) + tuple(meaning for _, meaning in labels.GLOSSARY):
             self.assertEqual(language.findings(text, "explanation",
                                                "notice"), [], text)
         self.assertIn("not that it caused it", labels.UNSIGNED)

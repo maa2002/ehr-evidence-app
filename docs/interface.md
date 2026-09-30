@@ -139,15 +139,20 @@ value chosen there; the page builds everything it shows as text.
   it (the model, or the template and why) and the seconds it took.
   Choosing a reference opens its record in the evidence panel, in the
   scope the response answered.
-- **The explanation** (work item 51). Explain the Predicted Diagnosis
-  first says what it is, in plain words: a research model from an earlier
-  project read the record with the final admission's diagnoses hidden,
-  scored the 275 diagnoses it covers, and the page shows the diagnosis it
-  selected and the recorded concepts its score was sensitive to; a
-  model's output to inspect, not a diagnosis of the patient and not
-  advice. The predicted diagnosis follows: its label, score and logit,
-  with the score in plain words and its fixed meaning, "uncalibrated
-  sigmoid of the logit; not a clinical risk", never as a percentage. Then
+- **The explanation** (work item 51). Generate the Predicted Diagnosis
+  first says what it is, in plain words: a GNN model that predicts
+  diagnoses read the record and predicted a diagnosis for the final
+  admission, and the page shows that prediction and the recorded
+  concepts its score was sensitive to; a model's output to inspect, not
+  a diagnosis of the patient and not advice. The predicted diagnosis
+  follows: its label; where it applies, the final admission after the
+  earlier visits, with their numbers and dates; what it is, a prediction
+  of a diagnosis recorded for the final admission, the one of the 275
+  diagnoses the GNN model scores that it scored highest, made from the
+  earlier visits and the final admission's other records but not its
+  diagnoses; its score and logit, with the score in plain words and its
+  fixed meaning, "Uncalibrated sigmoid of the logit; not a clinical
+  risk", never as a percentage. Then
   the explanation of the selected drivers with its references, its fixed
   notes apart under Notes (among them that attribution scores are
   unsigned and not causal), and How to Read This, a folded glossary of

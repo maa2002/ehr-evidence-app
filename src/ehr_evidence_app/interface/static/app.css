@@ -860,6 +860,28 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .fine { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
 .plain { margin: 0; color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
 
+.timeline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px 8px; margin: 2px 0; }
+.stop {
+  display: grid;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.stop-kind { color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+.stop.is-target { background: var(--accent-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--accent); }
+.stop.is-target .stop-kind { color: var(--accent); }
+.arrow { align-self: center; color: var(--muted); }
+@media (max-width: 560px) {
+  /* On a phone the visits stack, the arrow pointing down to the final
+     admission. */
+  .timeline { flex-direction: column; align-items: stretch; }
+  .timeline .arrow { align-self: flex-start; margin-left: 14px; transform: rotate(90deg); }
+}
+
 .intro { display: grid; gap: 4px; }
 .intro p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
 .notes { display: grid; gap: 6px; padding-top: 2px; }
