@@ -142,10 +142,12 @@ metrics of Phase 9.
 
 Described in [interface.md](interface.md) and decided in
 [ADR 0019](decisions/0019-api-and-interface.md) and
-[ADR 0020](decisions/0020-interface-as-one-page.md). In progress: the
-API, its boundary, the interface, the launcher and sharing through the
-tunnel are in place; the link through the tunnel and release 0.10.0
-follow.
+[ADR 0020](decisions/0020-interface-as-one-page.md). Done (release
+0.10.0): the API, its boundary, the interface, the launcher and sharing
+through the tunnel are in place, closed by an operator run on
+`dev-30-v1` with the model. The link through the tunnel is the owner's,
+once the Cloudflare parts are in place
+([interface.md](interface.md#sharing-through-the-tunnel)).
 
 - 47 Add FastAPI operations (done: `api.service` and `api.app`)
 - 48 Configure the access boundary (done: `api.boundary`,

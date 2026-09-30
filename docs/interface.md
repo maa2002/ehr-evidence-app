@@ -335,6 +335,23 @@ reading and writing nothing: a demonstration without data.
 & $AppPython -m ehr_evidence_app.api.launch --operator-real
 ```
 
+## Operator run
+
+Phase 8 closed with an operator run on the final code: the real API on
+`dev-30-v1` with the model, driven over loopback, for the first 3
+admitted cases. It made 24 requests, for each case: a list in the
+pre-target history and in all case visits, a list asked politely, two
+presence checks, two questions about the whole record and the
+explanation. The model wrote 6 of the 6 presence checks, 5 of the 9
+lists (the other 4 were longer than the output limit or cut off) and 1
+of the 3 explanations (the gate withheld 2); the templates wrote the
+answers about the record. No case or scope changed, no withheld outcome
+released text, and every request wrote its runtime record. The record
+check found each prediction's diagnosis recorded for the final
+admission. The median request took 13.6 s, the slowest 62.8 s. The log
+audit (`generation.records --operator-real --audit-logs`) found nothing
+but routes and statuses in the API's log.
+
 ## Commands
 
 The default mode serves the invented case set on a free loopback port,

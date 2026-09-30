@@ -7,16 +7,28 @@ change interfaces.
 
 ## [Unreleased]
 
-The tracker becomes the project's experiment record
-([ADR 0018](docs/decisions/0018-tracker-as-experiment-record.md)): its
-lineage tasks stay in view, every generation measurement is an experiment
-with its configuration and scalars, and the pinned model is kept there
-with its licence. No data is uploaded. Phase 8 begins: a local API
-serves the development case sets behind its access boundary
+## [0.10.0] - 2026-09-30
+
+API and interface (Phase 8, work items 47 to 52.9). A local API serves the
+development case sets behind its access boundary
 ([ADR 0019](docs/decisions/0019-api-and-interface.md)), and the interface
 is one page over it: a conversation about a selected patient, with the
 evidence beside it
-([ADR 0020](docs/decisions/0020-interface-as-one-page.md)).
+([ADR 0020](docs/decisions/0020-interface-as-one-page.md)). The whole
+record can be asked about, answered by the templates and checked by the
+release gate ([ADR 0021](docs/decisions/0021-the-whole-record.md)), and is
+tested at its edges, against itself, with compound mistakes and with junk
+input ([ADR 0022](docs/decisions/0022-record-edge-cases.md),
+[ADR 0023](docs/decisions/0023-consistency-and-junk-input.md)). The
+explanation says in plain words what the GNN model's predicted diagnosis
+is, where it applies and whether it is recorded for the final admission
+([ADR 0025](docs/decisions/0025-prediction-against-the-record.md)). The
+model is evaluated as pinned, without fine-tuning
+([ADR 0024](docs/decisions/0024-no-fine-tuning.md)). The tracker becomes
+the project's experiment record
+([ADR 0018](docs/decisions/0018-tracker-as-experiment-record.md)); no data
+is uploaded. Sharing through the tunnel is in place; the link waits for
+the owner's Cloudflare parts.
 
 ### Added
 
@@ -764,7 +776,8 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.0...v0.7.1
