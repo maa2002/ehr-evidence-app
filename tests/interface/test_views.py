@@ -68,6 +68,9 @@ class SidebarTests(InventedTestCase):
         self.assertEqual(found["tags"],
                          ["Case 1", "Demonstration Cohort", "3 Visits"])
         self.assertEqual(found["subtitle"], " · ".join(found["tags"]))
+        self.assertEqual(found["greeting_lines"], [
+            "What Would You Like", "to Know About %s?"
+            % found["greeting"].rsplit(" ", 1)[1][:-1]])
         self.assertEqual(found["greeting"],
                          "What Would You Like to Know About %s?" % given)
         self.assertEqual(found["placeholder"], "Ask About %s's Record" % given)

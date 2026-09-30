@@ -320,6 +320,10 @@ def case_view(case, visits=None):
     return {"case_set": case_set, "number": number, "name": name,
             "subtitle": " · ".join(tags), "tags": tags,
             "greeting": "What Would You Like to Know About %s?" % given,
+            # The greeting's lines, so that it breaks in the same place
+            # whatever the name's length.
+            "greeting_lines": ["What Would You Like",
+                               "to Know About %s?" % given],
             "placeholder": "Ask About %s's Record" % given,
             "scopes": scopes, "evidence": evidence,
             "prediction": prediction_view(prediction) if prediction

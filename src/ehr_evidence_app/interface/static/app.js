@@ -550,7 +550,8 @@ function renderCase() {
   if (current) {
     ui.caseTitle.textContent = current.name;
     ui.caseDetail.textContent = current.subtitle;
-    ui.welcomeTitle.textContent = current.greeting;
+    ui.welcomeTitle.replaceChildren(...(current.greeting_lines || [current.greeting])
+      .map((line) => el("span", {className: "line"}, line)));
     ui.welcomeTags.replaceChildren(...current.tags.map((tag) => el("span", {className: "tag"}, tag)));
     document.title = `${current.name} · EHR Evidence`;
   } else {

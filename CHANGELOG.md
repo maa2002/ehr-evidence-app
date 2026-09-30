@@ -177,7 +177,10 @@ evidence beside it
   in its header, In the Record as one tinted line and its fine print
   under a rule; the notes set apart; a shorter welcome, with the
   suggestions that repeat the composer's and the top bar's buttons shown
-  only where those show icons alone.
+  only where those show icons alone. The welcome's title is always two
+  lines, its description two even sentences, and its four suggestions,
+  short labels for the same questions, one row as wide as the composer
+  (two by two where the dock is narrow).
 - No fine-tuning ([ADR 0024](docs/decisions/0024-no-fine-tuning.md)):
   the pinned model is evaluated in its frozen configuration, and the
   training and validation partitions of MIMIC-IV-Ext-Instr are not used.

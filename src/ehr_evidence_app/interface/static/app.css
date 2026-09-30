@@ -655,6 +655,7 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   text-align: center;
 }
 .welcome-mark { width: 44px; height: 44px; filter: drop-shadow(0 6px 14px var(--accent-soft)); }
+.welcome h2 .line { display: block; }
 .welcome h2 {
   margin: 4px 0 0;
   font-family: var(--font-serif);
@@ -678,7 +679,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   font-size: 12.5px;
   font-weight: 550;
 }
-.welcome-hint { max-width: 56ch; margin: 2px 0 0; color: var(--muted); font-size: 14px; text-wrap: balance; }
+/* Two sentences, a line each, of about the same length. */
+.welcome-hint { max-width: none; margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.welcome-hint span { display: block; text-wrap: balance; }
 
 /* ---------------------------------------------------------------------------
    The thread
@@ -1037,13 +1040,14 @@ button.tool:hover:not(:disabled) { background: var(--glass-strong); color: var(-
 .send:disabled { opacity: 0.38; box-shadow: none; }
 .send.is-busy .icon { animation: pulse 1.2s ease-in-out infinite; }
 
+/* One row as wide as the composer; two by two where the dock is narrow. */
 .suggestions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   gap: 8px;
-  /* Narrow enough that the four questions wrap two by two. */
-  max-width: min(var(--column), 480px);
+  width: 100%;
+  max-width: var(--column);
   margin: 16px auto 0;
 }
 
@@ -1061,6 +1065,11 @@ button.tool:hover:not(:disabled) { background: var(--glass-strong); color: var(-
   color: var(--ink-2);
   font-size: 13.5px;
   font-weight: 550;
+}
+.suggestions .chip { flex: 1 1 auto; justify-content: center; white-space: nowrap; }
+@container (max-width: 700px) {
+  .suggestions { flex-wrap: wrap; }
+  .suggestions .chip { flex: 1 1 calc(50% - 4px); }
 }
 .chip:hover:not(:disabled) { background: var(--glass-strong); color: var(--ink); }
 /* The composer and the top bar name these actions where they show their

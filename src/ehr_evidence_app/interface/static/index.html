@@ -82,7 +82,7 @@
         <svg class="mark welcome-mark" aria-hidden="true" focusable="false"><use href="#i-mark"></use></svg>
         <h2 id="welcome-title">Opening the Records</h2>
         <div class="tags" id="welcome-tags"></div>
-        <p class="welcome-hint">Ask about anything in the record, from conditions and medications to lab results and ICU stays, in the prior history, one visit or every visit. You can also generate the diagnosis the GNN model predicted for the final admission.</p>
+        <p class="welcome-hint"><span>Ask about anything in the record, from conditions and medications to lab results.</span> <span>Or generate the diagnosis the GNN model predicted for the final admission.</span></p>
       </div>
       <ol class="thread" id="thread"></ol>
     </section>
@@ -107,10 +107,10 @@
         </div>
       </form>
       <div class="suggestions" id="suggestions">
-        <button class="chip" type="button" data-question="Which conditions are recorded?">Which Conditions Are Recorded?</button>
-        <button class="chip" type="button" id="suggest-check">Check a Specific Condition</button>
-        <button class="chip" type="button" data-question="What medications were given?">What Medications Were Given?</button>
-        <button class="chip" type="button" data-question="What were the latest lab results?">Latest Lab Results</button>
+        <button class="chip" type="button" data-question="Which conditions are recorded?" title="Which conditions are recorded?">Recorded Conditions</button>
+        <button class="chip" type="button" id="suggest-check" title="Is a condition recorded?">Check a Condition</button>
+        <button class="chip" type="button" data-question="What medications were given?" title="What medications were given?">Medications Given</button>
+        <button class="chip" type="button" data-question="What were the latest lab results?" title="What were the latest lab results?">Latest Lab Results</button>
         <button class="chip" id="suggest-explain" type="button" hidden>Generate the Predicted Diagnosis</button>
         <button class="chip" id="suggest-evidence" type="button">View the Evidence</button>
       </div>
