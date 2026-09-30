@@ -185,8 +185,24 @@ class ResponseTests(InventedTestCase):
         self.assertEqual(found["outcome"]["code"], "explanation")
         self.assertEqual(found["evidence"], "prediction")
         self.assertEqual(found["prediction"]["label"], "SYNTHETIC LABEL")
-        self.assertEqual(found["unsigned"], labels.UNSIGNED)
-        self.assertEqual(found["generated"], labels.GENERATED)
+        self.assertEqual(found["prediction"]["plain"], labels.SCORE_PLAIN)
+        self.assertEqual(found["intro"], labels.EXPLANATION_INTRO)
+        self.assertEqual([item["term"] for item in found["glossary"]],
+                         [term for term, _ in labels.GLOSSARY])
+        # The response's fixed notes stand apart from what it states; the
+        # note on attribution is not repeated.
+        self.assertTrue(found["notes"])
+        self.assertTrue(any("unsigned" in note for note in found["notes"]))
+        self.assertIsNone(found["unsigned"])
+        lines = found["lines"]
+        for index, line in enumerate(lines):
+            following = lines[index + 1] if index + 1 < len(lines) else None
+            self.assertTrue(line["refs"] or line["depth"] is not None or (
+                following is not None and following["depth"] is not None),
+                line["text"])
+        self.assertEqual(len(lines) + len(found["notes"]), len(
+            views.response_view(self.service.explain(self.label, 1),
+                                known)["lines"]))
         table = found["conditions"]["table"]
         self.assertEqual([column["label"] for column in table["columns"]],
                          ["Condition", "Records", "Visits"])

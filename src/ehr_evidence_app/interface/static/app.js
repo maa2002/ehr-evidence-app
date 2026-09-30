@@ -626,7 +626,7 @@ function explain() {
   if (!state.current || !state.current.prediction || pending()) return;
   begin({
     kind: "explanation",
-    asked: "Generate & Explain Diagnosis",
+    asked: "Explain the Predicted Diagnosis",
     scopeKey: null,
     scopeLabel: null,
     evidenceKey: "prediction",
@@ -831,14 +831,36 @@ function prose(lines, turn) {
   return body;
 }
 
-function predictionCard(prediction, generated) {
+function predictionCard(prediction) {
   return el("div", {className: "prediction glass"},
     el("span", {className: "kicker"}, "Predicted Diagnosis"),
     el("div", {className: "prediction-label"}, prediction.label),
     el("dl", {className: "numbers"}, ...prediction.facts.map((fact) =>
       el("div", {}, el("dt", {}, fact.label), el("dd", {}, fact.value)))),
-    el("p", {className: "fine"}, `${prediction.meaning} ${prediction.note}`),
-    generated ? el("p", {className: "fine"}, generated) : null);
+    prediction.plain ? el("p", {className: "plain"}, prediction.plain) : null,
+    el("p", {className: "fine"}, `${prediction.meaning} ${prediction.note}`));
+}
+
+// What an explanation is, in plain words, before it.
+function introBlock(text) {
+  return el("div", {className: "intro"},
+    el("span", {className: "kicker"}, "What This Is"),
+    el("p", {}, text));
+}
+
+// The fixed notes of an explanation, apart from what it states.
+function notesBlock(notes) {
+  return el("div", {className: "notes"},
+    el("span", {className: "kicker"}, "Notes"),
+    ...notes.map((text) => el("p", {className: "fine"}, text)));
+}
+
+// How to read an explanation's parts, folded.
+function glossaryBlock(glossary) {
+  return el("details", {className: "block glass"},
+    el("summary", {}, "How to Read This", icon("chevron")),
+    el("dl", {className: "block-body glossary"}, ...glossary.map((item) =>
+      el("div", {}, el("dt", {}, item.term), el("dd", {}, item.meaning)))));
 }
 
 function note(tone, text) {
@@ -876,12 +898,14 @@ function copyButton(text) {
 function reply(turn) {
   const view = turn.result;
   const node = el("div", {className: "reply"}, badge(view.outcome));
-  if (turn.kind === "explanation" && view.prediction) {
-    node.append(predictionCard(view.prediction, view.generated));
-  }
+  const explained = turn.kind === "explanation";
+  if (explained && view.intro) node.append(introBlock(view.intro));
+  if (explained && view.prediction) node.append(predictionCard(view.prediction));
   if (view.lines.length) node.append(prose(view.lines, turn));
   if (view.withheld) node.append(note("muted", view.withheld));
-  if (turn.kind === "explanation" && view.unsigned) node.append(note("info", view.unsigned));
+  if (explained && view.notes && view.notes.length) node.append(notesBlock(view.notes));
+  if (explained && view.unsigned) node.append(note("info", view.unsigned));
+  if (explained && view.glossary) node.append(glossaryBlock(view.glossary));
   if (view.references.length) {
     node.append(el("div", {className: "sources"}, "Sources",
       ...view.references.map((ref) => cite(ref, turn))));

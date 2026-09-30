@@ -139,16 +139,23 @@ value chosen there; the page builds everything it shows as text.
   it (the model, or the template and why) and the seconds it took.
   Choosing a reference opens its record in the evidence panel, in the
   scope the response answered.
-- **The explanation** (work item 51). Generate & Explain Diagnosis shows
-  the predicted diagnosis first: its label, score and logit, with the
-  score's fixed meaning, "uncalibrated sigmoid of the logit; not a
-  clinical risk", never as a percentage, and a note that the diagnosis
-  model made the prediction in advance while the explanation is written
-  when asked. The explanation of the selected drivers follows,
-  with its references and a note that attribution scores are unsigned and
-  not causal. The conditions recorded in the pre-target history stand in
-  a block of their own, as records rather than the model's prediction or
-  drivers.
+- **The explanation** (work item 51). Explain the Predicted Diagnosis
+  first says what it is, in plain words: a research model from an earlier
+  project read the record with the final admission's diagnoses hidden,
+  scored the 275 diagnoses it covers, and the page shows the diagnosis it
+  selected and the recorded concepts its score was sensitive to; a
+  model's output to inspect, not a diagnosis of the patient and not
+  advice. The predicted diagnosis follows: its label, score and logit,
+  with the score in plain words and its fixed meaning, "uncalibrated
+  sigmoid of the logit; not a clinical risk", never as a percentage. Then
+  the explanation of the selected drivers with its references, its fixed
+  notes apart under Notes (among them that attribution scores are
+  unsigned and not causal), and How to Read This, a folded glossary of
+  its parts in plain words, each keeping the wording rules of the
+  responses. The response's text is released and copied whole; only the
+  page arranges it. The conditions recorded before the final admission
+  stand in a block of their own, as records rather than the model's
+  prediction or drivers.
 - **The evidence** (work item 52). A panel beside the conversation shows,
   for a scope, its coverage, with the records without a standard concept
   and the final-admission records left out, its visits and records, and

@@ -5,7 +5,8 @@ Status: accepted (2026-09-27); amended by
 projection of the bundle, and an explanation describes the selected
 drivers; and by [ADR 0014](0014-structured-evidence.md): the projection is
 structured for its task, and the schema enforces the contract's syntax
-only, with evidence truth left to the prompt and the gate.
+only, with evidence truth left to the prompt and the gate. Decision 6
+closed by [ADR 0024](0024-no-fine-tuning.md): no fine-tuning.
 
 ## Context
 

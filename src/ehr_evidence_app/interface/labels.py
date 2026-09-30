@@ -99,8 +99,45 @@ UNSIGNED = ("Attribution scores are unsigned: they show how sensitive the "
 NOT_A_RISK = "uncalibrated sigmoid of the logit; not a clinical risk"
 ONE_OUTPUT = ("One output of a multi-label prediction, made in advance by "
               "the diagnosis model.")
-GENERATED = ("The explanation below is written from this patient's evidence "
-             "when asked.")
+# The explanation in plain words: what it is, what its score means, and
+# how to read its parts. Each keeps the wording rules the responses keep
+# (tests/interface/test_views.py).
+EXPLANATION_INTRO = (
+    "A research model from an earlier project read this patient's record, "
+    "with the diagnoses of the final admission hidden, and scored each of "
+    "the 275 diagnoses it covers for that admission. Shown here are the "
+    "diagnosis it selected, the one it scored highest, and the recorded "
+    "concepts its score was sensitive to, in order of their attribution "
+    "scores. It is a model's output to inspect, not a diagnosis of the "
+    "patient and not advice.")
+SCORE_PLAIN = ("Scores run from 0 to 1: the higher the score, the more the "
+               "model favoured this diagnosis. It is not a probability.")
+GLOSSARY = (
+    ("Predicted Diagnosis",
+     "The diagnosis the model selected for the final admission: the one it "
+     "scored highest. The model scores 275 diagnoses together, and this is "
+     "one of them."),
+    ("Score",
+     "The model's output for this diagnosis, from 0 to 1 (the uncalibrated "
+     "sigmoid of the logit). The higher it is, the more the model favoured "
+     "the diagnosis; it is not a probability and not a clinical risk."),
+    ("Logit", "The raw number the score is computed from."),
+    ("Attribution Score",
+     "How sensitive the model's score was to a recorded concept: the larger "
+     "it is, the more a small change to that concept would have moved the "
+     "score. It does not show whether the concept raised or lowered the "
+     "score, and it does not show a cause."),
+    ("History and Final-Admission Context",
+     "Records from the visits before the final admission are history. "
+     "Records of a concept that is also recorded in the final admission are "
+     "shown as that admission's context, since the model saw the final "
+     "admission apart from its diagnoses."),
+    ("Left Out",
+     "Diagnoses recorded only in the final admission are what the model "
+     "predicts, so they are never shown as its evidence."),
+    ("Sources",
+     "P1 is the prediction, A1 and the like its attributions and E1 and the "
+     "like the records: select one to see it in the evidence panel."))
 # Short joining words a title keeps in lower case, inside a name.
 SMALL_WORDS = frozenset(("a", "an", "and", "as", "at", "but", "by", "for",
                          "in", "nor", "of", "on", "or", "per", "the", "to",

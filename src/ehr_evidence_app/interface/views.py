@@ -188,7 +188,8 @@ def prediction_view(prediction):
                       {"label": "Logit",
                        "value": labels.score(prediction["logit"])}],
             "meaning": "Score: %s." % labels.NOT_A_RISK,
-            "note": labels.ONE_OUTPUT}
+            "note": labels.ONE_OUTPUT,
+            "plain": labels.SCORE_PLAIN}
 
 
 def visit_details(visits):
@@ -357,7 +358,7 @@ def conditions_view(history):
     the prediction and its drivers: each with its number of records and
     the visits they are in; history is that scope's evidence, or None
     when it could not be read."""
-    found = {"title": "Recorded Conditions · Prior History",
+    found = {"title": "Conditions Recorded Before the Final Admission",
              "note": "What the records hold before the final admission. "
                      "These are records, not the model's prediction or "
                      "its drivers.",
@@ -380,18 +381,39 @@ def conditions_view(history):
     return found
 
 
+def notes_of(lines):
+    """Return (statements, notes) of an explanation's lines: its fixed
+    notes are the lines that cite nothing and introduce no list."""
+    statements, notes = [], []
+    for index, line in enumerate(lines):
+        following = lines[index + 1] if index + 1 < len(lines) else None
+        if (not line["refs"] and line["depth"] is None
+                and not (following and following["depth"] is not None)):
+            notes.append(line["text"])
+        else:
+            statements.append(line)
+    return statements, notes
+
+
 def explanation_view(result, case, history, known=()):
-    """Return an explanation as the conversation shows it: the response,
-    with the predicted diagnosis and its score's meaning before it, the
-    note that attribution scores are unsigned, and the conditions recorded
-    in the prior history in a block of their own (decision D5)."""
+    """Return an explanation as the conversation shows it: what it is, in
+    plain words; the predicted diagnosis and its score's meaning; the
+    response's statements, its fixed notes apart, and a glossary; the note
+    that attribution scores are unsigned when no note of the response says
+    so; and the conditions recorded in the prior history in a block of
+    their own (decision D5). The response's text is kept whole."""
     found = response_view(result, known)
     prediction = case.get("prediction")
+    statements, notes = notes_of(found["lines"])
     found.update(evidence=PREDICTION,
+                 intro=labels.EXPLANATION_INTRO,
                  prediction=prediction_view(prediction) if prediction
                  else None,
-                 generated=labels.GENERATED,
-                 unsigned=labels.UNSIGNED,
+                 lines=statements, notes=notes,
+                 glossary=[{"term": term, "meaning": meaning}
+                           for term, meaning in labels.GLOSSARY],
+                 unsigned=None if any("unsigned" in note for note in notes)
+                 else labels.UNSIGNED,
                  conditions=conditions_view(history))
     return found
 

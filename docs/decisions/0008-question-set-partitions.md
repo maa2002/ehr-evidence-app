@@ -1,6 +1,8 @@
 # 0008. Partitions of the MIMIC-IV-Ext-Instr question set
 
-Status: accepted (2026-09-26).
+Status: accepted (2026-09-26). Decision 3 settled by
+[ADR 0024](0024-no-fine-tuning.md): the training and validation
+partitions are not used.
 
 ## Context
 

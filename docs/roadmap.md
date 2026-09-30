@@ -183,6 +183,8 @@ follow.
 
 ## Phase 9. Evaluation
 
+The model is evaluated as pinned, without fine-tuning
+([ADR 0024](decisions/0024-no-fine-tuning.md)).
 The metrics, their denominators and empty-set conventions, the prose
 rubric and the paired comparison are fixed in
 [ADR 0016](decisions/0016-evaluation-metrics.md), agreed by the project

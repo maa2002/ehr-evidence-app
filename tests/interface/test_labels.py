@@ -98,6 +98,13 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(labels.NOT_A_RISK, schema.Prediction.model_fields[
             "score_meaning"].default)
         self.assertIn("unsigned", labels.UNSIGNED)
+        # The plain words about an explanation keep the rules the responses
+        # keep: nothing hedged, ranked or counted in words.
+        from ehr_evidence_app.validation import language
+        for text in (labels.EXPLANATION_INTRO, labels.SCORE_PLAIN) + tuple(
+                meaning for _, meaning in labels.GLOSSARY):
+            self.assertEqual(language.findings(text, "explanation",
+                                               "notice"), [], text)
         self.assertIn("not that it caused it", labels.UNSIGNED)
 
     def test_counts(self):

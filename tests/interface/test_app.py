@@ -161,7 +161,8 @@ class OperationTests(InterfaceTestCase):
         result = found["result"]
         self.assertEqual(result["outcome"]["code"], "explanation")
         self.assertEqual(result["prediction"]["label"], "SYNTHETIC LABEL")
-        self.assertIn("unsigned", result["unsigned"])
+        self.assertTrue(any("unsigned" in note for note in result["notes"]))
+        self.assertIn("research model", result["intro"])
         self.assertTrue(result["conditions"]["table"]["rows"])
 
     def test_refusals(self):

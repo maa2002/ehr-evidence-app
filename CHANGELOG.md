@@ -161,6 +161,17 @@ evidence beside it
 
 ### Changed
 
+- No fine-tuning ([ADR 0024](docs/decisions/0024-no-fine-tuning.md)):
+  the pinned model is evaluated in its frozen configuration, and the
+  training and validation partitions of MIMIC-IV-Ext-Instr are not used.
+- The explanation on the page says what it is for, in plain words: the
+  button is Explain the Predicted Diagnosis; the reply opens with what
+  the prediction is (a research model's selected diagnosis for the final
+  admission, not a diagnosis of the patient), gives the score in plain
+  words beside its fixed meaning, keeps the response's fixed notes apart
+  under Notes without repeating the one on attribution, and ends with How
+  to Read This, a glossary of its parts. The response itself, the model,
+  the prompt and the gate are unchanged.
 - Rules `question-interpretation-v5` and `record-questions-v3`: a
   polite opening ("please", "can you tell me", "I'd like to know", "do
   you know if") is removed before a question is read, and a statement

@@ -82,7 +82,7 @@
         <svg class="mark welcome-mark" aria-hidden="true" focusable="false"><use href="#i-mark"></use></svg>
         <h2 id="welcome-title">Opening the Records</h2>
         <div class="tags" id="welcome-tags"></div>
-        <p class="welcome-hint">Ask about anything in the record: conditions, medications, lab results, vital signs, procedures, microbiology, ICU stays, the visits or the patient, across the prior history, a single visit or every visit. You can also generate the predicted diagnosis with its explanation.</p>
+        <p class="welcome-hint">Ask about anything in the record: conditions, medications, lab results, vital signs, procedures, microbiology, ICU stays, the visits or the patient, across the prior history, a single visit or every visit. You can also see the diagnosis a research model predicted for the final admission, and what its prediction was sensitive to.</p>
       </div>
       <ol class="thread" id="thread"></ol>
     </section>
@@ -95,7 +95,7 @@
           <div class="menu tool" id="scope-menu"></div>
           <button class="tool" id="explain" type="button" disabled>
             <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-spark"></use></svg>
-            <span class="tool-text">Generate &amp; Explain Diagnosis</span>
+            <span class="tool-text">Explain the Predicted Diagnosis</span>
           </button>
           <span class="model-state" id="model-state" data-state="unknown">
             <span class="dot" aria-hidden="true"></span>
@@ -111,7 +111,7 @@
         <button class="chip" type="button" id="suggest-check">Check a Specific Condition</button>
         <button class="chip" type="button" data-question="What medications were given?">What Medications Were Given?</button>
         <button class="chip" type="button" data-question="What were the latest lab results?">Latest Lab Results</button>
-        <button class="chip" id="suggest-explain" type="button" hidden>Generate &amp; Explain Diagnosis</button>
+        <button class="chip" id="suggest-explain" type="button" hidden>Explain the Predicted Diagnosis</button>
         <button class="chip" id="suggest-evidence" type="button">View the Evidence</button>
       </div>
       <p class="footnote">Answers draw only on this patient's records in the selected scope. Prediction scores are not clinical risks.</p>
