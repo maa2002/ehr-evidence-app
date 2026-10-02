@@ -284,18 +284,31 @@ token; it then checks that the public address answers as the gate
 answers a visit without the key. The tunnel stops first when the launcher
 stops.
 
-Setting the tunnel up is the owner's, once:
+Setting the tunnel up is the owner's, once, in Cloudflare's dashboard:
 
-1. Put a domain on Cloudflare.
-2. In Cloudflare's dashboard, create a tunnel of the cloudflared kind,
-   skip installing its connector, and save the token from the install
-   command, alone, in `sharing\tunnel-token.txt` in the workspace.
-3. Give the tunnel a public hostname on the domain, such as `ehr`, with
-   the service `http://127.0.0.1:8501`, leaving the HTTP Host header as it
-   is.
-4. Save `cloudflared.exe` from Cloudflare's releases in `tools` under the
+1. Put a domain on Cloudflare: Domains, Onboard a domain, the Free plan,
+   and the registrar's nameservers replaced by the two that Cloudflare
+   names. The domain is ready when Cloudflare shows it as Active.
+2. Under Networking, Tunnels, create a tunnel of the cloudflared kind. Do
+   not run the install command that the dashboard shows: it would install
+   cloudflared as a Windows service that runs whenever the laptop is on,
+   where the launcher runs it only while the interface is shared (a
+   service installed that way is removed, as administrator, with
+   `cloudflared.exe service uninstall`). Save the command's token, the
+   string beginning `eyJ`, alone, in `sharing\tunnel-token.txt` in the
+   workspace. The tunnel's Overview shows the command again (Add a
+   replica), and Refresh token replaces a token that has been exposed.
+3. On the tunnel's Routes tab, add a published application: the subdomain
+   `ehr` (one level, which Cloudflare's free certificate covers), the
+   domain, no path, and the service URL `http://127.0.0.1:8501`, leaving
+   the other settings, the HTTP Host header among them, as they are.
+   Cloudflare adds the DNS record itself.
+4. Turn on Always Use HTTPS (the domain's SSL/TLS, Edge Certificates), so
+   that an address typed with `http://` is sent on to `https://` before it
+   reaches the tunnel.
+5. Save `cloudflared.exe` from Cloudflare's releases in `tools` under the
    runtime root.
-5. Check the parts, make the link and share:
+6. Check the parts, make the link and share:
 
    ```powershell
    & $AppPython -m ehr_evidence_app.interface.share --check
@@ -303,9 +316,11 @@ Setting the tunnel up is the owner's, once:
    & $AppPython -m ehr_evidence_app.api.launch --operator-real --share
    ```
 
-6. Put the link in an issue of the private repository for the
-   supervisor, never in a committed file, and make a new link once the
-   marking is over. The supervisor must hold MIMIC-IV credentialed access.
+7. Give the link to the supervisor privately, in an issue of the
+   private repository or a direct message, never in a committed file, and
+   make a new link once the marking is over. The link stays the same from
+   one launch to the next until then. The supervisor must hold MIMIC-IV
+   credentialed access.
 
 ## Starting the application
 

@@ -7,6 +7,16 @@ change interfaces.
 
 ## [Unreleased]
 
+### Changed
+
+- The tunnel's set-up follows Cloudflare's current dashboard
+  ([docs/interface.md](docs/interface.md#sharing-through-the-tunnel)):
+  the token is saved without running the install command, which would
+  install cloudflared as a service that always runs; the route is a
+  published application on a one-level subdomain; Always Use HTTPS sends
+  `http://` addresses on to `https://`; and the link reaches the
+  supervisor privately, in an issue or a direct message.
+
 ## [0.10.0] - 2026-09-30
 
 API and interface (Phase 8, work items 47 to 52.9). A local API serves the

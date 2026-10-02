@@ -145,8 +145,9 @@ Described in [interface.md](interface.md) and decided in
 [ADR 0020](decisions/0020-interface-as-one-page.md). Done (release
 0.10.0): the API, its boundary, the interface, the launcher and sharing
 through the tunnel are in place, closed by an operator run on
-`dev-30-v1` with the model. The link through the tunnel is the owner's,
-once the Cloudflare parts are in place
+`dev-30-v1` with the model. On 2026-10-03 the tunnel was set up on the
+owner's domain, checked end to end through Cloudflare on the invented
+case set, and its link made
 ([interface.md](interface.md#sharing-through-the-tunnel)).
 
 - 47 Add FastAPI operations (done: `api.service` and `api.app`)
