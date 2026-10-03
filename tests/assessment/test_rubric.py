@@ -4,6 +4,7 @@ No rater runs: a stand-in rater and a stub server stand for it, and the
 texts are invented.
 """
 
+import hashlib
 import io
 import json
 import unittest
@@ -49,16 +50,39 @@ class FormTests(unittest.TestCase):
 
     def test_named_and_paraphrased_forms(self):
         """Each class's named form breaks the runtime's wording rules and
-        its paraphrase does not; the controls break none."""
-        for kind, outcome in (("explanation", "explanation"),
-                              ("answer", "answer")):
-            for name, (named, paraphrase) in rubric.FAULTS[kind].items():
-                with self.subTest(kind=kind, fault=name):
-                    self.assertTrue(language.findings(named, outcome))
-                    self.assertEqual(language.findings(paraphrase, outcome),
-                                     [])
-            self.assertEqual(language.findings(rubric.CONTROLS[kind],
-                                               outcome), [])
+        its paraphrase does not; the controls break none. So for the
+        held-out wordings."""
+        for faults, controls in ((rubric.FAULTS, rubric.CONTROLS),
+                                 (rubric.HELD_OUT,
+                                  rubric.HELD_OUT_CONTROLS)):
+            for kind, outcome in (("explanation", "explanation"),
+                                  ("answer", "answer")):
+                for name, (named, paraphrase) in faults[kind].items():
+                    with self.subTest(kind=kind, fault=name):
+                        self.assertTrue(language.findings(named, outcome))
+                        self.assertEqual(language.findings(paraphrase,
+                                                           outcome), [])
+                self.assertEqual(language.findings(controls[kind],
+                                                   outcome), [])
+
+    def test_held_out_apart(self):
+        """The held-out wordings are not the revision's, and the phrases
+        that carry their paraphrases are not in the instructions."""
+        markers = ("grew out of", "tipped", "nearly all", "but the first",
+                   "lives with", "vulnerable", "would make sense",
+                   "beyond dispute")
+        for kind in ("explanation", "answer"):
+            revision = {sentence for forms in rubric.FAULTS[kind].values()
+                        for sentence in forms}
+            for forms in rubric.HELD_OUT[kind].values():
+                self.assertFalse(set(forms) & revision)
+                self.assertTrue(any(marker in forms[1].lower()
+                                    for marker in markers), forms[1])
+        for marker in markers:
+            self.assertNotIn(marker, rubric.CRITERIA.lower())
+        self.assertEqual(set(rubric.HELD_OUT), set(rubric.FAULTS))
+        self.assertEqual(set(rubric.HELD_OUT["answer"]),
+                         set(rubric.FAULTS["answer"]))
 
     def test_planted_variants(self):
         """A text gives its clean form, a control and both forms of every
@@ -123,7 +147,16 @@ class RaterTests(unittest.TestCase):
                                               "seed": rubric.SEED})
         described = rater.describe()
         self.assertEqual(described["model"], "rater")
-        self.assertEqual(len(described["criteria_sha256"]), 64)
+        self.assertEqual(described["criteria_sha256"],
+                         rubric.CRITERIA_SHA256)
+        self.assertEqual(described["rubric"], rubric.RUBRIC_VERSION)
+
+    def test_instructions_frozen(self):
+        """The instructions are the frozen ones: changing them needs a new
+        version, digest and check."""
+        self.assertEqual(hashlib.sha256(
+            rubric.CRITERIA.encode("utf-8")).hexdigest(),
+            rubric.CRITERIA_SHA256)
 
     def test_shuffled_once_each(self):
         """Every text is rated once, in an order shuffled with the fixed

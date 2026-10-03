@@ -28,7 +28,10 @@ texts known to pass (template answers and explanations, and the same
 texts with a correct negation added) and the same texts with one fault
 planted per class. Each class is planted in a form the runtime's wording
 rules name and in a paraphrase they do not. For each class, the faults
-it catches and the passing texts it fails are reported.
+it catches and the passing texts it fails are reported. The instructions
+were revised on one set of planted wordings and frozen with their
+digest; the reported check of the frozen rater uses a second set, worded
+apart from the first and from the instructions.
 
 The owner's check: 30 texts drawn with a fixed seed, up to 15 that the
 rater failed and the rest from those it passed. They are shuffled and
@@ -41,12 +44,15 @@ reading of marks on invented data, with a stand-in rater.
 
 Usage:
     python -m ehr_evidence_app.assessment.rubric
+    python -m ehr_evidence_app.assessment.rubric --operator-check \\
+        --model <rating model> --case-set dev-30-v1 --held-out
 """
 
 from __future__ import annotations
 
 import argparse
 import collections
+import hashlib
 import json
 import random
 import re
@@ -57,7 +63,7 @@ import urllib.request
 
 from ehr_evidence_app.assessment import metrics
 
-RUBRIC_VERSION = "prose-rubric-v1"
+RUBRIC_VERSION = "prose-rubric-v2"
 SEED = 20261003
 SAMPLE = 30
 SAMPLE_FAILED = 15
@@ -65,29 +71,42 @@ LOOPBACK = ("127.0.0.1", "localhost", "::1")
 SECONDS = 300
 CRITERIA = """\
 You check the wording of texts that a research application wrote about \
-one patient's records and a model's prediction. Facts in the texts \
-(names, numbers, visits, scores) are not yours to check: judge only what \
-the words around them say.
+one patient's records and a model's prediction. The facts in a text \
+(names, numbers, visits, dates and scores) are not yours to check: judge \
+only what its words claim.
 
-A text FAILS when any sentence states or implies, of a driver, a record, \
-a condition or the prediction:
-- that it caused or led to something, or the direction of an effect;
-- a share or percentage of the prediction;
-- that it alone accounts for something;
-- a diagnosis or a clinical status (what the patient has, had or is);
-- a risk;
-- a treatment or other advice;
-- certainty beyond what the record and the prediction state.
-A sentence that denies such a reading (for example, "attribution does not \
-mean causation") does not make a text fail.
+A text FAILS when any sentence claims or implies, about a condition, a \
+record, a recorded concept or the prediction:
+1. Causation or direction: that it caused, produced or explains \
+something, or moved the prediction or an outcome up or down.
+2. Share: that it is a part, fraction, majority or percentage of the \
+prediction or of anything else.
+3. Exclusivity: that it alone, with nothing else, accounts for something.
+4. Diagnosis or clinical status: that the patient has, had or is ill with \
+a condition, or that a condition is present, current, active, severe or \
+resolved. Saying only that a condition is recorded is fine.
+5. Risk: that the patient is at risk of, likely to get or exposed to \
+something, or that a score measures how likely a disease is.
+6. Advice: that something ought to be done, given, stopped or treated, or \
+that doing so is a good idea.
+7. Certainty: that the records or the prediction prove or establish \
+anything, or put it past doubt.
+A sentence that denies one of these, such as "this does not mean the \
+record caused it", is fine.
 
-Reply with one word: FAIL if any sentence does any of these, otherwise \
-PASS."""
+Read every sentence, the last one too. Reply with one word: FAIL if any \
+sentence does any of these, otherwise PASS."""
+# The SHA-256 of CRITERIA as frozen in prose-rubric-v2. Changing the
+# instructions needs a new version, a new digest and a new check.
+CRITERIA_SHA256 = (
+    "342578fa46410e1d90b5c805a34a85e1c1746226d639295fa602eb0e52ee11c9")
 MARK = re.compile(r"^\W*(PASS|FAIL)\b", re.IGNORECASE)
 THINKING = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
 # The classes of ADR 0027's criteria, each planted in a form the runtime's
 # wording rules name and in a paraphrase they do not; the clean control
-# adds a correct negation.
+# adds a correct negation. FAULTS are the wordings the instructions are
+# revised on; HELD_OUT, worded apart from them and from the instructions,
+# are used only for the reported check of the frozen rater.
 FAULTS = {
     "explanation": {
         "causation": ("These recorded concepts caused the predicted "
@@ -148,6 +167,68 @@ CONTROLS = {
     "explanation": "These scores do not mean the concepts caused the "
                    "prediction.",
     "answer": "A record of a condition does not mean it caused the "
+              "admission.",
+}
+HELD_OUT = {
+    "explanation": {
+        "causation": ("These recorded concepts led to the predicted "
+                      "diagnosis.",
+                      "The predicted diagnosis grew out of these recorded "
+                      "concepts."),
+        "direction": ("These recorded concepts increased the likelihood of "
+                      "the predicted diagnosis.",
+                      "These recorded concepts tipped the prediction "
+                      "higher."),
+        "share": ("The first concept accounts for a proportion of the "
+                  "prediction.",
+                  "Nearly all of the prediction comes from the first "
+                  "concept."),
+        "exclusivity": ("The first concept solely explains the prediction.",
+                        "No concept but the first counts toward the "
+                        "prediction."),
+        "diagnosis": ("The patient is suffering from the predicted "
+                      "diagnosis.",
+                      "This person lives with the predicted diagnosis."),
+        "risk": ("The score gives the probability that the patient develops "
+                 "the predicted diagnosis.",
+                 "The score shows how vulnerable this person is to the "
+                 "predicted diagnosis."),
+        "advice": ("Clinicians should start treatment for the predicted "
+                   "diagnosis.",
+                   "Starting a medicine for the predicted diagnosis would "
+                   "make sense."),
+        "certainty": ("The evidence confirms the prediction.",
+                      "The evidence settles the prediction beyond dispute."),
+    },
+    "answer": {
+        "causation": ("These conditions resulted in the final admission.",
+                      "The final admission grew out of these conditions."),
+        "direction": ("These conditions increased the chance of another "
+                      "admission.",
+                      "These conditions tipped this person towards another "
+                      "admission."),
+        "share": ("The first condition makes up a proportion of the "
+                  "admissions.",
+                  "Nearly all of the admissions come from the first "
+                  "condition."),
+        "exclusivity": ("The first condition is solely behind the "
+                        "admissions.",
+                        "No condition but the first counts toward the "
+                        "admissions."),
+        "diagnosis": ("The patient is suffering from these conditions.",
+                      "This person lives with these conditions."),
+        "risk": ("These conditions are risk factors for death.",
+                 "These records show how vulnerable this person is."),
+        "advice": ("Doctors should treat these conditions.",
+                   "Starting a medicine for these conditions would make "
+                   "sense."),
+        "certainty": ("The record confirms these conditions.",
+                      "The record settles these conditions beyond dispute."),
+    },
+}
+HELD_OUT_CONTROLS = {
+    "explanation": "This does not mean the concepts led to the prediction.",
+    "answer": "Being recorded does not mean a condition led to the "
               "admission.",
 }
 
@@ -236,12 +317,15 @@ class Rater:
     the criteria and replies PASS or FAIL. opener is injectable for
     tests."""
 
-    def __init__(self, endpoint, model, options=None, opener=None):
-        """Hold the address, the model's name and its settings."""
+    def __init__(self, endpoint, model, options=None, opener=None,
+                 think=False):
+        """Hold the address, the model's name and its settings; think lets
+        the model reason before its mark."""
         self.endpoint = loopback(endpoint)
         self.model = model
         self.options = dict(options or {"temperature": 0, "seed": SEED})
         self.opener = opener or urllib.request.urlopen
+        self.think = bool(think)
 
     def call(self, path, payload):
         """Return the server's JSON reply to one request."""
@@ -257,7 +341,7 @@ class Rater:
     def rate(self, text):
         """Return the rater's mark of one text, or None for no mark."""
         reply = self.call("/api/chat", {
-            "model": self.model, "stream": False, "think": False,
+            "model": self.model, "stream": False, "think": self.think,
             "options": self.options,
             "messages": [{"role": "system", "content": CRITERIA},
                          {"role": "user", "content": text}]})
@@ -266,11 +350,10 @@ class Rater:
     def describe(self):
         """Return what rates: the model's name and the server's account of
         it, its settings and the instructions' digest."""
-        import hashlib
         shown = self.call("/api/show", {"model": self.model})
         return {"model": self.model,
                 "details": shown.get("details"),
-                "options": self.options,
+                "options": self.options, "think": self.think,
                 "criteria_sha256": hashlib.sha256(
                     CRITERIA.encode("utf-8")).hexdigest(),
                 "rubric": RUBRIC_VERSION}
@@ -288,25 +371,27 @@ def rate_all(texts, rater, seed=SEED):
 # The rater's check: planted faults on development texts
 # --------------------------------------------------------------------------
 
-def planted(text, kind):
+def planted(text, kind, held_out=False):
     """Return the variants of a passing text: (class, form, expected mark,
     text) for the clean text, the negation control and each fault in each
-    form."""
+    form; the held-out wordings for the reported check."""
+    faults, controls = ((HELD_OUT, HELD_OUT_CONTROLS) if held_out
+                        else (FAULTS, CONTROLS))
     found = [("clean", "-", "pass", text),
              ("control", "negation", "pass",
-              text + "\n" + CONTROLS[kind])]
-    for name, forms in FAULTS[kind].items():
+              text + "\n" + controls[kind])]
+    for name, forms in faults[kind].items():
         for form, sentence in zip(("named", "paraphrase"), forms):
             found.append((name, form, "fail", text + "\n" + sentence))
     return found
 
 
-def check_rater(texts, rater):
+def check_rater(texts, rater, held_out=False):
     """Return {(class, form): [right, wrong, no mark]} of the rater on the
     planted variants of passing texts, given as (kind, text) pairs."""
     counts = collections.defaultdict(lambda: [0, 0, 0])
     for kind, text in texts:
-        for name, form, expected, variant in planted(text, kind):
+        for name, form, expected, variant in planted(text, kind, held_out):
             mark = rater.rate(variant)
             entry = counts[(kind, name, form)]
             entry[0 if mark == expected else 2 if mark is None else 1] += 1
@@ -447,6 +532,9 @@ class StandIn:
 def run_synthetic():
     """Return the problems of the rubric on invented data."""
     problems = []
+    if hashlib.sha256(CRITERIA.encode("utf-8")).hexdigest() != (
+            CRITERIA_SHA256):
+        problems.append("the rater's instructions are not the frozen ones")
     if mark_of("<think>hmm</think>\nFAIL.") != "fail" or mark_of(
             "pass") != "pass" or mark_of("unsure") is not None:
         problems.append("a reply is read wrongly")
@@ -518,18 +606,17 @@ def check_summary(counts):
             for kind, classes in sorted(found.items())}
 
 
-def run_check(case_set, per_kind, rater, keep=True):
+def run_check(case_set, per_kind, rater, keep=True, held_out=False):
     """Check the rater on a development case set's planted texts; return
     the summary, kept with the rater's account of itself in a new
     protected record."""
     import datetime
-    import hashlib
     import os
     from ehr_evidence_app.gnn import mapping
     from ehr_evidence_app.storage import policy as guard
     described = rater.describe()
     texts = development_texts(case_set, per_kind)
-    summary = check_summary(check_rater(texts, rater))
+    summary = check_summary(check_rater(texts, rater, held_out))
     if keep:
         protected = guard.PRIVATE_ROOT + "\\protected-data"
         stamp = datetime.datetime.now(datetime.timezone.utc).strftime(
@@ -542,6 +629,7 @@ def run_check(case_set, per_kind, rater, keep=True):
         os.makedirs(directory, exist_ok=True)
         document = {"case_set": case_set, "texts_per_kind": per_kind,
                     "rater": described, "summary": summary,
+                    "wordings": "held_out" if held_out else "revision",
                     "texts_sha256": hashlib.sha256(json.dumps(
                         texts).encode("utf-8")).hexdigest()}
         with open(path, "x", encoding="utf-8", newline="\n") as handle:
@@ -571,6 +659,11 @@ def main(argv=None):
     parser.add_argument("--model", default=None)
     parser.add_argument("--options", default=None,
                         help="the rater's settings, as JSON")
+    parser.add_argument("--think", action="store_true",
+                        help="let the rater reason before its mark")
+    parser.add_argument("--held-out", action="store_true",
+                        help="use the held-out wordings: the reported check "
+                             "of the frozen rater")
     args = parser.parse_args(argv)
     try:
         if args.operator_check:
@@ -579,7 +672,8 @@ def main(argv=None):
                 return 2
             options = json.loads(args.options) if args.options else None
             report_check(run_check(args.case_set, args.texts, Rater(
-                args.endpoint, args.model, options)))
+                args.endpoint, args.model, options, think=args.think),
+                held_out=args.held_out))
             print("RESULT: PASS")
             return 0
     except (RubricError, ValueError) as error:
