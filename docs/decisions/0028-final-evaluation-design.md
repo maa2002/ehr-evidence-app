@@ -117,7 +117,13 @@ anything of `eval-100-v1` is read.
 8. **Scoring and comparison (work items 58, 59 and 61).**
    - `assessment.metrics` implements decisions 3 to 8 and 11 of ADR 0016
      over (request, reference, response) triples. Each metric has
-     hand-worked examples and its empty-set convention in the tests.
+     hand-worked examples and its empty-set convention in the tests. A
+     disclosure the reference requires is a statement, and leaving it out
+     is an unsupported one: records without a standard concept in an
+     answer's scope, and an explanation's restrictions and drivers not
+     described. Records a presence check may match only by ICD
+     description have no independent reference and are left out of every
+     count.
    - `assessment.statistics` holds the paired comparison of decision 10:
      Newcombe's method 10 and the exact McNemar test, and the paired
      bootstrap over cases. They are checked against a published worked

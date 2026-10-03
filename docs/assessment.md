@@ -20,7 +20,7 @@ case sets first. Command examples assume the session set-up in
 | 55 | | Explanation expectations and challenges | planned |
 | 56 | | The baseline condition | planned |
 | 57 | | The paired runner | planned |
-| 58, 59 | | QA, abstention, explanation and evidence metrics | planned |
+| 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built and checked on invented data; scored against references once those exist |
 | 60 | | End-to-end QA | planned |
 | 61 | `assessment.statistics` | The paired comparison's statistics | done; the report is planned |
 
@@ -62,6 +62,69 @@ validation partition, on which the GNN's checkpoint was chosen, and 8 of
 the pilot's 10 from the partition it was trained on. A claim about
 patients the GNN never saw rests on `eval-100-v1` alone.
 
+## The metrics
+
+`assessment.metrics` computes every metric of ADR 0016 from pairs of a
+reference and a response, one pair per request and condition. Both are
+plain data. The references come from the source records (work items 54
+and 55), and the responses are read from what each condition wrote by
+`assessment.stated`. Nothing in the metrics reads a bundle, a candidate
+or a runtime check: support is judged against the reference alone.
+
+- **Names.** A record is named by its domain and native identifier. A
+  condition is named by its standard concept or, for a record without
+  one, by its source code.
+- **References read, not trusted.** `assessment.stated` reads each cited
+  reference as what it names in the request's bundle. A reference the
+  bundle does not hold names nothing: the baseline's documents are not
+  checked, so they may cite records that do not exist.
+- **Terms per request.** Each request contributes terms (true and false
+  positives, numerators and denominators), and each metric sums its
+  terms over a stratum. A metric with a zero denominator is not
+  applicable, never 0 or 1. F1 is 0 when precision and recall are both
+  0, and not applicable when either is.
+- **Lists and presence checks.** A condition stated twice is one true
+  positive and one false positive. A request that gets no list states no
+  condition, so its reference's conditions and records are false
+  negatives. A presence answer is correct when its outcome is the
+  reference's and it cites exactly the reference's records.
+- **Answerability.** An operational error or a validation rejection is
+  neither an answer nor an abstention. It is never a successful
+  abstention, and never over-abstention.
+- **Explanations.** Preservation reads the prediction's label, score and
+  logit, and each selected driver's concept, rank and score, as a
+  response shows them: to three significant figures. A history or
+  context line may be left out, which completeness counts apart; one
+  stated twice counts as a false positive the second time.
+- **Statements and disclosures.** Claim support reads every statement
+  that states a fact of the record; a fixed notice states none. A
+  disclosure the reference requires counts as a statement, and leaving
+  it out is an unsupported one, since by its silence the response states
+  that there is none. The disclosures are: records without a standard
+  concept in an answer's scope (the reason code, and the line that
+  counts them in a list or in a presence check's "not recorded"); each of
+  an explanation's case restrictions (notice and reason code); and the
+  drivers not described.
+- **Unjudged records.** A record without a standard concept that a
+  presence check may match by its ICD description alone has no
+  independent reference, so it is left out of every count. An answer
+  resting on such records alone, where nothing else matches, is counted
+  apart.
+- **Pairing.** A proportion whose denominator is the same requests in
+  both conditions is compared by Newcombe's method 10 with the exact
+  McNemar test, over the requests in its denominator in both. Every other
+  ratio, F1 included, is compared by the paired bootstrap over cases.
+
+Every metric is checked on examples worked by hand. The metrics are also
+checked against the release gate's mutation suite on the invented
+samples, using references built from the samples' bundles:
+
+- every template answer and explanation, and every control the gate
+  releases, scores as correct;
+- every mutant the gate withholds for what a response states scores as
+  faulty. These are an unsupported claim, an altered prediction or
+  attribution, and an unresolved reference.
+
 ## The paired comparison's statistics
 
 `assessment.statistics` holds the comparison of ADR 0016 (decision 10),
@@ -100,6 +163,8 @@ The default modes run invented data:
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.statistics
 & $AppPython -m ehr_evidence_app.assessment.partition
+& $AppPython -m ehr_evidence_app.assessment.metrics
+& $AppPython -m ehr_evidence_app.assessment.stated
 ```
 
 The partition's operator mode publishes a new record. It refuses an

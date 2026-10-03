@@ -16,7 +16,14 @@ change interfaces.
     `downstream-partition-v1`: 40 development persons and 100 final ones,
     none in both, and every final case unseen by the GNN;
   - the paired comparison's statistics: Newcombe's method 10, the exact
-    McNemar test and the paired bootstrap over cases.
+    McNemar test and the paired bootstrap over cases;
+  - the metrics of ADR 0016 over plain references and responses, each
+    worked by hand. A disclosure left out counts as an unsupported
+    statement. The metrics are checked against the release gate's
+    mutation suite: every template and control scores as correct, and
+    every mutant withheld for what it states as faulty;
+  - the reading of what each condition wrote for the metrics, a cited
+    reference the bundle does not hold naming nothing.
 - `/help` in the conversation
   ([docs/interface.md](docs/interface.md#the-interface)): that the
   questions are not a fixed list but must ask for a kind of information
