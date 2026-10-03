@@ -197,9 +197,13 @@ rubric and the paired comparison are fixed in
 [ADR 0016](decisions/0016-evaluation-metrics.md), agreed by the project
 owner before any request of `eval-100-v1` is written. The prose rubric is
 rated by code and an automatic rater, which the owner checks on a sample
-([ADR 0027](decisions/0027-automatic-prose-rating.md)).
+([ADR 0027](decisions/0027-automatic-prose-rating.md)). The design is in
+[ADR 0028](decisions/0028-final-evaluation-design.md) and the work in
+[assessment.md](assessment.md).
 
 - 53 Partition downstream cases
+  ([assessment.md](assessment.md#the-downstream-partition); done:
+  `downstream-partition-v1`)
 - 54 Prepare independent QA references
 - 55 Prepare explanation expectations and challenges
 - 56 Implement the baseline condition

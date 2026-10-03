@@ -15,8 +15,10 @@ requests of `dev-30-v1` in BF16 with the mixed GPU/CPU placement and in
 configured limits of 16,384 prompt tokens, 768 output tokens and 120
 seconds. BF16 released 314 as the model wrote them (73.0%) and NF4 172
 (40.0%): NF4 minus BF16 -33.0 percentage points, 95% interval -37.4 to
--28.4 (Newcombe's method 10), exact McNemar p below 0.001. BF16 released
-144 requests that NF4 did not, and NF4 2 that BF16 did not.
+-28.3 (Newcombe's method 10; first reported as -37.4 to -28.4, computed
+without the method's correction of the pairs' correlation), exact
+McNemar p below 0.001. BF16 released 144 requests that NF4 did not, and
+NF4 2 that BF16 did not.
 
 The run showed two more things.
 

@@ -79,7 +79,6 @@ import collections
 import datetime
 import hashlib
 import json
-import math
 import ntpath
 import re
 import statistics
@@ -87,15 +86,15 @@ import sys
 import time
 import typing
 
+from ehr_evidence_app.assessment.statistics import mcnemar, paired_difference
 from ehr_evidence_app.evidence import vocabulary as vocab
 from ehr_evidence_app.generation import adapter, projection, prompt, shape
 from ehr_evidence_app.validation import candidate as candidates
 
 CANDIDATE_LIMITS = (3, 5, 8, 10, 15)
-# The non-inferiority margin of NF4's release rate against BF16's, and the
-# normal quantile of a two-sided 95% interval (ADR 0014).
+# The non-inferiority margin of NF4's release rate against BF16's (ADR
+# 0014).
 MARGIN = 0.05
-Z95 = 1.959963984540054
 PRECISIONS = ("bf16-mixed", "nf4")
 PRECISION_LABELS = {"bf16-mixed": "BF16, mixed GPU/CPU placement (output "
                                   "layer and token embeddings on the "
@@ -809,48 +808,6 @@ def benchmark(case_set, backend, per_group, limits, task=None,
     seconds = time.monotonic() - started
     report(case_set, results, seconds, within)
     return results, seconds
-
-
-def wilson(successes, total, z=Z95):
-    """Return the Wilson score interval of a proportion."""
-    if not total:
-        return 0.0, 1.0
-    rate = successes / total
-    centre = (rate + z * z / (2 * total)) / (1 + z * z / total)
-    half = z * math.sqrt(rate * (1 - rate) / total
-                         + z * z / (4 * total * total)) / (1 + z * z / total)
-    return centre - half, centre + half
-
-
-def paired_difference(both, first, second, neither, z=Z95):
-    """Return (difference, lower, upper) of the second condition's rate
-    minus the first's, for paired outcomes counted as both, first only,
-    second only and neither (Newcombe 1998, method 10)."""
-    total = both + first + second + neither
-    rate1, rate2 = (both + first) / total, (both + second) / total
-    low1, high1 = wilson(both + first, total, z)
-    low2, high2 = wilson(both + second, total, z)
-    margins = ((both + first) * (second + neither) * (both + second)
-               * (first + neither))
-    phi = (both * neither - first * second) / math.sqrt(margins) \
-        if margins else 0.0
-    difference = rate2 - rate1
-    lower = difference - math.sqrt(max(0.0, (rate2 - low2) ** 2 - 2 * phi * (
-        rate2 - low2) * (high1 - rate1) + (high1 - rate1) ** 2))
-    upper = difference + math.sqrt(max(0.0, (high2 - rate2) ** 2 - 2 * phi * (
-        high2 - rate2) * (rate1 - low1) + (rate1 - low1) ** 2))
-    return difference, lower, upper
-
-
-def mcnemar(first, second):
-    """Return the two-sided exact McNemar p-value of the discordant
-    pairs."""
-    discordant = first + second
-    if not discordant:
-        return 1.0
-    tail = sum(math.comb(discordant, k)
-               for k in range(min(first, second) + 1)) / 2 ** discordant
-    return min(1.0, 2 * tail)
 
 
 def paired_counts(first, second):

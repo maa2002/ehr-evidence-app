@@ -105,6 +105,8 @@ jobs:
             "ehr_evidence_app.tracking.aggregates",
             "ehr_evidence_app.tracking.measurements",
             "ehr_evidence_app.tracking.models",
+            "ehr_evidence_app.assessment.statistics",
+            "ehr_evidence_app.assessment.partition",
             "ehr_evidence_app.api.app",
             "ehr_evidence_app.interface.app"
           )

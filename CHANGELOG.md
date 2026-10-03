@@ -9,6 +9,14 @@ change interfaces.
 
 ### Added
 
+- The final evaluation's package, `assessment` (Phase 9;
+  [ADR 0028](docs/decisions/0028-final-evaluation-design.md),
+  [docs/assessment.md](docs/assessment.md)):
+  - the downstream partition record of the case sets,
+    `downstream-partition-v1`: 40 development persons and 100 final ones,
+    none in both, and every final case unseen by the GNN;
+  - the paired comparison's statistics: Newcombe's method 10, the exact
+    McNemar test and the paired bootstrap over cases.
 - `/help` in the conversation
   ([docs/interface.md](docs/interface.md#the-interface)): that the
   questions are not a fixed list but must ask for a kind of information
@@ -46,6 +54,14 @@ change interfaces.
 
 ### Fixed
 
+- The paired interval of the development benchmark
+  (`generation.measure --paired`) was Newcombe's method 8, not method 10
+  as documented. It lacked the continuity correction of the pairs'
+  correlation, so its intervals were slightly narrow. It now comes from
+  `assessment.statistics`, checked against a published worked example,
+  and the precision comparison's intervals are recomputed from the
+  recorded pairs: for all 430 requests, -33.0 points, from -37.4 to
+  -28.3 where it was -28.4. No conclusion changes.
 - Rules `record-questions-v4` and `record-answer-v3`
   ([ADR 0026](docs/decisions/0026-what-a-medication-was-given-for.md);
   [docs/qa.md](docs/qa.md#questions-about-the-whole-record)): a question

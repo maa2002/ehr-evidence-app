@@ -10,6 +10,7 @@ import io
 import json
 import unittest
 
+from ehr_evidence_app.assessment import statistics
 from ehr_evidence_app.generation import adapter, measure, projection, shape
 from ehr_evidence_app.qa import suite
 
@@ -348,22 +349,15 @@ class MeasureTests(unittest.TestCase):
         self.assertFalse(measure.released_within(withheld, 90, 100, 50))
 
     def test_paired_comparison(self):
-        """The paired interval holds its difference, turns over with the
-        conditions, and narrows as the pairs agree; the exact McNemar test
-        counts the discordant pairs only."""
+        """The precision comparison uses the final evaluation's paired
+        statistics (assessment.statistics, tested there): the second
+        condition's rate minus the first's."""
+        self.assertIs(measure.paired_difference,
+                      statistics.paired_difference)
+        self.assertIs(measure.mcnemar, statistics.mcnemar)
         difference, lower, upper = measure.paired_difference(10, 3, 1, 6)
         self.assertAlmostEqual(difference, -2 / 20)
         self.assertTrue(lower < difference < upper)
-        self.assertEqual(measure.paired_difference(10, 1, 3, 6),
-                         (-difference, -upper, -lower))
-        wide = measure.paired_difference(10, 3, 1, 6)
-        narrow = measure.paired_difference(100, 30, 10, 60)
-        self.assertLess(narrow[2] - narrow[1], wide[2] - wide[1])
-        self.assertEqual(measure.mcnemar(0, 6), 2 / 64)
-        self.assertEqual(measure.mcnemar(3, 3), 1.0)
-        self.assertEqual(measure.mcnemar(0, 0), 1.0)
-        low, high = measure.wilson(5, 10)
-        self.assertAlmostEqual(low + high, 1.0)
 
     def test_record_of_a_run(self):
         """A run's scalars count each stratum, its unions and all the

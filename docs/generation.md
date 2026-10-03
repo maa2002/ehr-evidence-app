@@ -495,10 +495,10 @@ gate as it now stands:
 
 | Commit | What changed | BF16 released | NF4 released | NF4 minus BF16, 95% CI; exact McNemar p |
 | --- | --- | --- | --- | --- |
-| `7f14baf` | `projection-v2`: records grouped, matching sets, driver blocks, no counts; `prompt-v4`; `candidate-shape-v4` | 9 of 33 | 8 of 33 | -3.0 points, -10.8 to +4.2; 1.000 |
-| `96edab4` | `projection-v3`: counts and visits given; `prompt-v5` | 12 | 11 | -3.0, -9.5 to +3.3; 1.000 |
-| `42c9011` | `prompt-v6`: the examples disclose a record without a standard concept | 21 | 18 | -9.1, -18.4 to +0.6; 0.250 |
-| `20e02a0` | `projection-v4`: the notice of each restriction; `prompt-v7`: a "not recorded" example as well | 26 | 17 | -27.3, -41.2 to -11.6; 0.004 |
+| `7f14baf` | `projection-v2`: records grouped, matching sets, driver blocks, no counts; `prompt-v4`; `candidate-shape-v4` | 9 of 33 | 8 of 33 | -3.0 points, -12.6 to +6.2; 1.000 |
+| `96edab4` | `projection-v3`: counts and visits given; `prompt-v5` | 12 | 11 | -3.0, -11.5 to +5.4; 1.000 |
+| `42c9011` | `prompt-v6`: the examples disclose a record without a standard concept | 21 | 18 | -9.1, -19.9 to +2.2; 0.250 |
+| `20e02a0` | `projection-v4`: the notice of each restriction; `prompt-v7`: a "not recorded" example as well | 26 | 17 | -27.3, -42.1 to -10.4; 0.004 |
 
 By task, BF16 and NF4:
 
@@ -549,16 +549,22 @@ pair by pair, as ADR 0014 (decision 9) set out:
 
 | Requests | BF16 released | NF4 released | NF4 minus BF16, 95% CI; exact McNemar p |
 | --- | --- | --- | --- |
-| Lists (134) | 93 | 32 | -45.5 points, -53.4 to -36.2; below 0.001 |
+| Lists (134) | 93 | 32 | -45.5 points, -53.5 to -36.1; below 0.001 |
 | Empty list (1) | 1 | 0 | -100 points, -100 to +12.2; 1.000 |
-| Presence, recorded (134) | 127 | 55 | -53.7, -61.6 to -44.7; below 0.001 |
+| Presence, recorded (134) | 127 | 55 | -53.7, -61.7 to -44.6; below 0.001 |
 | Presence, recorded elsewhere (135) | 80 | 80 | 0.0, the same 80 requests; 1.000 |
-| Explanations (26) | 13 | 5 | -30.8, -48.8 to -9.0; 0.021 |
-| All (430) | 314 (73.0%) | 172 (40.0%) | -33.0, -37.4 to -28.4; below 0.001 |
+| Explanations (26) | 13 | 5 | -30.8, -49.8 to -7.6; 0.021 |
+| All (430) | 314 (73.0%) | 172 (40.0%) | -33.0, -37.4 to -28.3; below 0.001 |
 
 BF16 released 144 requests that NF4 did not, and NF4 2 that BF16 did not.
 NF4 is not non-inferior, so BF16 with the mixed placement stays
-(ADR 0015, decision 1). Latency and memory:
+(ADR 0015, decision 1).
+
+The intervals here and in the section above are Newcombe's method 10,
+recomputed on 2026-10-03 from the recorded pairs. They were first
+computed without the method's continuity correction of the pairs'
+correlation (Newcombe's method 8), which made them slightly narrow; no
+conclusion changes. Latency and memory:
 
 | Precision | Seconds, median (largest): lists, presence checks, explanations | Tokens a second, median: lists, presence checks, explanations | Peak GPU memory | Whole run |
 | --- | --- | --- | --- | --- |

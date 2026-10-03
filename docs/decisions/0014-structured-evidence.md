@@ -126,6 +126,8 @@ points below after a review of the measurements.
   versions were tuned on these requests, so their last rates are
   optimistic ([generation.md](../generation.md)).
 - At `prompt-v7` BF16 released every request NF4 did and 9 more (NF4
-  minus BF16 -27.3 points, 95% interval -41.2 to -11.6, exact McNemar p
-  0.004). The precision, K and the limits are decided on the whole of
+  minus BF16 -27.3 points, 95% interval -42.1 to -10.4, exact McNemar p
+  0.004; first reported as -41.2 to -11.6, computed without the
+  correction of the pairs' correlation that Newcombe's method 10
+  makes). The precision, K and the limits are decided on the whole of
   `dev-30-v1`, as decision 9 sets out.
