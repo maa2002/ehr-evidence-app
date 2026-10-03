@@ -23,7 +23,8 @@ case sets first. Command examples assume the session set-up in
 | 57 | `assessment.runner` | The paired runner, with the invented challenges | built and checked on invented data; a development run with the model is next |
 | 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built; checked on invented data and against the release gate's mutation suite |
 | 59 | `assessment.rubric` | The prose rubric (ADR 0027) | built; the rater's instructions frozen as `prose-rubric-v2`; on held-out wordings it failed no passing text and caught 237 of 320 planted faults |
-| 60 | `assessment.end_to_end` | End-to-end QA | built for condition questions, and in agreement with the written test on a development set; questions about the whole record are next |
+| 60 | `assessment.end_to_end` | End-to-end QA | built: condition questions agree with the written test on a development set; questions about the whole record are checked on invented data |
+| 60 | `assessment.record_suite` | A generated development suite of questions about the whole record (ADR 0016, decision 11) | built; on the development case sets 10,338 of 11,053 questions are read right and 10,320 delivered correctly |
 | 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built and checked on invented data |
 
 ## The downstream partition
@@ -297,9 +298,123 @@ stages agree with the written test's own verdicts:
 | Refuse (46) | refused 44; answered 2 | correct 44, answered 2 |
 | Clarify (39) | clarified 33; abstained 6 | correct 33, abstained 6 |
 
-The final evaluation's set is worded after the freeze. Questions about
-the whole record will be assessed the same way once their independent
-references exist (ADR 0016, decision 11).
+**Questions about the whole record** (ADR 0016, decision 11) have a
+format of their own, since what their writer meant is more than a task
+and a concept:
+
+| Column | Holds |
+| --- | --- |
+| `id`, `case_set`, `case`, `scope`, `question` | As in the written test |
+| `intent` | `answer`, `refuse` or `clarify` |
+| `task`, `kind` | For an answer: what it asks, from `record_list` to `person_details`, and the kind of record, `visit` or `person` |
+| `codes`, `groups`, `concepts`, `written`, `words` | The item meant, as the references name items: laboratory or ICU item numbers, vital-sign groups, condition or drug concepts, the written names of drugs without a concept, the words of a procedure's, a test's or a unit's name. Several are separated by semicolons; a whole kind has none |
+| `selector` | For values: `latest`, `first`, `highest`, `lowest` or `all` |
+| `field` | For a visit or the person: the detail asked about |
+
+A list or a presence check of conditions is a condition question, in the
+written test's format, and a presence check names an item, since whether
+any record of a kind is recorded is asked as the kind's list. A row
+whose meaning the references cannot judge is counted by its problem and
+left out. The stages are judged against
+the references of the whole record:
+
+1. **Interpretation.** The task, the kind, whether an item is named, the
+   selector of a values question, the field and the scope. The
+   runtime's rules are run again on the question to see what they read.
+2. **Resolution,** when an item is named. Exact when the item resolved
+   has the identifiers meant, or matches the same records of the case;
+   related when they share an identifier or records, or one condition
+   concept is an ancestor of the other; otherwise unrelated, or
+   unresolved when the application asked which item was meant.
+3. **Retrieval.** Whether the record bundle holds every record of the
+   reference, or for details every visit.
+4. **Delivery.** The answer against the reference, as the references'
+   comparison judges it. A dose question, which has no reference, and
+   one resting on a condition record without a standard concept are
+   counted apart.
+
+They are counted by task and kind. The default mode assesses 16
+invented questions about the invented case's record:
+
+- answers delivered correctly for each task;
+- another selector and another task read;
+- an item that does not resolve, and one resolved to an unrelated item;
+- a related condition answered incorrectly for the one meant;
+- a dose question counted apart;
+- a refusal, a clarification and a question declined;
+- a question about a case not admitted.
+
+The tests add another kind, field and item read, and a record missing
+from the bundle. The final evaluation's questions are worded after the
+freeze.
+
+**The generated suite** (`assessment.record_suite`; ADR 0016, decision
+11, development only) asks every scope of every admitted development
+case questions in fixed wordings:
+
+- the list of each kind, and a count, the flagged results and all the
+  vital-sign values of a whole kind;
+- for up to two of the scope's own items of each kind, their presence,
+  first time and count, and for results their values (last, first,
+  highest, lowest, all) and flags;
+- the visits' and the person's details.
+
+An item is named by its records' name, as the references read the
+records: a laboratory item's label, a vital sign's group, a condition's
+concept name, a procedure's concept name or ICU item's label, a
+medication's one ingredient (or the drug its prescription writes,
+without a standard concept), a test's or a unit's name. The item meant
+is every item of the kind with that name: a label two laboratory items
+share names both; a drug name, every drug concept the vocabulary names
+so by a name or a synonym, and the records without a standard concept
+whose written drug holds it; a procedure's name, the records whose names
+hold its words. Each question is assessed end to end and counted by its
+wording and stage. It checks how the application reads, resolves and
+answers the records' own names in fixed wordings, and is not a
+measurement. On the invented case, each of its 201 questions is read
+right and delivered correctly, except the ten that name the two invented
+procedures, which the invented procedure dictionary does not hold.
+
+On the development case sets, with aggregate output only (questions,
+read right, delivered correctly):
+
+| Kind | `dev-30-v1` | `pilot-10-v1` |
+| --- | --- | --- |
+| Conditions | 530, 522, 515 (and 1 apart) | 220, 220, 220 |
+| Laboratory results | 2,583, 2,421, 2,421 | 1,092, 1,047, 1,047 |
+| Medications | 1,020, 825, 820 | 410, 338, 338 |
+| Microbiology | 341, 300, 300 | 130, 120, 120 |
+| Procedures | 469, 413, 407 | 158, 143, 143 |
+| Vital signs | 492, 459, 459 | 134, 134, 134 |
+| Care units | 405, 353, 353 | 174, 148, 148 |
+| ICU stays | 135, 135, 135 | 58, 58, 58 |
+| Visits | 945, 945, 945 | 406, 406, 406 |
+| The person | 945, 945, 945 | 406, 406, 406 |
+| All | 7,865, 7,318, 7,300 | 3,188, 3,020, 3,020 |
+
+The suite found that the reading cut names apart, which rules
+`record-questions-v6` fixed ([qa.md](qa.md#names-read-whole)). What it
+still finds:
+
+- **Not read right.**
+  - A drug written without a standard concept, named with its strength
+    or form, is asked back: no name of the vocabulary is the whole
+    written drug.
+  - A name two kinds hold is asked which is meant: a culture that a
+    laboratory test is also named, and the blood gases' oxygen
+    saturation and temperature, which are vital signs too.
+  - A care unit named "Medicine" is read as medications, and one named
+    with "intensive care" as an ICU stay or asked back.
+  - A laboratory label that the rules set aside, as "PT" is read as the
+    patient, is not read, and one that is a microbiology word is read as
+    microbiology.
+  - A condition named with a time or a part of the record is asked
+    back.
+- **Read right, not delivered correctly** (17 on `dev-30-v1`): 6 condition
+  names that do not resolve, 6 long procedure names cut to an unrelated
+  phrase, and 5 questions about insulin, a fixed class word that stands
+  for every insulin (rules `record-resolution-v3`), where the suite
+  means the ingredient alone.
 
 ## The prose rubric
 
@@ -323,7 +438,9 @@ condition wrote a text.
   order shuffled with a fixed seed, and its settings are fixed: no
   sampling, a fixed seed. Its identity, settings and the digest of its
   instructions are recorded with its marks. A reply whose first word is
-  not PASS or FAIL is no mark, and is counted.
+  not PASS or FAIL is no mark, and is counted. A reply that takes more
+  than five minutes stops the rating as a timeout, and a rater that
+  cannot be reached stops it too.
 - **The comparison.** A text passes the rubric when it passes all four
   items. The share passing is compared pair by pair, over the requests
   rated in both conditions; a request rated in one condition only (the
@@ -549,6 +666,7 @@ The default modes run invented data:
 & $AppPython -m ehr_evidence_app.assessment.runner
 & $AppPython -m ehr_evidence_app.assessment.report
 & $AppPython -m ehr_evidence_app.assessment.end_to_end
+& $AppPython -m ehr_evidence_app.assessment.record_suite
 & $AppPython -m ehr_evidence_app.assessment.rubric
 ```
 
@@ -584,6 +702,15 @@ with the templates as writers, and prints counts by intent and stage only:
 
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.end_to_end --operator-real --set written-v4
+```
+
+The generated suite's operator mode asks a development case set's
+scopes, refuses the evaluation set, and prints counts by wording and
+stage only:
+
+```powershell
+& $AppPython -m ehr_evidence_app.assessment.record_suite --operator-real --case-set dev-30-v1
+& $AppPython -m ehr_evidence_app.assessment.record_suite --operator-real --case-set pilot-10-v1
 ```
 
 The references of questions about the whole record have a default mode

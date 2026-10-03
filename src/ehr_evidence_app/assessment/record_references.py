@@ -39,8 +39,8 @@ the source records and the vocabularies' tables.
   - Values give, for each matching item, the record its selector picks:
     the latest, first, highest or lowest (the latest when no value is a
     number; a single record is the only one). For all values: the latest
-    30 of a named item, every result of a microbiology test, and the
-    latest of each item of a whole kind.
+    30 of a named item or of a microbiology test, and the latest of each
+    item of another whole kind.
   - Abnormal results are the laboratory results flagged abnormal and the
     microbiology results reported resistant.
   - Visit details give the field for every visit of the scope; person

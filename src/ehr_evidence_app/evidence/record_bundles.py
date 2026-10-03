@@ -878,9 +878,10 @@ def synthetic_extract(case, snapshot):
     return tables
 
 
-def run_synthetic():
-    """Build invented record bundles in memory; nothing is read or
-    written."""
+def synthetic_sources():
+    """Return the invented sources of the invented record bundles: the
+    snapshot, the case set of its one case, the raw extract and the drug
+    concepts' ingredients."""
     from ehr_evidence_app.evidence import bundles as qa_bundles
     snapshot, case_set, _, _, _ = qa_bundles.synthetic_inputs()
     case = case_set.cases[0]
@@ -892,6 +893,13 @@ def run_synthetic():
     case = dataclasses.replace(case, subject_id=int(SYNTHETIC_SUBJECT))
     case_set = dataclasses.replace(case_set, cases=(case,))
     extract = Extract(synthetic_extract(case, snapshot))
+    return snapshot, case_set, extract, {3001: (7001,)}
+
+
+def run_synthetic():
+    """Build invented record bundles in memory; nothing is read or
+    written."""
+    snapshot, case_set, extract, ancestors = synthetic_sources()
     ref = DigestRef
     provenance = record.RecordProvenance(
         source_snapshot=ref(name="synthetic-1-v1", sha256="1" * 64),
@@ -900,7 +908,6 @@ def run_synthetic():
         closure_record=ref(name="synthetic-closure", sha256="3" * 64),
         concept_table=ref(name="synthetic-concepts", sha256="2" * 64),
         builder=BUILDER)
-    ancestors = {concept: (7001,) for concept in (3001,)}
     return build_set(case_set, snapshot, extract, ancestors, provenance,
                      {"snapshot": "synthetic-1-v1",
                       "extract": "synthetic-1-v1-records"})

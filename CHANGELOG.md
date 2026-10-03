@@ -38,10 +38,17 @@ change interfaces.
     end as they should;
   - the scoring of a run against the independent references, by
     stratum, with the paired comparison of every metric;
-  - the end-to-end assessment of condition questions (work item 60),
-    stage by stage: interpretation, resolution, retrieval and
-    delivery. On a development written set it agrees with the written
-    test on every question;
+  - the end-to-end assessment of questions (work item 60), stage by
+    stage: interpretation, resolution, retrieval and delivery. On a
+    development written set it agrees with the written test on every
+    condition question. Questions about the whole record have a format
+    of their own, naming the item meant as the references do, and are
+    judged against the whole record's references;
+  - a generated development suite of questions about the whole record
+    (ADR 0016, decision 11): fixed wordings about every kind, naming
+    each scope's own items by their records' names, assessed end to
+    end. On the development case sets 10,338 of its 11,053 questions
+    are read right and 10,320 delivered correctly;
   - the prose rubric of ADR 0027: identity, evidence and history judged
     by code; attribution wording marked by a rating model on the
     workstation, checked on planted faults in two forms per class; and

@@ -328,15 +328,19 @@ class Rater:
         self.think = bool(think)
 
     def call(self, path, payload):
-        """Return the server's JSON reply to one request."""
+        """Return the server's JSON reply to one request; a reply that
+        takes longer than SECONDS is a timeout."""
         request = urllib.request.Request(
             self.endpoint + path, data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"}, method="POST")
         try:
             with self.opener(request, timeout=SECONDS) as response:
                 return json.loads(response.read().decode("utf-8"))
-        except (OSError, ValueError):
-            raise RubricError("rater_unreachable") from None
+        except (OSError, ValueError) as error:
+            timed_out = isinstance(error, TimeoutError) or isinstance(
+                getattr(error, "reason", None), TimeoutError)
+            raise RubricError("rater_timed_out" if timed_out
+                              else "rater_unreachable") from None
 
     def rate(self, text):
         """Return the rater's mark of one text, or None for no mark."""

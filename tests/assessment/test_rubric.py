@@ -158,6 +158,27 @@ class RaterTests(unittest.TestCase):
             rubric.CRITERIA.encode("utf-8")).hexdigest(),
             rubric.CRITERIA_SHA256)
 
+    def test_a_slow_reply_is_a_timeout(self):
+        """A reply that takes too long is told from a rater that cannot be
+        reached."""
+        import urllib.error
+
+        def slow(request, timeout=None):
+            raise TimeoutError("timed out")
+
+        def refused(request, timeout=None):
+            raise urllib.error.URLError(ConnectionRefusedError())
+
+        def connect_slow(request, timeout=None):
+            raise urllib.error.URLError(TimeoutError())
+        for opener, code in ((slow, "rater_timed_out"),
+                             (connect_slow, "rater_timed_out"),
+                             (refused, "rater_unreachable")):
+            rater = rubric.Rater("http://127.0.0.1:11434", "rater",
+                                 opener=opener)
+            with self.assertRaisesRegex(rubric.RubricError, code):
+                rater.rate("A text.")
+
     def test_shuffled_once_each(self):
         """Every text is rated once, in an order shuffled with the fixed
         seed."""
