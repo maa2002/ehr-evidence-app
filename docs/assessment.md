@@ -21,7 +21,7 @@ case sets first. Command examples assume the session set-up in
 | 56 | `assessment.baseline` | The baseline condition | built and checked on invented data |
 | 57 | `assessment.runner` | The paired runner, with the invented challenges | built and checked on invented data; a development run with the model is next |
 | 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built and checked on invented data; scored against references once those exist |
-| 60 | | End-to-end QA | planned |
+| 60 | `assessment.end_to_end` | End-to-end QA | built for condition questions, and in agreement with the written test on a development set; questions about the whole record need their references |
 | 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built and checked on invented data |
 
 ## The downstream partition
@@ -259,6 +259,46 @@ and the baseline gives them. The controlled condition's coverage then
 falls, and the baseline's answers hold unsupported statements and
 references to nothing.
 
+## End-to-end assessment
+
+`assessment.end_to_end` starts from a question's text, in the application
+as deployed: the QA pipeline with the whole record and, when it is
+given, the model as writer. It scores each stage, each only when the one
+before it succeeded:
+
+1. **Interpretation.** Whether the application read what the writer
+   meant. For a list or a presence check that is the task and the scope;
+   a request to refuse should get a clarification or an abstention; a
+   question to be answered with a clarifying question should get a
+   clarification.
+2. **Resolution.** For a presence check: whether the condition resolved
+   is the one meant (exact), an ancestor or a descendant of it (related),
+   or another (unrelated).
+3. **Retrieval.** Whether the complete sources answer the question, and
+   whether the runtime's bundle holds exactly the reference's records. A
+   source-available answer the bundle lacks stays a failure, even when
+   the runtime's abstention is right for its bundle.
+4. **Delivery.** Whether the released response, scored against the
+   independent reference, is correct, and who wrote it: the model, or
+   the template after the model's failure. The model's own results come
+   from the paired comparison only.
+
+The questions use the written test's format (`qa.written`). As a check of
+the code, not a measurement, the written set `written-v4` was assessed
+with the templates as writers. On every one of its 226 questions the
+stages agree with the written test's own verdicts:
+
+| Intent | End-to-end stages | Written test |
+| --- | --- | --- |
+| List (24) | read right 10, each delivered correctly; declined 14 | correct 10, not understood 14 |
+| Presence (117) | read right 60 (resolved exactly 57, related 3), each delivered correctly; declined 57 | exact 60, not understood 57 |
+| Refuse (46) | refused 44; answered 2 | correct 44, answered 2 |
+| Clarify (39) | clarified 33; abstained 6 | correct 33, abstained 6 |
+
+The final evaluation's set is worded after the freeze. Questions about
+the whole record will be assessed the same way once their independent
+references exist (ADR 0016, decision 11).
+
 ## The paired comparison's statistics
 
 `assessment.statistics` holds the comparison of ADR 0016 (decision 10),
@@ -303,6 +343,7 @@ The default modes run invented data:
 & $AppPython -m ehr_evidence_app.assessment.baseline
 & $AppPython -m ehr_evidence_app.assessment.runner
 & $AppPython -m ehr_evidence_app.assessment.report
+& $AppPython -m ehr_evidence_app.assessment.end_to_end
 ```
 
 The partition's operator mode publishes a new record. It refuses an
@@ -330,4 +371,11 @@ evaluation set:
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.runner --operator-real --case-set dev-30-v1 --per-group 2
 & $AppPython -m ehr_evidence_app.assessment.report --operator-real --run <run identifier>
+```
+
+The end-to-end assessment's operator mode reads a development written set
+with the templates as writers, and prints counts by intent and stage only:
+
+```powershell
+& $AppPython -m ehr_evidence_app.assessment.end_to_end --operator-real --set written-v4
 ```

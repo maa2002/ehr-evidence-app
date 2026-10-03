@@ -221,6 +221,8 @@ rated by code and an automatic rater, which the owner checks on a sample
 - 59 Calculate explanation and evidence metrics
   ([assessment.md](assessment.md#the-metrics); built)
 - 60 Assess end-to-end QA
+  ([assessment.md](assessment.md#end-to-end-assessment); built for
+  condition questions)
 - 61 Produce comparative results
   ([assessment.md](assessment.md#scoring-a-run); the scoring of a run
   built)

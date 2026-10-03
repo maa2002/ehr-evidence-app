@@ -37,7 +37,11 @@ change interfaces.
     counted as the model's failure. Its 20 invented challenges each
     end as they should;
   - the scoring of a run against the independent references, by
-    stratum, with the paired comparison of every metric.
+    stratum, with the paired comparison of every metric;
+  - the end-to-end assessment of condition questions (work item 60),
+    stage by stage: interpretation, resolution, retrieval and
+    delivery. On a development written set it agrees with the written
+    test on every question.
 - `/help` in the conversation
   ([docs/interface.md](docs/interface.md#the-interface)): that the
   questions are not a fixed list but must ask for a kind of information
