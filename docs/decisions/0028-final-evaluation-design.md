@@ -54,8 +54,10 @@ anything of `eval-100-v1` is read.
      failure, cut-off and malformed output);
    - each with its expected outcome.
 4. **References (work items 54 and 55).** They are prepared from the
-   source records by code that reads no bundle and calls nothing of the
-   runtime's evidence, QA or validation packages:
+   source records by code that reads no bundle and runs no part of the
+   runtime's pipeline (reading, resolution, retrieval, answering or
+   checks). It shares only the pinned readers of the source records and
+   the vocabulary's tables:
    - conditions by the development suite's oracle (`qa.suite.Oracle`),
      from the source snapshot, the case set's visits and the vocabulary;
    - the whole record by a new oracle over the raw extract and the

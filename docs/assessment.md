@@ -16,8 +16,8 @@ case sets first. Command examples assume the session set-up in
 | Work item | Module | Role | Status |
 | --- | --- | --- | --- |
 | 53 | `assessment.partition` | The downstream partition of the case sets | done: `downstream-partition-v1` |
-| 54 | | Independent QA references | planned |
-| 55 | | Explanation expectations and challenges | planned |
+| 54 | `assessment.references` | Independent QA references | built; agree with every template answer of the development case sets |
+| 55 | `assessment.references` | Explanation expectations and challenges | expectations built, and agree with every development template explanation; the challenges come with the runner |
 | 56 | | The baseline condition | planned |
 | 57 | | The paired runner | planned |
 | 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built and checked on invented data; scored against references once those exist |
@@ -61,6 +61,52 @@ GNN. The development cases are not: `dev-30-v1` comes from the upstream
 validation partition, on which the GNN's checkpoint was chosen, and 8 of
 the pilot's 10 from the partition it was trained on. A claim about
 patients the GNN never saw rests on `eval-100-v1` alone.
+
+## The references
+
+`assessment.references` prepares each compared request's reference from
+the source records. It reads no bundle and runs no part of the runtime's
+pipeline; it shares only the pinned readers of the source records and
+the vocabulary's tables.
+
+- **Lists and presence checks.** The development suite's oracle
+  (`qa.suite.Oracle`) reads the case set's source snapshot, its cases'
+  visits and the condition vocabulary.
+  - A list expects every record of the scope, by condition, each with its
+    visit number.
+  - A presence check expects the records whose standard concept is the
+    condition asked about, or descends from it.
+  - The scope's records without a standard concept are unjudged in a
+    presence check.
+- **Explanations.** The case set's published records give the expected
+  explanation. The output record gives the selected prediction and the
+  drivers' scores; the closure record gives each driver's tags and the
+  case's restrictions; the linkage record gives each driver's linked
+  records. Each linked record is checked against the snapshot for its
+  visit and concept.
+  - The expected drivers are the eligible ones with the highest scores, at
+    most the frozen limit of 5.
+  - Each driver comes with its records in pre-target visits (history) and
+    its drug and procedure records of the final admission (context).
+  - The reference also holds the drivers not described and the expected
+    outcome: an explanation, an abstention without an eligible driver, or
+    a case rejection for a case not admitted.
+  - A record that does not bind (an output record the closure does not
+    name by its digest, a linkage entry for another record, a linked
+    record of another visit or concept) stops the reference.
+
+Every reference is compared with the template's document for the same
+request on the development case sets. The templates pass the release
+gate, so each should score as a correct response. All of them do:
+
+| Case set | Lists | Empty lists | Presence, recorded | Presence, recorded elsewhere | Explanations | Templates differing from their references |
+| --- | --- | --- | --- | --- | --- | --- |
+| `dev-30-v1` | 134 | 1 | 134 | 135 | 26 | 0 of 430 |
+| `pilot-10-v1` | 56 | 2 | 56 | 58 | 10 | 0 of 182 |
+
+The comparison is not empty. On invented data, a condition record removed
+from the snapshot makes the templates that state it differ, and the
+explanation's reference refuses a linked record that is missing.
 
 ## The metrics
 
@@ -165,6 +211,7 @@ The default modes run invented data:
 & $AppPython -m ehr_evidence_app.assessment.partition
 & $AppPython -m ehr_evidence_app.assessment.metrics
 & $AppPython -m ehr_evidence_app.assessment.stated
+& $AppPython -m ehr_evidence_app.assessment.references
 ```
 
 The partition's operator mode publishes a new record. It refuses an
@@ -172,4 +219,13 @@ existing one, and prints aggregate counts only:
 
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.partition --operator-real
+```
+
+The references' operator mode compares the references with the template
+answers of a development case set, and refuses the evaluation set. It
+prints counts by stratum and kind only:
+
+```powershell
+& $AppPython -m ehr_evidence_app.assessment.references --operator-real --case-set dev-30-v1
+& $AppPython -m ehr_evidence_app.assessment.references --operator-real --case-set pilot-10-v1
 ```

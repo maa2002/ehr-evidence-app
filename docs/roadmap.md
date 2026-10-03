@@ -205,11 +205,18 @@ rated by code and an automatic rater, which the owner checks on a sample
   ([assessment.md](assessment.md#the-downstream-partition); done:
   `downstream-partition-v1`)
 - 54 Prepare independent QA references
+  ([assessment.md](assessment.md#the-references); built, and in
+  agreement with every template answer of the development case sets)
 - 55 Prepare explanation expectations and challenges
+  ([assessment.md](assessment.md#the-references); the expectations
+  built and in agreement with every development template; the
+  challenges come with the runner)
 - 56 Implement the baseline condition
 - 57 Implement the paired runner
 - 58 Calculate QA and abstention metrics
+  ([assessment.md](assessment.md#the-metrics); built)
 - 59 Calculate explanation and evidence metrics
+  ([assessment.md](assessment.md#the-metrics); built)
 - 60 Assess end-to-end QA
 - 61 Produce comparative results
 

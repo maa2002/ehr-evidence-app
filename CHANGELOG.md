@@ -23,7 +23,12 @@ change interfaces.
     mutation suite: every template and control scores as correct, and
     every mutant withheld for what it states as faulty;
   - the reading of what each condition wrote for the metrics, a cited
-    reference the bundle does not hold naming nothing.
+    reference the bundle does not hold naming nothing;
+  - the independent references (work items 54 and 55): condition lists
+    and presence checks from the development suite's oracle, and
+    explanations from the published output, closure and linkage
+    records. They agree with all 612 template answers and explanations
+    of the development case sets.
 - `/help` in the conversation
   ([docs/interface.md](docs/interface.md#the-interface)): that the
   questions are not a fixed list but must ask for a kind of information
