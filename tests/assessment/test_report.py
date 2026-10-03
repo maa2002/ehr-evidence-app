@@ -12,12 +12,9 @@ import tempfile
 import unittest
 
 from ehr_evidence_app.assessment import references, report, runner
-from ehr_evidence_app.generation import adapter, shape
-from ehr_evidence_app.qa import suite
+from ehr_evidence_app.generation import shape
 from ehr_evidence_app.storage import policy as guard
 
-VOCAB = suite.synthetic_vocabulary()
-LIMITS = adapter.scripted_limits()
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 PATHS_PATH = os.path.join(REPO_ROOT, "config", "paths.json")
@@ -31,28 +28,10 @@ def configured_test_temp():
     return os.path.normpath(os.path.join(paths["workspace_root"], relative))
 
 
-def release_of(context):
-    """Return the gate call of an invented request."""
-    return adapter.gate_release(
-        context, VOCAB if context.task != "prediction_explanation" else None)
-
-
 def invented_run(writes):
     """Return the records of the invented requests, each written in both
     conditions by a backend that writes writes(context, template)."""
-    records = []
-    for number, (context, template) in enumerate(
-            shape.synthetic_contexts(), 1):
-        text = writes(context, template)
-        writer = adapter.Writer(adapter.ScriptedBackend(
-            lambda messages, schema, text=text: adapter.output(text)),
-            LIMITS)
-        kept = []
-        runner.run([(context, template)], writer, release_of, VOCAB,
-                   kept=kept)
-        kept[0]["request"]["request_id"] = "r-%03d" % number
-        records.append(kept[0])
-    return records
+    return report.synthetic_records(writes)
 
 
 def scored_report(records):
@@ -64,7 +43,7 @@ def scored_report(records):
 
 def correct(context, template):
     """Write the template's own document."""
-    return shape.text(shape.document_of(template))
+    return report.template_document(context, template)
 
 
 def invented_reference(context, template):

@@ -114,6 +114,7 @@ jobs:
             "ehr_evidence_app.assessment.runner",
             "ehr_evidence_app.assessment.report",
             "ehr_evidence_app.assessment.end_to_end",
+            "ehr_evidence_app.assessment.rubric",
             "ehr_evidence_app.api.app",
             "ehr_evidence_app.interface.app"
           )

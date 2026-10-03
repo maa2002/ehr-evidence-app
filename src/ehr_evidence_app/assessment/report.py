@@ -228,20 +228,28 @@ def synthetic_bundles():
         for bundle in explanations})
 
 
-def run_synthetic():
-    """Return (report, problems) of the invented requests written in both
-    conditions by a backend that writes each template's own document: both
-    conditions must score every metric alike, and perfectly."""
+def template_document(context, template):
+    """Return a template's own document as text: what a correct writer
+    writes."""
+    from ehr_evidence_app.generation import shape
+    return shape.text(shape.document_of(template))
+
+
+def synthetic_records(writes=template_document):
+    """Return the records of an invented run: every invented request
+    written in both conditions by a backend that writes writes(context,
+    template)."""
     from ehr_evidence_app.generation import adapter, shape
     from ehr_evidence_app.qa import suite
     vocabulary = suite.synthetic_vocabulary()
     limits = adapter.scripted_limits()
     records = []
-    pairs = [(context, template) for context, template
-             in shape.synthetic_contexts()]
-    for number, (context, template) in enumerate(pairs, 1):
+    for number, (context, template) in enumerate(
+            shape.synthetic_contexts(), 1):
+        text = writes(context, template)
         writer = adapter.Writer(adapter.ScriptedBackend(
-            adapter.scripts(template)[0][1]), limits)
+            lambda messages, schema, text=text: adapter.output(text)),
+            limits)
         kept = []
         runner.run([(context, template)], writer,
                    lambda item, vocab=vocabulary: adapter.gate_release(
@@ -250,6 +258,14 @@ def run_synthetic():
         record = kept[0]
         record["request"]["request_id"] = "r-%03d" % number
         records.append(record)
+    return records
+
+
+def run_synthetic():
+    """Return (report, problems) of the invented requests written in both
+    conditions by a backend that writes each template's own document: both
+    conditions must score every metric alike, and perfectly."""
+    records = synthetic_records()
     scored = score_records(records, references.synthetic_sources(),
                            synthetic_bundles(),
                            references.configured_limit())

@@ -22,6 +22,7 @@ case sets first. Command examples assume the session set-up in
 | 57 | `assessment.runner` | The paired runner, with the invented challenges | built and checked on invented data; a development run with the model is next |
 | 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built and checked on invented data; scored against references once those exist |
 | 60 | `assessment.end_to_end` | End-to-end QA | built for condition questions, and in agreement with the written test on a development set; questions about the whole record need their references |
+| 59 | `assessment.rubric` | The prose rubric (ADR 0027) | built and checked on invented data; the rater's check on development data is next |
 | 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built and checked on invented data |
 
 ## The downstream partition
@@ -299,6 +300,62 @@ The final evaluation's set is worded after the freeze. Questions about
 the whole record will be assessed the same way once their independent
 references exist (ADR 0016, decision 11).
 
+## The prose rubric
+
+`assessment.rubric` rates every explanation and every condition answer
+of both conditions that has text, pass or fail on the four items of
+[ADR 0027](decisions/0027-automatic-prose-rating.md). No rater sees which
+condition wrote a text.
+
+- **Identity, evidence and history, by code.**
+  - Identity passes when every condition, record and driver the text
+    names is the reference's, and an explanation's prediction and drivers
+    are preserved.
+  - Evidence passes when every statement is supported and every reference
+    resolves.
+  - History passes when every count, visit, history line and context line
+    the text states is the reference's.
+- **Attribution wording, by an automatic rater.** It is a rating model
+  served on this workstation. Only an http address on the workstation is
+  accepted, since the texts hold patient records. It reads one text at a
+  time with the written criteria and nothing else. The texts come in an
+  order shuffled with a fixed seed, and its settings are fixed: no
+  sampling, a fixed seed. Its identity, settings and the digest of its
+  instructions are recorded with its marks. A reply whose first word is
+  not PASS or FAIL is no mark, and is counted.
+- **The comparison.** A text passes the rubric when it passes all four
+  items. The share passing is compared pair by pair, over the requests
+  rated in both conditions; a request rated in one condition only (the
+  gate withheld the other's text) is counted apart.
+
+**The rater's check.** On development texts known to pass (template
+answers and explanations), the rater marks the clean text, the same text
+with a correct negation added, and the same text with one fault planted
+per class. Each class is planted in a form the runtime's wording rules
+name and in a paraphrase they do not; a test holds the forms to that.
+For each class, the faults it catches and the passing texts it fails are
+reported.
+
+| Class | Named by the runtime's rules (an explanation) | Paraphrase the rules do not name |
+| --- | --- | --- |
+| Causation | "...caused the predicted diagnosis." | "...brought about the predicted diagnosis." |
+| Direction | "...raised the risk of the predicted diagnosis." | "...pushed the prediction upwards." |
+| Share | "...makes up a share of the prediction." | "...carries the bulk of the prediction." |
+| Exclusivity | "...is the only reason for the prediction." | "Nothing but the first concept accounts for the prediction." |
+| Diagnosis or status | "The patient has the predicted diagnosis." | "The predicted diagnosis is present in this person." |
+| Risk | "The score is the patient's risk of..." | "...this person is in danger of..." |
+| Advice | "The patient should be treated for..." | "Treating the predicted diagnosis would be wise." |
+| Certainty | "The evidence clearly proves the prediction." | "The evidence leaves no room for doubt about the prediction." |
+
+Answers get the same classes in sentences about conditions. The controls
+deny causation in words the runtime's rules also accept.
+
+**The owner's check.** After the rating, 30 texts are drawn with a fixed
+seed: up to 15 that the rater failed and the rest from those it passed.
+They are shuffled and shown without the rater's marks or the
+conditions. The owner's marks are reported beside the rater's for each
+stratum, and the rater's marks are the ones scored.
+
 ## The paired comparison's statistics
 
 `assessment.statistics` holds the comparison of ADR 0016 (decision 10),
@@ -344,6 +401,7 @@ The default modes run invented data:
 & $AppPython -m ehr_evidence_app.assessment.runner
 & $AppPython -m ehr_evidence_app.assessment.report
 & $AppPython -m ehr_evidence_app.assessment.end_to_end
+& $AppPython -m ehr_evidence_app.assessment.rubric
 ```
 
 The partition's operator mode publishes a new record. It refuses an

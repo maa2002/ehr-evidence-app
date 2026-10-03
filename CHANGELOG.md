@@ -41,7 +41,11 @@ change interfaces.
   - the end-to-end assessment of condition questions (work item 60),
     stage by stage: interpretation, resolution, retrieval and
     delivery. On a development written set it agrees with the written
-    test on every question.
+    test on every question;
+  - the prose rubric of ADR 0027: identity, evidence and history judged
+    by code; attribution wording marked by a rating model on the
+    workstation, checked on planted faults in two forms per class; and
+    the owner's blind check of 30 texts.
 - `/help` in the conversation
   ([docs/interface.md](docs/interface.md#the-interface)): that the
   questions are not a fixed list but must ask for a kind of information
