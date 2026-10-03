@@ -4,8 +4,10 @@ Status: accepted (2026-09-28), agreed by the project owner before any
 request of `eval-100-v1` is written. These definitions are frozen with
 the settings, prompts, evidence selection and validators; changing any of
 them afterwards makes a new evaluated version. Decision 11 was added by
-[ADR 0021](0021-the-whole-record.md) on 2026-09-29, with the owner's
-agreement, before any request of `eval-100-v1` was written.
+[ADR 0021](0021-the-whole-record.md) on 2026-09-29, and decision 9
+amended by [ADR 0027](0027-automatic-prose-rating.md) on 2026-10-03, each
+with the owner's agreement, before any request of `eval-100-v1` was
+written.
 
 ## Context
 
@@ -98,11 +100,15 @@ independent references instead.
    timeout, resources exhausted, backend failure, invalid output,
    validation rejection); latency, prompt and output tokens and peak GPU
    memory as median, 90th percentile and largest, by task and condition.
-9. **Prose rubric.** Every explanation of both conditions, and a sample of
-   50 answers per condition drawn with a fixed seed before any is read,
-   are rated pass or fail on four items with written criteria: prediction
-   and concept identity, evidence, history, and attribution wording. The
-   rater does not see which condition wrote a response.
+9. **Prose rubric** (as amended by
+   [ADR 0027](0027-automatic-prose-rating.md)). Every explanation, and
+   every answer to a condition question, of both conditions is rated
+   pass or fail on four items with written criteria: prediction and
+   concept identity, evidence and history by code against the reference,
+   and attribution wording by an automatic rater that is not the
+   evaluated model, checked on planted faults in development texts and
+   by the owner on 30 texts. No rater sees which condition wrote a
+   response.
 10. **Comparison.** For each metric the paired difference, controlled
     minus baseline, is reported with a 95% interval: Newcombe's method 10
     for proportions over the same requests, with the exact McNemar test;

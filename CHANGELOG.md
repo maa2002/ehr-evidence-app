@@ -19,6 +19,14 @@ change interfaces.
 
 ### Changed
 
+- The final evaluation's prose rubric
+  ([ADR 0027](docs/decisions/0027-automatic-prose-rating.md), amending
+  decision 9 of ADR 0016) is rated without a person reading every text:
+  identity, evidence and history by code against the references, and
+  attribution wording by an automatic rater that is not the evaluated
+  model, checked on planted faults in development texts and by the owner
+  on 30 texts. Every explanation and every answer to a condition question
+  is rated, instead of a sample of answers.
 - A response no longer names its writer, the model or a template, on the
   page; its runtime record still does
   ([docs/interface.md](docs/interface.md#the-interface)).

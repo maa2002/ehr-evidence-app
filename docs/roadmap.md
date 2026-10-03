@@ -195,7 +195,9 @@ The model is evaluated as pinned, without fine-tuning
 The metrics, their denominators and empty-set conventions, the prose
 rubric and the paired comparison are fixed in
 [ADR 0016](decisions/0016-evaluation-metrics.md), agreed by the project
-owner before any request of `eval-100-v1` is written.
+owner before any request of `eval-100-v1` is written. The prose rubric is
+rated by code and an automatic rater, which the owner checks on a sample
+([ADR 0027](decisions/0027-automatic-prose-rating.md)).
 
 - 53 Partition downstream cases
 - 54 Prepare independent QA references
