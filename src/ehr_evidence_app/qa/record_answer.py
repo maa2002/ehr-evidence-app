@@ -1,4 +1,4 @@
-"""Answers about the whole record (rules record-answer-v3).
+"""Answers about the whole record (rules record-answer-v4).
 
 A question read as a question about the record (qa.record_interpret) is
 answered from the case's record bundle for the bound scope
@@ -36,6 +36,8 @@ until its answers about the record have been measured.
 * A question about what medications were given for a condition gets a
   clarification: the record does not say, so it asks about a medication
   or a drug class instead (version 3).
+* A medication without a named concept is named by the drug its
+  prescription names, as written, and nothing after it (version 4).
 """
 
 from __future__ import annotations
@@ -53,7 +55,7 @@ from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import record_text as words
 
-RULES_VERSION = "record-answer-v3"
+RULES_VERSION = "record-answer-v4"
 # The values listed of one item: the latest MAX_VALUES when the question
 # names the item or asks what grew in microbiology, the latest one of each
 # item when it asks about another whole kind; the others are counted, and

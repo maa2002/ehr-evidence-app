@@ -105,9 +105,10 @@ def number_text(number):
 
 def record_name(entry):
     """Return how a record's item is named: its name, with a laboratory
-    test's fluid and category; a record without a name by what it holds
-    instead, and why it has none: no standard concept, or a concept or
-    item whose name is unavailable."""
+    test's fluid and category; a medication without a named concept by
+    the drug its prescription names, as written; any other record without
+    a name by what it holds instead, and why it has none: no standard
+    concept, or a concept or item whose name is unavailable."""
     if entry.name_status == "available":
         if entry.kind == "lab" and entry.detail:
             return "%s (%s)" % (entry.name, entry.detail.replace(" · ", ", "))
@@ -115,10 +116,10 @@ def record_name(entry):
         if specimen and specimen.casefold() != entry.name.casefold():
             return "%s (%s)" % (entry.name, specimen)
         return entry.name
+    if entry.dose is not None and entry.dose.drug:
+        return entry.dose.drug
     unmapped = entry.name_status == "unmapped"
     why = "no standard concept" if unmapped else "name unavailable"
-    if entry.dose is not None and entry.dose.drug:
-        return "%s (as written; %s)" % (entry.dose.drug, why)
     if entry.detail:
         code = "%s %s, " % (entry.vocabulary, entry.code) if (
             entry.vocabulary and entry.code) else ""

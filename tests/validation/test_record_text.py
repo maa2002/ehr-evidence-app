@@ -60,7 +60,9 @@ class NameTests(unittest.TestCase):
     """How a record is named, with and without a name."""
 
     def test_names_and_why_a_name_is_missing(self):
-        """A name, else what the record holds and why it has no name."""
+        """A name; a medication without a named concept by its drug as
+        written, alone; else what the record holds and why it has no
+        name."""
         self.assertEqual(words.record_name(entry()),
                          "Potassium (Blood, Chemistry)")
         self.assertEqual(words.record_name(entry(
@@ -75,12 +77,10 @@ class NameTests(unittest.TestCase):
                     measure=None, detail=None, code=None)
         self.assertEqual(words.record_name(entry(
             **drug, concept_id=0, name_status="unmapped", name=None,
-            dose=record.Dose(drug="Vancomycin"))),
-            "Vancomycin (as written; no standard concept)")
+            dose=record.Dose(drug="Vancomycin"))), "Vancomycin")
         self.assertEqual(words.record_name(entry(
             **drug, concept_id=5, name_status="unavailable", name=None,
-            dose=record.Dose(drug="Vancomycin"))),
-            "Vancomycin (as written; name unavailable)")
+            dose=record.Dose(drug="Vancomycin"))), "Vancomycin")
         self.assertEqual(words.record_name(entry(
             **drug, concept_id=0, name_status="unmapped", name=None)),
             "medication whose name is not linked to its prescription")

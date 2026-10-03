@@ -22,6 +22,9 @@ change interfaces.
 - A response no longer names its writer, the model or a template, on the
   page; its runtime record still does
   ([docs/interface.md](docs/interface.md#the-interface)).
+- Rules `record-answer-v4`: an answer names a medication without a named
+  concept by the drug its prescription names, as written, without
+  "(as written; no standard concept)" after it.
 - The page's accent is green (#6BBF8A) instead of orange, the mark and
   the backdrop's glow included; the buttons filled with it carry dark
   icons, which stand out from it where white would not.

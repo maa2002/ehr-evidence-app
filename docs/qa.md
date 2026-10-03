@@ -688,10 +688,17 @@ question without it ("was heparin not given" is a presence check, as for
 conditions), except in a question about a whole kind ("which labs were
 not done"), where it is a filter. The scope binds as for conditions. The
 templates write every answer (`qa.record_answer`, rules
-`record-answer-v3`, whose clarification for a question about what a
+`record-answer-v4`, whose clarification for a question about what a
 medication was given for is the notice `indication_unrecorded`): its
 facts are references to records, visits and the
 person, and every name, value, time, date and age is rendered from them.
+A medication without a named concept is named by the drug its
+prescription names, as written (version 4; it was followed by "(as
+written; no standard concept)" before, in 1,165 of 3,088 answers to
+sixteen medication questions in every scope of the development case
+sets, whose outcomes are the same with version 4, and whose 13,938
+mutants, of 72 answers, are all withheld); any other record without a
+name by what it holds, and why it has none.
 Values are shown as recorded, every digit and no exponent; a value that
 MIMIC-IV removed says so, without a unit; a single record is the only
 one, and the highest or lowest of values that are not numbers is the
