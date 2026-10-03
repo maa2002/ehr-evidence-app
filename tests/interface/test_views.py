@@ -150,6 +150,18 @@ class ResponseTests(InventedTestCase):
         self.assertRegex(found["seconds"], r"^\d+\.\d s$")
         self.assertIsNone(found["withheld"])
 
+    def test_a_response_that_asks_back_points_to_the_help(self):
+        """A clarification or an abstention points to /help; an answer
+        does not."""
+        for question in ("Was florbnazine given?",
+                         "Should she get heparin?"):
+            found = views.response_view(self.ask(question))
+            self.assertIn(found["outcome"]["code"],
+                          ("clarification", "abstention"), question)
+            self.assertEqual(found["hint"], labels.HELP_HINT, question)
+        self.assertIsNone(views.response_view(self.ask(
+            "Which conditions are recorded?"))["hint"])
+
     def test_presence_names_its_condition(self):
         """A presence answer names the condition asked about in title case,
         whether or not it is recorded."""
@@ -452,6 +464,85 @@ class EvidenceTests(InventedTestCase):
         self.assertEqual(views.error_view("case_unknown"), {
             "error": "case_unknown",
             "message": "This patient isn't among the admitted cases."})
+
+
+class HelpTests(unittest.TestCase):
+    """The help shown for /help: why questions follow set patterns, and
+    examples that the rules read as their kind's questions."""
+
+    # The kinds of record each section's examples ask about.
+    KINDS = {"Medications": {"medication"}, "Laboratory Results": {"lab"},
+             "Vital Signs, Charted in the ICU": {"vital"},
+             "Procedures": {"procedure"}, "Microbiology": {"microbiology"},
+             "Stays, Units and the ICU": {"visit", "transfer", "icu_stay"},
+             "The Patient": {"person"}}
+
+    def test_the_view(self):
+        """The help says why questions follow set patterns before it lists
+        each kind of information with its examples; a command that is not
+        one gets a line of its own."""
+        found = views.help_view()
+        self.assertEqual((found["command"], found["title"]),
+                         ("/help", "What You Can Ask"))
+        self.assertEqual(found["why_title"],
+                         "Why Questions Follow Set Patterns")
+        self.assertIn("fixed rules, not by the language model",
+                      found["why"][0])
+        self.assertIn("not a fixed list", found["why"][1])
+        self.assertEqual([section["title"] for section in found["sections"]],
+                         ["Conditions"] + list(self.KINDS))
+        for section in found["sections"]:
+            for row in section["rows"]:
+                self.assertEqual(row["what"], labels.title(row["what"]))
+                self.assertTrue(row["examples"], row["what"])
+        self.assertTrue(found["prediction"]["text"].startswith(
+            "Press Generate the Predicted Diagnosis"))
+        self.assertEqual(found["unknown"], {
+            "label": "Not a Command", "tone": "neutral",
+            "text": labels.HELP_UNKNOWN})
+        self.assertIn("/help", found["unknown"]["text"])
+        json.dumps(found)
+
+    def test_every_example_is_answered_as_its_kind(self):
+        """Each example is read as its section's question, never as a
+        clarification: a condition question by the condition rules, any
+        other by the record rules, which answer it on the invented record."""
+        from ehr_evidence_app.qa import answer, interpret, record_interpret
+        from ehr_evidence_app.qa import suite
+        from tests.qa import record_cases as cases
+        context = cases.context()
+        vocab = suite.synthetic_vocabulary()
+        for title, rows in labels.HELP_SECTIONS:
+            for _, examples in rows:
+                for example in examples:
+                    with self.subTest(example=example):
+                        first = interpret.interpret(example)
+                        if title == "Conditions":
+                            self.assertEqual(first.status, "task")
+                            continue
+                        self.assertIn(first.status, ("abstain", "clarify"))
+                        self.assertTrue(answer.record_allowed(first))
+                        reading = record_interpret.interpret(example,
+                                                             context.terms)
+                        self.assertEqual(reading.status, "task")
+                        self.assertIn(reading.kind, self.KINDS[title])
+                        found = answer.record_result(
+                            example, cases.CASE, cases.ALL, cases.Visits(),
+                            vocab, "q-1", context)
+                        self.assertIn(found.response.outcome,
+                                      ("answer", "not_recorded"))
+
+    def test_the_texts_are_plain(self):
+        """The help's words are plain text, in their own case: titles in
+        title case, sentences ending in a full stop."""
+        for text in (labels.HELP_TITLE, labels.HELP_WHY_TITLE,
+                     labels.HELP_PREDICTION[0]):
+            self.assertEqual(text, labels.title(text))
+        for text in labels.HELP_WHY + labels.HELP_NOTES + (
+                labels.HELP_PREDICTION[1], labels.HELP_HINT,
+                labels.HELP_UNKNOWN):
+            self.assertTrue(text.endswith("."), text)
+            self.assertNotRegex(text, r"[<>{}]")
 
 
 if __name__ == "__main__":

@@ -22,6 +22,10 @@ const JOB_FAILURES = 6;
 // remembered in this browser.
 const PANEL = {least: 360, most: 920, step: 24, standard: 480, key: "ehr.panel-width"};
 const CHECK_TEMPLATE = "Is  recorded?";
+// What the box takes as a command rather than a question: /help, and any
+// other word after a slash, which is answered as not a command.
+const COMMAND = /^\/[a-z?]*$/i;
+const HELP = /^\/help$/i;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const overlaid = window.matchMedia("(max-width: 1240px)");
 
@@ -398,6 +402,7 @@ const state = {
   evidence: new Map(),
   timer: null,
   banner: null,
+  help: null,
 };
 
 const pending = () => state.thread.some((turn) => turn.status === "pending");
@@ -603,6 +608,10 @@ function newConversation() {
 
 function ask(text) {
   const question = text.trim();
+  if (COMMAND.test(question)) {
+    command(question);
+    return;
+  }
   const scope = currentScope();
   if (!question || !scope || pending()) return;
   begin({
@@ -634,6 +643,55 @@ function explain() {
     path: "/api/explanations",
     body: {case_set: state.current.case_set, case_number: state.current.number},
   });
+}
+
+// A command typed in the box, shown in the conversation and never sent as
+// a question: /help shows what can be asked; any other is not a command.
+function command(text) {
+  if (!state.current || pending()) return;
+  state.turns += 1;
+  const turn = {
+    id: state.turns,
+    conversation: state.conversation,
+    kind: "help",
+    asked: text,
+    unknown: !HELP.test(text),
+    status: "pending",
+    started: Date.now(),
+    result: null,
+    error: null,
+    node: null,
+  };
+  state.thread.push(turn);
+  ui.question.value = "";
+  renderThread();
+  turn.node.scrollIntoView({block: "end", behavior: behaviour()});
+  showHelp(turn);
+}
+
+// The help is the same for every patient: it is asked for once.
+async function showHelp(turn) {
+  try {
+    if (!state.help) state.help = await get("/api/help");
+    if (!live(turn)) return;
+    turn.status = "done";
+    turn.result = state.help;
+    renderTurn(turn);
+    updateControls();
+    ui.announce.textContent = turn.unknown ? state.help.unknown.text : state.help.title;
+    turn.node.scrollIntoView({block: "start", behavior: behaviour()});
+  } catch (error) {
+    if (live(turn)) fail(turn, error.message);
+  }
+}
+
+// Put an example of the help in the box, to change and send.
+function useExample(text) {
+  if (!state.current) return;
+  ui.question.value = text;
+  updateControls();
+  ui.question.focus();
+  ui.question.setSelectionRange(text.length, text.length);
 }
 
 // Put the frame of a condition question in the box, the cursor where the
@@ -734,7 +792,8 @@ function retry(turn) {
   turn.job = null;
   renderTurn(turn);
   updateControls();
-  send(turn);
+  if (turn.kind === "help") showHelp(turn);
+  else send(turn);
 }
 
 // Keep the seconds of every waiting turn current.
@@ -771,7 +830,7 @@ function turnNode(turn) {
   item.append(el("div", {className: "ask"}, turn.asked));
   if (turn.status === "pending") item.append(thinking(turn));
   else if (turn.status === "failed") item.append(failure(turn));
-  else item.append(reply(turn));
+  else item.append(turn.kind === "help" ? helpReply(turn) : reply(turn));
   return item;
 }
 
@@ -927,6 +986,7 @@ function reply(turn) {
   if (explained && view.prediction) node.append(predictionCard(view.prediction));
   if (view.lines.length) node.append(prose(view.lines, turn));
   if (view.withheld) node.append(note("muted", view.withheld));
+  if (view.hint) node.append(el("p", {className: "fine hint"}, view.hint));
   if (explained && view.notes && view.notes.length) node.append(notesBlock(view.notes));
   if (explained && view.unsigned) node.append(note("info", view.unsigned));
   if (view.references.length) {
@@ -940,6 +1000,40 @@ function reply(turn) {
   if (explained && view.glossary) node.append(glossaryBlock(view.glossary));
   if (explained && view.conditions) node.append(conditionsBlock(view.conditions));
   return node;
+}
+
+// The help: why questions follow set patterns, then each kind of
+// information with example questions that go into the box, the predicted
+// diagnosis and notes. A command that is not one is answered as a
+// response is: a badge, and a line saying what the command is.
+function helpReply(turn) {
+  const help = turn.result;
+  if (turn.unknown) {
+    return el("div", {className: "reply"},
+      badge(help.unknown),
+      el("div", {className: "prose"}, el("p", {}, help.unknown.text)));
+  }
+  const example = (text) => el("button", {
+    type: "button",
+    className: "example",
+    title: "Put This Question in the Box",
+    onclick: () => useExample(text),
+  }, text);
+  const row = (item) => el("div", {className: "help-row"},
+    el("dt", {}, item.what),
+    el("dd", {}, ...item.examples.map(example)));
+  return el("div", {className: "reply help"},
+    el("h3", {className: "help-title"}, help.title),
+    el("div", {className: "intro"},
+      el("span", {className: "kicker"}, help.why_title),
+      ...help.why.map((text) => el("p", {}, text))),
+    ...help.sections.map((section) => el("section", {className: "help-section"},
+      el("h4", {className: "kicker"}, section.title),
+      el("dl", {className: "help-rows"}, ...section.rows.map(row)))),
+    el("section", {className: "help-section"},
+      el("h4", {className: "kicker"}, help.prediction.title),
+      el("p", {className: "help-text"}, help.prediction.text)),
+    notesBlock(help.notes));
 }
 
 // ---------------------------------------------------------------------------

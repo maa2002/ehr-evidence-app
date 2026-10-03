@@ -8,6 +8,7 @@ page calls, each reaching the API only through interface.client:
     GET  /health            that the interface is serving
     GET  /api/state         the model's state, the served case sets, the
                             question limit and the version
+    GET  /api/help          what can be asked, shown when /help is typed
     GET  /api/case-sets/{case_set}/cases
     GET  /api/case-sets/{case_set}/cases/{case_number}
     GET  /api/case-sets/{case_set}/cases/{case_number}/evidence?kind=K&visit=N
@@ -261,6 +262,10 @@ def create_app(client, jobs=None, log=None, version=__version__,
         return JSONResponse(dict(views.state_view(found, sets, version),
                                  question_chars=question_chars))
 
+    async def asking(request):
+        """What can be asked, and why questions follow set patterns."""
+        return JSONResponse(views.help_view())
+
     async def cases(request):
         """A case set's admitted cases."""
         case_set = case_set_of(request.path_params["case_set"])
@@ -359,6 +364,7 @@ def create_app(client, jobs=None, log=None, version=__version__,
         Route("/", index),
         Route("/health", health),
         Route("/api/state", guarded(state)),
+        Route("/api/help", guarded(asking)),
         Route(base, guarded(cases)),
         Route(base + "/{case_number:int}", guarded(case)),
         Route(base + "/{case_number:int}/evidence", guarded(evidence)),
@@ -435,6 +441,11 @@ def run_synthetic():
             if found["model"]["state"] != "ready" or not found["case_sets"]:
                 problems.append("the state lacks the model or a case set")
             label = found["case_sets"][0]["id"]
+            shown_help = call("GET", "/api/help", 200).json()
+            if not shown_help["sections"] or not all(
+                    row["examples"] for section in shown_help["sections"]
+                    for row in section["rows"]):
+                problems.append("the help lacks its kinds or examples")
             base = "/api/case-sets/%s/cases" % label
             if not call("GET", base, 200).json()["cases"]:
                 problems.append("the case set lists no case")

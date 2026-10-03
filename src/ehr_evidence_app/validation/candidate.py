@@ -440,6 +440,12 @@ NOTICES = {
                               "included, carry no such flag. Ask whether "
                               "one is recorded, or for its highest or "
                               "lowest value.", ("clarification",)),
+    "indication_unrecorded": Notice("The record does not say what each "
+                                    "medication was given for, so it cannot "
+                                    "show which were given for \"{term}\". "
+                                    "Ask about one medication by name, or a "
+                                    "drug class such as antibiotics or "
+                                    "antiepileptics.", ("clarification",)),
 }
 # The notice that discloses each restriction of an explanation.
 RESTRICTION_NOTICES = {"batch_sensitive_prediction": "batch_sensitive",

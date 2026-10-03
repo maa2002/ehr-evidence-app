@@ -771,7 +771,8 @@
                 "item_missing",
                 "item_too_broad",
                 "two_items",
-                "flag_unrecorded"
+                "flag_unrecorded",
+                "indication_unrecorded"
               ],
               "type": "string"
             },

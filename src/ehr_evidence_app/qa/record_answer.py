@@ -1,4 +1,4 @@
-"""Answers about the whole record (rules record-answer-v2).
+"""Answers about the whole record (rules record-answer-v3).
 
 A question read as a question about the record (qa.record_interpret) is
 answered from the case's record bundle for the bound scope
@@ -33,6 +33,9 @@ until its answers about the record have been measured.
   flagged abnormal (for microbiology, every result reported resistant).
 * Visits and the person are answered from the visits of the scope and
   the person's own record.
+* A question about what medications were given for a condition gets a
+  clarification: the record does not say, so it asks about a medication
+  or a drug class instead (version 3).
 """
 
 from __future__ import annotations
@@ -50,7 +53,7 @@ from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import record_text as words
 
-RULES_VERSION = "record-answer-v2"
+RULES_VERSION = "record-answer-v3"
 # The values listed of one item: the latest MAX_VALUES when the question
 # names the item or asks what grew in microbiology, the latest one of each
 # item when it asks about another whole kind; the others are counted, and
@@ -656,6 +659,10 @@ def clarification(request_id, case, scope, question, resolution=None):
     be answered as asked."""
     from ehr_evidence_app.qa import templates
     term = templates.term_slot(question.phrase or "")
+    if question.category == "indication":
+        return templates.notice(request_id, case, scope, "clarification",
+                                "task_ambiguous", "indication_unrecorded",
+                                term=term or "the condition")
     if question.category in ("two_items", "flag_unrecorded"):
         return templates.notice(request_id, case, scope, "clarification",
                                 "task_ambiguous", question.category)

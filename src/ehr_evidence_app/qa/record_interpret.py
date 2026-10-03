@@ -47,9 +47,17 @@ record-questions-v3), by fixed rules and without a model:
    signs without high or low, medications, procedures) gets a
    clarification. A question about the doses of the medications asks
    for their values.
+9. The record does not say what a medication was given for. A question
+   about medications that asks what they were given for ("medications
+   for his seizures", "what was given for pain", "seizure medications")
+   gets a clarification that says so: one whose words after "for" or
+   "treat" name a condition, a test or a vital sign ("for blood
+   pressure"), the words before them naming no item of another kind, or
+   one that names medications by a condition instead of by a
+   medication's name.
 
 Version 2 adds rules 6 to 8; version 3 removes the polite opening
-(rule 1).
+(rule 1); version 4 adds rule 9.
 """
 
 from __future__ import annotations
@@ -61,7 +69,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v3"
+RULES_VERSION = "record-questions-v4"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -252,6 +260,11 @@ NEGATIONS = frozenset(("not", "no", "never", "none", "without", "neither",
                        "nor"))
 # Words that join two items.
 CONJUNCTIONS = frozenset(("and", "or", "plus", "versus", "vs"))
+# Words that ask what a medication was given for (rule 9), and the kinds
+# whose item named before them makes the question one about that item.
+TREATING = re.compile(r"\b(?:for|to treat|treat|treats|treating|treated|"
+                      r"against)\b")
+OTHER_ITEMS = ("lab", "vital", "procedure", "microbiology", "transfer")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -358,6 +371,43 @@ def two_items(terms, body, kinds, hints, prefer):
                 resolution.status != "resolved"):
             return False
     return True
+
+
+def condition_named(terms, words):
+    """Return words as a phrase when they name a condition (one that
+    resolves, or is ambiguous or too broad), else None."""
+    phrase = " ".join(words)
+    if phrase and terms.resolve("condition", phrase).status != "unknown":
+        return phrase
+    return None
+
+
+def indication_of(terms, body, phrase, kinds, hints):
+    """Return what a question about medications asks them to have been
+    given for, or None (rule 9): the question names medications, or names
+    no kind and its verbs point to medications; and either its words
+    after "for" or "treat" name a condition, a test or a vital sign, while
+    the words before them name no item of another kind, or it names
+    medications and its phrase is a condition, not a medication."""
+    if kinds != ["medication"] and (kinds or "medication" not in hints):
+        return None
+    parts = TREATING.split(body)
+    if len(parts) > 1:
+        before = " ".join(left_words(" ".join(parts[:-1]), kinds))
+        if before and terms.resolve("medication", before).status != (
+                "resolved") and any(terms.resolve(kind, before).status
+                                    == "resolved" for kind in OTHER_ITEMS):
+            return None
+        after = left_words(parts[-1], kinds)
+        named = condition_named(terms, after)
+        if named is None and after and any(
+                terms.resolve(kind, " ".join(after)).status == "resolved"
+                for kind in ("lab", "vital")):
+            named = " ".join(after)
+        return named
+    if kinds and terms.resolve("medication", phrase).status != "resolved":
+        return condition_named(terms, phrase.split())
+    return None
 
 
 def person_field(body):
@@ -574,6 +624,10 @@ def item_question(body, found, terms):
     phrase = " ".join(phrase_words)
     if phrase in PRONOUNS or all(word in PRONOUNS for word in phrase_words):
         return clarify("concept_unknown", "missing_item", found)
+    condition = indication_of(terms, body, phrase, kinds, hints)
+    if condition is not None:
+        return clarify("task_ambiguous", "indication", found,
+                       phrase=condition)
     prefer = ("lab", "vital") if task in (
         "record_values", "record_abnormal") or RESULTS.search(body) else ()
     kind, resolution = resolve_phrase(terms, phrase, kinds, hints, prefer)

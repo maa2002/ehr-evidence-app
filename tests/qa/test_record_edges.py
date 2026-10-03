@@ -83,6 +83,11 @@ QUESTIONS = (
     "'; DROP TABLE labs;--", "¿Potasio?", "potassium " * 40, "",
     "   ", "???", "Tell me about the patient", "WBC trend",
     "List the medications and the labs",
+    "Any blood thinner?", "Was an antibacterial given?",
+    "What is she taking for synthetic concept 1001?",
+    "Which synthetic concept 1001 medications was she given?",
+    "Was heparin given for synthetic concept 1001?",
+    "What was given for pain?", "Was a chest x-ray done for pain?",
 )
 
 
@@ -274,6 +279,15 @@ class MedicationTests(unittest.TestCase):
         self.assertEqual(self.matches("Any opioids?"), {8205: "name"})
         self.assertEqual(self.matches("Any diuretics?"), {8201: "class"})
 
+    def test_a_class_word_in_the_singular_finds_what_its_plural_finds(self):
+        """"An antibacterial" finds what "antibiotics" finds, and "a blood
+        thinner" what "blood thinners" finds."""
+        self.assertEqual(self.matches("Was an antibacterial given?"),
+                         self.matches("Any antibiotics?"))
+        self.assertEqual(self.matches("Any blood thinner?"),
+                         self.matches("Any blood thinners?"))
+        self.assertTrue(self.matches("Any blood thinner?"))
+
     def test_the_phrase_itself_is_matched_in_written_names(self):
         """"Insulin" names the class, and is written as such."""
         self.assertEqual(self.matches("Was insulin given?"), {8203: "name"})
@@ -395,6 +409,30 @@ class ReadingTests(unittest.TestCase):
                          ("clarification", "scope_other"))
         found = ask("Was potassium measured in visit 2?", VISIT[2])
         self.assertEqual(found.response.outcome, "answer")
+
+    def test_what_a_medication_was_given_for_is_not_recorded(self):
+        """Medications asked for by what they were given for get the
+        clarification that the record does not say, naming what was
+        asked; a question about another kind's item is not one."""
+        for question, term in (
+                ("What is she taking for synthetic concept 1001?",
+                 "synthetic concept 1001"),
+                ("Which synthetic concept 1001 medications was she given?",
+                 "synthetic concept 1001"),
+                ("Was heparin given for synthetic concept 1001?",
+                 "synthetic concept 1001"),
+                ("What was given for pain?", "pain")):
+            for scope in cases.SCOPES:
+                found = ask(question, scope)
+                self.assertEqual(
+                    (found.response.outcome, found.response.reason_codes,
+                     notices_of(found)),
+                    ("clarification", ("task_ambiguous",),
+                     ["indication_unrecorded"]), question)
+                self.assertIn('which were given for "%s"' % term,
+                              found.response.text)
+        self.assertNotEqual(self.outcome("Was a chest x-ray done for pain?")[1],
+                            "indication_unrecorded")
 
     def test_markup_asks_which_item_is_meant(self):
         """Markup in a question is read as words, which name nothing: the

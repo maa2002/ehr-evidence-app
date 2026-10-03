@@ -585,11 +585,24 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v3`, which removes a polite opening as the
+(rules `record-questions-v4`, which removes a polite opening as the
 condition rules do); so are a dose question, a past question
 about death and a question about a first or last result. A request for
 advice, a question about the future and a ranking of conditions keep
 their refusals.
+
+The record does not say what a medication was given for, so a question
+that asks which medications were given for something gets a
+clarification that says so and asks about a medication by name or a
+drug class instead (version 4): one whose words after "for" or "treat"
+name a condition, a test or a vital sign ("what is he taking for his
+seizures", "what was given for pain", "is she on anything for blood
+pressure"), unless the words before them name an item of another kind,
+and one that names medications by a condition ("seizure medications").
+Until this version, such a question was read as one about a medication
+named after the condition, and asked which medication was meant; asked
+without a kind's word, it was answered as a question about the
+condition, or about a vital sign of the same name.
 
 | Task | Examples | Answer |
 | --- | --- | --- |
@@ -611,7 +624,7 @@ gives its highest or lowest value, since vital signs carry no flag; and
 a question about abnormal vital signs without high or low, or abnormal
 medications or procedures, asks again, since the record flags none of
 them. The phrase is resolved within its kind by `qa.record_resolve`
-(rules `record-resolution-v2`): a name of the kind's dictionary (the
+(rules `record-resolution-v3`): a name of the kind's dictionary (the
 laboratory and ICU item dictionaries, the medication vocabulary's
 ingredients, ATC classes and brand names, the microbiology and care-unit
 names), a fixed synonym ("hgb", "wbc", "bp", "blood thinners", "cabg",
@@ -626,7 +639,19 @@ their response instead of being answered as a procedure whose names hold
 the word (as it was until this version). An unknown phrase gets
 suggestions of the closest names of the kind its words or verbs name,
 never a guess: names that begin with it, else the closest spellings (one
-edit, two from eight letters), for medications and procedures too.
+edit, two from eight letters), for medications and procedures too. A
+medication phrase that resolves to nothing as written is tried once more
+as the plural of its last word (version 3), so that a class word or a
+class name in the singular ("an antiepileptic", "a blood thinner")
+resolves as its plural does; a phrase that resolves as written keeps its
+resolution. A fixed class word that the vocabulary also names stands for
+both (version 3). ATC names several classes of local antibiotics
+"Antibiotics" (of the eye, the ear, the skin, the gut and so on), and
+until this version "antibiotics" stood for those alone, missing the
+systemic antibacterials (J01) that its fixed synonym names, so that "Any
+antibiotics?" could be not recorded for a patient given intravenous
+antibiotics; "antivirals" missed the systemic antivirals (J05) and
+"corticosteroids" the systemic corticosteroids (H02) in the same way.
 
 A medication record with a standard concept matches an ingredient, a
 brand name (through its ingredients) or an ATC class by its concept's
@@ -655,7 +680,9 @@ question without it ("was heparin not given" is a presence check, as for
 conditions), except in a question about a whole kind ("which labs were
 not done"), where it is a filter. The scope binds as for conditions. The
 templates write every answer (`qa.record_answer`, rules
-`record-answer-v2`): its facts are references to records, visits and the
+`record-answer-v3`, whose clarification for a question about what a
+medication was given for is the notice `indication_unrecorded`): its
+facts are references to records, visits and the
 person, and every name, value, time, date and age is rendered from them.
 Values are shown as recorded, every digit and no exponent; a value that
 MIMIC-IV removed says so, without a unit; a single record is the only
@@ -679,8 +706,10 @@ name inside another, none at all), a brand name, drug classes,
 microbiology with and without growth and every interpretation, an open
 transfer, two ICU stays, an admission without times, one whose discharge
 precedes its admission, a death in hospital and an age that passes 89.
-Every one of 135 questions, including noise, markup, accents,
-abbreviations, negations, misspellings and words of time, is asked in
+Every one of 142 questions, including noise, markup, accents,
+abbreviations, negations, misspellings, words of time, class words in
+the singular and questions about what a medication was given for, is
+asked in
 every scope; none ends in a rejection or an error. The answers' checks
 are tested by breaking correct answers one fact at a time
 (`tests/validation/test_record_mutations.py`): all 1,479 changed answers
@@ -748,6 +777,36 @@ service without the model and without runtime records:
 | Rewordings: the 133 questions in 13 rewordings, in the history and all visits of 3 cases of each set | 18,828 | none answered otherwise |
 | Junk: 3,000 junk questions in the history and all visits of 2 cases of each set | 24,000 | no error or exception; 160 over the length limit, each `limit_exceeded`; median 0.055 s, the slowest 1.14 s |
 | The edge questions again, in every scope of every case | 31,652 | the same outcomes as before the rules changed; no condition question answered otherwise with the record |
+
+### What a medication was given for, and drug classes
+
+A clinician trying the shared interface asked which medications were
+given for a recorded condition
+([ADR 0026](decisions/0026-what-a-medication-was-given-for.md)). Rules
+`record-questions-v4`, `record-resolution-v3` and `record-answer-v3`
+were checked on the development case sets, with aggregate output only,
+through the service as the page asks (the condition rules first),
+without the model and without runtime records. Each of 228 questions,
+the edge questions, the first development check's, seventeen condition
+questions, the new wordings and the help's examples, was asked in every
+scope of every case with the rules before and after, and a digest of its
+responses compared:
+
+| Check | Requests | Result |
+| --- | --- | --- |
+| The 228 questions, before and after | 44,004 each | 207 give the same responses byte for byte; the 21 that change are the ones the rules meant to change |
+| Twelve wordings asking what medications were given for something | 2,316 | ten now get the clarification; six of them were answered before as another question: a condition's presence ("what is he taking for his seizures"), a vital sign ("what was given for pain", "for blood pressure") or a test ("for the potassium"); "what medications treat his seizures" keeps the condition rules' refusal of treatment questions, and "for diabetes" a clarification, since the word alone names no condition |
+| Eleven questions naming a class in the singular | 2,123 | each gives the outcomes of its plural, where each was a clarification before |
+| The medication questions again, and every class word, after a class word kept its classes | 13,124 | only the three antibiotic questions changed: "Any antibiotics?" is answered in 103 of the 193 scopes instead of 62 |
+| Mutants of the class answers | 60 answers, 1,862 mutants | all withheld; every original and its 24 controls released |
+| Mutants of the record answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 answers, 30,719 mutants | all withheld; every original and the 762 controls released |
+| The condition suite | 1,892 and 784 | 100%, with the summary digests of rules version 5 byte for byte |
+
+"Any nsaids?" is read by the condition rules as a condition: the
+condition vocabulary names "Non-steroidal anti-inflammatory overdose"
+NSAIDs, so the answer says that overdose is not recorded, and names it.
+"Were any NSAIDs given?" and "Was an NSAID given?" are read as
+medication questions.
 
 ## Limits
 

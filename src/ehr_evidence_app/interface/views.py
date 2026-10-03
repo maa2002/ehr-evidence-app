@@ -425,6 +425,9 @@ def response_view(result, known=()):
             "text": "\n".join(("- " if line["depth"] is not None else "")
                               + line["text"] for line in lines),
             "withheld": withheld,
+            # A response that asks back or declines points to the help.
+            "hint": labels.HELP_HINT if response["outcome"] in (
+                "clarification", "abstention") else None,
             "references": labels.references(response),
             "evidence": scope_key(response["scope"]),
             "scope": {"key": scope_key(response["scope"]),
@@ -845,6 +848,24 @@ def evidence_view(view):
     if view["kind"] == PREDICTION:
         return prediction_evidence_view(view)
     return scope_evidence_view(view)
+
+
+def help_view():
+    """Return the help the page shows when /help is typed: why questions
+    follow set patterns, what can be asked, kind by kind, with example
+    questions, the predicted diagnosis, and notes; and the reply to a
+    command that is not one."""
+    title, text = labels.HELP_PREDICTION
+    return {"command": labels.HELP_COMMAND, "title": labels.HELP_TITLE,
+            "why_title": labels.HELP_WHY_TITLE, "why": list(labels.HELP_WHY),
+            "sections": [{"title": section, "rows": [
+                {"what": what, "examples": list(examples)}
+                for what, examples in rows]}
+                for section, rows in labels.HELP_SECTIONS],
+            "prediction": {"title": title, "text": text},
+            "notes": list(labels.HELP_NOTES),
+            "unknown": {"label": labels.HELP_UNKNOWN_LABEL,
+                        "tone": "neutral", "text": labels.HELP_UNKNOWN}}
 
 
 def error_view(code):

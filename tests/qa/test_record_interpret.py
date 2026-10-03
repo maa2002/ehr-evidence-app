@@ -10,7 +10,8 @@ import unittest
 from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_interpret as reader
 from ehr_evidence_app.qa import record_resolve as resolving
-from ehr_evidence_app.qa import record_vocabulary
+from ehr_evidence_app.qa import record_vocabulary, resolve
+from ehr_evidence_app.qa import vocabulary as build
 
 
 def drug_vocabulary():
@@ -38,7 +39,23 @@ def drug_vocabulary():
                          "radiography of chest", "appendectomy"))
 
 
-def terms():
+def condition_vocabulary():
+    """Return an invented condition vocabulary: a seizure, a thrombosis
+    also known by its abbreviation, and pain, which is a vital sign's name
+    too."""
+    names = {2001: "Seizure", 2002: "Deep venous thrombosis", 2003: "Pain"}
+    concepts = [(concept, "standard", "SNOMED", "Disorder", "S%d" % concept,
+                 "", name) for concept, name in sorted(names.items())]
+    return resolve.parse({
+        build.FILES["concepts"]: build.encode_tsv("concepts", concepts),
+        build.FILES["synonyms"]: build.encode_tsv("synonyms",
+                                                  [(2002, "DVT")]),
+        build.FILES["ancestors"]: build.encode_tsv(
+            "ancestors", [(concept, concept, 0) for concept in names]),
+        build.FILES["icd_maps"]: build.encode_tsv("icd_maps", [])})
+
+
+def terms(condition_vocabulary=None):
     """Return Terms over invented dictionaries."""
     drugs = drug_vocabulary()
     return resolving.Terms(
@@ -54,7 +71,8 @@ def terms():
                "VANCOMYCIN"],
         units=["Medical Intensive Care Unit (MICU)",
                "Emergency Department", "Medicine"],
-        drugs=drugs, procedures=drugs.procedure_names)
+        drugs=drugs, procedures=drugs.procedure_names,
+        condition_vocabulary=condition_vocabulary)
 
 
 class ReadingTests(unittest.TestCase):
@@ -426,6 +444,63 @@ class EdgeReadingTests(unittest.TestCase):
         self.assertEqual(reader.left_words(
             "heparin or warfarin", keep=reader.CONJUNCTIONS),
             ["heparin", "or", "warfarin"])
+
+
+class IndicationTests(unittest.TestCase):
+    """Rule 9: the record does not say what a medication was given for."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Build the invented terms, with conditions, once."""
+        cls.terms = terms(condition_vocabulary())
+
+    def read(self, question):
+        """Return the reading of a question."""
+        return reader.interpret(question, self.terms)
+
+    def test_medications_asked_for_by_what_they_were_given_for(self):
+        """Medications asked for by a condition, a test or a vital sign
+        they were given for get the clarification, naming it."""
+        for question, phrase in (
+                ("Is he taking medications for his seizures?", "seizures"),
+                ("Which medications are for seizures?", "seizures"),
+                ("What is he taking for his seizures?", "seizures"),
+                ("What did she take to treat the seizures?", "seizures"),
+                ("Which seizure medications was he given?", "seizure"),
+                ("Was heparin given for DVT?", "dvt"),
+                ("What was given for pain?", "pain"),
+                ("Is she on anything for her heart rate?", "heart rate"),
+                ("Was anything given for the potassium?", "potassium")):
+            found = self.read(question)
+            self.assertEqual((found.status, found.reason, found.category,
+                              found.phrase),
+                             ("clarify", "task_ambiguous", "indication",
+                              phrase), question)
+
+    def test_other_questions_keep_their_readings(self):
+        """Questions that name what they ask about, or ask about another
+        kind, are read as before: "pain" alone is the vital sign."""
+        for question, task, kind in (
+                ("Was heparin given?", "record_presence", "medication"),
+                ("Any antibiotics?", "record_presence", "medication"),
+                ("What medications were given?", "record_list",
+                 "medication"),
+                ("What was the pain score?", "record_values", "vital"),
+                ("Was potassium checked?", "record_presence", "lab")):
+            found = self.read(question)
+            self.assertEqual((found.status, found.task, found.kind),
+                             ("task", task, kind), question)
+        for question in ("Was he given a chest x-ray for his seizures?",
+                         "Was a chest x-ray done for the seizures?",
+                         "Was the blood culture sent for the fever?"):
+            self.assertNotEqual(self.read(question).category, "indication",
+                                question)
+
+    def test_without_a_condition_vocabulary_nothing_is_a_condition(self):
+        """Words name a condition only through the condition vocabulary."""
+        found = reader.interpret("Which medications are for seizures?",
+                                 terms())
+        self.assertNotEqual(found.category, "indication")
 
 
 if __name__ == "__main__":

@@ -12,7 +12,9 @@ rules (rules record-resolution-v2), in order:
    the question's own normalisation (qa.resolve.normalize);
 2. the phrase is one of the fixed synonyms of the kind (TERMS): an
    abbreviation or everyday word ("hgb", "blood thinners", "cabg",
-   "e coli", "micu"), read as the dictionary words it stands for;
+   "e coli", "micu"), read as the dictionary words it stands for; a
+   medication class word that is also a name of the vocabulary stands
+   for both;
 3. otherwise the dictionary names holding every word of the phrase: a
    word of four letters or more may be part of a longer word ("dialysis"
    in "hemodialysis"), a shorter one must be a whole word. For a
@@ -50,7 +52,13 @@ A record matches a resolved phrase, and the answer states how (MATCHES):
 Version 2 matches medications without a standard concept against the
 ingredients of a class and by whole words, names word matches apart from
 matches of a written drug name, and suggests spellings of medications
-and procedures.
+and procedures. Version 3 resolves a medication phrase that resolves to
+nothing as written by the plural of its last word, so that a class word
+or a class name in the singular ("antiepileptic") resolves as its plural
+("antiepileptics") does; and a fixed class word that the vocabulary also
+names stands for both, so that "antibiotics" is the systemic
+antibacterials as well as the classes ATC names Antibiotics (those of the
+eye, the skin, the gut and the like).
 """
 
 from __future__ import annotations
@@ -61,7 +69,7 @@ import re
 from ehr_evidence_app.qa import resolve as conditions
 from ehr_evidence_app.sources import mimic
 
-RULES_VERSION = "record-resolution-v2"
+RULES_VERSION = "record-resolution-v3"
 # The kinds a question may ask about; a procedure question covers the
 # ICD procedures and the ICU procedure events.
 QUESTION_KINDS = ("condition", "procedure", "medication", "lab",
@@ -300,6 +308,17 @@ def normalize(text):
     return conditions.normalize(text)
 
 
+def plurals(phrase):
+    """Return the plural of a phrase's last word: "antiepileptic" as
+    "antiepileptics". Tried only after the phrase as written, and its
+    singulars, resolve to nothing, so a wrong plural can only fail to
+    match."""
+    words = phrase.split()
+    if not words or len(words[-1]) <= 3 or words[-1].endswith("s"):
+        return []
+    return [" ".join(words[:-1] + [words[-1] + "s"])]
+
+
 def words_in(words, text):
     """Return True when text holds every word: whole words for short
     ones, and within longer words for words of four letters or more."""
@@ -516,21 +535,13 @@ class Terms:
 
     def medication(self, phrase):
         """Resolve a medication phrase: an ingredient, a class or a brand
-        name of the vocabulary, or a fixed class word."""
+        name of the vocabulary, or a fixed class word; failing those, the
+        same for the plural of its last word."""
         if self.drugs is None:
             return ItemResolution("medication", phrase, "unknown")
-        ids, rule = set(), None
-        for candidate in [phrase] + conditions.singulars(phrase):
-            ids = set(self.drugs.drug_names.get(candidate, ()))
-            if ids:
-                rule = "name"
-                break
-        if not ids and phrase in TERMS["medication"]:
-            codes = set(TERMS["medication"][phrase])
-            ids = {concept.concept_id
-                   for concept in self.drugs.drugs.values()
-                   if concept.kind == "atc" and concept.code in codes}
-            rule = "synonym"
+        ids, rule = self.drug_concepts(phrase)
+        for form in plurals(phrase) if not ids else ():
+            ids, rule = self.drug_concepts(form)
         if not ids:
             return ItemResolution("medication", phrase, "unknown",
                                   suggestions=self.drug_suggestions(phrase))
@@ -551,6 +562,28 @@ class Terms:
                               tuple(dict.fromkeys(names)),
                               tuple(sorted(keys)),
                               written=self.written_names(phrase, keys))
+
+    def drug_concepts(self, phrase):
+        """Return the drug concepts of a phrase, and the rule: those the
+        vocabulary names by it, or by a singular of it; for a fixed class
+        word, together with its fixed classes and those the vocabulary
+        names by it in the plural, so that "antibiotics" is the systemic
+        antibacterials as well as the classes named Antibiotics of the eye,
+        the skin and the like. (empty, None) when it is neither."""
+        forms = [phrase] + conditions.singulars(phrase)
+        named = set()
+        for candidate in forms:
+            named = set(self.drugs.drug_names.get(candidate, ()))
+            if named:
+                break
+        if phrase not in TERMS["medication"]:
+            return named, "name" if named else None
+        for candidate in forms + plurals(phrase):
+            named |= set(self.drugs.drug_names.get(candidate, ()))
+        codes = set(TERMS["medication"][phrase])
+        fixed = {concept.concept_id for concept in self.drugs.drugs.values()
+                 if concept.kind == "atc" and concept.code in codes}
+        return named | fixed, "name" if named else "synonym"
 
     def written_names(self, phrase, keys):
         """Return the names, as sorted word tuples, that a medication

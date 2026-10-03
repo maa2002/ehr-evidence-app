@@ -128,7 +128,7 @@ class ResolutionTests(unittest.TestCase):
 
 
 class EdgeResolutionTests(unittest.TestCase):
-    """Resolution at its edges (rules record-resolution-v2), over the
+    """Resolution at its edges (rules record-resolution-v3), over the
     invented edge record's terms."""
 
     @classmethod
@@ -167,6 +167,75 @@ class EdgeResolutionTests(unittest.TestCase):
         found = self.terms.resolve("medication", "insulin")
         self.assertIn(("insulin",), found.written)
         self.assertIn(("glargine", "insulin"), found.written)
+
+    def test_singular_class_words_and_names_resolve_as_their_plurals(self):
+        """A class word or a class name in the singular resolves as its
+        plural does (version 3); a phrase that resolves as written keeps
+        its resolution."""
+        for singular, plural in (("opioid", "opioids"),
+                                 ("diuretic", "diuretics"),
+                                 ("antibacterial", "antibacterials"),
+                                 ("blood thinner", "blood thinners")):
+            one = self.terms.resolve("medication", singular)
+            many = self.terms.resolve("medication", plural)
+            self.assertEqual((one.status, one.keys), ("resolved", many.keys),
+                             singular)
+        self.assertEqual(self.terms.resolve("medication", "heparin").keys,
+                         (("ingredient", 1),))
+        drugs = {21: record_vocabulary.DrugConcept(
+                     21, "atc", "ATC", "ATC 2nd", "N03", "ANTIEPILEPTICS"),
+                 22: record_vocabulary.DrugConcept(
+                     22, "ingredient", "RxNorm", "Ingredient", "I22",
+                     "levetiracetam")}
+        terms = resolving.Terms(
+            labs=[], items=[], micro=[], units=[], procedures=(),
+            drugs=record_vocabulary.RecordVocabulary(
+                drugs=drugs, drug_names={
+                    resolving.normalize(concept.name): {concept.concept_id}
+                    for concept in drugs.values()},
+                brands={}, ancestors={}, procedure_names=(),
+                class_ingredients={21: frozenset({22})}))
+        found = terms.resolve("medication", "antiepileptic")
+        self.assertEqual((found.status, found.rule, found.names, found.keys),
+                         ("resolved", "name", ("ANTIEPILEPTICS",),
+                          (("atc", 21),)))
+
+    def test_a_class_word_named_by_the_vocabulary_keeps_its_classes(self):
+        """A fixed class word that the vocabulary also names, as ATC names
+        the local antibiotics of the eye, is both: "antibiotics" and "an
+        antibiotic" are the systemic antibacterials and the eye's."""
+        drugs = {31: record_vocabulary.DrugConcept(
+                     31, "atc", "ATC", "ATC 2nd", "J01",
+                     "ANTIBACTERIALS FOR SYSTEMIC USE"),
+                 32: record_vocabulary.DrugConcept(
+                     32, "atc", "ATC", "ATC 4th", "S01AA", "Antibiotics"),
+                 33: record_vocabulary.DrugConcept(
+                     33, "atc", "ATC", "ATC 2nd", "N02A", "OPIOIDS")}
+        terms = resolving.Terms(
+            labs=[], items=[], micro=[], units=[], procedures=(),
+            drugs=record_vocabulary.RecordVocabulary(
+                drugs=drugs, drug_names={
+                    resolving.normalize(concept.name): {concept.concept_id}
+                    for concept in drugs.values()},
+                brands={}, ancestors={}, procedure_names=()))
+        for phrase in ("antibiotics", "antibiotic"):
+            found = terms.resolve("medication", phrase)
+            self.assertEqual((found.status, found.rule, found.keys),
+                             ("resolved", "name", (("atc", 31), ("atc", 32))),
+                             phrase)
+        found = terms.resolve("medication", "opioids")
+        self.assertEqual((found.rule, found.keys), ("name", (("atc", 33),)))
+        found = terms.resolve("medication", "antibacterial")
+        self.assertEqual((found.rule, found.keys), ("synonym",
+                                                    (("atc", 31),)))
+
+    def test_plurals_of_a_phrase(self):
+        """The plural of the last word, unless it is short or ends in s."""
+        self.assertEqual(resolving.plurals("antiepileptic"),
+                         ["antiepileptics"])
+        self.assertEqual(resolving.plurals("beta blocker"), ["beta blockers"])
+        for phrase in ("opioids", "abc", "", "glass"):
+            self.assertEqual(resolving.plurals(phrase), [], phrase)
 
     def test_misspelt_medications_and_procedures_are_suggested(self):
         """A misspelling within one edit (two from eight letters) is

@@ -183,6 +183,10 @@ case set, and its link made
   malformed requests, on invented data and the development case sets;
   polite openings, statement forms, stays in time order, unpaired
   surrogates and the framework's refusals fixed
+- 52.10 Answer a tester's questions about what a medication was given
+  for ([ADR 0026](decisions/0026-what-a-medication-was-given-for.md);
+  done): a clarification that the record does not say, drug classes
+  named in the singular, and `/help` with example questions
 
 ## Phase 9. Evaluation
 

@@ -7,6 +7,7 @@ real record is used.
 """
 
 import hashlib
+import json
 import secrets
 import socket
 import time
@@ -18,7 +19,7 @@ from ehr_evidence_app.api import app as api
 from ehr_evidence_app.api import boundary
 from ehr_evidence_app.interface import app as interface
 from ehr_evidence_app.interface import client as clients
-from ehr_evidence_app.interface import gate, names
+from ehr_evidence_app.interface import gate, names, views
 
 PUBLIC = "ehr.example.org"
 LIST = "Which conditions are recorded?"
@@ -137,6 +138,18 @@ class OperationTests(InterfaceTestCase):
         found = self.call(server, "GET", base + "/1/evidence",
                           params={"kind": "selected_visit", "visit": 1})
         self.assertEqual(found.json()["title"], "Visit 1")
+
+    def test_the_help(self):
+        """The help is what the page shows for /help: every kind of
+        information with its examples, never cached."""
+        server = self.serve()
+        found = self.call(server, "GET", "/api/help")
+        self.assertEqual(found.status_code, 200)
+        self.assertEqual(found.headers["cache-control"], "no-store")
+        shown = found.json()
+        self.assertEqual(shown, json.loads(json.dumps(views.help_view())))
+        self.assertTrue(all(row["examples"] for section in shown["sections"]
+                            for row in section["rows"]))
 
     def test_question_is_a_job(self):
         """A question is answered in the background; its result shows the

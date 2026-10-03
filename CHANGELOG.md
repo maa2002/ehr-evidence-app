@@ -7,6 +7,17 @@ change interfaces.
 
 ## [Unreleased]
 
+### Added
+
+- `/help` in the conversation
+  ([docs/interface.md](docs/interface.md#the-interface)): why questions
+  follow set patterns (they are read by fixed rules, not by the language
+  model, so that every answer can be checked against the record), then
+  each kind of information with example questions that go into the box,
+  each read by the rules as its kind's question and answered on the
+  invented record; any other word after a slash is not a command. The
+  welcome, and every response that asks back or declines, name `/help`.
+
 ### Changed
 
 - The tunnel's set-up follows Cloudflare's current dashboard
@@ -16,6 +27,28 @@ change interfaces.
   published application on a one-level subdomain; Always Use HTTPS sends
   `http://` addresses on to `https://`; and the link reaches the
   supervisor privately, in an issue or a direct message.
+
+### Fixed
+
+- Rules `record-questions-v4` and `record-answer-v3`
+  ([ADR 0026](docs/decisions/0026-what-a-medication-was-given-for.md);
+  [docs/qa.md](docs/qa.md#questions-about-the-whole-record)): a question
+  about what medications were given for a condition, a test or a vital
+  sign ("what is he taking for his seizures", "seizure medications") gets
+  a clarification that the record does not say, and asks about a
+  medication by name or a drug class instead (the notice
+  `indication_unrecorded`). It was read as a question about a medication
+  named after the condition, or, without a kind's word, answered as a
+  question about the condition or a vital sign of the same name.
+- Rules `record-resolution-v3`: a class word or class name in the
+  singular ("an antiepileptic", "a blood thinner") resolves as its plural
+  does; it was not found. A fixed class word that the vocabulary also
+  names stands for both: "antibiotics" stood only for the ATC classes
+  named Antibiotics, local antibiotics of the eye, the skin, the gut and
+  the like, and missed the systemic antibacterials, so that "Any
+  antibiotics?" could be not recorded for a patient given intravenous
+  antibiotics; "antivirals" and "corticosteroids" missed their systemic
+  classes the same way.
 
 ## [0.10.0] - 2026-09-30
 

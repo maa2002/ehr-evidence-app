@@ -144,6 +144,21 @@ value chosen there; the page builds everything it shows as text.
   it (the model, or the template and why) and the seconds it took.
   Choosing a reference opens its record in the evidence panel, in the
   scope the response answered.
+- **Help.** Questions are read by fixed rules, so they have to ask for
+  one of the kinds of information the rules read. Typing `/help` shows,
+  in the conversation and without asking the API anything, why questions
+  follow set patterns (each is read by fixed rules, not by the language
+  model, so that it is read the same way every time and every answer can
+  be checked against the record; the questions are not a fixed list, but
+  a question has to ask for one of the kinds below), then each kind of
+  information with example questions, the predicted diagnosis and notes
+  on the scope, other wordings and what is not answered. Selecting an
+  example puts it in the box to change and send. Every example is read by
+  the rules as its kind's question and answered on the invented record
+  (`tests/interface/test_views.py`). Any other word after a slash is
+  answered as not a command; neither is sent as a question or recorded.
+  The welcome names `/help`, and so does every response that asks back
+  or declines.
 - **The explanation** (work item 51). Generate the Predicted Diagnosis
   first says what it is, in plain words: a GNN model that predicts
   diagnoses read the record and predicted a diagnosis for the final
@@ -211,6 +226,7 @@ screen.
 | Route | Returns |
 | --- | --- |
 | `GET /api/state` | The model's state, the cohorts, the question limit and the version |
+| `GET /api/help` | What can be asked, shown when `/help` is typed: why questions follow set patterns, each kind of information with example questions, and notes |
 | `GET /api/case-sets/{case_set}/cases` | The cohort's patients, by pseudonym, with each case's number and visits |
 | `GET /api/case-sets/{case_set}/cases/{case_number}` | The case: its pseudonym and greeting, its scopes with their visits' dates, its evidence and its predicted diagnosis |
 | `GET /api/case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The evidence of a scope, or of the prediction, in sections of facts, tables and notes |

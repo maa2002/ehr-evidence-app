@@ -159,6 +159,84 @@ GLOSSARY = (
     ("Sources",
      "P1 is the prediction, A1 and the like its attributions and E1 and the "
      "like the records: select one to see it in the evidence panel."))
+# The help, shown when /help is typed: why questions follow set patterns,
+# then what can be asked, kind by kind, with example questions that the
+# rules read as that kind's question (tests/interface/test_views.py).
+HELP_COMMAND = "/help"
+HELP_TITLE = "What You Can Ask"
+HELP_WHY_TITLE = "Why Questions Follow Set Patterns"
+HELP_WHY = (
+    "Each question is read by fixed rules, not by the language model, so "
+    "that it is read the same way every time and every answer can be "
+    "checked against the record before it is shown.",
+    "The questions are not a fixed list: the rules read many wordings, "
+    "abbreviations and names. But a question has to ask for one of the "
+    "kinds of information below. Anything else gets a reply that says what "
+    "was not understood, never a guess.")
+HELP_SECTIONS = (
+    ("Conditions", (
+        ("Conditions Recorded", ("Which conditions are recorded?",)),
+        ("Whether a Condition Is Recorded",
+         ("Is essential hypertension recorded?",
+          "Is type 2 diabetes mellitus recorded?")))),
+    ("Medications", (
+        ("Medications Given", ("What medications were given?",)),
+        ("A Medication or a Drug Class",
+         ("Was heparin given?", "Were any antibiotics given?")),
+        ("When, How Often and What Dose",
+         ("When was heparin given?", "How many times was heparin given?",
+          "What doses of heparin were given?")))),
+    ("Laboratory Results", (
+        ("Tests Done", ("What labs were done?",)),
+        ("One Result", ("What was the last potassium?",
+                        "What was the highest creatinine?")),
+        ("Every Result of a Test", ("What were all the potassium values?",)),
+        ("Results Flagged Abnormal", ("Were any labs abnormal?",
+                                      "Was the potassium high?")))),
+    ("Vital Signs, Charted in the ICU", (
+        ("One Value", ("What was the latest heart rate?",
+                       "What was the highest temperature?")),
+        ("Every Value", ("What were all the blood pressure values?",)))),
+    ("Procedures", (
+        ("Procedures Done", ("What procedures were done?",)),
+        ("Whether One Was Done, and When",
+         ("Was a chest x-ray done?", "When was the chest x-ray done?")))),
+    ("Microbiology", (
+        ("Cultures and What Grew", ("What microbiology was done?",
+                                    "What organisms grew?",
+                                    "Was E. coli found?")),)),
+    ("Stays, Units and the ICU", (
+        ("Hospital Stays", ("How many visits were there?",
+                            "When was the patient admitted?",
+                            "How long was each stay?",
+                            "Where was the patient discharged to?")),
+        ("Units and ICU Stays", ("Which units was the patient in?",
+                                 "How many ICU stays were there?")))),
+    ("The Patient", (
+        ("Details Recorded", ("How old is the patient?",
+                              "What is the patient's sex?",
+                              "What language does the patient speak?",
+                              "Did the patient die?")),)),
+)
+HELP_PREDICTION = (
+    "The Predicted Diagnosis",
+    "Press Generate the Predicted Diagnosis, below the box, for the GNN "
+    "model's prediction of a diagnosis for the final admission and the "
+    "recorded concepts its score was sensitive to.")
+HELP_NOTES = (
+    "Answers cover the part of the record chosen in the menu below the "
+    "box: Prior History, All Visits or one visit.",
+    "Other wordings work too, with abbreviations such as K, Hb or BP and "
+    "everyday names of drug classes such as blood thinners or painkillers.",
+    "Not answered: advice on what to do, the future, or what a medication "
+    "was given for, which the record does not say.",
+    "Select an example to put it in the box, change it as you like, and "
+    "send it.")
+# Under a response that asks back or declines; and the reply to a command
+# that is not one, shown as a response is, with a badge.
+HELP_HINT = "Type /help to see what you can ask."
+HELP_UNKNOWN_LABEL = "Not a Command"
+HELP_UNKNOWN = "The one command here is /help, which shows what you can ask."
 # Short joining words a title keeps in lower case, inside a name.
 SMALL_WORDS = frozenset(("a", "an", "and", "as", "at", "but", "by", "for",
                          "in", "nor", "of", "on", "or", "per", "the", "to",
