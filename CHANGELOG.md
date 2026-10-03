@@ -45,7 +45,13 @@ change interfaces.
   - the prose rubric of ADR 0027: identity, evidence and history judged
     by code; attribution wording marked by a rating model on the
     workstation, checked on planted faults in two forms per class; and
-    the owner's blind check of 30 texts.
+    the owner's blind check of 30 texts. The rater's first check on
+    development texts failed no clean text and missed most certainty
+    and status faults, so its instructions are being revised;
+  - the references of questions about the whole record (ADR 0016,
+    decision 11), from the raw extract and the snapshot. They agree with
+    all 14,800 structured template answers of the development case
+    sets.
 - `/help` in the conversation
   ([docs/interface.md](docs/interface.md#the-interface)): that the
   questions are not a fixed list but must ask for a kind of information

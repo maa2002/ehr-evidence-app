@@ -472,10 +472,120 @@ def run_synthetic():
     return problems
 
 
+# --------------------------------------------------------------------------
+# The operator's check of the rater on a development case set
+# --------------------------------------------------------------------------
+
+CHECKS_ROOT = "\\assessment\\rater-checks"
+
+
+def development_texts(case_set, per_kind, seed=SEED):
+    """Return (kind, text) pairs of a development case set's template
+    answers and explanations, as the gate releases them: per_kind of each
+    kind, drawn with a fixed seed."""
+    from ehr_evidence_app.casesets import registry
+    from ehr_evidence_app.evidence import readers
+    from ehr_evidence_app.generation import adapter
+    if case_set != readers.PILOT_LABEL and registry.spec(case_set)[
+            "purpose"] != "development":
+        raise RubricError("case_set_held_out")
+    pairs, release_of = adapter.development_requests(case_set)
+    found = collections.defaultdict(list)
+    for context, template in pairs:
+        kind = rated_kind(context.task)
+        response = release_of(context)(template)
+        if kind is not None and response.text:
+            found[kind].append(response.text)
+    generator = random.Random(seed)
+    return [(kind, text) for kind in sorted(found)
+            for text in generator.sample(found[kind],
+                                         min(per_kind, len(found[kind])))]
+
+
+def check_summary(counts):
+    """Return the check's aggregates: for each kind and class, the faults
+    caught, and the passing texts failed."""
+    found = collections.defaultdict(lambda: collections.defaultdict(
+        lambda: [0, 0, 0]))
+    for (kind, name, form), (right, wrong, none) in counts.items():
+        entry = found[kind]["%s %s" % (name, form) if form != "-" else name]
+        entry[0] += right
+        entry[1] += wrong
+        entry[2] += none
+    return {kind: {name: {"right": value[0], "wrong": value[1],
+                          "no_mark": value[2]}
+                   for name, value in sorted(classes.items())}
+            for kind, classes in sorted(found.items())}
+
+
+def run_check(case_set, per_kind, rater, keep=True):
+    """Check the rater on a development case set's planted texts; return
+    the summary, kept with the rater's account of itself in a new
+    protected record."""
+    import datetime
+    import hashlib
+    import os
+    from ehr_evidence_app.gnn import mapping
+    from ehr_evidence_app.storage import policy as guard
+    described = rater.describe()
+    texts = development_texts(case_set, per_kind)
+    summary = check_summary(check_rater(texts, rater))
+    if keep:
+        protected = guard.PRIVATE_ROOT + "\\protected-data"
+        stamp = datetime.datetime.now(datetime.timezone.utc).strftime(
+            "%Y%m%dT%H%M%SZ")
+        directory = protected + CHECKS_ROOT
+        path = os.path.join(directory, "%s-%s.json" % (case_set, stamp))
+        problem = mapping.output_problem(path, protected)
+        if problem:
+            raise RubricError(problem)
+        os.makedirs(directory, exist_ok=True)
+        document = {"case_set": case_set, "texts_per_kind": per_kind,
+                    "rater": described, "summary": summary,
+                    "texts_sha256": hashlib.sha256(json.dumps(
+                        texts).encode("utf-8")).hexdigest()}
+        with open(path, "x", encoding="utf-8", newline="\n") as handle:
+            json.dump(document, handle, indent=1, sort_keys=True)
+    return summary
+
+
+def report_check(summary):
+    """Print the check's aggregates."""
+    for kind, classes in summary.items():
+        for name, counts in classes.items():
+            print("%-12s %-26s right %d, wrong %d, no mark %d" % (
+                kind, name, counts["right"], counts["wrong"],
+                counts["no_mark"]))
+
+
 def main(argv=None):
-    """Run the default mode."""
+    """Run the default mode, or check a rater on development texts."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.parse_args(argv)
+    parser.add_argument("--operator-check", action="store_true",
+                        help="check the rater on a development case set's "
+                             "texts with planted faults; prints counts only")
+    parser.add_argument("--case-set", default="dev-30-v1")
+    parser.add_argument("--texts", type=int, default=10,
+                        help="texts of each kind")
+    parser.add_argument("--endpoint", default="http://127.0.0.1:11434")
+    parser.add_argument("--model", default=None)
+    parser.add_argument("--options", default=None,
+                        help="the rater's settings, as JSON")
+    args = parser.parse_args(argv)
+    try:
+        if args.operator_check:
+            if not args.model:
+                print("FAILED: --operator-check needs --model")
+                return 2
+            options = json.loads(args.options) if args.options else None
+            report_check(run_check(args.case_set, args.texts, Rater(
+                args.endpoint, args.model, options)))
+            print("RESULT: PASS")
+            return 0
+    except (RubricError, ValueError) as error:
+        print("FAILED: %s" % (error if isinstance(error, RubricError)
+                              else "options_not_json"))
+        return 1
     problems = run_synthetic()
     for problem in problems:
         print("FAILED: %s" % problem)

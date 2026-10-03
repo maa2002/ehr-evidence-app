@@ -17,12 +17,13 @@ case sets first. Command examples assume the session set-up in
 | --- | --- | --- | --- |
 | 53 | `assessment.partition` | The downstream partition of the case sets | done: `downstream-partition-v1` |
 | 54 | `assessment.references` | Independent QA references | built; agree with every template answer of the development case sets |
+| 54 | `assessment.record_references` | References of questions about the whole record (ADR 0016, decision 11) | built; agree with every template answer of the development case sets |
 | 55 | `assessment.references` | Explanation expectations and challenges | expectations built, and agree with every development template explanation; the challenges come with the runner |
 | 56 | `assessment.baseline` | The baseline condition | built and checked on invented data |
 | 57 | `assessment.runner` | The paired runner, with the invented challenges | built and checked on invented data; a development run with the model is next |
-| 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built and checked on invented data; scored against references once those exist |
-| 60 | `assessment.end_to_end` | End-to-end QA | built for condition questions, and in agreement with the written test on a development set; questions about the whole record need their references |
-| 59 | `assessment.rubric` | The prose rubric (ADR 0027) | built and checked on invented data; the rater's check on development data is next |
+| 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built; checked on invented data and against the release gate's mutation suite |
+| 59 | `assessment.rubric` | The prose rubric (ADR 0027) | built; the rater's first check on development data found its weak classes, and its instructions are being revised |
+| 60 | `assessment.end_to_end` | End-to-end QA | built for condition questions, and in agreement with the written test on a development set; questions about the whole record are next |
 | 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built and checked on invented data |
 
 ## The downstream partition
@@ -350,11 +351,97 @@ reported.
 Answers get the same classes in sentences about conditions. The controls
 deny causation in words the runtime's rules also accept.
 
+**The rater's first check.** The rater's first instructions
+(`prose-rubric-v1`) were checked on 10 template answers and 10 template
+explanations of `dev-30-v1`, each with its clean form, the control and
+16 planted faults. It failed no clean text and no control. Faults
+caught:
+
+| Class | Answers, named / paraphrased | Explanations, named / paraphrased |
+| --- | --- | --- |
+| Causation | 10 / 10 | 10 / 10 |
+| Direction | 9 / 10 | 10 / 0 |
+| Share | 10 / 4 | 10 / 1 |
+| Exclusivity | 9 / 6 | 10 / 0 |
+| Diagnosis or status | 3 / 2 | 9 / 8 |
+| Risk | 2 / 10 | 10 / 10 |
+| Advice | 10 / 10 | 10 / 10 |
+| Certainty | 4 / 0 | 0 / 0 |
+
+Its instructions are revised on development data before they are frozen
+(ADR 0027, decision 4). The faults used to revise them are not the ones
+the reported check uses: a second set of wordings is kept for that.
+
 **The owner's check.** After the rating, 30 texts are drawn with a fixed
 seed: up to 15 that the rater failed and the rest from those it passed.
 They are shuffled and shown without the rater's marks or the
 conditions. The owner's marks are reported beside the rater's for each
 stratum, and the rater's marks are the ones scored.
+
+## References for questions about the whole record
+
+`assessment.record_references` prepares the reference of a question about
+the whole record (ADR 0016, decision 11) from the case set's raw extract
+and source snapshot. It reads no record bundle and runs no part of the
+runtime's reading, resolution, answering or checks. A question is named
+by what its writer meant: its task, kind, item (as the kind's
+identifiers), selector and field.
+
+- **Scope.** A case's visits come from its closure record. A raw row
+  belongs to the visit whose admission it names, as the snapshot records
+  each visit's admission.
+- **Items.** An item is one of:
+  - a condition or procedure: its standard concept, or its source code
+    without one;
+  - a medication: its concept, or without one its code and the drug its
+    prescription writes;
+  - a laboratory test or ICU item: its item number;
+  - a microbiology test: its name and specimen;
+  - a transfer: its care unit;
+  - an ICU stay: the stay itself.
+- **Written drug names.** A drug record without a standard concept keeps
+  only its product code in the snapshot. Its written name is that of the
+  prescription it was made from, found by the admission, the start and
+  stop times, and the NDC (or the drug's name and strength). Where
+  prescriptions with the same keys write different drugs, there is no
+  name.
+- **Matching an asked item.**
+  - Laboratory and ICU items match by number, and vital signs by group.
+  - Conditions match by standard concept and its descendants; a record
+    without one is unjudged.
+  - Medications match by concept, ingredients and classes, or by the
+    written name as whole words.
+  - Procedures, microbiology tests and care units match by the words of
+    their names.
+- **Answers.**
+  - Values and flags are taken only from results that hold a value.
+  - A values question picks the latest, first, highest or lowest
+    result: the latest when no value is a number, and a single record
+    is the only one.
+  - All values, and flagged results, show the latest 30 of a named item
+    or of a microbiology test, and the latest one of each item of a
+    whole kind.
+  - Medication doses are not prepared, so a question about doses has no
+    reference.
+
+On the development case sets, structured questions were answered by the
+templates for every kind in every scope, with items taken from the
+records present. Each answer's cited records were compared with its
+reference, and every one agrees:
+
+| Case set | Lists | Presence | Times | Counts | Values | Abnormal | Visits | The person | Differing |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `dev-30-v1` | 1,080 | 1,362 | 1,360 | 2,442 | 1,850 | 615 | 945 | 945 | 0 of 10,599 |
+| `pilot-10-v1` | 464 | 517 | 517 | 981 | 656 | 254 | 406 | 406 | 0 of 4,201 |
+
+Two condition times rest on records without a standard concept and are
+unjudged. The comparison first differed in 544 answers on `dev-30-v1`;
+each difference was traced to the references, not to the application:
+
+- values and flags come from results that hold a value;
+- flagged results are laid out as values are;
+- a drug record without a concept is named by its prescription, since
+  the snapshot holds only its product code.
 
 ## The paired comparison's statistics
 

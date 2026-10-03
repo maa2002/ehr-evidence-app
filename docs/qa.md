@@ -703,7 +703,7 @@ Values are shown as recorded, every digit and no exponent; a value that
 MIMIC-IV removed says so, without a unit; a single record is the only
 one, and the highest or lowest of values that are not numbers is the
 latest, said as such. A list of values shows the latest 30 of a named
-item, every result of a microbiology test, and the latest of each item of
+item, the latest 30 of each microbiology test, and the latest of each item of
 another whole kind, and counts the rest; an item is named by its earliest
 record. A visit whose discharge is recorded before its admission has no
 length. Ages are the anchor age plus the years to the visit, so they may

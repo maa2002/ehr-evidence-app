@@ -110,6 +110,7 @@ jobs:
             "ehr_evidence_app.assessment.metrics",
             "ehr_evidence_app.assessment.stated",
             "ehr_evidence_app.assessment.references",
+            "ehr_evidence_app.assessment.record_references",
             "ehr_evidence_app.assessment.baseline",
             "ehr_evidence_app.assessment.runner",
             "ehr_evidence_app.assessment.report",
