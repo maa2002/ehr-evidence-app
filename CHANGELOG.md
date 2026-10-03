@@ -91,6 +91,19 @@ change interfaces.
 
 ### Fixed
 
+- Rules `record-questions-v6`
+  ([docs/qa.md](docs/qa.md#names-read-whole)): a question about the
+  record reads an item's name whole. Words the reading sets aside, a
+  kind's word ("disease", "culture") or a harmless one ("of", "with"),
+  were taken out of names too, so that "When was chronic kidney disease
+  first recorded?" was asked back, "anxiety disorder" was read as
+  anxiety, and a condition named with a word that points to another kind
+  was read as a medication or a procedure and could be answered "not
+  recorded" though recorded. Of the development cases' condition names
+  asked about in every scope, 2,614 of 2,638 are now read whole, where
+  1,399 were, and none is answered "not recorded" while recorded, where
+  46 were. "All ... values" is read around a name of up to eight words
+  with digits ("all the hemoglobin a1c values").
 - The paired interval of the development benchmark
   (`generation.measure --paired`) was Newcombe's method 8, not method 10
   as documented. It lacked the continuity correction of the pairs'

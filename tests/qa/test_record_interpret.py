@@ -39,21 +39,27 @@ def drug_vocabulary():
                          "radiography of chest", "appendectomy"))
 
 
-def condition_vocabulary():
-    """Return an invented condition vocabulary: a seizure, a thrombosis
-    also known by its abbreviation, pain, which is a vital sign's name too,
-    and a reaction its synonym calls by a drug class's word."""
-    names = {2001: "Seizure", 2002: "Deep venous thrombosis", 2003: "Pain",
-             2004: "Reaction to an antibacterial"}
+def vocabulary_of(names, synonyms=()):
+    """Return an invented condition vocabulary of standard concepts, each
+    its own only ancestor."""
     concepts = [(concept, "standard", "SNOMED", "Disorder", "S%d" % concept,
                  "", name) for concept, name in sorted(names.items())]
     return resolve.parse({
         build.FILES["concepts"]: build.encode_tsv("concepts", concepts),
-        build.FILES["synonyms"]: build.encode_tsv(
-            "synonyms", [(2002, "DVT"), (2004, "Antibiotics")]),
+        build.FILES["synonyms"]: build.encode_tsv("synonyms",
+                                                  list(synonyms)),
         build.FILES["ancestors"]: build.encode_tsv(
             "ancestors", [(concept, concept, 0) for concept in names]),
         build.FILES["icd_maps"]: build.encode_tsv("icd_maps", [])})
+
+
+def condition_vocabulary():
+    """Return an invented condition vocabulary: a seizure, a thrombosis
+    also known by its abbreviation, pain, which is a vital sign's name too,
+    and a reaction its synonym calls by a drug class's word."""
+    return vocabulary_of({2001: "Seizure", 2002: "Deep venous thrombosis",
+                          2003: "Pain", 2004: "Reaction to an antibacterial"},
+                         [(2002, "DVT"), (2004, "Antibiotics")])
 
 
 def terms(condition_vocabulary=None):
@@ -132,6 +138,7 @@ class ReadingTests(unittest.TestCase):
                 ("What was the lowest hemoglobin value?", "lowest"),
                 ("Show the potassium trend", "all"),
                 ("What were all the potassium values?", "all"),
+                ("What were all the troponin t values?", "all"),
                 ("What was the potassium?", "latest")):
             self.assertReads(question, task="record_values", kind="lab",
                              selector=selector)
@@ -526,6 +533,80 @@ class IndicationTests(unittest.TestCase):
         found = reader.interpret("Any antibiotics?", terms)
         self.assertEqual((found.status, found.category),
                          ("clarify", "several_kinds"))
+
+    def test_a_names_words_stay_together(self):
+        """Rule 11: a span of the question that is a whole name by a name
+        or a synonym is the phrase, its words set aside within it and
+        beside it included; otherwise the question is read as before."""
+        terms = globals()["terms"](vocabulary_of({
+            2001: "Seizure", 2002: "Deep venous thrombosis", 2003: "Pain",
+            2101: "Chronic kidney disease", 2102: "Anxiety disorder",
+            2103: "Anxiety", 2104: "Type 2 diabetes mellitus without "
+            "complication", 2105: "Disorder of kidney", 2106: "Dependence "
+            "on respirator", 2107: "Personal history of tobacco use",
+            2108: "Kidney stone", 2109: "Complication of surgical "
+            "procedure"}))
+        for question, expected in (
+                ("When was chronic kidney disease first recorded?",
+                 ("record_timing", "condition", "chronic kidney disease")),
+                ("How many times was anxiety disorder recorded?",
+                 ("record_count", "condition", "anxiety disorder")),
+                ("When was anxiety first recorded?",
+                 ("record_timing", "condition", "anxiety")),
+                ("When was type 2 diabetes mellitus without complication "
+                 "first recorded?", ("record_timing", "condition",
+                                     "type 2 diabetes mellitus without "
+                                     "complication")),
+                ("When was disorder of kidney first recorded?",
+                 ("record_timing", "condition", "disorder of kidney")),
+                ("When was dependence on respirator first recorded?",
+                 ("record_timing", "condition", "dependence on respirator")),
+                ("How many times was personal history of tobacco use "
+                 "recorded?", ("record_count", "condition",
+                               "personal history of tobacco use")),
+                ("When was the blood culture taken?",
+                 ("record_timing", "microbiology", "blood culture")),
+                ("When was complication of surgical procedure first "
+                 "recorded?", ("record_timing", "condition",
+                               "complication of surgical procedure")),
+                ("When was the disease first recorded?",
+                 ("record_timing", "condition", None))):
+            found = reader.interpret(question, terms)
+            self.assertEqual((found.status, found.task, found.kind,
+                              found.phrase), ("task",) + expected, question)
+            if found.phrase:
+                self.assertEqual(terms.resolve(found.kind,
+                                               found.phrase).status,
+                                 "resolved", question)
+        found = reader.interpret("When was kidney stone disease first "
+                                 "recorded?", terms)
+        self.assertEqual((found.kind, found.phrase),
+                         ("condition", "kidney stone"))
+        found = reader.interpret("Which procedure was done for the kidney "
+                                 "stone?", terms)
+        self.assertNotEqual(found.kind, "condition")
+        for question, category in (
+                ("Was heparin or furosemide given?", "two_items"),
+                ("What medications were given for chronic kidney disease?",
+                 None),
+                ("What is he taking for his seizures?", "indication"),
+                ("Was heparin given yesterday?", "scope_unrecognised"),
+                ("Was the potassium above 5?", "qualified")):
+            found = reader.interpret(question, terms)
+            self.assertEqual(found.status, "clarify", question)
+            if category is not None:
+                self.assertEqual(found.category, category, question)
+        spans = reader.name_spans("when was chronic kidney disease first "
+                                  "recorded", ["condition"])
+        self.assertIn("chronic kidney disease", spans)
+        self.assertNotIn("chronic kidney", spans)
+        self.assertEqual([len(span.split()) for span in spans], sorted(
+            (len(span.split()) for span in spans), reverse=True))
+        self.assertEqual(reader.name_spans("which diseases are recorded",
+                                           ["condition"]), [])
+        self.assertIsNone(terms.exact("condition", "chronic kidney"))
+        self.assertIsNone(terms.exact("lab", "potass"))
+        self.assertEqual(terms.exact("lab", "potassium").keys, ("1",))
 
     def test_without_a_condition_vocabulary_nothing_is_a_condition(self):
         """Words name a condition only through the condition vocabulary."""

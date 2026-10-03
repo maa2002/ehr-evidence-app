@@ -471,6 +471,40 @@ class Terms:
 
     # -- resolution ---------------------------------------------------------
 
+    def exact(self, kind, text):
+        """Return the resolution of a phrase within a kind when it is a
+        name or a fixed synonym of the kind (rules 1 and 2), or a
+        condition's name, synonym or code; None otherwise. The names that
+        hold its words are not looked for, and no suggestion is made."""
+        phrase = normalize(text)
+        if not phrase or kind == "icu_stay":
+            return None
+        if kind == "condition":
+            if self.condition_vocabulary is None or conditions.resolve(
+                    text, self.condition_vocabulary,
+                    suggestions=False).status != "resolved":
+                return None
+            return self.condition(phrase, text)
+        if kind == "medication":
+            if self.drugs is None:
+                return None
+            ids, _ = self.drug_concepts(phrase)
+            for form in plurals(phrase) if not ids else ():
+                ids, _ = self.drug_concepts(form)
+            return self.medication(phrase) if ids else None
+        if kind == "procedure":
+            if phrase in TERMS["procedure"] or phrase in self.procedure_names:
+                return self.procedure(phrase)
+            return None
+        table = {"lab": self.labs, "vital": self.vitals,
+                 "microbiology": self.micro, "transfer": self.units}[kind]
+        if table.exact(phrase) or phrase in TERMS.get(kind, {}) or any(
+                table.exact(singular)
+                for singular in conditions.singulars(phrase)):
+            found = self.by_names(kind, phrase, table)
+            return found if found.status == "resolved" else None
+        return None
+
     def resolve(self, kind, text):
         """Return the ItemResolution of a phrase within a kind."""
         phrase = normalize(text)

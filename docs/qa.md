@@ -585,8 +585,8 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v5`, which removes a polite opening as the
-condition rules do); so are a dose question, a past question
+(rules `record-questions-v6`, which removes a polite opening as the
+condition rules do and reads a name whole); so are a dose question, a past question
 about death and a question about a first or last result. A request for
 advice, a question about the future and a ranking of conditions keep
 their refusals. A presence question whose phrase is a fixed word for a
@@ -830,6 +830,44 @@ answers (36 answers, 1,365 mutants) are all withheld and every original
 and its 15 controls released, and the condition suite, run under the
 name of `qa-answer-v5`, gives its summary digests byte for byte.
 
+### Names read whole
+
+Asking about records by their own names found that the reading cut names
+apart. A question's phrase is what is left once its frame, the kinds'
+words, a selector and harmless words are set aside, and names hold such
+words too. "When was chronic kidney disease first recorded?" looked for
+"chronic kidney", which names nothing, and was asked back; "anxiety
+disorder" was read as anxiety; "type 2 diabetes mellitus without
+complication" lost "without"; and a condition named with a word that
+points to another kind ("dependence on respirator", "complication of
+surgical procedure") was read as a medication or a procedure, and could
+be answered "not recorded" though the scope records it. Presence
+questions and lists of conditions, which the condition rules read, were
+not affected.
+
+Rules `record-questions-v6` (rule 11) try the question's words from the
+first to the last word of its phrase, with the words set aside between
+them and up to three set aside beside them, as an item's whole name,
+longest first, by a name or a fixed synonym only. A name so found is the
+phrase; one that holds every kind's word of the question is looked for
+in every kind. A question about what medications were given for
+something is read by rule 9 first, and one whose longest name two kinds
+hold, or in which no span is a name, is read as before. Version 6 also
+reads "all ... values" around a name of up to eight words with digits
+("all the hemoglobin a1c values"); four words of letters alone were read
+before, and a name such as pO2 got its latest value.
+
+Before and after, on the development case sets, with aggregate output
+only, without the model and without runtime records:
+
+| Check | Requests | Result |
+| --- | --- | --- |
+| "When was {name} first recorded?" for every condition record's name in every scope | 2,638 each | read whole 2,614 times instead of 1,399; answered "not recorded" while the scope records the condition never, instead of 46 times |
+| The 228 questions of the last comparison, and 22 naming conditions and cultures with such words, in every scope; and, from each scope's own records, up to three conditions named with such a word, asked when and how often (324 each), and its cultures (141) | 49,039 each | 225 of the 228 give the same responses byte for byte. The blood culture questions ask about blood cultures rather than every specimen of blood (answered in 42 scopes instead of 49), and "What was the platelet count?" names the platelet count rather than every test whose name holds "platelet". Of the 22, the condition questions that were asked back are answered or not recorded, and "anxiety disorder" is answered in 16 scopes rather than anxiety's 23. The generated condition questions are answered 321 times of 324 instead of 16; each answer cites exactly the independent reference's records (`assessment.record_references`), but for 3 times that rest on records without a standard concept, which are unjudged, and none is "not recorded" while recorded, where 3 were |
+| Mutants of the answers to questions naming conditions and cultures with such words | 72 answers, 1,899 mutants | all withheld; every original released |
+| Rewordings and nested scopes, as in [Consistency and junk input](#consistency-and-junk-input): every question of the test in every scope, and its 13 rewordings in the history and all visits of 3 cases of each set | 27,020 and 19,836 | 21,150 pairs of nested scopes compared, none contradicting; no rewording answered otherwise; median 0.067 s, the slowest 2.43 s with other checks running beside it |
+| The condition suite | 1,892 and 784 | the summary digests byte for byte |
+
 ## Limits
 
 - One condition per question. Rankings and lists of a number of
@@ -858,7 +896,13 @@ name of `qa-answer-v5`, gives its summary digests byte for byte.
   such as "sulfameth", are not); everyday names of procedures depend on a
   fixed synonym table; a value is never compared with a threshold; a
   question naming a misspelt item without a word that points to its kind
-  is left to the condition rules.
+  is left to the condition rules. A name that is only another kind's word
+  is read as that word ("Medicine", a care unit, as medications; "PT",
+  the prothrombin time, as the patient); a name two kinds hold (the blood
+  gases' oxygen saturation and temperature, which are vital signs too)
+  asks which is meant; and a medication without a standard concept is
+  asked about by an ingredient's name, not by its written drug name as a
+  whole.
 
 ## Commands
 

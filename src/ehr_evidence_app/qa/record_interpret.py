@@ -61,9 +61,34 @@ record-questions-v3), by fixed rules and without a model:
     overdose NSAIDs, and "any nsaids" asks about medications. A word that
     is also a name of another kind of record ("chemotherapy", a
     procedure's too) still asks which is meant.
+11. A name's words stay together. Before the rest of rules 4 to 7, the
+    question's words from the first to the last word of its phrase,
+    with the words set aside between them, and with up to three words
+    set aside beside them (harmless words and kinds' words), are tried
+    as the whole name of an item, longest first: by a name or a fixed
+    synonym of the kind the question names, or of the one kind of
+    ORDER that holds it (record_resolve.Terms.exact), never by the words
+    of names. A span that holds every word of the kinds the question
+    names, as "complication of surgical procedure" holds "surgical" and
+    "procedure", names no kind outside the name, and is tried in every
+    kind. A name so found is the phrase, and the words within it are
+    not read as filters, times, kinds or two items: "when was chronic
+    kidney disease first recorded" asks about chronic kidney disease,
+    where the phrase alone, "chronic kidney", names nothing; "anxiety
+    disorder" is not read as anxiety; "type 2 diabetes mellitus without
+    complication", "personal history of tobacco use" and "disorder of
+    kidney" are names, not a negation, a part of the record or a kind's
+    word; and "blood culture" is not every specimen of blood. A question
+    about medications that asks what they were given for ("for" or
+    "treat") is read by rule 9 first, and one whose longest name is held
+    by two kinds is read as before, as is one in which no span is a
+    name.
 
 Version 2 adds rules 6 to 8; version 3 removes the polite opening
-(rule 1); version 4 adds rule 9 and version 5 rule 10.
+(rule 1); version 4 adds rule 9, version 5 rule 10 and version 6 rule
+11. Version 6 also reads "all ... values" around a name of up to eight
+words, digits included ("all the hemoglobin a1c values"), where four
+words of letters alone were read before.
 """
 
 from __future__ import annotations
@@ -75,7 +100,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v5"
+RULES_VERSION = "record-questions-v6"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -107,6 +132,9 @@ KIND_WORDS = {
 }
 KIND_PATTERNS = {kind: re.compile(r"\b(?:%s)\b" % words)
                  for kind, words in KIND_WORDS.items()}
+# How many words set aside beside a phrase rule 11 tries as part of a
+# name, on each side.
+SPAN_REACH = 3
 # Verbs that point to a kind without naming it: they break a tie between
 # kinds that both hold a name, and let a name no kind holds be asked
 # about.
@@ -194,9 +222,9 @@ SELECTOR_PATTERNS = (
     ("highest", re.compile(r"\b(?:highest|max|maximum|peak)\b")),
     ("lowest", re.compile(r"\b(?:lowest|min|minimum|nadir)\b")),
     ("all", re.compile(r"\btrends?\b|\bseries\b|\bover time\b|\ball\b"
-                       r"(?: [a-z]+){0,4} (?:values|results|readings|levels|"
-                       r"measurements)\b|\bevery (?:value|result|reading|"
-                       r"level|measurement)\b")),
+                       r"(?: [a-z0-9]+){0,8} (?:values|results|readings|"
+                       r"levels|measurements)\b|\bevery (?:value|result|"
+                       r"reading|level|measurement)\b")),
 )
 # The words of the selectors, set aside before the phrase is read.
 SELECTOR_WORDS = re.compile(r"\b(?:last|latest|most recent|recent|newest|"
@@ -346,6 +374,79 @@ def left_words(text, kinds=(), keep=frozenset()):
         text = blank(pattern, text)
     return [word for word in text.split() if word in keep or (
         word not in HARMLESS and word not in NEGATIONS)]
+
+
+def set_aside(word):
+    """Return True when a word is one the phrase leaves out as harmless or
+    as a kind's word."""
+    return word in HARMLESS or any(pattern.fullmatch(word)
+                                   for pattern in KIND_PATTERNS.values())
+
+
+def name_spans(body, kinds):
+    """Return the spans of a question that rule 11 tries as whole names,
+    longest first: its words from the first to the last word of its
+    phrase, and with up to SPAN_REACH words set aside before or after
+    them; the phrase itself is not one."""
+    tokens = body.split()
+    words = left_words(body, kinds)
+    positions, index = [], 0
+    for word in words:
+        while index < len(tokens) and tokens[index] != word:
+            index += 1
+        if index == len(tokens):
+            return []
+        positions.append(index)
+        index += 1
+    if not positions:
+        return []
+    first, last = positions[0], positions[-1]
+    spans = {(first, last)}
+    for reach in range(1, SPAN_REACH + 1):
+        if last + reach < len(tokens) and all(
+                set_aside(tokens[position])
+                for position in range(last + 1, last + reach + 1)):
+            spans.add((first, last + reach))
+        if first - reach >= 0 and all(
+                set_aside(tokens[position])
+                for position in range(first - reach, first)):
+            spans.add((first - reach, last))
+    phrase = " ".join(words)
+    found = [" ".join(tokens[start:end + 1]) for start, end in sorted(
+        spans, key=lambda span: (span[0] - span[1], span))]
+    return [span for span in found if span != phrase]
+
+
+def whole_name(terms, body, kinds, hints, prefer):
+    """Return (kind, resolution, phrase) of the longest span of a question
+    that is an item's whole name, in the kind the question names or the
+    one kind of ORDER that holds it, the hints and then the kinds the
+    task prefers breaking a tie (rule 11); None when no span is, when
+    the longest is held by two kinds, and for a question about what
+    medications were given for (rule 9)."""
+    if ("medication" in kinds or (not kinds and "medication" in hints)) and (
+            TREATING.search(body)):
+        return None
+    for span in name_spans(body, kinds):
+        found = {}
+        within = kinds and not any(
+            KIND_PATTERNS[kind].search(body.replace(span, " "))
+            for kind in kinds)
+        for kind in ORDER if within or not kinds else kinds:
+            resolution = terms.exact(kind, span)
+            if resolution is not None:
+                found[kind] = resolution
+        for narrower in (hints, prefer):
+            kept = {kind: item for kind, item in found.items()
+                    if kind in narrower}
+            if len(found) > 1 and kept:
+                found = kept
+        if len(found) == 1:
+            kind = next(iter(found))
+            return kind, found[kind], span
+        if found:
+            return None
+    return None
 
 
 def negated(body):
@@ -595,13 +696,19 @@ def item_question(body, found, terms):
     selector = selector_of(body)
     task = task_of(body, selector)
     kinds = kinds_named(body)
+    hints = hints_of(body)
+    prefer = ("lab", "vital") if task in (
+        "record_values", "record_abnormal") or RESULTS.search(body) else ()
+    whole = whole_name(terms, body, kinds, hints, prefer)
+    if whole is not None:
+        kind, _, phrase = whole
+        return item_reading(body, found, task, selector, kind, phrase)
     if FILTERS.search(body):
         return clarify("task_ambiguous", "qualified", found)
     if len(kinds) > 1 and not (set(kinds) <= {"lab", "microbiology"}):
         return clarify("task_ambiguous", "two_tasks", found)
     phrase_words = left_words(body, kinds)
     remaining = " ".join(phrase_words)
-    hints = hints_of(body)
     if TIMES.search(remaining) or PARTS.search(remaining) or (
             NUMBERED_TIMES.search(body)):
         return clarify("scope_ambiguous", "scope_unrecognised", found)
@@ -643,8 +750,6 @@ def item_question(body, found, terms):
     if condition is not None:
         return clarify("task_ambiguous", "indication", found,
                        phrase=condition)
-    prefer = ("lab", "vital") if task in (
-        "record_values", "record_abnormal") or RESULTS.search(body) else ()
     kind, resolution = resolve_phrase(terms, phrase, kinds, hints, prefer)
     unresolved = (kind is None and resolution is None) or (
         kind is not None and resolution.status != "resolved")
@@ -659,6 +764,13 @@ def item_question(body, found, terms):
                        names=tuple(resolution), phrase=phrase)
     if kind is None:
         return RecordQuestion("none", phrase=phrase)
+    return item_reading(body, found, task, selector, kind, phrase)
+
+
+def item_reading(body, found, task, selector, kind, phrase):
+    """Return the reading of a question about an item of a kind: its task,
+    by default a presence check, with the flags and selector its kind
+    takes."""
     if kind == "microbiology" and task in (None, "record_values") and (
             GROWTH.search(body)):
         task, selector = "record_values", "all"
