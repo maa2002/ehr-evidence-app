@@ -399,8 +399,9 @@ def response_view(result, known=()):
     """Return a response as the conversation shows it: its outcome, its
     text line by line with the references each line cites and the names
     of concepts (known, and the condition a presence answer names) in
-    title case, what was withheld, the scope it answered, whether the
-    model wrote it and the seconds it took."""
+    title case, what was withheld, the scope it answered and the seconds
+    it took. Who wrote it, the model or a template, is not shown; the
+    response's runtime record names its writer."""
     response = result["response"]
     text = response.get("text")
     shown = namer(known)
@@ -432,7 +433,6 @@ def response_view(result, known=()):
             "evidence": scope_key(response["scope"]),
             "scope": {"key": scope_key(response["scope"]),
                       "label": labels.scope(response["scope"])},
-            "author": labels.author(result),
             "seconds": labels.seconds(result["seconds"])}
 
 
@@ -851,13 +851,13 @@ def evidence_view(view):
 
 
 def help_view():
-    """Return the help the page shows when /help is typed: why questions
-    follow set patterns, what can be asked, kind by kind, with example
-    questions, the predicted diagnosis, and notes; and the reply to a
-    command that is not one."""
+    """Return the help the page shows when /help is typed: that questions
+    are not a fixed list but must ask for a kind of information it shows,
+    what can be asked, kind by kind, with example questions, the predicted
+    diagnosis, and notes; and the reply to a command that is not one."""
     title, text = labels.HELP_PREDICTION
     return {"command": labels.HELP_COMMAND, "title": labels.HELP_TITLE,
-            "why_title": labels.HELP_WHY_TITLE, "why": list(labels.HELP_WHY),
+            "intro": labels.HELP_INTRO,
             "sections": [{"title": section, "rows": [
                 {"what": what, "examples": list(examples)}
                 for what, examples in rows]}

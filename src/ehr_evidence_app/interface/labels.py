@@ -1,9 +1,8 @@
 """What the interface calls things (Phase 8, decisions D4 to D6).
 
 Plain functions from the API's values to the words the page shows: the
-outcome of a response and its tone, the scope it answered, whether the
-model wrote it, the model's state, a score, the values of the evidence
-and the refusals.
+outcome of a response and its tone, the scope it answered, the model's
+state, a score, the values of the evidence and the refusals.
 Labels, names and headings are in title case; sentences are in sentence
 case. A score is shown as the number it is, never as a percentage; an
 attribution score is always labelled unsigned and not causal. The page
@@ -148,20 +147,16 @@ GLOSSARY = (
     ("Sources",
      "P1 is the prediction, A1 and the like its attributions and E1 and the "
      "like the records: select one to see it in the evidence panel."))
-# The help, shown when /help is typed: why questions follow set patterns,
-# then what can be asked, kind by kind, with example questions that the
-# rules read as that kind's question (tests/interface/test_views.py).
+# The help, shown when /help is typed: what can be asked, kind by kind,
+# with example questions that the rules read as that kind's question
+# (tests/interface/test_views.py).
 HELP_COMMAND = "/help"
 HELP_TITLE = "What You Can Ask"
-HELP_WHY_TITLE = "Why Questions Follow Set Patterns"
-HELP_WHY = (
-    "Each question is read by fixed rules, not by the language model, so "
-    "that it is read the same way every time and every answer can be "
-    "checked against the record before it is shown.",
+HELP_INTRO = (
     "The questions are not a fixed list: the rules read many wordings, "
     "abbreviations and names. But a question has to ask for one of the "
     "kinds of information below. Anything else gets a reply that says what "
-    "was not understood, never a guess.")
+    "was not understood.")
 HELP_SECTIONS = (
     ("Conditions", (
         ("Conditions Recorded", ("Which conditions are recorded?",)),
@@ -276,13 +271,6 @@ def scope(value):
     if kind in SCOPES:
         return SCOPES[kind][0]
     return title(kind.replace("_", " "))
-
-
-def author(result):
-    """Return "By the Model" for a response the model wrote, and None for
-    one a template wrote: the page names no other writer, and the
-    response's runtime record names its writer either way."""
-    return "By the Model" if result.get("author") == "model" else None
 
 
 def model(state):

@@ -585,11 +585,19 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v4`, which removes a polite opening as the
+(rules `record-questions-v5`, which removes a polite opening as the
 condition rules do); so are a dose question, a past question
 about death and a question about a first or last result. A request for
 advice, a question about the future and a ranking of conditions keep
-their refusals.
+their refusals. A presence question whose phrase is a fixed word for a
+class of medications ("any nsaids", "any antibiotics") is read as one
+about medications before its condition is looked for, and the word names
+medications rather than a condition of the same name (rules
+`qa-answer-v6` and `record-questions-v5`): the condition vocabulary
+calls "Non-steroidal anti-inflammatory overdose" NSAIDs, and until these
+versions "Any nsaids?" was answered as whether that overdose is
+recorded. A class word that is also the name of another kind of record
+("chemotherapy", a procedure's too) still asks which is meant.
 
 The record does not say what a medication was given for, so a question
 that asks which medications were given for something gets a
@@ -802,11 +810,18 @@ responses compared:
 | Mutants of the record answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 answers, 30,719 mutants | all withheld; every original and the 762 controls released |
 | The condition suite | 1,892 and 784 | 100%, with the summary digests of rules version 5 byte for byte |
 
-"Any nsaids?" is read by the condition rules as a condition: the
-condition vocabulary names "Non-steroidal anti-inflammatory overdose"
-NSAIDs, so the answer says that overdose is not recorded, and names it.
-"Were any NSAIDs given?" and "Was an NSAID given?" are read as
-medication questions.
+"Any nsaids?" was then still read by the condition rules as a condition,
+"Non-steroidal anti-inflammatory overdose", which the condition
+vocabulary calls NSAIDs, and was not recorded in every scope. With rules
+`qa-answer-v6` and `record-questions-v5`, the drug-class questions and
+six NSAID wordings were asked again before and after (14,089 requests
+each): "Any nsaids?", "Any nsaid?" and "Any NSAIDs?" are answered in 139
+of the 193 scopes, as "Were any NSAIDs given?" always was, and the other
+70 questions, "Is NSAID overdose recorded?" and "Any chemotherapy?"
+among them, give the same responses byte for byte. Mutants of the NSAID
+answers (36 answers, 1,365 mutants) are all withheld and every original
+and its 15 controls released, and the condition suite, run under the
+name of `qa-answer-v5`, gives its summary digests byte for byte.
 
 ## Limits
 

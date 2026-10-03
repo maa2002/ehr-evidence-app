@@ -134,7 +134,7 @@ class ResponseTests(InventedTestCase):
 
     def test_answer(self):
         """An answer shows its outcome, its lines with their references,
-        the scope it answered, who wrote it and its seconds."""
+        the scope it answered and its seconds, never who wrote it."""
         found = views.response_view(self.ask("Which conditions are "
                                              "recorded?"))
         self.assertEqual(found["outcome"], {"code": "answer",
@@ -146,7 +146,7 @@ class ResponseTests(InventedTestCase):
         self.assertEqual(found["scope"], {"key": "pre_target_history",
                                           "label": "Prior History"})
         self.assertEqual(found["evidence"], "pre_target_history")
-        self.assertEqual(found["author"], "By the Model")
+        self.assertNotIn("author", found)
         self.assertRegex(found["seconds"], r"^\d+\.\d s$")
         self.assertIsNone(found["withheld"])
 
@@ -186,7 +186,7 @@ class ResponseTests(InventedTestCase):
                          "No text was released: claim unsupported.")
         self.assertEqual(found["lines"], [])
         self.assertEqual(found["outcome"]["tone"], "bad")
-        self.assertIsNone(found["author"])
+        self.assertNotIn("author", found)
 
     def test_explanation_keeps_its_parts_apart(self):
         """An explanation carries the prediction, the note that attribution
@@ -467,7 +467,7 @@ class EvidenceTests(InventedTestCase):
 
 
 class HelpTests(unittest.TestCase):
-    """The help shown for /help: why questions follow set patterns, and
+    """The help shown for /help: that questions are not a fixed list, and
     examples that the rules read as their kind's questions."""
 
     # The kinds of record each section's examples ask about.
@@ -478,17 +478,17 @@ class HelpTests(unittest.TestCase):
              "The Patient": {"person"}}
 
     def test_the_view(self):
-        """The help says why questions follow set patterns before it lists
-        each kind of information with its examples; a command that is not
-        one gets a line of its own."""
+        """The help says that questions are not a fixed list before it
+        lists each kind of information with its examples; a command that
+        is not one gets a line of its own."""
         found = views.help_view()
         self.assertEqual((found["command"], found["title"]),
                          ("/help", "What You Can Ask"))
-        self.assertEqual(found["why_title"],
-                         "Why Questions Follow Set Patterns")
-        self.assertIn("fixed rules, not by the language model",
-                      found["why"][0])
-        self.assertIn("not a fixed list", found["why"][1])
+        self.assertTrue(found["intro"].startswith(
+            "The questions are not a fixed list"))
+        self.assertTrue(found["intro"].endswith(
+            "a reply that says what was not understood."))
+        self.assertNotIn("language model", json.dumps(found))
         self.assertEqual([section["title"] for section in found["sections"]],
                          ["Conditions"] + list(self.KINDS))
         for section in found["sections"]:
@@ -535,12 +535,11 @@ class HelpTests(unittest.TestCase):
     def test_the_texts_are_plain(self):
         """The help's words are plain text, in their own case: titles in
         title case, sentences ending in a full stop."""
-        for text in (labels.HELP_TITLE, labels.HELP_WHY_TITLE,
-                     labels.HELP_PREDICTION[0]):
+        for text in (labels.HELP_TITLE, labels.HELP_PREDICTION[0]):
             self.assertEqual(text, labels.title(text))
-        for text in labels.HELP_WHY + labels.HELP_NOTES + (
-                labels.HELP_PREDICTION[1], labels.HELP_HINT,
-                labels.HELP_UNKNOWN):
+        for text in labels.HELP_NOTES + (
+                labels.HELP_INTRO, labels.HELP_PREDICTION[1],
+                labels.HELP_HINT, labels.HELP_UNKNOWN):
             self.assertTrue(text.endswith("."), text)
             self.assertNotRegex(text, r"[<>{}]")
 

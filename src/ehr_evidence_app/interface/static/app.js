@@ -996,14 +996,14 @@ function reply(turn) {
   node.append(el("div", {className: "meta"},
     copyButton(view.text),
     el("span", {className: "meta-text"},
-      [view.scope.label, view.author, view.seconds].filter(Boolean).join(" · "))));
+      [view.scope.label, view.seconds].filter(Boolean).join(" · "))));
   // The folded blocks close the reply, after its sources and who wrote it.
   if (explained && view.glossary) node.append(glossaryBlock(view.glossary));
   if (explained && view.conditions) node.append(conditionsBlock(view.conditions));
   return node;
 }
 
-// The help: why questions follow set patterns, then each kind of
+// The help: that questions are not a fixed list, then each kind of
 // information with example questions that go into the box, the predicted
 // diagnosis and notes. A command that is not one is answered as a
 // response is: a badge, and a line saying what the command is.
@@ -1025,9 +1025,7 @@ function helpReply(turn) {
     el("dd", {}, ...item.examples.map(example)));
   return el("div", {className: "reply help"},
     el("h3", {className: "help-title"}, help.title),
-    el("div", {className: "intro"},
-      el("span", {className: "kicker"}, help.why_title),
-      ...help.why.map((text) => el("p", {}, text))),
+    el("p", {className: "help-text"}, help.intro),
     ...help.sections.map((section) => el("section", {className: "help-section"},
       el("h4", {className: "kicker"}, section.title),
       el("dl", {className: "help-rows"}, ...section.rows.map(row)))),

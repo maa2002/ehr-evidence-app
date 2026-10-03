@@ -55,9 +55,15 @@ record-questions-v3), by fixed rules and without a model:
    pressure"), the words before them naming no item of another kind, or
    one that names medications by a condition instead of by a
    medication's name.
+10. A fixed word for a class of medications ("nsaids", "an antibiotic")
+    names medications rather than a condition of the same name, in a
+    question that names no kind: the condition vocabulary also calls an
+    overdose NSAIDs, and "any nsaids" asks about medications. A word that
+    is also a name of another kind of record ("chemotherapy", a
+    procedure's too) still asks which is meant.
 
 Version 2 adds rules 6 to 8; version 3 removes the polite opening
-(rule 1); version 4 adds rule 9.
+(rule 1); version 4 adds rule 9 and version 5 rule 10.
 """
 
 from __future__ import annotations
@@ -69,7 +75,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v4"
+RULES_VERSION = "record-questions-v5"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -470,6 +476,15 @@ def resolve_phrase(terms, phrase, kinds, hints=(), prefer=()):
     if kinds:
         kind = kinds[0]
         return kind, terms.resolve(kind, phrase)
+    if resolving.class_word(phrase):
+        # Rule 10: a fixed word for a class of medications names them
+        # rather than a condition, unless another kind names it too.
+        resolution = terms.resolve("medication", phrase)
+        others = [terms.resolve(kind, phrase) for kind in OTHER_ITEMS]
+        if resolution.status == "resolved" and not any(
+                other.status == "resolved"
+                and other.rule in ("name", "synonym") for other in others):
+            return "medication", resolution
     found = {}
     for kind in ORDER:
         resolution = terms.resolve(kind, phrase)

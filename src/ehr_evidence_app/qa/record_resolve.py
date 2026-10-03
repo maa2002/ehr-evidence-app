@@ -319,6 +319,14 @@ def plurals(phrase):
     return [" ".join(words[:-1] + [words[-1] + "s"])]
 
 
+def class_word(phrase):
+    """Return True when a phrase is a fixed word for a class of
+    medications, or its singular or plural ("nsaids", "antibiotic")."""
+    phrase = normalize(phrase or "")
+    return any(form in TERMS["medication"] for form in
+               [phrase] + conditions.singulars(phrase) + plurals(phrase))
+
+
 def words_in(words, text):
     """Return True when text holds every word: whole words for short
     ones, and within longer words for words of four letters or more."""

@@ -43,9 +43,12 @@ condition rules refuse as being about other data, times, counts or words
 they cannot place, or one whose condition phrase names no condition, is
 read as a question about the whole record (qa.record_interpret) and
 answered from the record bundle of the scope by the templates
-(qa.record_answer). Every question the condition rules answer is
-answered exactly as without the records. A request for advice, or about
-the future, keeps its refusal.
+(qa.record_answer). So is a presence question whose phrase is a fixed
+word for a class of medications, before its condition is looked for
+(version 6): "any nsaids" asks about medications, though the condition
+vocabulary also calls an overdose NSAIDs. Every other question the
+condition rules answer is answered exactly as without the records. A
+request for advice, or about the future, keeps its refusal.
 """
 
 from __future__ import annotations
@@ -65,12 +68,12 @@ from ehr_evidence_app.generation import adapter, shape
 from ehr_evidence_app.gnn import mapping
 from ehr_evidence_app.qa import interpret as interpreter
 from ehr_evidence_app.qa import record_answer, record_interpret
-from ehr_evidence_app.qa import resolve, templates
+from ehr_evidence_app.qa import record_resolve, resolve, templates
 from ehr_evidence_app.qa import scope as scopes
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import evidence, gate, record_support
 
-RULES_VERSION = "qa-answer-v5"
+RULES_VERSION = "qa-answer-v6"
 PILOT = "pilot-10-v1"
 # Out-of-scope rules that end in a clarification rather than an abstention,
 # with the notice of each.
@@ -530,7 +533,9 @@ def result_of(question, case_set, case_number, active_scope, bundle_set,
                                                      bundle, bundle_ref)
         return written(candidate, groups=groups)
     resolution = resolve_phrase(interpretation, vocab)
-    if records is not None and resolution.status == "unknown":
+    if records is not None and (resolution.status == "unknown" or any(
+            record_resolve.class_word(term) for term in (
+                interpretation.terms or (interpretation.term,)))):
         found = record_result(question, case, active_scope, bundle_set,
                               vocab, request_id, records, tasks_only=True)
         if found is not None:

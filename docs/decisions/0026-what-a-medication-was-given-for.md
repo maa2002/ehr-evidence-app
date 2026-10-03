@@ -2,6 +2,9 @@
 
 Status: accepted (2026-10-03), by the project owner. Adds to
 [ADR 0021](0021-the-whole-record.md) (questions about the whole record).
+Later the same day, at the owner's request, the help (decision 4) no
+longer says why questions follow set patterns: it says that the
+questions are not a fixed list, and shows what can be asked.
 
 ## Context
 

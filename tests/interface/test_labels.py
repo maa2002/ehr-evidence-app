@@ -9,7 +9,7 @@ from ehr_evidence_app.interface import labels
 
 
 class LabelTests(unittest.TestCase):
-    """Outcomes, scopes, authors, the model's state, values, scores and
+    """Outcomes, scopes, the model's state, values, scores and
     references."""
 
     def test_every_outcome_has_words(self):
@@ -53,14 +53,6 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(labels.scope({"kind": "case_visits"}), "All Visits")
         self.assertEqual(set(labels.SCOPES) | {"selected_visit"},
                          set(vocab.SCOPES))
-
-    def test_authors(self):
-        """A response the model wrote says so; a template's names no
-        writer, whatever the reason the template wrote it."""
-        self.assertEqual(labels.author({"author": "model"}), "By the Model")
-        for fallback in ("busy", "gate_rejected", None):
-            self.assertIsNone(labels.author({"author": "template",
-                                             "fallback": fallback}))
 
     def test_model_states(self):
         """Every state of the model has a short name and a meaning."""

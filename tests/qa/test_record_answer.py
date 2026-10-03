@@ -11,7 +11,7 @@ from unittest import mock
 
 from ehr_evidence_app.api import service as services
 from ehr_evidence_app.evidence import contracts
-from ehr_evidence_app.qa import answer, record_answer
+from ehr_evidence_app.qa import answer, record_answer, resolve
 from ehr_evidence_app.validation import record_support
 
 ALL = contracts.ScopeRef(kind="case_visits")
@@ -100,6 +100,26 @@ class RecordAnswerTests(unittest.TestCase):
                  with_records.text),
                 (without.outcome, without.reason_codes, without.text),
                 question)
+
+    def test_a_drug_class_word_is_a_medication_question(self):
+        """A presence question whose phrase is a fixed word for a class of
+        medications is answered from the record, even where the condition
+        vocabulary resolves the word to a condition (as it calls an
+        overdose NSAIDs); a condition question is not. The invented
+        record's medication vocabulary, which has no drug class, is the
+        edge record's here."""
+        from tests.qa import record_cases
+        synonym = resolve.Resolution("antibiotics", "resolved", "synonym",
+                                     (1001,))
+        with mock.patch.object(answer, "resolve_phrase",
+                               return_value=synonym), mock.patch.object(
+                self.source.records.terms, "drugs",
+                record_cases.drug_vocabulary()):
+            response = self.ask("Any antibiotics?").response
+        self.assertEqual(response.task, "record_presence")
+        self.assertIn(response.outcome, ("answer", "not_recorded"))
+        response = self.ask("Is synthetic concept 1001 recorded?").response
+        self.assertEqual(response.task, "condition_presence")
 
     def test_other_data_refused_without_the_record(self):
         """Without the record context, a record question keeps the

@@ -10,19 +10,21 @@ change interfaces.
 ### Added
 
 - `/help` in the conversation
-  ([docs/interface.md](docs/interface.md#the-interface)): why questions
-  follow set patterns (they are read by fixed rules, not by the language
-  model, so that every answer can be checked against the record), then
-  each kind of information with example questions that go into the box,
+  ([docs/interface.md](docs/interface.md#the-interface)): that the
+  questions are not a fixed list but must ask for a kind of information
+  it shows, then each kind with example questions that go into the box,
   each read by the rules as its kind's question and answered on the
   invented record; any other word after a slash is not a command. The
   welcome, and every response that asks back or declines, name `/help`.
 
 ### Changed
 
-- A response says "By the Model" when the model wrote it; one a template
-  wrote no longer names its writer on the page, and its runtime record
-  still does ([docs/interface.md](docs/interface.md#the-interface)).
+- A response no longer names its writer, the model or a template, on the
+  page; its runtime record still does
+  ([docs/interface.md](docs/interface.md#the-interface)).
+- The page's accent is green (#6BBF8A) instead of orange, the mark and
+  the backdrop's glow included; the buttons filled with it carry dark
+  icons, which stand out from it where white would not.
 - The tunnel's set-up follows Cloudflare's current dashboard
   ([docs/interface.md](docs/interface.md#sharing-through-the-tunnel)):
   the token is saved without running the install command, which would
@@ -52,6 +54,13 @@ change interfaces.
   antibiotics?" could be not recorded for a patient given intravenous
   antibiotics; "antivirals" and "corticosteroids" missed their systemic
   classes the same way.
+- Rules `qa-answer-v6` and `record-questions-v5`: a presence question
+  whose phrase is a fixed word for a class of medications ("any nsaids")
+  is read as one about medications. The condition vocabulary calls
+  "Non-steroidal anti-inflammatory overdose" NSAIDs, and "Any nsaids?" was
+  answered as whether that overdose is recorded. A class word that is
+  also another kind of record's name ("chemotherapy") still asks which is
+  meant.
 
 ## [0.10.0] - 2026-09-30
 

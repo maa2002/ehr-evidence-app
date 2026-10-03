@@ -41,15 +41,16 @@ def drug_vocabulary():
 
 def condition_vocabulary():
     """Return an invented condition vocabulary: a seizure, a thrombosis
-    also known by its abbreviation, and pain, which is a vital sign's name
-    too."""
-    names = {2001: "Seizure", 2002: "Deep venous thrombosis", 2003: "Pain"}
+    also known by its abbreviation, pain, which is a vital sign's name too,
+    and a reaction its synonym calls by a drug class's word."""
+    names = {2001: "Seizure", 2002: "Deep venous thrombosis", 2003: "Pain",
+             2004: "Reaction to an antibacterial"}
     concepts = [(concept, "standard", "SNOMED", "Disorder", "S%d" % concept,
                  "", name) for concept, name in sorted(names.items())]
     return resolve.parse({
         build.FILES["concepts"]: build.encode_tsv("concepts", concepts),
-        build.FILES["synonyms"]: build.encode_tsv("synonyms",
-                                                  [(2002, "DVT")]),
+        build.FILES["synonyms"]: build.encode_tsv(
+            "synonyms", [(2002, "DVT"), (2004, "Antibiotics")]),
         build.FILES["ancestors"]: build.encode_tsv(
             "ancestors", [(concept, concept, 0) for concept in names]),
         build.FILES["icd_maps"]: build.encode_tsv("icd_maps", [])})
@@ -495,6 +496,36 @@ class IndicationTests(unittest.TestCase):
                          "Was the blood culture sent for the fever?"):
             self.assertNotEqual(self.read(question).category, "indication",
                                 question)
+
+    def test_a_drug_class_word_names_medications(self):
+        """Rule 10: a fixed word for a class of medications names them,
+        though a condition's synonym is the same word, in the singular or
+        the plural; a question that names the condition kind keeps it."""
+        self.assertEqual(self.terms.resolve("condition", "antibiotics").status,
+                         "resolved")
+        for question in ("Any antibiotics?", "Any antibiotic?",
+                         "Antibiotics?"):
+            found = self.read(question)
+            self.assertEqual((found.status, found.task, found.kind),
+                             ("task", "record_presence", "medication"),
+                             question)
+        found = self.read("Is the diagnosis antibiotics recorded?")
+        self.assertNotEqual(found.kind, "medication")
+        self.assertTrue(resolving.class_word("NSAIDs"))
+        self.assertTrue(resolving.class_word("blood thinner"))
+        self.assertFalse(resolving.class_word("heparin"))
+        self.assertFalse(resolving.class_word(""))
+
+    def test_a_drug_class_word_another_kind_names_still_asks(self):
+        """A class word that is also the name of another kind of record,
+        as "chemotherapy" is a procedure's, asks which kind is meant."""
+        drugs = drug_vocabulary()
+        terms = resolving.Terms(labs=[], items=[], micro=[], units=[],
+                                drugs=drugs, procedures=("antibiotics",),
+                                condition_vocabulary=condition_vocabulary())
+        found = reader.interpret("Any antibiotics?", terms)
+        self.assertEqual((found.status, found.category),
+                         ("clarify", "several_kinds"))
 
     def test_without_a_condition_vocabulary_nothing_is_a_condition(self):
         """Words name a condition only through the condition vocabulary."""

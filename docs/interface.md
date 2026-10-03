@@ -140,27 +140,23 @@ value chosen there; the page builds everything it shows as text.
 - **Questions** (work item 50). Each response shows its outcome (answer,
   not recorded, clarification needed, abstained, case rejected, withheld
   by validation or operational error), its text with the references of
-  each claim at the line that states it, the scope it answered, "By the
-  Model" when the model wrote it (a template's response names no writer
-  on the page; its runtime record names the writer either way) and the
-  seconds it took.
+  each claim at the line that states it, the scope it answered and the
+  seconds it took. Who wrote it, the model or a template, is not shown;
+  its runtime record names the writer.
   Choosing a reference opens its record in the evidence panel, in the
   scope the response answered.
 - **Help.** Questions are read by fixed rules, so they have to ask for
   one of the kinds of information the rules read. Typing `/help` shows,
-  in the conversation and without asking the API anything, why questions
-  follow set patterns (each is read by fixed rules, not by the language
-  model, so that it is read the same way every time and every answer can
-  be checked against the record; the questions are not a fixed list, but
-  a question has to ask for one of the kinds below), then each kind of
-  information with example questions, the predicted diagnosis and notes
-  on the scope, other wordings and what is not answered. Selecting an
-  example puts it in the box to change and send. Every example is read by
-  the rules as its kind's question and answered on the invented record
-  (`tests/interface/test_views.py`). Any other word after a slash is
-  answered as not a command; neither is sent as a question or recorded.
-  The welcome names `/help`, and so does every response that asks back
-  or declines.
+  in the conversation and without asking the API anything, that the
+  questions are not a fixed list but must ask for one of the kinds below,
+  then each kind of information with example questions, the predicted
+  diagnosis and notes on the scope, other wordings and what is not
+  answered. Selecting an example puts it in the box to change and send.
+  Every example is read by the rules as its kind's question and answered
+  on the invented record (`tests/interface/test_views.py`). Any other
+  word after a slash is answered as not a command; neither is sent as a
+  question or recorded. The welcome names `/help`, and so does every
+  response that asks back or declines.
 - **The explanation** (work item 51). Generate the Predicted Diagnosis
   first says what it is, in plain words: a GNN model that predicts
   diagnoses read the record and predicted a diagnosis for the final
