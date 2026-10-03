@@ -995,7 +995,8 @@ function reply(turn) {
   }
   node.append(el("div", {className: "meta"},
     copyButton(view.text),
-    el("span", {className: "meta-text"}, `${view.scope.label} · ${view.author} · ${view.seconds}`)));
+    el("span", {className: "meta-text"},
+      [view.scope.label, view.author, view.seconds].filter(Boolean).join(" · "))));
   // The folded blocks close the reply, after its sources and who wrote it.
   if (explained && view.glossary) node.append(glossaryBlock(view.glossary));
   if (explained && view.conditions) node.append(conditionsBlock(view.conditions));

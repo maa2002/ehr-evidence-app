@@ -1,8 +1,9 @@
 """What the interface calls things (Phase 8, decisions D4 to D6).
 
 Plain functions from the API's values to the words the page shows: the
-outcome of a response and its tone, the scope it answered, who wrote it,
-the model's state, a score, the values of the evidence and the refusals.
+outcome of a response and its tone, the scope it answered, whether the
+model wrote it, the model's state, a score, the values of the evidence
+and the refusals.
 Labels, names and headings are in title case; sentences are in sentence
 case. A score is shown as the number it is, never as a percentage; an
 attribution score is always labelled unsigned and not causal. The page
@@ -26,18 +27,6 @@ TONES = {"answer": "good", "not_recorded": "good", "explanation": "good",
          "clarification": "info", "abstention": "neutral",
          "case_rejection": "warn", "validation_rejection": "bad",
          "operational_error": "bad"}
-# Why the template wrote a response instead of the model.
-FALLBACKS = {"no_model": "Model Not Loaded",
-             "busy": "Model Busy",
-             "prompt_over_budget": "Evidence Over the Prompt Limit",
-             "output_over_budget": "Response Over the Output Limit",
-             "truncated": "Model Reply Cut Off",
-             "timeout": "Model Timed Out",
-             "resource_exhausted": "Model Out of Memory",
-             "backend_failed": "Model Failed",
-             "malformed": "Model Reply Unreadable",
-             "schema_violated": "Model Reply Off Schema",
-             "gate_rejected": "Model Reply Withheld by Validation"}
 # The model's state: a short name and what it means for the responses.
 MODEL_STATES = {"ready": ("Model Ready", "The model writes each response."),
                 "loading": ("Model Loading", "Templates answer until the "
@@ -290,14 +279,10 @@ def scope(value):
 
 
 def author(result):
-    """Return who wrote a response: the model, or the template and why."""
-    if result.get("author") == "model":
-        return "By the Model"
-    fallback = result.get("fallback")
-    if fallback:
-        return "By the Template · %s" % FALLBACKS.get(
-            fallback, title(fallback.replace("_", " ")))
-    return "By the Template"
+    """Return "By the Model" for a response the model wrote, and None for
+    one a template wrote: the page names no other writer, and the
+    response's runtime record names its writer either way."""
+    return "By the Model" if result.get("author") == "model" else None
 
 
 def model(state):

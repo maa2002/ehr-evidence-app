@@ -5,7 +5,6 @@ import unittest
 from ehr_evidence_app.api import service
 from ehr_evidence_app.evidence import schema
 from ehr_evidence_app.evidence import vocabulary as vocab
-from ehr_evidence_app.generation import adapter
 from ehr_evidence_app.interface import labels
 
 
@@ -13,9 +12,9 @@ class LabelTests(unittest.TestCase):
     """Outcomes, scopes, authors, the model's state, values, scores and
     references."""
 
-    def test_every_outcome_and_fallback_has_words(self):
-        """Every outcome has a title-case name and a tone the page knows,
-        and every fallback a reason."""
+    def test_every_outcome_has_words(self):
+        """Every outcome has a title-case name and a tone the page
+        knows."""
         self.assertEqual(set(labels.OUTCOMES), set(vocab.OUTCOMES))
         self.assertEqual(labels.outcome("not_recorded"), "Not Recorded")
         self.assertEqual(set(labels.TONES), set(vocab.OUTCOMES))
@@ -23,7 +22,6 @@ class LabelTests(unittest.TestCase):
                              {"good", "info", "neutral", "warn", "bad"})
         self.assertEqual(labels.tone("answer"), "good")
         self.assertEqual(labels.tone("unknown"), "neutral")
-        self.assertEqual(set(labels.FALLBACKS), set(adapter.FALLBACKS))
 
     def test_title_case(self):
         """A name gains capitals but for short joining words inside it; a
@@ -57,14 +55,12 @@ class LabelTests(unittest.TestCase):
                          set(vocab.SCOPES))
 
     def test_authors(self):
-        """Who wrote a response, and why the template did."""
+        """A response the model wrote says so; a template's names no
+        writer, whatever the reason the template wrote it."""
         self.assertEqual(labels.author({"author": "model"}), "By the Model")
-        self.assertEqual(labels.author({"author": "template",
-                                        "fallback": "busy"}),
-                         "By the Template · Model Busy")
-        self.assertEqual(labels.author({"author": "template",
-                                        "fallback": None}),
-                         "By the Template")
+        for fallback in ("busy", "gate_rejected", None):
+            self.assertIsNone(labels.author({"author": "template",
+                                             "fallback": fallback}))
 
     def test_model_states(self):
         """Every state of the model has a short name and a meaning."""

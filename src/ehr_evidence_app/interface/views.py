@@ -399,8 +399,8 @@ def response_view(result, known=()):
     """Return a response as the conversation shows it: its outcome, its
     text line by line with the references each line cites and the names
     of concepts (known, and the condition a presence answer names) in
-    title case, what was withheld, the scope it answered, who wrote it
-    and the seconds it took."""
+    title case, what was withheld, the scope it answered, whether the
+    model wrote it and the seconds it took."""
     response = result["response"]
     text = response.get("text")
     shown = namer(known)

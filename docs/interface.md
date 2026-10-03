@@ -140,8 +140,10 @@ value chosen there; the page builds everything it shows as text.
 - **Questions** (work item 50). Each response shows its outcome (answer,
   not recorded, clarification needed, abstained, case rejected, withheld
   by validation or operational error), its text with the references of
-  each claim at the line that states it, the scope it answered, who wrote
-  it (the model, or the template and why) and the seconds it took.
+  each claim at the line that states it, the scope it answered, "By the
+  Model" when the model wrote it (a template's response names no writer
+  on the page; its runtime record names the writer either way) and the
+  seconds it took.
   Choosing a reference opens its record in the evidence panel, in the
   scope the response answered.
 - **Help.** Questions are read by fixed rules, so they have to ask for

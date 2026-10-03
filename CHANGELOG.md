@@ -20,6 +20,9 @@ change interfaces.
 
 ### Changed
 
+- A response says "By the Model" when the model wrote it; one a template
+  wrote no longer names its writer on the page, and its runtime record
+  still does ([docs/interface.md](docs/interface.md#the-interface)).
 - The tunnel's set-up follows Cloudflare's current dashboard
   ([docs/interface.md](docs/interface.md#sharing-through-the-tunnel)):
   the token is saved without running the install command, which would

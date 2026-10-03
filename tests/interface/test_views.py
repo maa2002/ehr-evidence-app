@@ -186,7 +186,7 @@ class ResponseTests(InventedTestCase):
                          "No text was released: claim unsupported.")
         self.assertEqual(found["lines"], [])
         self.assertEqual(found["outcome"]["tone"], "bad")
-        self.assertIn("Withheld by Validation", found["author"])
+        self.assertIsNone(found["author"])
 
     def test_explanation_keeps_its_parts_apart(self):
         """An explanation carries the prediction, the note that attribution
