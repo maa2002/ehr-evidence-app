@@ -28,7 +28,16 @@ change interfaces.
     and presence checks from the development suite's oracle, and
     explanations from the published output, closure and linkage
     records. They agree with all 612 template answers and explanations
-    of the development case sets.
+    of the development case sets;
+  - the baseline condition (work item 56): the same requests without
+    the prompt's grounding rules 1, 4 and 5, the sufficiency checks and
+    the release gate;
+  - the paired runner (work item 57): each request written once in
+    each condition, one protected record per request, a fallback
+    counted as the model's failure. Its 20 invented challenges each
+    end as they should;
+  - the scoring of a run against the independent references, by
+    stratum, with the paired comparison of every metric.
 - `/help` in the conversation
   ([docs/interface.md](docs/interface.md#the-interface)): that the
   questions are not a fixed list but must ask for a kind of information

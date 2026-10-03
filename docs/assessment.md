@@ -18,11 +18,11 @@ case sets first. Command examples assume the session set-up in
 | 53 | `assessment.partition` | The downstream partition of the case sets | done: `downstream-partition-v1` |
 | 54 | `assessment.references` | Independent QA references | built; agree with every template answer of the development case sets |
 | 55 | `assessment.references` | Explanation expectations and challenges | expectations built, and agree with every development template explanation; the challenges come with the runner |
-| 56 | | The baseline condition | planned |
-| 57 | | The paired runner | planned |
+| 56 | `assessment.baseline` | The baseline condition | built and checked on invented data |
+| 57 | `assessment.runner` | The paired runner, with the invented challenges | built and checked on invented data; a development run with the model is next |
 | 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built and checked on invented data; scored against references once those exist |
 | 60 | | End-to-end QA | planned |
-| 61 | `assessment.statistics` | The paired comparison's statistics | done; the report is planned |
+| 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built and checked on invented data |
 
 ## The downstream partition
 
@@ -171,6 +171,94 @@ samples, using references built from the samples' bundles:
   faulty. These are an unsupported claim, an altered prediction or
   attribution, and an unresolved reference.
 
+## The baseline
+
+`assessment.baseline` writes the compared requests as the controlled
+condition does, from the same bundles, projection, schema, model,
+precision, decoding, number of drivers, limits and single attempt. It
+keeps the checks that bind the evidence to the request: case, scope,
+prediction link, visit numbering and readable records. It lacks three
+controls:
+
+- **The grounding rules.** Rules 1, 4 and 5 of `prompt-v9` are left out:
+  state only what the evidence records; say what is recorded, never what
+  the patient has; do not hedge, rank, judge or say when or how often.
+  The role and the other three rules are kept, renumbered 1 to 3, and the
+  request's message, worked examples included, is the controlled
+  condition's.
+- **The sufficiency checks.** A scope whose coverage is incomplete, or an
+  explanation without an eligible driver, is written from the evidence
+  there is, where the controlled condition abstains.
+- **The release gate.** The document becomes a candidate whose text is
+  rendered without checks. A fact the bundle cannot render is shown as
+  `[not in the record]`.
+
+A document that does not parse, breaks its schema or cannot become a
+candidate is invalid output in both conditions. A prompt or expected
+answer over its limit, a timeout, exhausted memory or a backend failure
+is the same failure in both.
+
+## The paired runner
+
+`assessment.runner` writes every request once in each condition, in the
+same order, with one attempt each.
+
+- **Controlled.** The checks before generation run first, then the
+  model's one attempt through the adapter and the release gate. When the
+  model's candidate is not released, the outcome is the failure the
+  fallback names: a validation rejection when the gate withheld it,
+  otherwise an operational error of its category. The template the
+  application would release in its place is never credited.
+- **Baseline.** As above.
+
+Each request writes one protected record. It holds the request and its
+stratum, the bundle's identity, and for each condition:
+
+- the outcome and its category, the reason, the reason codes and the
+  gate's reasons;
+- the prompt's digest, the backend's output, the candidate and the text;
+- the tokens, seconds and peak GPU memory.
+
+A record is written once. A run is one pass, and a run that stops is
+started again in a new directory. The run's summary holds aggregates
+only: outcomes and failure categories by task and condition, and the
+median, 90th percentile and largest of the seconds, tokens and peak GPU
+memory.
+
+The invented challenges (work item 55) check how each condition ends
+each invalid case and each failure; all 20 end as they should:
+
+| Challenge | Controlled | Baseline |
+| --- | --- | --- |
+| A bundle of another case or scope, a history with a gap, a record without a name; a prediction that is not the one selected | case rejection | case rejection |
+| Incomplete coverage of a list's scope | abstention | writes an answer |
+| An explanation with incomplete history, no positive attribution or no eligible driver | abstention | writes an explanation |
+| A cut-off, malformed or schema-breaking output; a timeout; exhausted memory; a backend failure or crash; a prompt or expected answer over its limit | that failure | that failure |
+
+## Scoring a run
+
+`assessment.report` scores a finished run against the independent
+references.
+
+- **Reading.** Each condition's response is read as what it released, or
+  as nothing when it was withheld or failed. The bundle that translates
+  its references is the one the record names, and its digest must still
+  be the record's.
+- **Scoring.** The metrics score every response, summarise each metric by
+  stratum and condition, and compare the conditions pair by pair.
+- **The report.** It holds each metric's summed terms, its value in each
+  condition (not applicable when its denominator is zero) and its paired
+  difference with the 95% interval. It also holds the failures by
+  category and the distributions of seconds, tokens and memory. Nothing
+  of a request is printed.
+
+On an invented run where both conditions write correct documents, every
+metric is perfect in both, with no difference between them. Where each
+list cites a record the bundle does not hold, the gate withholds the lists
+and the baseline gives them. The controlled condition's coverage then
+falls, and the baseline's answers hold unsupported statements and
+references to nothing.
+
 ## The paired comparison's statistics
 
 `assessment.statistics` holds the comparison of ADR 0016 (decision 10),
@@ -212,6 +300,9 @@ The default modes run invented data:
 & $AppPython -m ehr_evidence_app.assessment.metrics
 & $AppPython -m ehr_evidence_app.assessment.stated
 & $AppPython -m ehr_evidence_app.assessment.references
+& $AppPython -m ehr_evidence_app.assessment.baseline
+& $AppPython -m ehr_evidence_app.assessment.runner
+& $AppPython -m ehr_evidence_app.assessment.report
 ```
 
 The partition's operator mode publishes a new record. It refuses an
@@ -228,4 +319,15 @@ prints counts by stratum and kind only:
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.references --operator-real --case-set dev-30-v1
 & $AppPython -m ehr_evidence_app.assessment.references --operator-real --case-set pilot-10-v1
+```
+
+The runner's operator mode writes a development case set's sampled
+requests in both conditions with the pinned model, into a new
+protected run directory, and needs the GPU. The report's operator
+mode scores a finished run. Both print aggregates only and refuse the
+evaluation set:
+
+```powershell
+& $AppPython -m ehr_evidence_app.assessment.runner --operator-real --case-set dev-30-v1 --per-group 2
+& $AppPython -m ehr_evidence_app.assessment.report --operator-real --run <run identifier>
 ```

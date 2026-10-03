@@ -158,6 +158,22 @@ def rank(fraction, count):
     return min(count, max(1, -(-numerator * count // denominator))) - 1
 
 
+def distribution(values):
+    """Return {count, median, p90, largest} of values (ADR 0016, decision
+    8): the median as the middle value or the mean of the two middle ones,
+    the 90th percentile as the order statistic of nearest rank; None for
+    each when there are none."""
+    ordered = sorted(values)
+    if not ordered:
+        return {"count": 0, "median": None, "p90": None, "largest": None}
+    middle = len(ordered) // 2
+    median = (ordered[middle] if len(ordered) % 2
+              else (ordered[middle - 1] + ordered[middle]) / 2)
+    return {"count": len(ordered), "median": median,
+            "p90": ordered[rank((9, 10), len(ordered))],
+            "largest": ordered[-1]}
+
+
 def bootstrap_difference(cases, measure, replicates=REPLICATES, seed=SEED):
     """Return the Bootstrapped difference of a ratio of sums, controlled
     minus baseline, by the paired bootstrap over cases.

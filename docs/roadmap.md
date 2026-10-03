@@ -212,13 +212,18 @@ rated by code and an automatic rater, which the owner checks on a sample
   built and in agreement with every development template; the
   challenges come with the runner)
 - 56 Implement the baseline condition
+  ([assessment.md](assessment.md#the-baseline); built)
 - 57 Implement the paired runner
+  ([assessment.md](assessment.md#the-paired-runner); built, with the
+  invented challenges)
 - 58 Calculate QA and abstention metrics
   ([assessment.md](assessment.md#the-metrics); built)
 - 59 Calculate explanation and evidence metrics
   ([assessment.md](assessment.md#the-metrics); built)
 - 60 Assess end-to-end QA
 - 61 Produce comparative results
+  ([assessment.md](assessment.md#scoring-a-run); the scoring of a run
+  built)
 
 The upstream partition of every case is recoverable (see
 [inherited-gnn.md](inherited-gnn.md#run-binding-and-split-membership)), so
