@@ -7,6 +7,24 @@ change interfaces.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-04
+
+The frozen version of the final evaluation (Phase 9, work items 53 to 61,
+and the freeze of work item 64). The `assessment` package builds the
+final evaluation as [ADR 0028](docs/decisions/0028-final-evaluation-design.md)
+designs it: the downstream partition, the independent references, the
+baseline condition, the paired runner, the metrics with their paired
+comparison, the scoring of a run, the end-to-end assessment of questions
+about conditions and about the whole record, the prose rubric rated by
+code and by a frozen automatic rater
+([ADR 0027](docs/decisions/0027-automatic-prose-rating.md)), and the
+held-out read of MIMIC-IV-Ext-Instr. Each was checked on invented data
+and the development case sets, the runner and the end-to-end assessment
+in trials with the model. The freeze
+([ADR 0029](docs/decisions/0029-the-freeze.md)) records this version, and
+the final case set is read only under it. Questions about the whole
+record read an item's name whole (rules `record-questions-v6`).
+
 ### Added
 
 - The final evaluation's package, `assessment` (Phase 9;
@@ -934,7 +952,8 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.7.1...v0.8.0
