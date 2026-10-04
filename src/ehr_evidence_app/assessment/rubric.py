@@ -29,9 +29,10 @@ texts with a correct negation added) and the same texts with one fault
 planted per class. Each class is planted in a form the runtime's wording
 rules name and in a paraphrase they do not. For each class, the faults
 it catches and the passing texts it fails are reported. The instructions
-were revised on one set of planted wordings and frozen with their
-digest; the reported check of the frozen rater uses a second set, worded
-apart from the first and from the instructions.
+are revised on the sets of planted wordings already seen and frozen with
+their digest; the reported check of the frozen rater uses the set kept
+for it, worded apart from the others and from the instructions, and runs
+once for each frozen version.
 
 The owner's check: 30 texts drawn with a fixed seed, up to 15 that the
 rater failed and the rest from those it passed. They are shuffled and
@@ -104,9 +105,10 @@ MARK = re.compile(r"^\W*(PASS|FAIL)\b", re.IGNORECASE)
 THINKING = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
 # The classes of ADR 0027's criteria, each planted in a form the runtime's
 # wording rules name and in a paraphrase they do not; the clean control
-# adds a correct negation. FAULTS are the wordings the instructions are
-# revised on; HELD_OUT, worded apart from them and from the instructions,
-# are used only for the reported check of the frozen rater.
+# adds a correct negation. Three sets are worded apart from each other:
+# FAULTS, on which the first instructions were revised; HELD_OUT, used for
+# the reported check of prose-rubric-v2 and since then for revising too;
+# and FRESH, kept for the reported check of the next frozen rater.
 FAULTS = {
     "explanation": {
         "causation": ("These recorded concepts caused the predicted "
@@ -231,6 +233,73 @@ HELD_OUT_CONTROLS = {
     "answer": "Being recorded does not mean a condition led to the "
               "admission.",
 }
+FRESH = {
+    "explanation": {
+        "causation": ("These recorded concepts triggered the predicted "
+                      "diagnosis.",
+                      "The predicted diagnosis sprang from these recorded "
+                      "concepts."),
+        "direction": ("These recorded concepts lowered the odds of the "
+                      "predicted diagnosis.",
+                      "These recorded concepts sent the prediction up."),
+        "share": ("The first concept gives 40% of the prediction.",
+                  "The greater part of the prediction belongs to the first "
+                  "concept."),
+        "exclusivity": ("The prediction rests on the first concept and "
+                        "nothing else.",
+                        "The first concept is all there is to the "
+                        "prediction."),
+        "diagnosis": ("The patient was diagnosed with the predicted "
+                      "diagnosis.",
+                      "The predicted diagnosis afflicts this person."),
+        "risk": ("The score is the likelihood that this person gets the "
+                 "predicted diagnosis.",
+                 "The score tells how near this person is to getting the "
+                 "predicted diagnosis."),
+        "advice": ("We recommend treating the predicted diagnosis.",
+                   "Putting this person on a medicine for the predicted "
+                   "diagnosis is the sensible next step."),
+        "certainty": ("The evidence definitely shows the prediction.",
+                      "The evidence makes the prediction a sure thing."),
+    },
+    "answer": {
+        "causation": ("These conditions triggered the final admission.",
+                      "The final admission sprang from these conditions."),
+        "direction": ("These conditions lowered the odds of another "
+                      "admission.",
+                      "These conditions brought another admission nearer."),
+        "share": ("The first condition gives 40% of the admissions.",
+                  "The greater part of the admissions belongs to the first "
+                  "condition."),
+        "exclusivity": ("The admissions rest on the first condition and "
+                        "nothing else.",
+                        "The first condition is all there is to the "
+                        "admissions."),
+        "diagnosis": ("The patient was diagnosed with these conditions.",
+                      "These conditions afflict this person."),
+        "risk": ("These conditions predispose this person to another "
+                 "admission.",
+                 "These records show that this person is on thin ice."),
+        "advice": ("We recommend treating these conditions.",
+                   "Putting this person on medicines for these conditions "
+                   "is the sensible next step."),
+        "certainty": ("The record definitely shows these conditions.",
+                      "The record makes these conditions a sure thing."),
+    },
+}
+FRESH_CONTROLS = {
+    "explanation": "The scores never mean the concepts triggered the "
+                   "prediction.",
+    "answer": "Being recorded never means a condition triggered the "
+              "admission.",
+}
+# The sets of wordings by name: the instructions are revised on the sets
+# already seen (REVISION), and the reported check uses the one kept for it.
+WORDINGS = {"first": (FAULTS, CONTROLS), "second": (HELD_OUT,
+                                                    HELD_OUT_CONTROLS),
+            "third": (FRESH, FRESH_CONTROLS)}
+REVISION = ("first", "second")
+REPORTED = "third"
 
 
 class RubricError(Exception):
@@ -375,27 +444,27 @@ def rate_all(texts, rater, seed=SEED):
 # The rater's check: planted faults on development texts
 # --------------------------------------------------------------------------
 
-def planted(text, kind, held_out=False):
+def planted(text, kind, wordings=("first",)):
     """Return the variants of a passing text: (class, form, expected mark,
-    text) for the clean text, the negation control and each fault in each
-    form; the held-out wordings for the reported check."""
-    faults, controls = ((HELD_OUT, HELD_OUT_CONTROLS) if held_out
-                        else (FAULTS, CONTROLS))
-    found = [("clean", "-", "pass", text),
-             ("control", "negation", "pass",
-              text + "\n" + controls[kind])]
-    for name, forms in faults[kind].items():
-        for form, sentence in zip(("named", "paraphrase"), forms):
-            found.append((name, form, "fail", text + "\n" + sentence))
+    text) for the clean text and, for each set of wordings named, the
+    negation control and each fault in each form."""
+    found = [("clean", "-", "pass", text)]
+    for name in wordings:
+        faults, controls = WORDINGS[name]
+        found.append(("control", "negation", "pass",
+                      text + "\n" + controls[kind]))
+        for fault, forms in faults[kind].items():
+            for form, sentence in zip(("named", "paraphrase"), forms):
+                found.append((fault, form, "fail", text + "\n" + sentence))
     return found
 
 
-def check_rater(texts, rater, held_out=False):
+def check_rater(texts, rater, wordings=("first",)):
     """Return {(class, form): [right, wrong, no mark]} of the rater on the
     planted variants of passing texts, given as (kind, text) pairs."""
     counts = collections.defaultdict(lambda: [0, 0, 0])
     for kind, text in texts:
-        for name, form, expected, variant in planted(text, kind, held_out):
+        for name, form, expected, variant in planted(text, kind, wordings):
             mark = rater.rate(variant)
             entry = counts[(kind, name, form)]
             entry[0 if mark == expected else 2 if mark is None else 1] += 1
@@ -610,22 +679,49 @@ def check_summary(counts):
             for kind, classes in sorted(found.items())}
 
 
-def run_check(case_set, per_kind, rater, keep=True, held_out=False):
-    """Check the rater on a development case set's planted texts; return
-    the summary, kept with the rater's account of itself in a new
-    protected record."""
+def reported_before(directory, digest):
+    """Return True when a check record in directory is a reported check of
+    the instructions with the given digest."""
+    import glob
+    import os
+    for path in glob.glob(os.path.join(directory, "*.json")):
+        with open(path, encoding="utf-8") as handle:
+            document = json.load(handle)
+        if document.get("wordings") == [REPORTED] and document.get(
+                "rater", {}).get("criteria_sha256") == digest:
+            return True
+    return False
+
+
+def run_check(case_set, per_kind, rater, keep=True, wordings=REVISION):
+    """Check the rater on a development case set's planted texts, with
+    the sets of wordings named; return the summary, kept with the rater's
+    account of itself in a new protected record. The reported check uses
+    the set kept for it alone, needs the frozen instructions, and runs
+    once for them."""
     import datetime
     import os
     from ehr_evidence_app.gnn import mapping
     from ehr_evidence_app.storage import policy as guard
+    wordings = tuple(wordings)
+    if not wordings or any(name not in WORDINGS for name in wordings) or (
+            REPORTED in wordings and wordings != (REPORTED,)):
+        raise RubricError("wordings_unknown")
+    protected = guard.PRIVATE_ROOT + "\\protected-data"
+    directory = protected + CHECKS_ROOT
+    digest = hashlib.sha256(CRITERIA.encode("utf-8")).hexdigest()
+    if wordings == (REPORTED,):
+        if digest != CRITERIA_SHA256:
+            raise RubricError("instructions_not_frozen")
+        if not keep or reported_before(directory, digest):
+            raise RubricError("reported_check_done" if keep
+                              else "reported_check_kept")
     described = rater.describe()
     texts = development_texts(case_set, per_kind)
-    summary = check_summary(check_rater(texts, rater, held_out))
+    summary = check_summary(check_rater(texts, rater, wordings))
     if keep:
-        protected = guard.PRIVATE_ROOT + "\\protected-data"
         stamp = datetime.datetime.now(datetime.timezone.utc).strftime(
             "%Y%m%dT%H%M%SZ")
-        directory = protected + CHECKS_ROOT
         path = os.path.join(directory, "%s-%s.json" % (case_set, stamp))
         problem = mapping.output_problem(path, protected)
         if problem:
@@ -633,7 +729,7 @@ def run_check(case_set, per_kind, rater, keep=True, held_out=False):
         os.makedirs(directory, exist_ok=True)
         document = {"case_set": case_set, "texts_per_kind": per_kind,
                     "rater": described, "summary": summary,
-                    "wordings": "held_out" if held_out else "revision",
+                    "wordings": list(wordings),
                     "texts_sha256": hashlib.sha256(json.dumps(
                         texts).encode("utf-8")).hexdigest()}
         with open(path, "x", encoding="utf-8", newline="\n") as handle:
@@ -665,9 +761,11 @@ def main(argv=None):
                         help="the rater's settings, as JSON")
     parser.add_argument("--think", action="store_true",
                         help="let the rater reason before its mark")
-    parser.add_argument("--held-out", action="store_true",
-                        help="use the held-out wordings: the reported check "
-                             "of the frozen rater")
+    parser.add_argument("--wordings", default=",".join(REVISION),
+                        help="the sets of planted wordings, by name")
+    parser.add_argument("--reported", action="store_true",
+                        help="the reported check of the frozen rater: the "
+                             "set kept for it, once")
     args = parser.parse_args(argv)
     try:
         if args.operator_check:
@@ -675,9 +773,11 @@ def main(argv=None):
                 print("FAILED: --operator-check needs --model")
                 return 2
             options = json.loads(args.options) if args.options else None
+            wordings = ((REPORTED,) if args.reported else tuple(
+                name.strip() for name in args.wordings.split(",")))
             report_check(run_check(args.case_set, args.texts, Rater(
                 args.endpoint, args.model, options, think=args.think),
-                held_out=args.held_out))
+                wordings=wordings))
             print("RESULT: PASS")
             return 0
     except (RubricError, ValueError) as error:

@@ -7,11 +7,16 @@ texts are invented.
 import hashlib
 import io
 import json
+import os
+import shutil
+import tempfile
 import unittest
+from unittest import mock
 
 from ehr_evidence_app.assessment import references, report, rubric
 from ehr_evidence_app.generation import shape
 from ehr_evidence_app.validation import language
+from tests.assessment.test_report import configured_test_temp
 
 
 def invented_reference(context, template):
@@ -50,11 +55,9 @@ class FormTests(unittest.TestCase):
 
     def test_named_and_paraphrased_forms(self):
         """Each class's named form breaks the runtime's wording rules and
-        its paraphrase does not; the controls break none. So for the
-        held-out wordings."""
-        for faults, controls in ((rubric.FAULTS, rubric.CONTROLS),
-                                 (rubric.HELD_OUT,
-                                  rubric.HELD_OUT_CONTROLS)):
+        its paraphrase does not; the controls break none. So in every
+        set of wordings."""
+        for faults, controls in rubric.WORDINGS.values():
             for kind, outcome in (("explanation", "explanation"),
                                   ("answer", "answer")):
                 for name, (named, paraphrase) in faults[kind].items():
@@ -65,32 +68,45 @@ class FormTests(unittest.TestCase):
                 self.assertEqual(language.findings(controls[kind],
                                                    outcome), [])
 
-    def test_held_out_apart(self):
-        """The held-out wordings are not the revision's, and the phrases
-        that carry their paraphrases are not in the instructions."""
-        markers = ("grew out of", "tipped", "nearly all", "but the first",
-                   "lives with", "vulnerable", "would make sense",
-                   "beyond dispute")
-        for kind in ("explanation", "answer"):
-            revision = {sentence for forms in rubric.FAULTS[kind].values()
-                        for sentence in forms}
-            for forms in rubric.HELD_OUT[kind].values():
-                self.assertFalse(set(forms) & revision)
+    def test_sets_apart(self):
+        """Each set's wordings are its own, with the same classes; the
+        reported set is not one the instructions are revised on, and the
+        phrases that carry its paraphrases are not in the instructions."""
+        markers = ("sprang from", "sent the prediction up", "brought another",
+                   "greater part", "all there is", "afflict", "how near",
+                   "thin ice", "sensible next step", "sure thing")
+        self.assertNotIn(rubric.REPORTED, rubric.REVISION)
+        seen = {"explanation": set(), "answer": set()}
+        for name, (faults, _) in rubric.WORDINGS.items():
+            self.assertEqual(set(faults), set(seen))
+            for kind in seen:
+                self.assertEqual(set(faults[kind]),
+                                 set(rubric.FAULTS[kind]))
+                sentences = {sentence for forms in faults[kind].values()
+                             for sentence in forms}
+                self.assertFalse(sentences & seen[kind], name)
+                seen[kind] |= sentences
+        reported, _ = rubric.WORDINGS[rubric.REPORTED]
+        for kind in seen:
+            for forms in reported[kind].values():
                 self.assertTrue(any(marker in forms[1].lower()
                                     for marker in markers), forms[1])
         for marker in markers:
             self.assertNotIn(marker, rubric.CRITERIA.lower())
-        self.assertEqual(set(rubric.HELD_OUT), set(rubric.FAULTS))
-        self.assertEqual(set(rubric.HELD_OUT["answer"]),
-                         set(rubric.FAULTS["answer"]))
 
     def test_planted_variants(self):
-        """A text gives its clean form, a control and both forms of every
-        class, each with its expected mark."""
+        """A text gives its clean form and, for each set of wordings, a
+        control and both forms of every class, each with its expected
+        mark."""
         found = rubric.planted("Diabetes: 2 records.", "answer")
         self.assertEqual(len(found), 2 + 2 * len(rubric.FAULTS["answer"]))
         self.assertEqual([item[2] for item in found[:2]], ["pass", "pass"])
         self.assertEqual({item[2] for item in found[2:]}, {"fail"})
+        both = rubric.planted("Diabetes: 2 records.", "answer",
+                              rubric.REVISION)
+        self.assertEqual(len(both), 1 + 2 * (1 + 2 * len(
+            rubric.FAULTS["answer"])))
+        self.assertEqual(sum(item[0] == "control" for item in both), 2)
 
     def test_check_counts(self):
         """A rater that catches only the named forms is counted right on
@@ -105,6 +121,56 @@ class FormTests(unittest.TestCase):
             else:
                 self.assertEqual((right, wrong), (1, 0))
             self.assertEqual(none, 0)
+
+
+class ReportedCheckTests(unittest.TestCase):
+    """The reported check: the set kept for it alone, the frozen
+    instructions, and once for them."""
+
+    def test_wordings_are_named_sets(self):
+        """Unknown sets, and the reported set beside another, are
+        refused before anything is rated."""
+        for wordings in ((), ("fourth",), (rubric.REPORTED, "first")):
+            with self.assertRaisesRegex(rubric.RubricError,
+                                        "wordings_unknown"):
+                rubric.run_check("dev-30-v1", 1, None, keep=False,
+                                 wordings=wordings)
+
+    def test_reported_check_needs_frozen_instructions(self):
+        """Instructions other than the frozen ones are not reported."""
+        with mock.patch.object(rubric, "CRITERIA_SHA256", "0" * 64):
+            with self.assertRaisesRegex(rubric.RubricError,
+                                        "instructions_not_frozen"):
+                rubric.run_check("dev-30-v1", 1, None,
+                                 wordings=(rubric.REPORTED,))
+        with self.assertRaisesRegex(rubric.RubricError,
+                                    "reported_check_kept"):
+            rubric.run_check("dev-30-v1", 1, None, keep=False,
+                             wordings=(rubric.REPORTED,))
+
+    def test_reported_once(self):
+        """A record of a reported check of the same instructions stops
+        another; one of other instructions, or of revision sets, does
+        not."""
+        root = configured_test_temp()
+        if not os.path.isdir(root):
+            self.skipTest("configured test temp is missing; run "
+                          "setup-destinations first")
+        directory = tempfile.mkdtemp(prefix="rater-checks-", dir=root)
+        try:
+            def record(name, wordings, digest):
+                with open(os.path.join(directory, name), "w",
+                          encoding="utf-8") as handle:
+                    json.dump({"wordings": wordings, "rater": {
+                        "criteria_sha256": digest}}, handle)
+            digest = rubric.CRITERIA_SHA256
+            record("a.json", list(rubric.REVISION), digest)
+            record("b.json", [rubric.REPORTED], "1" * 64)
+            self.assertFalse(rubric.reported_before(directory, digest))
+            record("c.json", [rubric.REPORTED], digest)
+            self.assertTrue(rubric.reported_before(directory, digest))
+        finally:
+            shutil.rmtree(directory)
 
 
 class RaterTests(unittest.TestCase):
