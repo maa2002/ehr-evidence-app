@@ -73,7 +73,7 @@ class FormTests(unittest.TestCase):
         reported set is not one the instructions are revised on, and the
         phrases that carry its paraphrases are not in the instructions."""
         markers = ("sprang from", "sent the prediction up", "brought another",
-                   "greater part", "all there is", "afflict", "how near",
+                   "outweighs", "all there is", "afflict", "how near",
                    "thin ice", "sensible next step", "sure thing")
         self.assertNotIn(rubric.REPORTED, rubric.REVISION)
         seen = {"explanation": set(), "answer": set()}

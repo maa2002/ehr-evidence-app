@@ -108,7 +108,9 @@ THINKING = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
 # adds a correct negation. Three sets are worded apart from each other:
 # FAULTS, on which the first instructions were revised; HELD_OUT, used for
 # the reported check of prose-rubric-v2 and since then for revising too;
-# and FRESH, kept for the reported check of the next frozen rater.
+# and FRESH, kept for the reported check of the next frozen rater. FRESH's
+# share paraphrases were reworded after one of them was rated once, in a
+# timing probe, before any revision was tried.
 FAULTS = {
     "explanation": {
         "causation": ("These recorded concepts caused the predicted "
@@ -243,8 +245,8 @@ FRESH = {
                       "predicted diagnosis.",
                       "These recorded concepts sent the prediction up."),
         "share": ("The first concept gives 40% of the prediction.",
-                  "The greater part of the prediction belongs to the first "
-                  "concept."),
+                  "The first concept outweighs all the other concepts in "
+                  "the prediction put together."),
         "exclusivity": ("The prediction rests on the first concept and "
                         "nothing else.",
                         "The first concept is all there is to the "
@@ -269,8 +271,8 @@ FRESH = {
                       "admission.",
                       "These conditions brought another admission nearer."),
         "share": ("The first condition gives 40% of the admissions.",
-                  "The greater part of the admissions belongs to the first "
-                  "condition."),
+                  "The first condition outweighs all the other conditions "
+                  "in the admissions put together."),
         "exclusivity": ("The admissions rest on the first condition and "
                         "nothing else.",
                         "The first condition is all there is to the "
