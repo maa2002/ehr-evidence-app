@@ -243,6 +243,20 @@ class RunTests(unittest.TestCase):
         self.assertLess(answers["baseline"]["all_four"],
                         answers["baseline"]["texts"])
 
+    def test_requests_sharing_an_identifier_are_rated_apart(self):
+        """Each record's texts are rated under its own key, though its
+        request shares an identifier with another's."""
+        records = report.synthetic_records(invented_reference)
+        for number, record in enumerate(records, 1):
+            record["number"] = number
+        records[1]["request"]["request_id"] = records[0]["request"][
+            "request_id"]
+        rated = rubric.run_texts(records, references.synthetic_sources(),
+                                 report.synthetic_bundles(),
+                                 references.configured_limit())
+        keys = [(item.request_id, item.condition) for item in rated]
+        self.assertEqual(len(keys), len(set(keys)))
+
     def test_default_mode_passes(self):
         """The module's own check finds nothing."""
         self.assertEqual(rubric.run_synthetic(), [])

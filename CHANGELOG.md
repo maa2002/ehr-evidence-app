@@ -37,7 +37,10 @@ change interfaces.
     counted as the model's failure. Its 20 invented challenges each
     end as they should;
   - the scoring of a run against the independent references, by
-    stratum, with the paired comparison of every metric;
+    stratum, with the paired comparison of every metric, each record
+    paired under its request's identifier and its number in the run. A
+    development trial with the pinned model wrote nine requests of the
+    development set in both conditions and scored end to end;
   - the end-to-end assessment of questions (work item 60), stage by
     stage: interpretation, resolution, retrieval and delivery. On a
     development written set it agrees with the written test on every

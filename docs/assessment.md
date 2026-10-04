@@ -20,12 +20,12 @@ case sets first. Command examples assume the session set-up in
 | 54 | `assessment.record_references` | References of questions about the whole record (ADR 0016, decision 11) | built; agree with every template answer of the development case sets |
 | 55 | `assessment.references` | Explanation expectations and challenges | expectations built, and agree with every development template explanation; the challenges come with the runner |
 | 56 | `assessment.baseline` | The baseline condition | built and checked on invented data |
-| 57 | `assessment.runner` | The paired runner, with the invented challenges | built and checked on invented data; a development run with the model is next |
+| 57 | `assessment.runner` | The paired runner, with the invented challenges | built; checked on invented data and in a development trial with the model |
 | 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built; checked on invented data and against the release gate's mutation suite |
 | 59 | `assessment.rubric` | The prose rubric (ADR 0027) | built; the rater's instructions frozen as `prose-rubric-v2`; on held-out wordings it failed no passing text and caught 237 of 320 planted faults |
 | 60 | `assessment.end_to_end` | End-to-end QA | built: condition questions agree with the written test on a development set; questions about the whole record are checked on invented data |
 | 60 | `assessment.record_suite` | A generated development suite of questions about the whole record (ADR 0016, decision 11) | built; on the development case sets 10,338 of 11,053 questions are read right and 10,320 delivered correctly |
-| 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built and checked on invented data |
+| 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built; checked on invented data and on the development trial's run |
 
 ## The downstream partition
 
@@ -238,6 +238,15 @@ each invalid case and each failure; all 20 end as they should:
 | An explanation with incomplete history, no positive attribution or no eligible driver | abstention | writes an explanation |
 | A cut-off, malformed or schema-breaking output; a timeout; exhausted memory; a backend failure or crash; a prompt or expected answer over its limit | that failure | that failure |
 
+**The development trial.** The runner wrote two requests of each group
+of `dev-30-v1`, 9 in all, in both conditions with the pinned model, in
+eleven minutes on the workstation's GPU. The presence checks ended alike
+in both conditions. Of the three lists, the baseline's output for one
+was malformed, and the gate withheld one in the controlled condition; of
+the two explanations, the gate withheld one in the controlled condition
+and the baseline released both. It is a check that the runner, its
+records and the scoring work together, not a measurement.
+
 ## Scoring a run
 
 `assessment.report` scores a finished run against the independent
@@ -248,12 +257,22 @@ references.
   its references is the one the record names, and its digest must still
   be the record's.
 - **Scoring.** The metrics score every response, summarise each metric by
-  stratum and condition, and compare the conditions pair by pair.
+  stratum and condition, and compare the conditions pair by pair. A
+  record is scored and paired under its request's identifier and its
+  number in the run: the development requests give a scope's list and
+  presence checks one identifier, and the development trial's run could
+  not be scored until each record had a key of its own.
 - **The report.** It holds each metric's summed terms, its value in each
   condition (not applicable when its denominator is zero) and its paired
   difference with the 95% interval. It also holds the failures by
   category and the distributions of seconds, tokens and memory. Nothing
   of a request is printed.
+
+The development trial's run scores end to end. In its nine requests,
+the baseline's explanations held unsupported statements (claim support
+0.903 against 1.000) and the controlled condition named fewer drivers
+where the gate withheld an explanation; the presence checks and lists
+scored alike in both conditions.
 
 On an invented run where both conditions write correct documents, every
 metric is perfect in both, with no difference between them. Where each

@@ -85,6 +85,21 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(lists["exact_match"]["values"],
                          {"baseline": 0.0, "controlled": 0.0})
 
+    def test_requests_sharing_an_identifier_are_paired_by_record(self):
+        """Requests may share an identifier (the development requests give
+        a scope's list and presence checks one): each record is scored
+        and paired under its own key, the identifier and its number."""
+        records = invented_run(correct)
+        for number, record in enumerate(records, 1):
+            record["number"] = number
+        records[1]["request"]["request_id"] = records[0]["request"][
+            "request_id"]
+        self.assertNotEqual(report.record_key(records[0]),
+                            report.record_key(records[1]))
+        document = scored_report(records)
+        self.assertEqual(document["strata"][report.ALL]["requests"],
+                         len(records))
+
     def test_bundle_must_match(self):
         """A record naming another bundle digest is refused."""
         records = invented_run(correct)

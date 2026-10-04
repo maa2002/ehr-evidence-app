@@ -103,6 +103,14 @@ class Bundles:
             in explanation.read_bundles(case_set)})
 
 
+def record_key(record):
+    """Return what a run's record is scored and paired under: its
+    request's identifier and its number in the run. Requests may share an
+    identifier (the development requests give a scope's list and presence
+    checks one), a record's number never."""
+    return "%s#%05d" % (record["request"]["request_id"], record["number"])
+
+
 def response_of(request_id, document, bundle):
     """Return one condition's response, as the metrics read it."""
     candidate = None
@@ -113,14 +121,16 @@ def response_of(request_id, document, bundle):
                        document["text"] is not None)
 
 
-def reference_of(request, sources, limit):
-    """Return the reference of a record's request."""
+def reference_of(request, sources, limit, request_id=None):
+    """Return the reference of a record's request, under request_id when
+    it is given."""
+    request_id = request_id or request["request_id"]
     if request["task"] == metrics.EXPLANATION:
         return sources.explanation(
-            request["request_id"], request["case_number"],
+            request_id, request["case_number"],
             limit if request["limit"] is None else request["limit"])
     return sources.condition(
-        request["request_id"], request["task"], request["case_number"],
+        request_id, request["task"], request["case_number"],
         scope_of(request), tuple(request["asked"] or ()),
         request["stratum"])
 
@@ -130,11 +140,12 @@ def score_records(records, sources, bundles, limit):
     scored = {name: [] for name in runner.CONDITIONS}
     for record in records:
         request = record["request"]
-        reference = reference_of(request, sources, limit)
+        key = record_key(record)
+        reference = reference_of(request, sources, limit, key)
         bundle = bundles.of(request)
         for name in runner.CONDITIONS:
             scored[name].append(metrics.score(reference, response_of(
-                request["request_id"], record["conditions"][name], bundle)))
+                key, record["conditions"][name], bundle)))
     return scored
 
 

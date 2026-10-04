@@ -455,16 +455,16 @@ def run_texts(records, sources, bundles, limit):
         kind = rated_kind(request["task"])
         if kind is None:
             continue
-        reference = report.reference_of(request, sources, limit)
+        key = report.record_key(record)
+        reference = report.reference_of(request, sources, limit, key)
         bundle = bundles.of(request)
         for condition in runner.CONDITIONS:
             document = record["conditions"][condition]
             if document["text"] is None or document["outcome"] not in (
                     metrics.ANSWERS + ("explanation",)):
                 continue
-            response = report.response_of(request["request_id"], document,
-                                          bundle)
-            found.append(Rated(request["request_id"], condition, kind,
+            response = report.response_of(key, document, bundle)
+            found.append(Rated(key, condition, kind,
                                document["text"],
                                *code_items(reference, response)))
     return found
