@@ -367,6 +367,13 @@ The tests add another kind, field and item read, and a record missing
 from the bundle. The final evaluation's questions are worded after the
 freeze.
 
+**With the model.** The operator mode can write the answers with the
+pinned model, as the deployed application does. In a trial on five
+questions of each intent of `written-v4`, the stages matched the
+template run's on those questions; the model delivered two answers, both
+correct, and the template one, correct, after the model's candidate was
+withheld.
+
 **The generated suite** (`assessment.record_suite`; ADR 0016, decision
 11, development only) asks every scope of every admitted development
 case questions in fixed wordings:
@@ -640,6 +647,20 @@ They are shuffled and shown without the rater's marks or the
 conditions. The owner's marks are reported beside the rater's for each
 stratum, and the rater's marks are the ones scored.
 
+**Rating a run.** The operator rates a finished run with the frozen
+instructions only. Every text of both conditions is rated once, under its
+record's key and its condition, in an order shuffled with the fixed
+seed. The marks, the rubric's aggregates and the owner's sheet are
+written once, beside each other, in a new protected directory: the sheet
+holds the sampled texts, numbered, with an empty mark, and neither the
+rater's marks nor the conditions. The owner fills in pass or fail for
+each text, and a second step reads the sheet back into an agreement
+record, by kind and in all; a sheet whose items were changed is refused.
+On the development trial's run the rater marked 15 texts in under a
+minute on the workstation's GPU: the answers passed all four items in
+both conditions; of the baseline's two explanations one failed evidence
+and history by code, and the controlled condition's one passed all four.
+
 ## References for questions about the whole record
 
 `assessment.record_references` prepares the reference of a question about
@@ -782,10 +803,13 @@ evaluation set:
 ```
 
 The end-to-end assessment's operator mode reads a development written set
-with the templates as writers, and prints counts by intent and stage only:
+with the templates as writers, or with `--with-model` the pinned model as
+the deployed application has it, and prints counts by intent and stage
+only; `--per-intent` takes up to that many questions of each intent:
 
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.end_to_end --operator-real --set written-v4
+& $AppPython -m ehr_evidence_app.assessment.end_to_end --operator-real --set written-v4 --with-model --per-intent 5
 ```
 
 The generated suite's operator mode asks a development case set's
@@ -818,4 +842,13 @@ once it has been run for them:
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.rubric --operator-check --model <rating model> --case-set dev-30-v1 --wordings first,second
 & $AppPython -m ehr_evidence_app.assessment.rubric --operator-check --model <rating model> --case-set dev-30-v1 --reported
+```
+
+Its operator rating of a finished development run writes the marks, the
+aggregates and the owner's sheet, and prints counts only; the owner's
+step reads the filled sheet back:
+
+```powershell
+& $AppPython -m ehr_evidence_app.assessment.rubric --operator-rate <run identifier> --model <rating model>
+& $AppPython -m ehr_evidence_app.assessment.rubric --operator-owner <run identifier>
 ```

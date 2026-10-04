@@ -44,9 +44,10 @@ change interfaces.
   - the end-to-end assessment of questions (work item 60), stage by
     stage: interpretation, resolution, retrieval and delivery. On a
     development written set it agrees with the written test on every
-    condition question. Questions about the whole record have a format
-    of their own, naming the item meant as the references do, and are
-    judged against the whole record's references;
+    condition question, and it can write the answers with the pinned
+    model as the deployed application does. Questions about the whole
+    record have a format of their own, naming the item meant as the
+    references do, and are judged against the whole record's references;
   - a generated development suite of questions about the whole record
     (ADR 0016, decision 11): fixed wordings about every kind, naming
     each scope's own items by their records' names, assessed end to
@@ -62,7 +63,9 @@ change interfaces.
     missing most paraphrases in explanations. `prose-rubric-v4`, revised
     on both seen sets and checked once on a third, fresh set, failed none
     of 40 passing texts and caught 274 of 320, 148 of the 160
-    paraphrases;
+    paraphrases. The operator rates a finished run with the frozen
+    instructions and writes the owner's blind sheet, whose marks a
+    second step reads back into an agreement record;
   - the references of questions about the whole record (ADR 0016,
     decision 11), from the raw extract and the snapshot. They agree with
     all 14,800 structured template answers of the development case

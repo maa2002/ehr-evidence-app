@@ -59,7 +59,7 @@ They are counted by task and kind.
 Usage:
     python -m ehr_evidence_app.assessment.end_to_end
     python -m ehr_evidence_app.assessment.end_to_end --operator-real \\
-        --set written-v4
+        --set written-v4 [--with-model] [--per-intent N]
 """
 
 from __future__ import annotations
@@ -715,9 +715,20 @@ def run_synthetic():
     return (found, left_out, record_found, record_left_out), problems
 
 
-def run_real(name):
-    """Assess a development written set with the templates as writers;
-    return the counts."""
+def first_of_each(rows, per_intent):
+    """Return up to per_intent rows of each intent, in the set's order."""
+    found, counts = [], collections.Counter()
+    for row in rows:
+        if counts[row.intent] < per_intent:
+            counts[row.intent] += 1
+            found.append(row)
+    return found
+
+
+def run_real(name, with_model=False, per_intent=None):
+    """Assess a development written set, or up to per_intent questions of
+    each intent, with the templates as writers or the pinned model as
+    the deployed application has it; return the counts."""
     from ehr_evidence_app.evidence import contracts
     from ehr_evidence_app.gnn import mapping
     from ehr_evidence_app.qa import resolve
@@ -728,12 +739,19 @@ def run_real(name):
     except mapping.MappingError as error:
         raise written.WrittenError(str(error)) from None
     rows, _ = written.parse_questions(data, written.development_labels())
+    if per_intent is not None:
+        rows = first_of_each(rows, per_intent)
     vocab = resolve.load()
     inputs = {}
     for label in sorted({row.case_set for row in rows}):
         oracle, cache, _ = written.case_set_inputs(label, vocab)
         inputs[label] = (oracle, cache, True)
-    return tally(assess(rows, inputs, vocab, contracts.load_limits()))
+    limits = contracts.load_limits()
+    writer = None
+    if with_model:
+        from ehr_evidence_app.generation import adapter, runtime
+        writer = adapter.Writer(runtime.WorkerBackend(), limits)
+    return tally(assess(rows, inputs, vocab, limits, writer))
 
 
 def report(found, left_out, writers=None):
@@ -754,10 +772,17 @@ def main(argv=None):
                         help="assess a development written set with the "
                              "templates; prints counts only")
     parser.add_argument("--set", default=written.SETS[-1])
+    parser.add_argument("--with-model", action="store_true",
+                        help="write the answers with the pinned model, as "
+                             "the deployed application does")
+    parser.add_argument("--per-intent", type=int, default=None,
+                        help="assess up to this many questions of each "
+                             "intent, in the set's order")
     args = parser.parse_args(argv)
     try:
         if args.operator_real:
-            found, left_out, writers = run_real(args.set)
+            found, left_out, writers = run_real(args.set, args.with_model,
+                                                args.per_intent)
             report(found, left_out, writers)
         else:
             (found, left_out, record_found, record_left_out), problems = (

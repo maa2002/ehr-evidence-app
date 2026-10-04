@@ -40,21 +40,32 @@ written to a protected sheet without the rater's marks or the
 conditions; the owner's marks are read back and reported beside the
 rater's, per stratum.
 
+A finished run is rated by the operator with the frozen instructions
+only: its marks, the rubric's aggregates and the owner's sheet are
+written once, beside each other, in a new protected directory, and the
+owner's filled sheet is read back into an agreement record there.
+
 The default mode checks the code items, the planted faults and the
 reading of marks on invented data, with a stand-in rater.
 
 Usage:
     python -m ehr_evidence_app.assessment.rubric
     python -m ehr_evidence_app.assessment.rubric --operator-check \\
-        --model <rating model> --case-set dev-30-v1 --held-out
+        --model <rating model> --case-set dev-30-v1 --reported
+    python -m ehr_evidence_app.assessment.rubric --operator-rate <run> \\
+        --model <rating model>
+    python -m ehr_evidence_app.assessment.rubric --operator-owner <run>
 """
 
 from __future__ import annotations
 
 import argparse
 import collections
+import csv
 import hashlib
+import io
 import json
+import os
 import random
 import re
 import sys
@@ -604,6 +615,188 @@ def rubric_document(rated, marks):
 
 
 # --------------------------------------------------------------------------
+# Rating a run, and the owner's check (ADR 0027, decisions 5 and 6)
+# --------------------------------------------------------------------------
+
+RATINGS_ROOT = "\\assessment\\ratings"
+RATINGS_NAME = "ratings.json"
+SHEET_NAME = "owner-sheet.csv"
+SHEET_COLUMNS = ("item", "text", "mark")
+AGREEMENT_NAME = "owner-agreement.json"
+
+
+def text_key(item):
+    """Return the key a rated text is marked under: its record's key and
+    its condition."""
+    return "%s|%s" % (item.request_id, item.condition)
+
+
+def frozen():
+    """Refuse instructions other than the frozen ones."""
+    if hashlib.sha256(CRITERIA.encode("utf-8")).hexdigest() != (
+            CRITERIA_SHA256):
+        raise RubricError("instructions_not_frozen")
+
+
+def rate_records(records, sources, bundles, limit, rater):
+    """Return (rated texts, marks by key, rubric document, the owner's
+    sample) of a run's records rated by the rater."""
+    rated = run_texts(records, sources, bundles, limit)
+    marks = rate_all([(text_key(item), item.text) for item in rated], rater)
+    document = rubric_document(rated, {
+        (item.request_id, item.condition): marks[text_key(item)]
+        for item in rated})
+    return rated, marks, document, owner_sample(marks)
+
+
+def sheet_bytes(rated, sample):
+    """Return the owner's sheet: the sampled texts, numbered in the
+    sample's order, without the rater's marks or the conditions."""
+    texts = {text_key(item): item.text for item in rated}
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer, lineterminator="\r\n")
+    writer.writerow(SHEET_COLUMNS)
+    for number, key in enumerate(sample, 1):
+        writer.writerow((number, texts[key], ""))
+    return buffer.getvalue().encode("utf-8-sig")
+
+
+def write_once(path, data):
+    """Write a new file; an existing one is refused."""
+    try:
+        with open(path, "xb") as handle:
+            handle.write(data)
+    except FileExistsError:
+        raise RubricError("output_exists") from None
+
+
+def ratings_directory(run_id, protected):
+    """Return a run's ratings directory beneath the protected root, after
+    checking it may be written there."""
+    from ehr_evidence_app.gnn import mapping
+    directory = protected + RATINGS_ROOT + "\\" + run_id
+    problem = mapping.output_problem(directory, protected)
+    if problem:
+        raise RubricError(problem)
+    return directory
+
+
+def write_ratings(directory, run_id, described, rated, marks, document,
+                  sample):
+    """Write a run's ratings and the owner's sheet in a new directory."""
+    if os.path.lexists(directory):
+        raise RubricError("ratings_exist")
+    os.makedirs(directory)
+    write_once(os.path.join(directory, RATINGS_NAME), json.dumps({
+        "run": run_id, "rater": described, "marks": marks,
+        "kinds": {text_key(item): item.kind for item in rated},
+        "document": document, "sheet": sample}, indent=1,
+        sort_keys=True).encode("utf-8"))
+    write_once(os.path.join(directory, SHEET_NAME),
+               sheet_bytes(rated, sample))
+
+
+def rate_run(run_id, rater, protected=None):
+    """Rate every text of a finished development run with the frozen
+    instructions; write the marks, the rubric's aggregates and the
+    owner's sheet in a new protected directory; return (document, number
+    of texts on the sheet)."""
+    from ehr_evidence_app.assessment import references, report, runner
+    from ehr_evidence_app.casesets import registry
+    from ehr_evidence_app.evidence import readers
+    from ehr_evidence_app.storage import policy as guard
+    frozen()
+    protected = protected or guard.PRIVATE_ROOT + "\\protected-data"
+    directory = ratings_directory(run_id, protected)
+    if os.path.lexists(directory):
+        raise RubricError("ratings_exist")
+    configuration, _, records = report.read_run(
+        os.path.join(runner.OUTPUT_ROOT, run_id))
+    case_set = configuration["case_set"]
+    if case_set != readers.PILOT_LABEL and registry.spec(case_set)[
+            "purpose"] != "development":
+        raise RubricError("case_set_held_out")
+    described = rater.describe()
+    rated, marks, document, sample = rate_records(
+        records, references.Sources.read(case_set),
+        report.Bundles.read(case_set), references.configured_limit(), rater)
+    write_ratings(directory, run_id, described, rated, marks, document,
+                  sample)
+    return document, len(sample)
+
+
+def owner_marks(data, sample):
+    """Return ({key: the owner's mark}, unmarked) of a filled sheet: its
+    items in the sample's order, each marked pass or fail."""
+    try:
+        reader = csv.DictReader(io.StringIO(data.decode("utf-8-sig"),
+                                            newline=""))
+        rows = list(reader)
+    except (UnicodeDecodeError, csv.Error):
+        raise RubricError("sheet_unreadable") from None
+    if tuple(reader.fieldnames or ()) != SHEET_COLUMNS or len(rows) != len(
+            sample):
+        raise RubricError("sheet_changed")
+    found, unmarked = {}, 0
+    for number, row in enumerate(rows, 1):
+        if row["item"].strip() != str(number):
+            raise RubricError("sheet_changed")
+        mark = (row["mark"] or "").strip().lower()
+        if mark in ("pass", "fail"):
+            found[sample[number - 1]] = mark
+        else:
+            unmarked += 1
+    return found, unmarked
+
+
+def read_owner(run_id, protected=None):
+    """Read the owner's marks from a run's sheet; write the agreement
+    with the rater, by kind and in all, once beside the ratings; return
+    it."""
+    from ehr_evidence_app.storage import policy as guard
+    protected = protected or guard.PRIVATE_ROOT + "\\protected-data"
+    directory = ratings_directory(run_id, protected)
+    try:
+        with open(os.path.join(directory, RATINGS_NAME), encoding="utf-8") \
+                as handle:
+            ratings = json.load(handle)
+        with open(os.path.join(directory, SHEET_NAME), "rb") as handle:
+            data = handle.read()
+    except OSError:
+        raise RubricError("ratings_missing") from None
+    owners, unmarked = owner_marks(data, ratings["sheet"])
+    document = {"marked": len(owners), "unmarked": unmarked,
+                "all": agreement(ratings["marks"], owners)}
+    for kind in sorted(set(ratings["kinds"].values())):
+        document[kind] = agreement(ratings["marks"], {
+            key: mark for key, mark in owners.items()
+            if ratings["kinds"][key] == kind})
+    write_once(os.path.join(directory, AGREEMENT_NAME), json.dumps(
+        document, indent=1, sort_keys=True).encode("utf-8"))
+    return document
+
+
+def report_rubric(document, sheet):
+    """Print a run's rubric: counts only."""
+    for kind, entry in document.items():
+        for condition in ("baseline", "controlled"):
+            counts = entry[condition]
+            print("%-12s %-10s %s" % (kind, condition, ", ".join(
+                "%s %d" % (name, counts.get(name, 0)) for name in (
+                    "texts", "identity", "evidence", "history",
+                    "wording_rated", "wording", "all_four"))))
+        compared = entry["all_four_compared"]
+        print("%-12s all four, controlled minus baseline: %s; rated in one "
+              "condition only %d" % (
+                  kind, "n/a" if compared is None else
+                  "%.3f [%.3f, %.3f]" % (compared["difference"],
+                                         compared["lower"],
+                                         compared["upper"]),
+                  entry["rated_in_one_condition_only"]))
+    print("owner's sheet: %d texts" % sheet)
+
+
+# --------------------------------------------------------------------------
 # Default mode: invented data and a stand-in rater
 # --------------------------------------------------------------------------
 
@@ -785,8 +978,34 @@ def main(argv=None):
     parser.add_argument("--reported", action="store_true",
                         help="the reported check of the frozen rater: the "
                              "set kept for it, once")
+    parser.add_argument("--operator-rate", metavar="RUN", default=None,
+                        help="rate a finished development run's texts with "
+                             "the frozen instructions and write the "
+                             "owner's sheet; prints counts only")
+    parser.add_argument("--operator-owner", metavar="RUN", default=None,
+                        help="read the owner's marks from a run's sheet; "
+                             "prints counts only")
     args = parser.parse_args(argv)
     try:
+        if args.operator_rate:
+            if not args.model:
+                print("FAILED: --operator-rate needs --model")
+                return 2
+            options = json.loads(args.options) if args.options else None
+            report_rubric(*rate_run(args.operator_rate, Rater(
+                args.endpoint, args.model, options, think=args.think)))
+            print("RESULT: PASS")
+            return 0
+        if args.operator_owner:
+            found = read_owner(args.operator_owner)
+            print("owner's marks: %d, unmarked %d" % (found["marked"],
+                                                       found["unmarked"]))
+            for kind in sorted(key for key in found
+                               if key not in ("marked", "unmarked")):
+                print("%-12s rater's mark against the owner's: %s" % (
+                    kind, json.dumps(found[kind], sort_keys=True)))
+            print("RESULT: PASS")
+            return 0
         if args.operator_check:
             if not args.model:
                 print("FAILED: --operator-check needs --model")
@@ -803,6 +1022,12 @@ def main(argv=None):
         print("FAILED: %s" % (error if isinstance(error, RubricError)
                               else "options_not_json"))
         return 1
+    except Exception as error:  # noqa: BLE001 - text may carry values
+        if not (args.operator_rate or args.operator_owner
+                or args.operator_check):
+            raise
+        print("FAILED: unexpected %s" % type(error).__name__)
+        return 2
     problems = run_synthetic()
     for problem in problems:
         print("FAILED: %s" % problem)

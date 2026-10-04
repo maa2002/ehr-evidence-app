@@ -4,6 +4,7 @@ No rater runs: a stand-in rater and a stub server stand for it, and the
 texts are invented.
 """
 
+import csv
 import hashlib
 import io
 import json
@@ -282,6 +283,112 @@ class OwnerTests(unittest.TestCase):
                                                   "c": "pass"}),
                          {"fail": {"fail": 1, "pass": 1},
                           "pass": {"pass": 1}})
+
+
+class Alternate:
+    """A stand-in rater that fails about a third of the texts, the same
+    ones each time."""
+
+    def rate(self, text):
+        """Return a mark fixed by the text's digest."""
+        return "fail" if hashlib.sha256(text.encode("utf-8")).digest()[
+            0] % 3 == 0 else "pass"
+
+
+def invented_rating():
+    """Return (rated, marks, document, sample) of an invented run."""
+    return rubric.rate_records(
+        report.synthetic_records(invented_reference),
+        references.synthetic_sources(), report.synthetic_bundles(),
+        references.configured_limit(), Alternate())
+
+
+class RunRatingTests(unittest.TestCase):
+    """Rating a finished run, and the owner's sheet."""
+
+    def test_every_text_marked_and_sampled(self):
+        """Each text of each condition is marked under its own key, and
+        the sample holds up to 15 the rater failed, 30 in all."""
+        rated, marks, document, sample = invented_rating()
+        self.assertEqual(set(marks), {rubric.text_key(item)
+                                      for item in rated})
+        self.assertEqual(len(marks), len(rated))
+        self.assertTrue(set(sample) <= set(marks))
+        self.assertLessEqual(len(sample), rubric.SAMPLE)
+        self.assertLessEqual(sum(marks[key] == "fail" for key in sample),
+                             rubric.SAMPLE_FAILED)
+        self.assertEqual(set(document), {item.kind for item in rated})
+
+    def test_sheet_shows_texts_only(self):
+        """The owner's sheet holds the sampled texts in the sample's order,
+        numbered, with an empty mark: neither the rater's mark nor the
+        condition."""
+        rated, marks, _, sample = invented_rating()
+        texts = {rubric.text_key(item): item.text for item in rated}
+        reader = csv.reader(io.StringIO(rubric.sheet_bytes(
+            rated, sample).decode("utf-8-sig"), newline=""))
+        rows = list(reader)
+        self.assertEqual(tuple(rows[0]), rubric.SHEET_COLUMNS)
+        self.assertEqual([row[0] for row in rows[1:]],
+                         [str(number) for number in
+                          range(1, len(sample) + 1)])
+        self.assertEqual([row[1] for row in rows[1:]],
+                         [texts[key] for key in sample])
+        self.assertEqual({row[2] for row in rows[1:]}, {""})
+
+    def test_unfrozen_instructions_are_not_used(self):
+        """A run is rated with the frozen instructions only."""
+        with mock.patch.object(rubric, "CRITERIA_SHA256", "0" * 64):
+            with self.assertRaisesRegex(rubric.RubricError,
+                                        "instructions_not_frozen"):
+                rubric.rate_run("dev-30-v1-invented", Alternate())
+
+    def test_owners_marks_read_back_once(self):
+        """The ratings and the sheet are written once; the owner's marks
+        are read back against the rater's, by kind and in all, into an
+        agreement written once; a changed sheet is refused."""
+        root = configured_test_temp()
+        if not os.path.isdir(root):
+            self.skipTest("configured test temp is missing; run "
+                          "setup-destinations first")
+        protected = tempfile.mkdtemp(prefix="ratings-", dir=root)
+        try:
+            rated, marks, document, sample = invented_rating()
+            directory = rubric.ratings_directory("dev-run", protected)
+            rubric.write_ratings(directory, "dev-run", {"model": "stand-in"},
+                                 rated, marks, document, sample)
+            with self.assertRaisesRegex(rubric.RubricError,
+                                        "ratings_exist"):
+                rubric.write_ratings(directory, "dev-run", {}, rated, marks,
+                                     document, sample)
+            path = os.path.join(directory, rubric.SHEET_NAME)
+            with open(path, encoding="utf-8-sig", newline="") as handle:
+                rows = list(csv.reader(handle))
+            # The owner agrees with the rater but on the first text, and
+            # leaves the last unmarked.
+            for number, row in enumerate(rows[1:], 1):
+                mark = marks[sample[number - 1]]
+                row[2] = ("" if number == len(sample) else mark
+                          if number > 1 else
+                          "fail" if mark == "pass" else "pass")
+            with open(path, "w", encoding="utf-8-sig", newline="") as handle:
+                csv.writer(handle, lineterminator="\r\n").writerows(rows)
+            found = rubric.read_owner("dev-run", protected)
+            self.assertEqual((found["marked"], found["unmarked"]),
+                             (len(sample) - 1, 1))
+            agreed = sum(count for mark, owners in found["all"].items()
+                         for owner, count in owners.items()
+                         if owner == mark)
+            self.assertEqual(agreed, len(sample) - 2)
+            with self.assertRaisesRegex(rubric.RubricError,
+                                        "output_exists"):
+                rubric.read_owner("dev-run", protected)
+            with self.assertRaisesRegex(rubric.RubricError,
+                                        "sheet_changed"):
+                rubric.owner_marks(rubric.sheet_bytes(rated, sample[1:]),
+                                   sample)
+        finally:
+            shutil.rmtree(protected)
 
 
 class RunTests(unittest.TestCase):

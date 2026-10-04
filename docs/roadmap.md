@@ -215,17 +215,20 @@ rated by code and an automatic rater, which the owner checks on a sample
   ([assessment.md](assessment.md#the-baseline); built)
 - 57 Implement the paired runner
   ([assessment.md](assessment.md#the-paired-runner); built, with the
-  invented challenges)
+  invented challenges, and run in a development trial with the model)
 - 58 Calculate QA and abstention metrics
   ([assessment.md](assessment.md#the-metrics); built)
 - 59 Calculate explanation and evidence metrics
-  ([assessment.md](assessment.md#the-metrics); built)
+  ([assessment.md](assessment.md#the-metrics); built, with the prose
+  rubric: the rater frozen as `prose-rubric-v4` and a run's rating and
+  the owner's sheet built)
 - 60 Assess end-to-end QA
   ([assessment.md](assessment.md#end-to-end-assessment); built for
-  condition questions)
+  condition questions and questions about the whole record, with the
+  templates or the model as writer, and a generated development suite)
 - 61 Produce comparative results
   ([assessment.md](assessment.md#scoring-a-run); the scoring of a run
-  built)
+  built, and checked on the development trial's run)
 
 The upstream partition of every case is recoverable (see
 [inherited-gnn.md](inherited-gnn.md#run-binding-and-split-membership)), so

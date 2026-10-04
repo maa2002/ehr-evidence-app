@@ -76,6 +76,18 @@ class StageTests(unittest.TestCase):
         self.assertIsNone(end_to_end.assess_row(item, oracle, cache, VOCAB,
                                                 LIMITS, "x1"))
 
+    def test_first_of_each_intent(self):
+        """A sample keeps up to the number asked of each intent, in the
+        set's order."""
+        rows = [row("List the recorded conditions.", "list"),
+                row("Is synthetic concept 1001 recorded?", "presence", 1001),
+                row("List the conditions.", "list"),
+                row("Is synthetic concept 1002 recorded?", "presence",
+                    1002)]
+        self.assertEqual(end_to_end.first_of_each(rows, 1),
+                         [rows[0], rows[1]])
+        self.assertEqual(end_to_end.first_of_each(rows, 5), rows)
+
     def test_tally_holds_counts(self):
         """The tally counts verdicts by intent and stage, and writers by
         delivery."""
