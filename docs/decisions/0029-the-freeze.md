@@ -2,7 +2,8 @@
 
 Status: accepted (2026-10-04), within the design of
 [ADR 0028](0028-final-evaluation-design.md); the project owner asked for
-the recommended plan to be carried out. Work item 64.
+the recommended plan to be carried out. Amended the same day: the second
+freeze (below). Work item 64.
 
 ## Context
 
@@ -81,3 +82,25 @@ before the freeze is made.
 - The held-out read's reading is held, in the tests, to what the
   application does with the same questions: the edge and help questions
   and the junk test's questions, without a difference.
+
+## Amendment (2026-10-04): the second freeze
+
+The first freeze record (`freeze-v1`), of release 0.11.0 (commit
+`f5820ea`), was superseded before any question set was worded or
+registered and before anything of `eval-100-v1` was read. Its end-to-end
+final mode answered the condition questions without the case set's whole
+record, which the deployed application answers with (ADR 0028,
+decision 7: in the application as deployed). On the development set
+`written-v4`, 45 of 226 questions end at other stages with the whole
+record: 17 of its 46 refusals and 4 of its clarifications are answered
+as questions about the record. The tests of the final modes also read
+the workspace's freeze record, so on a frozen checkout they could have
+passed the gate.
+
+- Release 0.11.1 answers the condition questions with the whole record
+  in every mode of the end-to-end assessment, and no test reads the
+  workspace's freeze record or final question sets.
+- Release 0.11.1 is frozen as `freeze-v2`, under decisions 1 to 6. The
+  first record is kept as it was written, and the gate reads only the
+  second.
+- Nothing was measured under the first record.

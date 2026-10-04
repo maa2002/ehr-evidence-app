@@ -114,6 +114,20 @@ class RecordTests(unittest.TestCase):
             freeze.freeze("", directory=self.directory,
                           protected=self.protected, repo="repo", run=Git())
 
+    def test_directories_read_when_called(self):
+        """The gate reads the freeze record of the directory set when it
+        is called, and no test reads the workspace's."""
+        self.assertNotEqual(freeze.FREEZE_DIR, freeze.PROTECTED_ROOT
+                            + "\\assessment\\freeze")
+        self.assertFalse(os.path.exists(freeze.FREEZE_DIR))
+        self.assertFalse(os.path.exists(freeze.QUESTION_SETS))
+        digest = self.frozen()
+        with mock.patch.object(freeze, "FREEZE_DIR", self.directory):
+            _, found = freeze.require(repo="repo", run=Git())
+        self.assertEqual(found, digest)
+        with self.assertRaisesRegex(freeze.FreezeError, "not_frozen"):
+            freeze.require(repo="repo", run=Git())
+
     def test_case_sets(self):
         """A development case set needs no freeze; the final one needs it;
         an unknown one is refused."""

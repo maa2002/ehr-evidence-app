@@ -18,6 +18,10 @@ The final question sets are worded after the freeze, so they are not in
 its record: each is registered by its files' digests in a protected
 record of its own, once, before it is read.
 
+The record of release 0.11.0 (freeze-v1) was superseded before anything
+of the final case set was read (ADR 0029, amendment): it is kept as it
+was written, and only the record of this version's freeze is read.
+
 Usage:
     python -m ehr_evidence_app.assessment.freeze
     python -m ehr_evidence_app.assessment.freeze --operator-freeze \\
@@ -39,7 +43,7 @@ import sys
 from ehr_evidence_app.storage import policy as guard
 
 FINAL = "eval-100-v1"
-FREEZE_VERSION = "freeze-v1"
+FREEZE_VERSION = "freeze-v2"
 SCHEMA = "assessment-freeze"
 PROTECTED_ROOT = guard.PRIVATE_ROOT + "\\protected-data"
 FREEZE_DIR = PROTECTED_ROOT + "\\assessment\\freeze"
@@ -132,15 +136,29 @@ def repo_root():
     return guard.REPO_ROOT
 
 
-def record_path(directory=FREEZE_DIR):
+def freeze_dir(directory=None):
+    """Return the freeze record's directory: the one given, or FREEZE_DIR
+    as it is when called."""
+    return FREEZE_DIR if directory is None else directory
+
+
+def sets_root(root=None):
+    """Return the final question sets' root: the one given, or
+    QUESTION_SETS as it is when called."""
+    return QUESTION_SETS if root is None else root
+
+
+def record_path(directory=None):
     """Return the freeze record's path."""
-    return os.path.join(directory, RECORD_NAME)
+    return os.path.join(freeze_dir(directory), RECORD_NAME)
 
 
-def write_record(document, directory=FREEZE_DIR, protected=PROTECTED_ROOT):
+def write_record(document, directory=None, protected=None):
     """Write the freeze record once; return its SHA-256."""
     from ehr_evidence_app.gnn import mapping
-    problem = mapping.output_problem(directory, protected)
+    directory = freeze_dir(directory)
+    problem = mapping.output_problem(
+        directory, PROTECTED_ROOT if protected is None else protected)
     if problem:
         raise FreezeError(problem)
     data = json.dumps(document, indent=1, sort_keys=True).encode("utf-8")
@@ -154,8 +172,7 @@ def write_record(document, directory=FREEZE_DIR, protected=PROTECTED_ROOT):
 
 
 def freeze(rater_model, rater_options=None, think=False,
-           directory=FREEZE_DIR, protected=PROTECTED_ROOT, repo=None,
-           run=subprocess.run):
+           directory=None, protected=None, repo=None, run=subprocess.run):
     """Write the freeze record of the code now checked out, once; return
     its SHA-256. rater_model is the rating model's name as its server
     knows it."""
@@ -176,7 +193,7 @@ def freeze(rater_model, rater_options=None, think=False,
         directory, protected)
 
 
-def read_record(directory=FREEZE_DIR):
+def read_record(directory=None):
     """Return (record, SHA-256) of the freeze record."""
     try:
         with open(record_path(directory), "rb") as handle:
@@ -192,7 +209,7 @@ def read_record(directory=FREEZE_DIR):
     return document, hashlib.sha256(data).hexdigest()
 
 
-def require(directory=FREEZE_DIR, repo=None, run=subprocess.run):
+def require(directory=None, repo=None, run=subprocess.run):
     """Return (record, SHA-256) of the freeze when the code running is its
     version; refuse otherwise."""
     document, digest = read_record(directory)
@@ -203,7 +220,7 @@ def require(directory=FREEZE_DIR, repo=None, run=subprocess.run):
     return document, digest
 
 
-def allowed(case_set, directory=FREEZE_DIR):
+def allowed(case_set, directory=None):
     """Return None for a development case set, and the freeze record and
     its SHA-256 for the final one when the code running is the frozen
     version; refuse any other case set."""
@@ -222,16 +239,16 @@ def allowed(case_set, directory=FREEZE_DIR):
     return require(directory)
 
 
-def question_files(name, root=QUESTION_SETS):
+def question_files(name, root=None):
     """Return the paths of a final question set's files."""
     if name not in FINAL_QUESTIONS:
         raise FreezeError("question_set_unknown")
-    directory = os.path.join(root, name)
+    directory = os.path.join(sets_root(root), name)
     return directory, {file: os.path.join(directory, file)
                        for file in QUESTION_FILES}
 
 
-def register(name, root=QUESTION_SETS, directory=FREEZE_DIR):
+def register(name, root=None, directory=None):
     """Register a final question set, worded after the freeze, by its
     files' sizes and digests, once; return the registration."""
     record, freeze_digest = read_record(directory)
@@ -256,7 +273,7 @@ def register(name, root=QUESTION_SETS, directory=FREEZE_DIR):
     return registration
 
 
-def registered(name, root=QUESTION_SETS, directory=FREEZE_DIR):
+def registered(name, root=None, directory=None):
     """Return a final question set's registration, refusing one made under
     another freeze."""
     _, freeze_digest = read_record(directory)
@@ -274,8 +291,7 @@ def registered(name, root=QUESTION_SETS, directory=FREEZE_DIR):
     return registration
 
 
-def read_question_file(name, file, root=QUESTION_SETS,
-                       directory=FREEZE_DIR):
+def read_question_file(name, file, root=None, directory=None):
     """Return the bytes of a registered final question file, verified
     against its registration."""
     from ehr_evidence_app.gnn import mapping

@@ -308,17 +308,25 @@ before it succeeded:
    the template after the model's failure. The model's own results come
    from the paired comparison only.
 
-The questions use the written test's format (`qa.written`). As a check of
-the code, not a measurement, the written set `written-v4` was assessed
-with the templates as writers. On every one of its 226 questions the
-stages agree with the written test's own verdicts:
+The questions use the written test's format (`qa.written`). Every mode
+answers them as the deployed application does, with the case set's whole
+record: a question the condition rules refuse is answered when the rules
+for questions about the whole record answer it. As a check of the code,
+not a measurement, the written set `written-v4` was assessed with the
+templates as writers. With the condition rules alone, as the written
+test answers, the stages agree with the written test's own verdicts on
+every one of its 226 questions. With the whole record, 45 end otherwise:
+17 refusals and 4 clarifications are answered as questions about the
+record, 6 abstentions become the clarifications meant, and 18 list and
+presence questions that the condition rules decline are read as other
+tasks. The set was worded when such questions were refused.
 
-| Intent | End-to-end stages | Written test |
-| --- | --- | --- |
-| List (24) | read right 10, each delivered correctly; declined 14 | correct 10, not understood 14 |
-| Presence (117) | read right 60 (resolved exactly 57, related 3), each delivered correctly; declined 57 | exact 60, not understood 57 |
-| Refuse (46) | refused 44; answered 2 | correct 44, answered 2 |
-| Clarify (39) | clarified 33; abstained 6 | correct 33, abstained 6 |
+| Intent | Condition rules alone | With the whole record, as deployed | Written test |
+| --- | --- | --- | --- |
+| List (24) | read right 10, each delivered correctly; declined 14 | read right 10, each delivered correctly; declined 7, another task 7 | correct 10, not understood 14 |
+| Presence (117) | read right 60 (resolved exactly 57, related 3), each delivered correctly; declined 57 | read right 60, as alone; declined 46, another task 11 | exact 60, not understood 57 |
+| Refuse (46) | refused 44; answered 2 | refused 27; answered 19 | correct 44, answered 2 |
+| Clarify (39) | clarified 33; abstained 6 | clarified 35; answered 4 | correct 33, abstained 6 |
 
 **Questions about the whole record** (ADR 0016, decision 11) have a
 format of their own, since what their writer meant is more than a task
@@ -372,8 +380,9 @@ freeze.
 
 **With the model.** The operator mode can write the answers with the
 pinned model, as the deployed application does. In a trial on five
-questions of each intent of `written-v4`, the stages matched the
-template run's on those questions; the model delivered two answers, both
+questions of each intent of `written-v4`, answered without the whole
+record as the mode then was, the stages matched the template run's on
+those questions; the model delivered two answers, both
 correct, and the template one, correct, after the model's candidate was
 withheld.
 
@@ -693,8 +702,8 @@ are printed.
 
 ## The freeze
 
-`assessment.freeze` writes the freeze record once, after release 0.11.0
-and before the final case set is read
+`assessment.freeze` writes the freeze record once, after the release it
+freezes and before the final case set is read
 ([ADR 0029](decisions/0029-the-freeze.md)). It names the commit, the
 versions of everything that writes, checks and scores a response, the
 digests of the configuration and of the pins the results rest on, and
@@ -705,6 +714,15 @@ nothing changed or added, and every version is the record's; a run
 names its freeze record, and is scored and rated only under it. The
 final question sets, worded after the freeze, are registered by their
 files' digests before they are read.
+
+The record of release 0.11.0 (`freeze-v1`) was superseded before
+anything of the final case set was read, since its end-to-end final mode
+answered the condition questions without the whole record (ADR 0029,
+amendment). It is kept as it was written; release 0.11.1 is frozen as
+`freeze-v2`, and the gate reads only that record. No test reads the
+workspace's freeze record: the freeze's directories are read when
+called, and a test-wide setting points them at a directory that does
+not exist.
 
 ## References for questions about the whole record
 
@@ -863,9 +881,9 @@ evaluation set:
 ```
 
 The end-to-end assessment's operator mode reads a development written set
-with the templates as writers, or with `--with-model` the pinned model as
-the deployed application has it, and prints counts by intent and stage
-only; `--per-intent` takes up to that many questions of each intent:
+with the case set's whole record and the templates as writers, or with
+`--with-model` the pinned model, as the deployed application has them,
+and prints counts by intent and stage only; `--per-intent` takes up to that many questions of each intent:
 
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.end_to_end --operator-real --set written-v4

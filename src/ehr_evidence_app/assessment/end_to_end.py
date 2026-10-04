@@ -27,9 +27,11 @@ are kept by the writer's intent, and nothing of a question is printed.
 
 The questions are rows in the written test's format (qa.written): case
 set, case, scope, question, what the writer meant, and for a presence
-check the OMOP concept meant. The operator mode reads a development
-written set; the evaluation's set is worded after the freeze (work item
-64).
+check the OMOP concept meant. Every mode answers them as the deployed
+application does, with the case set's whole record, so that a question
+the condition rules refuse and the rules for questions about the whole
+record answer is answered. The operator mode reads a development written
+set; the evaluation's set is worded after the freeze (work item 64).
 
 Questions about the whole record (ADR 0016, decision 11) are rows of
 their own format: case set, case, scope, question, what the writer
@@ -699,7 +701,9 @@ def run_synthetic():
     """Return (counts, problems) of the invented questions: the written
     test's, then those about the whole record."""
     rows, inputs, vocab, limits = synthetic_inputs()
-    found, left_out, _ = tally(assess(rows, inputs, vocab, limits))
+    record_rows, record_inputs, _ = synthetic_record_inputs()
+    (found, left_out, _), (record_found, record_left_out, _) = assess_sets(
+        rows, record_rows, inputs, record_inputs, vocab, limits)
     problems = []
     expected, expected_left_out = SYNTHETIC_EXPECTED
     if found != {intent: expected[intent] for intent in sorted(expected)}:
@@ -707,9 +711,6 @@ def run_synthetic():
     if left_out != expected_left_out:
         problems.append("the question about a case not admitted is not "
                         "left out")
-    rows, inputs, limits = synthetic_record_inputs()
-    record_found, record_left_out, _ = tally(assess_records(rows, inputs,
-                                                            limits))
     expected, expected_left_out = SYNTHETIC_RECORD_EXPECTED
     if record_found != {stratum: expected[stratum]
                         for stratum in sorted(expected)}:
@@ -719,6 +720,20 @@ def run_synthetic():
         problems.append("the question about the record of a case not "
                         "admitted is not left out")
     return (found, left_out, record_found, record_left_out), problems
+
+
+def assess_sets(rows, record_rows, inputs, record_inputs, vocab, limits,
+                writer=None):
+    """Return the tallies of condition questions and of questions about
+    the whole record, both answered as the deployed application answers
+    them: with each case set's whole record. inputs maps a case set to
+    (oracle, bundle cache, snapshot complete), record_inputs to its
+    RecordInputs."""
+    conditions = tally(assess(
+        rows, inputs, vocab, limits, writer,
+        lambda label: record_inputs[label].records))
+    return conditions, tally(assess_records(record_rows, record_inputs,
+                                            limits, writer))
 
 
 def first_of_each(rows, per_intent):
@@ -733,8 +748,9 @@ def first_of_each(rows, per_intent):
 
 def run_real(name, with_model=False, per_intent=None):
     """Assess a development written set, or up to per_intent questions of
-    each intent, with the templates as writers or the pinned model as
-    the deployed application has it; return the counts."""
+    each intent, with the case set's whole record and the templates as
+    writers or the pinned model, as the deployed application has them;
+    return the counts."""
     from ehr_evidence_app.evidence import contracts
     from ehr_evidence_app.gnn import mapping
     from ehr_evidence_app.qa import resolve
@@ -748,16 +764,19 @@ def run_real(name, with_model=False, per_intent=None):
     if per_intent is not None:
         rows = first_of_each(rows, per_intent)
     vocab = resolve.load()
-    inputs = {}
+    inputs, record_inputs = {}, {}
     for label in sorted({row.case_set for row in rows}):
         oracle, cache, _ = written.case_set_inputs(label, vocab)
         inputs[label] = (oracle, cache, True)
+        record_inputs[label] = record_inputs_of(label, vocab)
     limits = contracts.load_limits()
     writer = None
     if with_model:
         from ehr_evidence_app.generation import adapter, runtime
         writer = adapter.Writer(runtime.WorkerBackend(), limits)
-    return tally(assess(rows, inputs, vocab, limits, writer))
+    conditions, _ = assess_sets(rows, (), inputs, record_inputs, vocab,
+                                limits, writer)
+    return conditions
 
 
 def record_inputs_of(case_set, conditions):
@@ -807,11 +826,10 @@ def run_final(with_model=True):
     if with_model:
         from ehr_evidence_app.generation import adapter, runtime
         writer = adapter.Writer(runtime.WorkerBackend(), limits)
-    conditions = tally(assess(rows, {freeze.FINAL: (oracle, cache, True)},
-                              vocab, limits, writer))
-    records = tally(assess_records(
-        record_rows, {freeze.FINAL: record_inputs_of(freeze.FINAL, vocab)},
-        limits, writer))
+    conditions, records = assess_sets(
+        rows, record_rows, {freeze.FINAL: (oracle, cache, True)},
+        {freeze.FINAL: record_inputs_of(freeze.FINAL, vocab)}, vocab, limits,
+        writer)
     return conditions, records, {"questions": dict(problems),
                                  "record_questions": dict(record_problems)}, \
         digest

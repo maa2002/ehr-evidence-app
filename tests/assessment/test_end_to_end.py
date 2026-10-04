@@ -9,14 +9,21 @@ import collections
 import copy
 import dataclasses
 import unittest
+from unittest import mock
 
-from ehr_evidence_app.assessment import end_to_end
-from ehr_evidence_app.qa import written
+from ehr_evidence_app.assessment import end_to_end, freeze
+from ehr_evidence_app.evidence import contracts
+from ehr_evidence_app.gnn import mapping
+from ehr_evidence_app.qa import resolve, written
 
 ROWS, INPUTS, VOCAB, LIMITS = end_to_end.synthetic_inputs()
 RECORD_ROWS, RECORD_INPUTS, RECORD_LIMITS = (
     end_to_end.synthetic_record_inputs())
 LABEL = end_to_end.SYNTHETIC_LABEL
+# A question about a laboratory result, written as one to refuse: the
+# condition rules refuse it, and the rules for questions about the whole
+# record answer it, as the deployed application does.
+RECORD_REFUSAL = "What was the last synthetic potassium?"
 
 
 def row(question, intent, concept=None, scope="all"):
@@ -28,11 +35,19 @@ def row(question, intent, concept=None, scope="all"):
     return found[0]
 
 
-def assessed(item, complete=True):
+def assessed(item, complete=True, records=None):
     """Return the stages of one invented question."""
     oracle, cache, _ = INPUTS["synthetic-1-v1"]
     return end_to_end.assess_row(item, oracle, cache, VOCAB, LIMITS, "x1",
-                                 complete=complete)
+                                 complete=complete, records=records)
+
+
+def condition_file(*lines):
+    """Return a written test's file of invented questions about case 1:
+    each line (scope, question, intent)."""
+    return written.csv_bytes((written.COLUMNS,) + tuple(
+        ("x%d" % number, LABEL, "1", scope, question, intent, "")
+        for number, (scope, question, intent) in enumerate(lines, 1)))
 
 
 class StageTests(unittest.TestCase):
@@ -67,6 +82,82 @@ class StageTests(unittest.TestCase):
         found = assessed(row("List the recorded conditions.", "refuse"))
         self.assertEqual((found.interpretation, found.resolution,
                           found.delivery), ("answered", None, None))
+
+    def test_a_refusal_the_whole_record_answers(self):
+        """A question the condition rules refuse is answered when the
+        rules for questions about the whole record answer it, as in the
+        deployed application."""
+        item = row(RECORD_REFUSAL, "refuse")
+        self.assertEqual(assessed(item).interpretation, "right")
+        found = assessed(item, records=RECORD_INPUTS[LABEL].records)
+        self.assertEqual((found.interpretation, found.delivery),
+                         ("answered", None))
+
+    def test_both_sets_answered_with_the_whole_record(self):
+        """Condition questions and questions about the whole record are
+        both answered with the case set's whole record."""
+        rows = list(ROWS) + [row(RECORD_REFUSAL, "refuse")]
+        (found, _, _), (record_found, _, _) = end_to_end.assess_sets(
+            rows, RECORD_ROWS, INPUTS, RECORD_INPUTS, VOCAB, LIMITS)
+        self.assertEqual(found["refuse"]["interpretation"],
+                         {"answered": 1, "right": 1})
+        self.assertEqual(found["list"], end_to_end.SYNTHETIC_EXPECTED[0][
+            "list"])
+        self.assertEqual(record_found["refuse"]["interpretation"],
+                         {"right": 1})
+
+    def test_development_mode_answers_with_the_whole_record(self):
+        """The development mode answers a written set's questions with
+        the case set's whole record."""
+        data = condition_file(("all", RECORD_REFUSAL, "refuse"),
+                              ("all", "Is synthetic concept 1002 recorded?",
+                               "refuse"))
+        oracle, cache, _ = INPUTS[LABEL]
+        with mock.patch.object(mapping, "read_verified",
+                               return_value=(data, None)), \
+                mock.patch.object(written, "development_labels",
+                                  return_value=(LABEL,)), \
+                mock.patch.object(written, "case_set_inputs",
+                                  return_value=(oracle, cache, "m")), \
+                mock.patch.object(end_to_end, "record_inputs_of",
+                                  return_value=RECORD_INPUTS[LABEL]), \
+                mock.patch.object(resolve, "load", return_value=VOCAB), \
+                mock.patch.object(contracts, "load_limits",
+                                  return_value=LIMITS):
+            found, left_out, _ = end_to_end.run_real(written.SETS[-1])
+        self.assertEqual((found["refuse"]["interpretation"], left_out),
+                         ({"answered": 2}, 0))
+
+    def test_final_mode_answers_with_the_whole_record(self):
+        """The final mode answers both registered question sets with the
+        final case set's whole record."""
+        files = {"questions.csv": condition_file(
+                     ("all", RECORD_REFUSAL, "refuse")),
+                 "record-questions.csv": written.csv_bytes(
+                     end_to_end.SYNTHETIC_RECORD_QUESTIONS)}
+        oracle, cache, _ = INPUTS[LABEL]
+        with mock.patch.object(freeze, "FINAL", LABEL), \
+                mock.patch.object(freeze, "allowed",
+                                  return_value=({}, "f" * 64)), \
+                mock.patch.object(freeze, "read_question_file",
+                                  side_effect=lambda name, file: files[file]), \
+                mock.patch.object(written, "case_set_inputs",
+                                  return_value=(oracle, cache, "m")), \
+                mock.patch.object(end_to_end, "record_inputs_of",
+                                  return_value=RECORD_INPUTS[LABEL]), \
+                mock.patch.object(resolve, "load", return_value=VOCAB), \
+                mock.patch.object(contracts, "load_limits",
+                                  return_value=LIMITS):
+            conditions, records, problems, digest = end_to_end.run_final(
+                with_model=False)
+        self.assertEqual(conditions[0]["refuse"]["interpretation"],
+                         {"answered": 1})
+        expected, left_out = end_to_end.SYNTHETIC_RECORD_EXPECTED
+        self.assertEqual((records[0], records[1]), (
+            {stratum: expected[stratum] for stratum in sorted(expected)},
+            left_out))
+        self.assertEqual((problems, digest), (
+            {"questions": {}, "record_questions": {}}, "f" * 64))
 
     def test_case_not_admitted_left_out(self):
         """A question about a case that is not admitted is left out."""

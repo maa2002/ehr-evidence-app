@@ -7,6 +7,25 @@ change interfaces.
 
 ## [Unreleased]
 
+### Fixed
+
+- The end-to-end assessment answers condition questions with the case
+  set's whole record in every mode, as the deployed application does. It
+  answered them without it, so a question that the rules for questions
+  about the whole record answer was counted as refused. On `written-v4`,
+  45 of 226 questions end at other stages, 17 refusals and 4
+  clarifications among them answered as questions about the record.
+- No test reads the workspace's freeze record or final question sets:
+  the freeze's directories are read when called, and a test-wide
+  setting points them at a directory that does not exist. The tests of
+  the final modes read the workspace's record, so on a frozen checkout
+  they could have passed the gate.
+
+### Changed
+
+- The freeze record is `freeze-v2`; the record of 0.11.0, `freeze-v1`,
+  is kept and no longer read.
+
 ## [0.11.0] - 2026-10-04
 
 The frozen version of the final evaluation (Phase 9, work items 53 to 61,
