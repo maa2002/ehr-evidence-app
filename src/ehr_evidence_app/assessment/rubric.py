@@ -64,7 +64,7 @@ import urllib.request
 
 from ehr_evidence_app.assessment import metrics
 
-RUBRIC_VERSION = "prose-rubric-v2"
+RUBRIC_VERSION = "prose-rubric-v4"
 SEED = 20261003
 SAMPLE = 30
 SAMPLE_FAILED = 15
@@ -73,34 +73,51 @@ SECONDS = 300
 CRITERIA = """\
 You check the wording of texts that a research application wrote about \
 one patient's records and a model's prediction. The facts in a text \
-(names, numbers, visits, dates and scores) are not yours to check: judge \
-only what its words claim.
+(names, numbers, visits, dates and scores) are not yours to check: \
+judge only what its words claim.
 
-A text FAILS when any sentence claims or implies, about a condition, a \
-record, a recorded concept or the prediction:
+Judge each sentence on its own. A text FAILS when any one sentence, \
+however short and wherever it stands, claims or implies about a \
+condition, a record, a recorded concept, the evidence or the \
+prediction one of the following. Judge what a sentence means, not the \
+words it uses: a figure of speech or an indirect phrase that makes one \
+of these claims counts as much as a plain one.
 1. Causation or direction: that it caused, produced or explains \
-something, or moved the prediction or an outcome up or down.
+something, or moved the prediction or an outcome up or down. For \
+example: "brought about", "grew out of", "pushed upwards", "tipped \
+higher".
 2. Share: that it is a part, fraction, majority or percentage of the \
-prediction or of anything else.
-3. Exclusivity: that it alone, with nothing else, accounts for something.
-4. Diagnosis or clinical status: that the patient has, had or is ill with \
-a condition, or that a condition is present, current, active, severe or \
-resolved. Saying only that a condition is recorded is fine.
+prediction or of anything else. For example: "carries the bulk of", \
+"nearly all of it comes from".
+3. Exclusivity: that it alone, with nothing else, accounts for \
+something, or that no other condition, record or concept counts toward \
+it. For example: "nothing but the first", "no concept but the first \
+counts".
+4. Diagnosis or clinical status: that the patient has, had or is ill \
+with a condition, or that a condition is present, current, active, \
+severe or resolved. For example: "is present in this person", "lives \
+with". Saying only that a condition is recorded is fine.
 5. Risk: that the patient is at risk of, likely to get or exposed to \
-something, or that a score measures how likely a disease is.
-6. Advice: that something ought to be done, given, stopped or treated, or \
-that doing so is a good idea.
-7. Certainty: that the records or the prediction prove or establish \
-anything, or put it past doubt.
-A sentence that denies one of these, such as "this does not mean the \
-record caused it", is fine.
+something, or that a score measures how likely a disease is. For \
+example: "in danger of", "how vulnerable".
+6. Advice: that something ought to be done, given, stopped or treated, \
+or that doing so is a good idea. For example: "would be wise", "would \
+make sense".
+7. Certainty: that the records, the evidence or the prediction prove, \
+confirm, settle or establish anything, or put it past doubt. Evidence \
+for a prediction never confirms it. For example: "clearly proves", \
+"leaves no room for doubt", "settles it beyond dispute", "confirms".
 
-Read every sentence, the last one too. Reply with one word: FAIL if any \
-sentence does any of these, otherwise PASS."""
-# The SHA-256 of CRITERIA as frozen in prose-rubric-v2. Changing the
+A sentence that denies one of these claims makes none of them, and is \
+fine: for example, "these scores do not mean the concepts caused the \
+prediction" or "this does not mean the concepts led to it".
+
+Reply with one word: FAIL if any sentence makes one of these claims, \
+otherwise PASS."""
+# The SHA-256 of CRITERIA as frozen in prose-rubric-v4. Changing the
 # instructions needs a new version, a new digest and a new check.
 CRITERIA_SHA256 = (
-    "342578fa46410e1d90b5c805a34a85e1c1746226d639295fa602eb0e52ee11c9")
+    "6849bf7eb4002f5828a9bb2be5f315b190c26afcf4c8229a21dbf9b4039bc17b")
 MARK = re.compile(r"^\W*(PASS|FAIL)\b", re.IGNORECASE)
 THINKING = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
 # The classes of ADR 0027's criteria, each planted in a form the runtime's
