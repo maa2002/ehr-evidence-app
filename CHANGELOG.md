@@ -7,6 +7,19 @@ change interfaces.
 
 ## [Unreleased]
 
+### Fixed
+
+- The final run, the scoring of a run and its rating read the final case
+  set's explanation bundles when the caller has checked the freeze. The
+  reader refused every case set but a development one, so the final run
+  stopped while it built its requests, before it wrote anything.
+
+### Changed
+
+- The freeze record is `freeze-v3` and the final question set `final-v2`;
+  `freeze-v2` and the set registered under it, `final-v1`, are kept and
+  no longer read.
+
 ## [0.11.1] - 2026-10-04
 
 The frozen version of the final evaluation, in place of 0.11.0, whose

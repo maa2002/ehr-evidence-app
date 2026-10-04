@@ -343,6 +343,38 @@ class RunRatingTests(unittest.TestCase):
                                         "instructions_not_frozen"):
                 rubric.rate_run("dev-30-v1-invented", Alternate())
 
+    def test_final_run_rated_with_the_final_bundles(self):
+        """A run of the final case set is rated under its freeze, by its
+        rater, with the final case set's bundles."""
+        from ehr_evidence_app.assessment import freeze
+        read = []
+
+        def bundles(case_set, final=False):
+            """Note which bundles are read."""
+            read.append((case_set, final))
+
+        rater = mock.Mock()
+        rater.describe.return_value = {}
+        configuration = {"case_set": "eval-100-v1",
+                         "freeze_sha256": "f" * 64}
+        absent = os.path.join(tempfile.gettempdir(), "no-ratings-here")
+        with mock.patch.object(rubric, "ratings_directory",
+                               return_value=absent), \
+                mock.patch.object(report, "read_run", return_value=(
+                    configuration, {}, [])), \
+                mock.patch.object(freeze, "allowed", return_value=(
+                    {"rater": {}}, "f" * 64)), \
+                mock.patch.object(rubric, "frozen_rater") as named, \
+                mock.patch.object(references.Sources, "read"), \
+                mock.patch.object(report.Bundles, "read",
+                                  side_effect=bundles), \
+                mock.patch.object(rubric, "rate_records",
+                                  return_value=([], {}, {}, [])), \
+                mock.patch.object(rubric, "write_ratings"):
+            rubric.rate_run("run", rater)
+        self.assertEqual(read, [("eval-100-v1", True)])
+        named.assert_called_once_with({"rater": {}}, rater)
+
     def test_owners_marks_read_back_once(self):
         """The ratings and the sheet are written once; the owner's marks
         are read back against the rater's, by kind and in all, into an

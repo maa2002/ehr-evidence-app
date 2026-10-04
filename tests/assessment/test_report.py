@@ -10,8 +10,9 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
-from ehr_evidence_app.assessment import references, report, runner
+from ehr_evidence_app.assessment import freeze, references, report, runner
 from ehr_evidence_app.generation import shape
 from ehr_evidence_app.storage import policy as guard
 
@@ -106,6 +107,33 @@ class ReportTests(unittest.TestCase):
         records[0]["request"]["bundle"]["sha256"] = "0" * 64
         with self.assertRaisesRegex(report.ReportError, "bundle_changed"):
             scored_report(records)
+
+    def test_final_run_scored_with_the_final_bundles(self):
+        """A run of the final case set is scored under its freeze with the
+        final case set's bundles; a development run with its own."""
+        read = []
+
+        def bundles(case_set, final=False):
+            """Note which bundles are read."""
+            read.append((case_set, final))
+
+        for case_set, frozen in (("eval-100-v1", ({}, "f" * 64)),
+                                 ("dev-30-v1", None)):
+            configuration = {"case_set": case_set,
+                             "freeze_sha256": frozen and frozen[1]}
+            with mock.patch.object(report, "read_run", return_value=(
+                    configuration, {}, [])), \
+                    mock.patch.object(freeze, "allowed",
+                                      return_value=frozen), \
+                    mock.patch.object(references.Sources, "read"), \
+                    mock.patch.object(report.Bundles, "read",
+                                      side_effect=bundles), \
+                    mock.patch.object(report, "score_records",
+                                      return_value=[]), \
+                    mock.patch.object(report, "report_document",
+                                      return_value={}):
+                report.run_real("run")
+        self.assertEqual(read, [("eval-100-v1", True), ("dev-30-v1", False)])
 
     def test_unfinished_run_refused(self):
         """A run without its summary, or with records missing, is not

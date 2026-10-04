@@ -93,14 +93,15 @@ class Bundles:
         return bundle
 
     @classmethod
-    def read(cls, case_set):
-        """Read a development case set's pinned bundles."""
+    def read(cls, case_set, final=False):
+        """Read a development case set's pinned bundles, or the final case
+        set's when final says that the caller has checked the freeze."""
         from ehr_evidence_app.qa import answer
         from ehr_evidence_app.validation import explanation
         bundle_set = answer.load_bundle_set(answer.bundle_set_plan(case_set))
         return cls(bundle_set.qa_bundle, {
             case_number: (bundle, digest) for case_number, bundle, digest
-            in explanation.read_bundles(case_set)})
+            in explanation.read_bundles(case_set, final)})
 
 
 def record_key(record):
@@ -310,7 +311,7 @@ def run_real(run_id):
             frozen[1]):
         raise ReportError("run_of_another_freeze")
     scored = score_records(records, references.Sources.read(case_set),
-                           Bundles.read(case_set),
+                           Bundles.read(case_set, frozen is not None),
                            references.configured_limit())
     return report_document(scored, summary)
 

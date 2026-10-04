@@ -18,16 +18,18 @@ The final question sets are worded after the freeze, so they are not in
 its record: each is registered by its files' digests in a protected
 record of its own, once, before it is read.
 
-The record of release 0.11.0 (freeze-v1) was superseded before anything
-of the final case set was read (ADR 0029, amendment): it is kept as it
-was written, and only the record of this version's freeze is read.
+The records of releases 0.11.0 (freeze-v1) and 0.11.1 (freeze-v2) were
+superseded before any result of the final case set was written (ADR 0029,
+amendments): they are kept as they were written, and only the record of
+this version's freeze is read. The question set registered under
+freeze-v2, final-v1, was superseded with it.
 
 Usage:
     python -m ehr_evidence_app.assessment.freeze
     python -m ehr_evidence_app.assessment.freeze --operator-freeze \\
         --rater-model <rating model>
     python -m ehr_evidence_app.assessment.freeze --operator-check
-    python -m ehr_evidence_app.assessment.freeze --operator-register final-v1
+    python -m ehr_evidence_app.assessment.freeze --operator-register final-v2
 """
 
 from __future__ import annotations
@@ -43,7 +45,7 @@ import sys
 from ehr_evidence_app.storage import policy as guard
 
 FINAL = "eval-100-v1"
-FREEZE_VERSION = "freeze-v2"
+FREEZE_VERSION = "freeze-v3"
 SCHEMA = "assessment-freeze"
 PROTECTED_ROOT = guard.PRIVATE_ROOT + "\\protected-data"
 FREEZE_DIR = PROTECTED_ROOT + "\\assessment\\freeze"
@@ -53,7 +55,7 @@ CODE_PATHS = ("src", "config")
 # The final question sets: their files are worded after the freeze, and
 # registered by digest before they are read.
 QUESTION_SETS = PROTECTED_ROOT + "\\question-sets"
-FINAL_QUESTIONS = ("final-v1",)
+FINAL_QUESTIONS = ("final-v2",)
 QUESTION_FILES = ("questions.csv", "record-questions.csv")
 REGISTRATION_NAME = "registration.json"
 

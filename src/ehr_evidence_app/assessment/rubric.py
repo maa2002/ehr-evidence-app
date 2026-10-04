@@ -732,7 +732,8 @@ def rate_run(run_id, rater, protected=None):
     described = rater.describe()
     rated, marks, document, sample = rate_records(
         records, references.Sources.read(case_set),
-        report.Bundles.read(case_set), references.configured_limit(), rater)
+        report.Bundles.read(case_set, found is not None),
+        references.configured_limit(), rater)
     write_ratings(directory, run_id, described, rated, marks, document,
                   sample)
     return document, len(sample)

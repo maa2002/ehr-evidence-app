@@ -2,8 +2,8 @@
 
 Status: accepted (2026-10-04), within the design of
 [ADR 0028](0028-final-evaluation-design.md); the project owner asked for
-the recommended plan to be carried out. Amended the same day: the second
-freeze (below). Work item 64.
+the recommended plan to be carried out. Amended twice the same day: the
+second and the third freeze (below). Work item 64.
 
 ## Context
 
@@ -104,3 +104,27 @@ passed the gate.
   first record is kept as it was written, and the gate reads only the
   second.
 - Nothing was measured under the first record.
+
+## Amendment (2026-10-04): the third freeze
+
+The second freeze record (`freeze-v2`), of release 0.11.1 (commit
+`cafe210`), was superseded before any result of `eval-100-v1` was
+written. Under it the final question set `final-v1` was worded and
+registered, and the final run was started. The run stopped while it
+built its requests, before it wrote anything: the reader of a case
+set's explanation bundles refused every case set but a development one,
+so the runner, the scoring of a run and its rating could not read the
+final case set's.
+
+- Release 0.11.2 reads them when the caller has checked the freeze, as
+  the other final paths read the final case set, and is frozen as
+  `freeze-v3`, under decisions 1 to 6.
+- The final question set is worded again after the third record, as
+  `final-v2`, by the same procedure with seeds of its own. `final-v1` is
+  kept as it was registered, under the second record, and is not read.
+- Before the final run, a check under the freeze builds every request
+  of the run and its references, and every input of the end-to-end
+  assessment and of the held-out read, and passes every request through
+  the run's code with a stand-in writer in place of the model. It
+  writes nothing and prints counts only.
+- Nothing was measured under the first two records.

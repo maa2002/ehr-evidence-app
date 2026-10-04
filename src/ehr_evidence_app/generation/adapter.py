@@ -455,7 +455,8 @@ def development_requests(case_set, final=False):
                              else case_set)
     cases = {case.case_number: case
              for case in readers.read_cases(plan).cases if case.admitted}
-    for case_number, bundle, digest in explanation.read_bundles(case_set):
+    for case_number, bundle, digest in explanation.read_bundles(
+            case_set, final):
         request = contracts.Request(
             schema_version="1.0", request_id="x-%03d" % case_number,
             task="prediction_explanation", case=bundle.case,

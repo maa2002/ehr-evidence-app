@@ -200,6 +200,35 @@ class AdapterTests(unittest.TestCase):
                                     "case_set_held_out"):
             adapter.development_requests("eval-100-v1")
 
+    def test_final_requests_read_the_final_explanations(self):
+        """The final run's requests, built when the caller says that it
+        checked the freeze, read the final case set's explanation bundles
+        the same way."""
+        read = []
+
+        class Empty:
+            """A bundle set without scopes and a case set without cases."""
+
+            entries = {}
+            cases = ()
+
+        def read_bundles(case_set, final=False):
+            """Note what is read; return no bundle."""
+            read.append((case_set, final))
+            return []
+
+        with mock.patch.object(answer, "load_bundle_set",
+                               return_value=Empty()), \
+                mock.patch("ehr_evidence_app.qa.resolve.load",
+                           return_value=suite.synthetic_vocabulary()), \
+                mock.patch("ehr_evidence_app.evidence.readers.read_cases",
+                           return_value=Empty()), \
+                mock.patch.object(explanation, "read_bundles",
+                                  side_effect=read_bundles):
+            pairs, _ = adapter.development_requests("eval-100-v1",
+                                                    final=True)
+        self.assertEqual((pairs, read), ([], [("eval-100-v1", True)]))
+
     def test_command(self):
         """The default mode passes; the real mode needs a case set."""
         output = io.StringIO()

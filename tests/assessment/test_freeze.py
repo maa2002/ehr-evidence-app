@@ -68,6 +68,9 @@ class CodeTests(unittest.TestCase):
         self.assertEqual(found["final_case_set"], freeze.FINAL)
 
 
+SET = freeze.FINAL_QUESTIONS[0]
+
+
 class RecordTests(unittest.TestCase):
     """The freeze record, the gate and the final question sets."""
 
@@ -142,27 +145,27 @@ class RecordTests(unittest.TestCase):
         the freeze, once, and its files are read only as registered."""
         self.frozen()
         root = os.path.join(self.protected, "question-sets")
-        folder, files = freeze.question_files("final-v1", root)
+        folder, files = freeze.question_files(SET, root)
         os.makedirs(folder)
         with self.assertRaisesRegex(freeze.FreezeError,
                                     "question_file_missing"):
-            freeze.register("final-v1", root, self.directory)
+            freeze.register(SET, root, self.directory)
         for name, path in files.items():
             with open(path, "wb") as handle:
                 handle.write(("%s rows\n" % name).encode("utf-8"))
-        registration = freeze.register("final-v1", root, self.directory)
+        registration = freeze.register(SET, root, self.directory)
         self.assertEqual(set(registration["files"]),
                          set(freeze.QUESTION_FILES))
         with self.assertRaisesRegex(freeze.FreezeError, "registered_before"):
-            freeze.register("final-v1", root, self.directory)
-        data = freeze.read_question_file("final-v1", "questions.csv", root,
+            freeze.register(SET, root, self.directory)
+        data = freeze.read_question_file(SET, "questions.csv", root,
                                          self.directory)
         self.assertEqual(data, b"questions.csv rows\n")
         with open(files["questions.csv"], "wb") as handle:
             handle.write(b"changed\n")
         with self.assertRaisesRegex(freeze.FreezeError,
                                     "question_file_changed"):
-            freeze.read_question_file("final-v1", "questions.csv", root,
+            freeze.read_question_file(SET, "questions.csv", root,
                                       self.directory)
         with self.assertRaisesRegex(freeze.FreezeError,
                                     "question_set_unknown"):
@@ -172,14 +175,14 @@ class RecordTests(unittest.TestCase):
         """A registration made under another freeze record is refused."""
         self.frozen()
         root = os.path.join(self.protected, "question-sets")
-        folder, _ = freeze.question_files("final-v1", root)
+        folder, _ = freeze.question_files(SET, root)
         os.makedirs(folder)
         with open(os.path.join(folder, freeze.REGISTRATION_NAME), "w",
                   encoding="utf-8") as handle:
             json.dump({"freeze_sha256": "0" * 64, "files": {}}, handle)
         with self.assertRaisesRegex(freeze.FreezeError,
                                     "registration_of_another_freeze"):
-            freeze.registered("final-v1", root, self.directory)
+            freeze.registered(SET, root, self.directory)
 
 
 if __name__ == "__main__":

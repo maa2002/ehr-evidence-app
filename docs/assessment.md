@@ -715,14 +715,18 @@ names its freeze record, and is scored and rated only under it. The
 final question sets, worded after the freeze, are registered by their
 files' digests before they are read.
 
-The record of release 0.11.0 (`freeze-v1`) was superseded before
-anything of the final case set was read, since its end-to-end final mode
-answered the condition questions without the whole record (ADR 0029,
-amendment). It is kept as it was written; release 0.11.1 is frozen as
-`freeze-v2`, and the gate reads only that record. No test reads the
-workspace's freeze record: the freeze's directories are read when
-called, and a test-wide setting points them at a directory that does
-not exist.
+The records of releases 0.11.0 (`freeze-v1`) and 0.11.1 (`freeze-v2`)
+were superseded before any result of the final case set was written
+(ADR 0029, amendments): the first because its end-to-end final mode
+answered the condition questions without the whole record, the second
+because the final run, the scoring of a run and its rating could not
+read the final case set's explanation bundles. The question set worded
+under the second, `final-v1`, was superseded with it. Both records are
+kept as they were written; release 0.11.2 is frozen as `freeze-v3`, the
+gate reads only that record, and the final question set is `final-v2`.
+No test reads the workspace's freeze record: the freeze's directories
+are read when called, and a test-wide setting points them at a
+directory that does not exist.
 
 ## References for questions about the whole record
 
@@ -847,7 +851,7 @@ question set; the final modes then read the final case set:
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.freeze --operator-freeze --rater-model <rating model>
 & $AppPython -m ehr_evidence_app.assessment.freeze --operator-check
-& $AppPython -m ehr_evidence_app.assessment.freeze --operator-register final-v1
+& $AppPython -m ehr_evidence_app.assessment.freeze --operator-register final-v2
 & $AppPython -m ehr_evidence_app.assessment.runner --operator-real --case-set eval-100-v1
 & $AppPython -m ehr_evidence_app.assessment.end_to_end --operator-final
 & $AppPython -m ehr_evidence_app.assessment.instr --operator-final

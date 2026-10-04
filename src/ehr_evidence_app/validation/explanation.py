@@ -563,23 +563,27 @@ def run_synthetic():
 # Operator mode (real development case sets; aggregate counts only)
 # --------------------------------------------------------------------------
 
-def bundle_plan(case_set):
-    """Return (directory, pinned manifest entry) of a case set's bundles."""
+def bundle_plan(case_set, final=False):
+    """Return (directory, pinned manifest entry) of a development case
+    set's bundles, or of the final case set's when final says that the
+    caller has checked the freeze (assessment.freeze)."""
     if case_set == mapping.PILOT_LABEL:
         directory = bundles.OUTPUT_DIR
         return directory, {"path": directory + "\\" + bundles.MANIFEST_NAME,
                            "size_bytes": bundles.PILOT_MANIFEST_SIZE,
                            "sha256": bundles.PILOT_MANIFEST_SHA256}
-    if registry.spec(case_set)["purpose"] != "development":
+    if not final and registry.spec(case_set)["purpose"] != "development":
         raise ExplanationError("case_set_held_out")
     return (registry.bundles_dir(case_set),
             registry.pinned(case_set, "bundles"))
 
 
-def read_bundles(case_set):
+def read_bundles(case_set, final=False):
     """Return (case number, bundle, SHA-256) of every explanation bundle of
-    a development case set, each verified against the pinned manifest."""
-    directory, entry = bundle_plan(case_set)
+    a development case set, or of the final case set when final says that
+    the caller has checked the freeze, each verified against the pinned
+    manifest."""
+    directory, entry = bundle_plan(case_set, final)
     data, _ = mapping.read_verified(
         entry["path"], "bundle_manifest",
         "input_hash_mismatch:bundle_manifest", sha256=entry["sha256"],

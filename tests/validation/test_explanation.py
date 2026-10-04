@@ -7,6 +7,7 @@ is only checked for refusing a held-out case set before anything is read.
 import contextlib
 import io
 import unittest
+from unittest import mock
 
 from ehr_evidence_app.evidence import bundles
 from ehr_evidence_app.validation import candidate as candidates
@@ -221,6 +222,24 @@ class OutcomeTests(unittest.TestCase):
         with self.assertRaisesRegex(explanation.ExplanationError,
                                     "case_set_held_out"):
             explanation.bundle_plan("eval-100-v1")
+
+    def test_final_bundles_read_only_after_the_freeze(self):
+        """The final case set's bundles are read only when the caller says
+        that it checked the freeze, and then through their pins."""
+
+        class Reached(Exception):
+            """The pinned manifest was asked for."""
+
+        self.assertEqual(explanation.bundle_plan("eval-100-v1", True), (
+            explanation.registry.bundles_dir("eval-100-v1"),
+            explanation.registry.pinned("eval-100-v1", "bundles")))
+        with mock.patch.object(explanation.mapping, "read_verified",
+                               side_effect=Reached):
+            with self.assertRaises(Reached):
+                explanation.read_bundles("eval-100-v1", final=True)
+            with self.assertRaisesRegex(explanation.ExplanationError,
+                                        "case_set_held_out"):
+                explanation.read_bundles("eval-100-v1")
 
     def test_command(self):
         """The default mode passes; the real mode needs a case set."""
