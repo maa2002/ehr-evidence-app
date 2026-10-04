@@ -22,7 +22,7 @@ case sets first. Command examples assume the session set-up in
 | 56 | `assessment.baseline` | The baseline condition | built and checked on invented data |
 | 57 | `assessment.runner` | The paired runner, with the invented challenges | built; checked on invented data and in a development trial with the model |
 | 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built; checked on invented data and against the release gate's mutation suite |
-| 59 | `assessment.rubric` | The prose rubric (ADR 0027) | built; the rater's instructions frozen as `prose-rubric-v2`; on held-out wordings it failed no passing text and caught 237 of 320 planted faults |
+| 59 | `assessment.rubric` | The prose rubric (ADR 0027) | built; the rater's instructions frozen as `prose-rubric-v4`; on a fresh set of wordings it failed no passing text and caught 274 of 320 planted faults |
 | 60 | `assessment.end_to_end` | End-to-end QA | built: condition questions agree with the written test on a development set; questions about the whole record are checked on invented data |
 | 60 | `assessment.record_suite` | A generated development suite of questions about the whole record (ADR 0016, decision 11) | built; on the development case sets 10,338 of 11,053 questions are read right and 10,320 delivered correctly |
 | 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built; checked on invented data and on the development trial's run |
@@ -473,11 +473,12 @@ name and in a paraphrase they do not; a test holds the forms to that.
 For each class, the faults it catches and the passing texts it fails are
 reported.
 
-Two sets of wordings are kept. The instructions are revised on the
-first. The check that is reported uses the second, once, on the frozen
-rater. A test keeps the second set apart from the first, and keeps the
-phrases that carry its paraphrases out of the instructions. The first
-set, in an explanation:
+Three sets of wordings are kept, each worded apart from the others. The
+instructions are revised on the sets already seen. The check that is
+reported uses a set kept for it, once, on the frozen rater, and the
+module refuses a second reported check of the same instructions. A test
+keeps the phrases that carry the kept set's paraphrases out of the
+instructions. The first set, in an explanation:
 
 | Class | Named by the runtime's rules | Paraphrase the rules do not name |
 | --- | --- | --- |
@@ -503,10 +504,23 @@ The second set, in an explanation:
 | Advice | "Clinicians should start treatment for..." | "Starting a medicine for the predicted diagnosis would make sense." |
 | Certainty | "The evidence confirms the prediction." | "The evidence settles the prediction beyond dispute." |
 
+The third set, in an explanation:
+
+| Class | Named by the runtime's rules | Paraphrase the rules do not name |
+| --- | --- | --- |
+| Causation | "...triggered the predicted diagnosis." | "The predicted diagnosis sprang from these recorded concepts." |
+| Direction | "...lowered the odds of the predicted diagnosis." | "...sent the prediction up." |
+| Share | "The first concept gives 40% of the prediction." | "The first concept outweighs all the other concepts in the prediction put together." |
+| Exclusivity | "The prediction rests on the first concept and nothing else." | "The first concept is all there is to the prediction." |
+| Diagnosis or status | "The patient was diagnosed with the predicted diagnosis." | "The predicted diagnosis afflicts this person." |
+| Risk | "The score is the likelihood that this person gets..." | "The score tells how near this person is to getting..." |
+| Advice | "We recommend treating the predicted diagnosis." | "Putting this person on a medicine for the predicted diagnosis is the sensible next step." |
+| Certainty | "The evidence definitely shows the prediction." | "The evidence makes the prediction a sure thing." |
+
 Answers get the same classes in sentences about conditions. The controls
 deny causation in words the runtime's rules also accept.
 
-**Revising the instructions.** Each check below uses 10 template
+**The first freeze.** Each check below uses 10 template
 answers and 10 template explanations of `dev-30-v1`, the same 20 texts
 each time, and plants 16 faults in each text beside its clean form and
 the control: 360 marks, about six minutes on the workstation's
@@ -537,11 +551,11 @@ first set, named / paraphrased, of 10 each:
 | Advice | 10 / 10 | 10 / 10 | 10 / 10 | 10 / 10 |
 | Certainty | 4 / 0 | 10 / 4 | 0 / 0 | 10 / 1 |
 
-**The reported check.** The frozen rater was checked once on the second
-set, with the same 20 texts. It failed none of the 40 passing texts and
-gave every text a mark. It caught 237 of the 320 faults: 136 of 160 in
-answers and 101 of 160 in explanations; 141 of the 160 named forms and
-96 of the 160 paraphrases.
+`prose-rubric-v2` was checked once on the second set, with the same 20
+texts. It failed none of the 40 passing texts and gave every text a
+mark. It caught 237 of the 320 faults: 136 of 160 in answers and 101 of
+160 in explanations; 141 of the 160 named forms and 96 of the 160
+paraphrases.
 
 | Class | Answers, named / paraphrased | Explanations, named / paraphrased |
 | --- | --- | --- |
@@ -554,17 +568,68 @@ answers and 101 of 160 in explanations; 141 of the 160 named forms and
 | Advice | 10 / 10 | 10 / 10 |
 | Certainty | 4 / 7 | 0 / 0 |
 
-- **Missed.** It missed every paraphrase of causation, direction,
-  exclusivity and certainty planted in explanations, every paraphrase
-  of exclusivity in answers, and about half of the share paraphrases.
-  It did not take "confirms" as certainty in any explanation, and did
-  in 4 of 10 answers.
-- **Wording.** It caught 286 faults on the wordings its instructions
-  were revised on and 237 on these. The texts were the same and only
-  the wordings differed, so the catch rate depends on the wording. That
-  is why the reported check holds its wordings out.
+It missed every paraphrase of causation, direction, exclusivity and
+certainty planted in explanations, every paraphrase of exclusivity in
+answers, and about half of the share paraphrases. It caught 286 faults
+on the wordings its instructions were revised on and 237 on these: the
+texts were the same and only the wordings differed, so the catch rate
+depends on the wording, which is why the reported check holds its
+wordings out.
+
+**The second freeze.** The owner chose to revise the instructions again
+and report them on a fresh set. The second set joined the first as
+material to revise on, and the third set was written and committed
+before any revision was tried. During a timing probe, before the first
+revision, one sentence of the third set (a share paraphrase) was rated
+once; both share paraphrases of the third set were then reworded, unseen.
+Each check rates the same 20 texts with both sets seen, 640 faults and
+60 passing texts, in about 75 seconds on the workstation's GPU, which
+held the whole rating model. The rater does not reason before its mark:
+with reasoning it took 14 to 27 seconds a text, about four hours a check.
+
+| Instructions | What changed | Passing texts failed | Faults caught, of 640 |
+| --- | --- | --- | --- |
+| `prose-rubric-v2` | | 0 | 531 |
+| candidate a | judge what a sentence means, not its words; examples from the seen sets | 0 | 615 |
+| candidate b | each sentence judged on its own; "the evidence" among what is judged; evidence for a prediction never confirms it | 1 | 632 |
+| candidate c | b without "evidence for a prediction never confirms it" | 0 | 624 |
+| candidate d | b with denials shown to make no claim | 0 | 634 |
+| candidate e | d with "risk factors for" among the examples | 0 | 634 |
+
+The rule set before the last candidate, no passing text failed and the
+most faults caught, left d and e tied; d, the one of fewer words, is
+frozen as `prose-rubric-v4`.
+
+**The reported check.** `prose-rubric-v4` was checked once on the third
+set, with the same 20 texts. It failed none of the 40 passing texts and
+gave every text a mark. It caught 274 of the 320 faults: 147 of 160 in
+answers and 127 of 160 in explanations; 126 of the 160 named forms and
+148 of the 160 paraphrases.
+
+| Class | Answers, named / paraphrased | Explanations, named / paraphrased |
+| --- | --- | --- |
+| Causation | 10 / 9 | 9 / 6 |
+| Direction | 10 / 10 | 4 / 10 |
+| Share | 10 / 10 | 10 / 10 |
+| Exclusivity | 6 / 7 | 6 / 10 |
+| Diagnosis or status | 10 / 10 | 10 / 10 |
+| Risk | 10 / 10 | 6 / 6 |
+| Advice | 10 / 10 | 10 / 10 |
+| Certainty | 5 / 10 | 0 / 10 |
+
+- **Missed.** It did not take "definitely shows" as certainty in any
+  explanation, and did in half the answers. It missed most explanations'
+  "lowered the odds", "and nothing else" in 4 of 10 texts of each kind,
+  3 of 10 answers' exclusivity paraphrase, and 4 of 10 explanations'
+  risk wordings and causation paraphrase.
+- **Compared with the first freeze.** The paraphrases, which the
+  runtime's rules cannot catch, were caught far more often than by
+  `prose-rubric-v2` on its own reported set (148 of 160 against 96), and
+  the named forms less often (126 against 141). The sets' wordings
+  differ, so this compares where each rater is weak, not a precise
+  gain.
 - **What a mark means.** On these texts every FAIL was right. A PASS is
-  weaker evidence, more so for an explanation.
+  weaker evidence.
 - **The two conditions.** The controlled condition releases only text
   that its wording rules pass, so the named forms reach the rater only
   from the baseline. The paraphrase rates bear on both conditions.
@@ -745,9 +810,12 @@ prints counts by kind only:
 The rubric's operator check rates a development case set's planted
 texts with the rating model the operator names, served at a loopback
 address. It keeps the counts with the rater's account of itself in a
-new protected record, and prints counts only. `--held-out` uses the
-second set of wordings:
+new protected record, and prints counts only. `--wordings` names the
+sets it uses, the seen ones by default; `--reported` is the reported
+check of the frozen instructions, on the set kept for it, and is refused
+once it has been run for them:
 
 ```powershell
-& $AppPython -m ehr_evidence_app.assessment.rubric --operator-check --model <rating model> --case-set dev-30-v1 --held-out
+& $AppPython -m ehr_evidence_app.assessment.rubric --operator-check --model <rating model> --case-set dev-30-v1 --wordings first,second
+& $AppPython -m ehr_evidence_app.assessment.rubric --operator-check --model <rating model> --case-set dev-30-v1 --reported
 ```

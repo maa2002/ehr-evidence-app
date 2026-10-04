@@ -56,10 +56,13 @@ change interfaces.
     by code; attribution wording marked by a rating model on the
     workstation, checked on planted faults in two forms per class; and
     the owner's blind check of 30 texts. The rater's instructions were
-    revised once on development texts and frozen (`prose-rubric-v2`,
-    their digest pinned). On wordings held out from the revision, the
-    frozen rater failed none of 40 passing texts and caught 237 of 320
-    planted faults, missing most paraphrases in explanations;
+    revised on development texts and frozen twice, their digest pinned.
+    `prose-rubric-v2`, on wordings held out from its revision, failed
+    none of 40 passing texts and caught 237 of 320 planted faults,
+    missing most paraphrases in explanations. `prose-rubric-v4`, revised
+    on both seen sets and checked once on a third, fresh set, failed none
+    of 40 passing texts and caught 274 of 320, 148 of the 160
+    paraphrases;
   - the references of questions about the whole record (ADR 0016,
     decision 11), from the raw extract and the snapshot. They agree with
     all 14,800 structured template answers of the development case
