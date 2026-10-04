@@ -258,10 +258,12 @@ def development_case_set(label):
         raise WrittenError("case_set_held_out")
 
 
-def case_set_inputs(label, vocab):
+def case_set_inputs(label, vocab, final=False):
     """Return (oracle, bundle cache, bundle manifest digest) of a
-    development case set."""
-    development_case_set(label)
+    development case set, or of the final case set when final says that
+    the caller has checked the freeze (assessment.freeze)."""
+    if not final:
+        development_case_set(label)
     plan = readers.real_plan(None if label == answer.PILOT else label)
     snapshot = readers.read_snapshot(plan)
     cases = readers.read_cases(plan)

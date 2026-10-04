@@ -398,18 +398,21 @@ class DevelopmentError(Exception):
     code only."""
 
 
-def development_requests(case_set):
+def development_requests(case_set, final=False):
     """Return ((context, template) pairs, release function maker) for a
     development case set: a list and presence checks (a recorded
     condition and one recorded elsewhere) in every scope bundle, and the
-    explanation of every eligible case. The evaluation set is refused."""
+    explanation of every eligible case. The evaluation set is refused,
+    unless final says that the caller has checked the freeze
+    (assessment.freeze): the final run's requests are built the same
+    way."""
     from ehr_evidence_app.casesets import registry
     from ehr_evidence_app.evidence import readers
     from ehr_evidence_app.gnn import mapping
     from ehr_evidence_app.qa import answer, resolve, templates
     from ehr_evidence_app.validation import evidence, explanation
-    if case_set != mapping.PILOT_LABEL and registry.spec(case_set)[
-            "purpose"] != "development":
+    if not final and case_set != mapping.PILOT_LABEL and registry.spec(
+            case_set)["purpose"] != "development":
         raise DevelopmentError("case_set_held_out")
     vocabulary = resolve.load()
     bundle_set = answer.load_bundle_set(answer.bundle_set_plan(case_set))

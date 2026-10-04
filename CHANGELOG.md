@@ -48,6 +48,16 @@ change interfaces.
     model as the deployed application does. Questions about the whole
     record have a format of their own, naming the item meant as the
     references do, and are judged against the whole record's references;
+  - the freeze ([ADR 0029](docs/decisions/0029-the-freeze.md)): one
+    protected record of the commit, the versions and the digests the
+    results rest on, and of the rating model; every operator mode that
+    reads the final case set refuses code or configuration other than
+    the frozen version's, and the final question sets are registered by
+    digest before they are read;
+  - the held-out questions of MIMIC-IV-Ext-Instr read once with the
+    frozen rules, each family against its expected reading under the
+    rules for questions about the whole record; the reading is the
+    application's on every edge, help and junk question compared;
   - a generated development suite of questions about the whole record
     (ADR 0016, decision 11): fixed wordings about every kind, naming
     each scope's own items by their records' names, assessed end to

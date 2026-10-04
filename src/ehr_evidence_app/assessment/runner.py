@@ -270,9 +270,12 @@ def close_run(directory, summary):
     write_once(os.path.join(directory, "summary.json"), summary)
 
 
-def configuration_of(case_set, writer, requests, commit):
-    """Return what a run is written with."""
+def configuration_of(case_set, writer, requests, commit,
+                     freeze_sha256=None):
+    """Return what a run is written with; a run of the final case set
+    names the freeze record it was written under."""
     return {"case_set": case_set, "requests": requests, "commit": commit,
+            "freeze_sha256": freeze_sha256,
             "writer": writer.describe(),
             "baseline": {"version": baseline.BASELINE_VERSION,
                          "grounding_rules_left_out": list(
@@ -430,26 +433,31 @@ def report(summary):
 # --------------------------------------------------------------------------
 
 def run_real(case_set, per_group, task=None):
-    """Write a development case set's sampled requests in both conditions
-    with the pinned model, into a new protected run directory; return the
-    summary."""
-    from ehr_evidence_app.casesets import registry
-    from ehr_evidence_app.evidence import contracts, readers
+    """Write a case set's sampled requests in both conditions with the
+    pinned model, into a new protected run directory; return the summary.
+    A development case set is sampled; the final case set needs the
+    freeze, and every request of it is written (per_group is not used)."""
+    from ehr_evidence_app.assessment import freeze
+    from ehr_evidence_app.evidence import contracts
     from ehr_evidence_app.generation import measure, runtime
     from ehr_evidence_app.qa import resolve
     from ehr_evidence_app.tracking import measurements
-    if case_set != readers.PILOT_LABEL and registry.spec(case_set)[
-            "purpose"] != "development":
-        raise RunnerError("case_set_held_out")
+    try:
+        frozen = freeze.allowed(case_set)
+    except freeze.FreezeError as error:
+        raise RunnerError(str(error)) from None
     if guard.fixed_policy_problem():
         raise RunnerError("fixed_policy_rejected")
     commit = measurements.code_commit()
-    pairs, release_of = adapter.development_requests(case_set)
-    chosen = measure.chosen_requests(pairs, per_group, task)
+    pairs, release_of = adapter.development_requests(
+        case_set, final=frozen is not None)
+    chosen = (pairs if frozen is not None
+              else measure.chosen_requests(pairs, per_group, task))
     writer = adapter.Writer(runtime.WorkerBackend(), contracts.load_limits())
     run_id = run_identifier(case_set)
-    directory = open_run(run_id, configuration_of(case_set, writer,
-                                                  len(chosen), commit))
+    directory = open_run(run_id, configuration_of(
+        case_set, writer, len(chosen), commit,
+        None if frozen is None else frozen[1]))
     summary = run(chosen, writer, release_of, resolve.load(), directory,
                   run_id)
     if measurements.code_commit() != commit:

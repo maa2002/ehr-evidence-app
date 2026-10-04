@@ -101,10 +101,12 @@ class OutcomeTests(unittest.TestCase):
                           "largest": None})
 
     def test_evaluation_set_refused(self):
-        """The operator mode refuses the evaluation set before anything is
-        read or written."""
-        with self.assertRaisesRegex(runner.RunnerError, "case_set_held_out"):
+        """The operator mode refuses the evaluation set before the freeze,
+        and an unknown case set, before anything is read or written."""
+        with self.assertRaisesRegex(runner.RunnerError, "not_frozen"):
             runner.run_real("eval-100-v1", 1)
+        with self.assertRaisesRegex(runner.RunnerError, "case_set_unknown"):
+            runner.run_real("nothing-1-v1", 1)
 
 
 class RecordTests(unittest.TestCase):

@@ -4,8 +4,9 @@ Phase 9 compares the application as built (the controlled condition) with
 a baseline on the evaluation case set, request by request, and assesses
 question answering end to end. What is measured is fixed in
 [ADR 0016](decisions/0016-evaluation-metrics.md), the rating of the
-prose in [ADR 0027](decisions/0027-automatic-prose-rating.md), and the
-design in [ADR 0028](decisions/0028-final-evaluation-design.md). The
+prose in [ADR 0027](decisions/0027-automatic-prose-rating.md), the
+design in [ADR 0028](decisions/0028-final-evaluation-design.md), and the
+freeze in [ADR 0029](decisions/0029-the-freeze.md). The
 records of `eval-100-v1` are not read before the freeze of work item 64;
 everything is built and checked on invented data and the development
 case sets first. Command examples assume the session set-up in
@@ -26,6 +27,8 @@ case sets first. Command examples assume the session set-up in
 | 60 | `assessment.end_to_end` | End-to-end QA | built: condition questions agree with the written test on a development set; questions about the whole record are checked on invented data |
 | 60 | `assessment.record_suite` | A generated development suite of questions about the whole record (ADR 0016, decision 11) | built; on the development case sets 10,338 of 11,053 questions are read right and 10,320 delivered correctly |
 | 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built; checked on invented data and on the development trial's run |
+| 60 | `assessment.instr` | The held-out questions of MIMIC-IV-Ext-Instr, read once with the frozen rules | built; its reading is the application's on every edge, help and junk question |
+| 64 | `assessment.freeze` | The freeze record, its gate on the final case set, and the final question sets' registration ([ADR 0029](decisions/0029-the-freeze.md)) | built and checked on invented data |
 
 ## The downstream partition
 
@@ -661,6 +664,48 @@ minute on the workstation's GPU: the answers passed all four items in
 both conditions; of the baseline's two explanations one failed evidence
 and history by code, and the controlled condition's one passed all four.
 
+## The held-out questions of MIMIC-IV-Ext-Instr
+
+`assessment.instr` reads every question of the dataset's held-out
+partition once, after the freeze, without a bundle, as the application
+routes it: the condition rules first and, where they refuse a question
+about other data or name no condition, the rules for questions about the
+whole record, with the final case set's dictionaries. A question whose
+item does not resolve is asked about, as the application asks. Each
+family's expected reading is fixed before the read
+([ADR 0029](decisions/0029-the-freeze.md), decision 5):
+
+| Family | Expected reading |
+| --- | --- |
+| All diagnoses | A condition list |
+| A ranking of diagnoses | Not answered |
+| Demographics | The person's details |
+| Admission information | A visit's or the person's details |
+| Transfers | Transfers or ICU stays |
+| Procedures, laboratory results, prescriptions, microbiology | A question about that kind of record |
+
+The reading is held to the application's on the same questions: on the
+invented case set, for 158 edge and help questions and 1,100 questions
+of the junk test that name no scope (scopes need a bundle), the reading
+and the application's response agree on every one. The result is
+written once to a protected record named by the freeze, and only counts
+are printed.
+
+## The freeze
+
+`assessment.freeze` writes the freeze record once, after release 0.11.0
+and before the final case set is read
+([ADR 0029](decisions/0029-the-freeze.md)). It names the commit, the
+versions of everything that writes, checks and scores a response, the
+digests of the configuration and of the pins the results rest on, and
+the rating model and its settings, which only the protected record
+names. Every operator mode that reads the final case set refuses unless
+the code and configuration now running are the frozen commit's, with
+nothing changed or added, and every version is the record's; a run
+names its freeze record, and is scored and rated only under it. The
+final question sets, worded after the freeze, are registered by their
+files' digests before they are read.
+
 ## References for questions about the whole record
 
 `assessment.record_references` prepares the reference of a question about
@@ -773,6 +818,21 @@ The default modes run invented data:
 & $AppPython -m ehr_evidence_app.assessment.end_to_end
 & $AppPython -m ehr_evidence_app.assessment.record_suite
 & $AppPython -m ehr_evidence_app.assessment.rubric
+& $AppPython -m ehr_evidence_app.assessment.instr
+& $AppPython -m ehr_evidence_app.assessment.freeze
+```
+
+The freeze's operator steps write its record once (naming the rating
+model), check that the code running is frozen, and register a final
+question set; the final modes then read the final case set:
+
+```powershell
+& $AppPython -m ehr_evidence_app.assessment.freeze --operator-freeze --rater-model <rating model>
+& $AppPython -m ehr_evidence_app.assessment.freeze --operator-check
+& $AppPython -m ehr_evidence_app.assessment.freeze --operator-register final-v1
+& $AppPython -m ehr_evidence_app.assessment.runner --operator-real --case-set eval-100-v1
+& $AppPython -m ehr_evidence_app.assessment.end_to_end --operator-final
+& $AppPython -m ehr_evidence_app.assessment.instr --operator-final
 ```
 
 The partition's operator mode publishes a new record. It refuses an

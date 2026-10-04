@@ -88,6 +88,11 @@ class StageTests(unittest.TestCase):
                          [rows[0], rows[1]])
         self.assertEqual(end_to_end.first_of_each(rows, 5), rows)
 
+    def test_final_mode_needs_the_freeze(self):
+        """The final mode reads nothing before the freeze."""
+        with self.assertRaisesRegex(written.WrittenError, "not_frozen"):
+            end_to_end.run_final(with_model=False)
+
     def test_tally_holds_counts(self):
         """The tally counts verdicts by intent and stage, and writers by
         delivery."""

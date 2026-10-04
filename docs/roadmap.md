@@ -240,4 +240,6 @@ held-out claim is needed.
 - 62 Complete the acceptance matrix
 - 63 Verify reconstruction and restart
 - 64 Freeze and execute the final evaluation
+  ([ADR 0029](decisions/0029-the-freeze.md); the freeze and the final
+  modes built)
 - 65 Demonstrate and release

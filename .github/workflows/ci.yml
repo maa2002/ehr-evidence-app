@@ -117,6 +117,8 @@ jobs:
             "ehr_evidence_app.assessment.end_to_end",
             "ehr_evidence_app.assessment.record_suite",
             "ehr_evidence_app.assessment.rubric",
+            "ehr_evidence_app.assessment.instr",
+            "ehr_evidence_app.assessment.freeze",
             "ehr_evidence_app.api.app",
             "ehr_evidence_app.interface.app"
           )

@@ -696,14 +696,22 @@ def write_ratings(directory, run_id, described, rated, marks, document,
                sheet_bytes(rated, sample))
 
 
+def frozen_rater(record, rater):
+    """Refuse a rater other than the one the freeze record names."""
+    named = record["rater"]
+    if (rater.model, rater.options, rater.think) != (
+            named["model"], named["options"], named["think"]):
+        raise RubricError("rater_not_frozen")
+
+
 def rate_run(run_id, rater, protected=None):
-    """Rate every text of a finished development run with the frozen
-    instructions; write the marks, the rubric's aggregates and the
-    owner's sheet in a new protected directory; return (document, number
-    of texts on the sheet)."""
-    from ehr_evidence_app.assessment import references, report, runner
-    from ehr_evidence_app.casesets import registry
-    from ehr_evidence_app.evidence import readers
+    """Rate every text of a finished run with the frozen instructions;
+    write the marks, the rubric's aggregates and the owner's sheet in a
+    new protected directory; return (document, number of texts on the
+    sheet). A run of the final case set is rated only under the freeze it
+    was written under, with the rater it names."""
+    from ehr_evidence_app.assessment import freeze, references, report
+    from ehr_evidence_app.assessment import runner
     from ehr_evidence_app.storage import policy as guard
     frozen()
     protected = protected or guard.PRIVATE_ROOT + "\\protected-data"
@@ -713,9 +721,14 @@ def rate_run(run_id, rater, protected=None):
     configuration, _, records = report.read_run(
         os.path.join(runner.OUTPUT_ROOT, run_id))
     case_set = configuration["case_set"]
-    if case_set != readers.PILOT_LABEL and registry.spec(case_set)[
-            "purpose"] != "development":
-        raise RubricError("case_set_held_out")
+    try:
+        found = freeze.allowed(case_set)
+    except freeze.FreezeError as error:
+        raise RubricError(str(error)) from None
+    if found is not None:
+        if configuration.get("freeze_sha256") != found[1]:
+            raise RubricError("run_of_another_freeze")
+        frozen_rater(found[0], rater)
     described = rater.describe()
     rated, marks, document, sample = rate_records(
         records, references.Sources.read(case_set),

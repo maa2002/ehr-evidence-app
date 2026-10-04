@@ -56,10 +56,15 @@ assessment.record_references:
 
 They are counted by task and kind.
 
+The final mode reads the final question sets, worded after the freeze and
+registered by digest (assessment.freeze), on the final case set, with the
+pinned model as writer, and only under the freeze.
+
 Usage:
     python -m ehr_evidence_app.assessment.end_to_end
     python -m ehr_evidence_app.assessment.end_to_end --operator-real \\
         --set written-v4 [--with-model] [--per-intent N]
+    python -m ehr_evidence_app.assessment.end_to_end --operator-final
 """
 
 from __future__ import annotations
@@ -69,6 +74,7 @@ import collections
 import csv
 import dataclasses
 import io
+import json
 import sys
 import typing
 
@@ -754,6 +760,63 @@ def run_real(name, with_model=False, per_intent=None):
     return tally(assess(rows, inputs, vocab, limits, writer))
 
 
+def record_inputs_of(case_set, conditions):
+    """Return the RecordInputs of a case set's questions about the record:
+    its bundle set and record context, and the references' cases."""
+    from ehr_evidence_app.api import service
+    from ehr_evidence_app.evidence import readers, record_bundles
+    from ehr_evidence_app.qa import record_vocabulary
+    drugs = record_vocabulary.load()
+    ancestors = {concept: frozenset(found)
+                 for concept, found in drugs.ancestors.items()}
+    plan = readers.real_plan(None if case_set == readers.PILOT_LABEL
+                             else case_set)
+    snapshot = readers.read_snapshot(plan)
+    tables, _ = record_bundles.read_extract(
+        record_bundles.real_plan(case_set), [])
+    extract = record_bundles.Extract(tables)
+    cases = {case.case_number: refs.Case(case, snapshot, extract, ancestors)
+             for case in readers.read_cases(plan).cases if case.admitted}
+    return RecordInputs(
+        answer.load_bundle_set(answer.bundle_set_plan(case_set)),
+        service.record_context(case_set, drugs, conditions), cases,
+        conditions)
+
+
+def run_final(with_model=True):
+    """Assess the final question sets on the final case set, under the
+    freeze, with the pinned model as writer; return (condition counts,
+    record counts, parse problems, the freeze record's SHA-256)."""
+    from ehr_evidence_app.assessment import freeze
+    from ehr_evidence_app.qa import resolve
+    try:
+        _, digest = freeze.allowed(freeze.FINAL)
+        name = freeze.FINAL_QUESTIONS[0]
+        condition_data = freeze.read_question_file(name, "questions.csv")
+        record_data = freeze.read_question_file(name, "record-questions.csv")
+    except freeze.FreezeError as error:
+        raise written.WrittenError(str(error)) from None
+    rows, problems = written.parse_questions(condition_data, (freeze.FINAL,))
+    record_rows, record_problems = parse_record_questions(
+        record_data, (freeze.FINAL,))
+    vocab = resolve.load()
+    oracle, cache, _ = written.case_set_inputs(freeze.FINAL, vocab,
+                                               final=True)
+    limits = contracts.load_limits()
+    writer = None
+    if with_model:
+        from ehr_evidence_app.generation import adapter, runtime
+        writer = adapter.Writer(runtime.WorkerBackend(), limits)
+    conditions = tally(assess(rows, {freeze.FINAL: (oracle, cache, True)},
+                              vocab, limits, writer))
+    records = tally(assess_records(
+        record_rows, {freeze.FINAL: record_inputs_of(freeze.FINAL, vocab)},
+        limits, writer))
+    return conditions, records, {"questions": dict(problems),
+                                 "record_questions": dict(record_problems)}, \
+        digest
+
+
 def report(found, left_out, writers=None):
     """Print the counts by intent (or stratum) and stage."""
     for intent, stages in found.items():
@@ -778,9 +841,21 @@ def main(argv=None):
     parser.add_argument("--per-intent", type=int, default=None,
                         help="assess up to this many questions of each "
                              "intent, in the set's order")
+    parser.add_argument("--operator-final", action="store_true",
+                        help="assess the registered final question sets on "
+                             "the final case set under the freeze, with the "
+                             "pinned model; prints counts only")
     args = parser.parse_args(argv)
     try:
-        if args.operator_real:
+        if args.operator_final:
+            conditions, records, problems, digest = run_final()
+            report(*conditions)
+            report(*records)
+            for name, counts in problems.items():
+                print("%s left out: %s" % (name, json.dumps(
+                    counts, sort_keys=True)))
+            print("freeze record sha256 %s" % digest)
+        elif args.operator_real:
             found, left_out, writers = run_real(args.set, args.with_model,
                                                 args.per_intent)
             report(found, left_out, writers)

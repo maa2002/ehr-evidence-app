@@ -296,16 +296,19 @@ def run_synthetic():
 
 
 def run_real(run_id):
-    """Score a finished run of a development case set; return its
-    report."""
-    from ehr_evidence_app.casesets import registry
-    from ehr_evidence_app.evidence import readers
+    """Score a finished run; return its report. A run of the final case
+    set is scored only by the frozen version it was written under."""
+    from ehr_evidence_app.assessment import freeze
     directory = os.path.join(runner.OUTPUT_ROOT, run_id)
     configuration, summary, records = read_run(directory)
     case_set = configuration["case_set"]
-    if case_set != readers.PILOT_LABEL and registry.spec(case_set)[
-            "purpose"] != "development":
-        raise ReportError("case_set_held_out")
+    try:
+        frozen = freeze.allowed(case_set)
+    except freeze.FreezeError as error:
+        raise ReportError(str(error)) from None
+    if frozen is not None and configuration.get("freeze_sha256") != (
+            frozen[1]):
+        raise ReportError("run_of_another_freeze")
     scored = score_records(records, references.Sources.read(case_set),
                            Bundles.read(case_set),
                            references.configured_limit())
