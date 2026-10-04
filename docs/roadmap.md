@@ -199,7 +199,7 @@ owner before any request of `eval-100-v1` is written. The prose rubric is
 rated by code and an automatic rater, which the owner checks on a sample
 ([ADR 0027](decisions/0027-automatic-prose-rating.md)). The design is in
 [ADR 0028](decisions/0028-final-evaluation-design.md) and the work in
-[assessment.md](assessment.md). Done (release 0.11.0): the evaluation's
+[assessment.md](assessment.md). Done (release 0.11.1): the evaluation's
 code is built and checked on invented data and the development case
 sets, and frozen ([ADR 0029](decisions/0029-the-freeze.md)); the final
 run is work item 64.

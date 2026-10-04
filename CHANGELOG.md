@@ -7,6 +7,12 @@ change interfaces.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-04
+
+The frozen version of the final evaluation, in place of 0.11.0, whose
+freeze was superseded before anything of the final case set was read
+([ADR 0029](docs/decisions/0029-the-freeze.md), amendment).
+
 ### Fixed
 
 - The end-to-end assessment answers condition questions with the case
@@ -971,7 +977,8 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.8.0...v0.9.0
