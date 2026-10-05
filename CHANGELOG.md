@@ -7,6 +7,16 @@ change interfaces.
 
 ## [Unreleased]
 
+### Added
+
+- The final evaluation's figures
+  ([docs/final-figures.md](docs/final-figures.md)): the version assessed
+  and the run, the paired comparison by stratum with every metric of
+  ADR 0016, outcomes, failures and operations, the prose rubric and the
+  owner's check, the questions typed end to end, the held-out read of
+  MIMIC-IV-Ext-Instr, intervals recomputed by patient as a check added
+  after the figures, how to read them, and the record of the protocol.
+
 ## [0.11.2] - 2026-10-04
 
 The frozen version of the final evaluation, in place of 0.11.1, whose

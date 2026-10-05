@@ -49,7 +49,11 @@ writes a protected runtime record. The local API and its interface, a
 conversation about a selected patient with the evidence beside it, are
 in place (Phase 8), and the whole record can be asked about: the case
 sets' raw MIMIC-IV records, record bundles, and template answers checked
-by the same gate. The evaluation is planned. See the
+by the same gate. The final evaluation (Phase 9) compared the
+application with a baseline on the 100-person evaluation set, request by
+request, and assessed question answering end to end, with the version
+frozen as release 0.11.2; its figures are in
+[docs/final-figures.md](docs/final-figures.md). See the
 [roadmap](docs/roadmap.md) and the [changelog](CHANGELOG.md).
 
 ## Architecture
@@ -137,6 +141,8 @@ See [docs/data-handling.md](docs/data-handling.md).
 | [Generation](docs/generation.md) | Model-written candidates: shape, schema, the model's view of the evidence, driver selection, prompt, adapter, limits, fallbacks, measurement |
 | [API and interface](docs/interface.md) | The local API, its routes, the interface, the access checks and the launcher |
 | [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, measurements, the model, lineage |
+| [The final evaluation](docs/assessment.md) | Partition, references, baseline, paired runner, metrics, prose rubric, end-to-end assessment, the freeze |
+| [Final figures](docs/final-figures.md) | The final run's figures, the prose rubric, the questions typed end to end, the held-out read, and how to read them |
 | [Environments](docs/environments.md) | Application and GNN environments |
 | [Development](docs/development.md) | Set-up, tests, quality gates, CI, conventions, releases |
 | [Roadmap](docs/roadmap.md) | Phases and work items |

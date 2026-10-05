@@ -6,7 +6,8 @@ question answering end to end. What is measured is fixed in
 [ADR 0016](decisions/0016-evaluation-metrics.md), the rating of the
 prose in [ADR 0027](decisions/0027-automatic-prose-rating.md), the
 design in [ADR 0028](decisions/0028-final-evaluation-design.md), and the
-freeze in [ADR 0029](decisions/0029-the-freeze.md). The
+freeze in [ADR 0029](decisions/0029-the-freeze.md). The final run's
+figures are in [final-figures.md](final-figures.md). The
 records of `eval-100-v1` are not read before the freeze of work item 64;
 everything is built and checked on invented data and the development
 case sets first. Command examples assume the session set-up in
@@ -28,7 +29,7 @@ case sets first. Command examples assume the session set-up in
 | 60 | `assessment.record_suite` | A generated development suite of questions about the whole record (ADR 0016, decision 11) | built; on the development case sets 10,338 of 11,053 questions are read right and 10,320 delivered correctly |
 | 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built; checked on invented data and on the development trial's run |
 | 60 | `assessment.instr` | The held-out questions of MIMIC-IV-Ext-Instr, read once with the frozen rules | built; its reading is the application's on every edge, help and junk question |
-| 64 | `assessment.freeze` | The freeze record, its gate on the final case set, and the final question sets' registration ([ADR 0029](decisions/0029-the-freeze.md)) | built and checked on invented data |
+| 64 | `assessment.freeze` | The freeze record, its gate on the final case set, and the final question sets' registration ([ADR 0029](decisions/0029-the-freeze.md)) | done: release 0.11.2 frozen as `freeze-v3`, the final run and its assessments done under it ([final-figures.md](final-figures.md)) |
 
 ## The downstream partition
 

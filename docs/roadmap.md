@@ -202,7 +202,8 @@ rated by code and an automatic rater, which the owner checks on a sample
 [assessment.md](assessment.md). Done (release 0.11.2): the evaluation's
 code is built and checked on invented data and the development case
 sets, and frozen ([ADR 0029](decisions/0029-the-freeze.md)); the final
-run is work item 64.
+run (work item 64) is done, and its figures are in
+[final-figures.md](final-figures.md).
 
 - 53 Partition downstream cases
   ([assessment.md](assessment.md#the-downstream-partition); done:
@@ -243,6 +244,7 @@ held-out claim is needed.
 - 62 Complete the acceptance matrix
 - 63 Verify reconstruction and restart
 - 64 Freeze and execute the final evaluation
-  ([ADR 0029](decisions/0029-the-freeze.md); the freeze and the final
-  modes built)
+  ([ADR 0029](decisions/0029-the-freeze.md); done: frozen as release
+  0.11.2, run once, scored, rated and assessed end to end; figures in
+  [final-figures.md](final-figures.md))
 - 65 Demonstrate and release
