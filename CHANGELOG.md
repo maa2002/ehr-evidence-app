@@ -7,6 +7,12 @@ change interfaces.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-05
+
+The final evaluation's figures, written up and kept in the tracker. The
+evaluated version is unchanged: release 0.11.2, frozen as `freeze-v3`;
+this release adds documentation and code of the tracker only.
+
 ### Added
 
 - The final evaluation's figures
@@ -1021,7 +1027,8 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.10.0...v0.11.0

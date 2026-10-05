@@ -9,4 +9,4 @@ contact any service. Heavy dependencies are imported inside the modules that
 need them.
 """
 
-__version__ = "0.11.2"
+__version__ = "0.12.0"
