@@ -9,8 +9,10 @@ name its task after some of its configuration fields, such as the case
 set and the commit, so that tasks of one kind are told apart. Besides its
 lineage tags, a task may carry configuration fields from a fixed
 allowlist, each in a fixed format, and scalar metrics from a fixed
-allowlist under fixed series names, with bounded values. Nothing is free
-text.
+allowlist under fixed series names, with bounded values: a paired
+difference and the limits of its interval may be negative. Nothing is
+free text. The final evaluation's figures are a kind of their own, with
+their names (ADR 0030).
 """
 import math
 import ntpath
@@ -29,6 +31,9 @@ TASK_KINDS = {
                     "archive": False,
                     "label": ("case_set", "precision", "prompt_version",
                               "commit")},
+    "final_figures": {"name": "Final evaluation", "type": "testing",
+                      "archive": False, "label": ("case_set", "commit"),
+                      "scalars": 1000},
 }
 # How a configuration field reads in a task's name, when not as itself.
 LABEL_FORMS = {"prompt_version": "prompt %s"}
@@ -56,6 +61,10 @@ CONFIGURATION_FIELDS = {
     "max_request_seconds": (1, 600),
     "within_output_tokens": (1, 4096),
     "within_seconds": (1, 600),
+    "freeze": re.compile(r"^freeze-v[0-9]{1,3}$"),
+    "question_set": re.compile(r"^final-v[0-9]{1,3}$"),
+    "rubric": re.compile(r"^prose-rubric-v[0-9]{1,3}$"),
+    "baseline": re.compile(r"^baseline-v[0-9]{1,3}$"),
 }
 # Scalar metrics and the bounds of their values.
 SCALAR_METRICS = {
@@ -69,6 +78,21 @@ SCALAR_METRICS = {
     "prompt tokens": ("measure", 1_000_000),
     "tokens a second": ("measure", 10_000),
     "peak GPU MiB": ("measure", 1_000_000),
+    # The final evaluation's figures (ADR 0030).
+    "exact match": ("share", 1), "scoped accuracy": ("share", 1),
+    "coverage": ("share", 1), "selective accuracy": ("share", 1),
+    "correct answer yield": ("share", 1), "over-abstention": ("share", 1),
+    "unsupported answer rate": ("share", 1),
+    "unsupported claim rate": ("share", 1), "claim support": ("share", 1),
+    "citation resolution": ("share", 1), "preservation": ("share", 1),
+    "evidence-consistent yield": ("share", 1),
+    "line completeness": ("share", 1), "rubric pass rate": ("share", 1),
+    "identity": ("share", 1), "evidence": ("share", 1),
+    "history": ("share", 1), "wording": ("share", 1),
+    "owner agreement": ("share", 1), "questions": ("count", 1_000_000),
+    "read right": ("count", 1_000_000),
+    "delivered correctly": ("count", 1_000_000),
+    "read as expected": ("count", 1_000_000),
 }
 # The strata of a measurement, as the benchmark draws them, and their
 # unions: "all lists" is the lists and empty lists, "presence" both kinds
@@ -78,9 +102,36 @@ SCALAR_STRATA = ("lists", "empty lists", "all lists", "presence recorded",
 SCALAR_PARTS = ("conditions", "records", "drivers", "history lines",
                 "context lines", "median", "p90", "smallest", "largest",
                 "total")
+# The final evaluation's series (ADR 0030): a stratum's figure in each
+# condition, the paired difference, its interval and the interval by
+# patient, a precision, recall or F1 also naming its part; the rubric's
+# kinds of text; the questions typed end to end, by intent; and the
+# held-out read's families. A difference and the limits of an interval
+# are signed.
+FINAL_VALUES = ("baseline", "controlled", "difference", "lower", "upper",
+                "patient-level lower", "patient-level upper")
+SIGNED_VALUES = frozenset(("difference", "lower", "upper",
+                           "patient-level lower", "patient-level upper"))
+FINAL_STRATA = ("lists", "empty lists", "presence recorded",
+                "presence not recorded", "explanations", "all")
+FINAL_PARTS = ("conditions", "records", "drivers")
+RUBRIC_KINDS = ("answers", "explanations")
+TYPED_SERIES = ("condition questions: lists", "condition questions: presence",
+                "condition questions: refuse", "condition questions: clarify",
+                "record questions: answer", "record questions: refuse",
+                "record questions: clarify")
+HELD_OUT_FAMILIES = ("diagnosis lists", "diagnosis rankings", "demographics",
+                     "admission information", "transfers", "procedures",
+                     "lab results", "prescriptions", "microbiology")
+FINAL_SERIES = frozenset(
+    ["%s: %s" % (group, value) for group in FINAL_STRATA + RUBRIC_KINDS
+     for value in FINAL_VALUES]
+    + ["%s: %s: %s" % (stratum, part, value) for stratum in FINAL_STRATA
+       for part in FINAL_PARTS for value in FINAL_VALUES]
+    + list(RUBRIC_KINDS) + list(TYPED_SERIES) + list(HELD_OUT_FAMILIES))
 SCALAR_SERIES = frozenset(SCALAR_STRATA) | frozenset(
     "%s: %s" % (stratum, part) for stratum in SCALAR_STRATA
-    for part in SCALAR_PARTS)
+    for part in SCALAR_PARTS) | FINAL_SERIES
 MAX_SCALARS = 400
 MAX_REFERENCE_LENGTH = 512
 MAX_COMPONENT_LENGTH = 96
@@ -333,12 +384,14 @@ def build_configuration(configuration):
     return {CONFIGURATION_SECTION: section} if section else {}
 
 
-def build_scalar_events(task_id, scalars):
+def build_scalar_events(task_id, scalars, limit=MAX_SCALARS):
     """Return the scalar events of a task: each (metric, series, value)
-    allowlisted and bounded, reported once, at iteration 0."""
+    allowlisted and bounded, reported once, at iteration 0; at most limit
+    of them. A share under a signed series (a difference or the limit of
+    an interval) may be negative, down to minus its bound."""
     if not isinstance(task_id, str) or not SAFE_ID.fullmatch(task_id):
         raise UnsafeMetadata("invalid task identifier")
-    if not isinstance(scalars, list) or len(scalars) > MAX_SCALARS:
+    if not isinstance(scalars, list) or len(scalars) > limit:
         raise UnsafeMetadata("scalars must be a bounded list")
     events, seen = [], set()
     for item in scalars:
@@ -353,7 +406,9 @@ def build_scalar_events(task_id, scalars):
         kind, bound = SCALAR_METRICS[metric]
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise UnsafeMetadata("scalar values must be numeric")
-        if not math.isfinite(value) or not 0 <= value <= bound:
+        low = (-bound if kind == "share"
+               and series.rsplit(": ", 1)[-1] in SIGNED_VALUES else 0)
+        if not math.isfinite(value) or not low <= value <= bound:
             raise UnsafeMetadata("scalar value out of bounds")
         if kind == "count" and not float(value).is_integer():
             raise UnsafeMetadata("a count is a whole number")

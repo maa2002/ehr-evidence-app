@@ -140,7 +140,7 @@ See [docs/data-handling.md](docs/data-handling.md).
 | [Validation](docs/validation.md) | Candidate contract, checks, explanations, release gate, mutation suite |
 | [Generation](docs/generation.md) | Model-written candidates: shape, schema, the model's view of the evidence, driver selection, prompt, adapter, limits, fallbacks, measurement |
 | [API and interface](docs/interface.md) | The local API, its routes, the interface, the access checks and the launcher |
-| [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, measurements, the model, lineage |
+| [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, measurements, the final evaluation's figures, the model, lineage |
 | [The final evaluation](docs/assessment.md) | Partition, references, baseline, paired runner, metrics, prose rubric, end-to-end assessment, the freeze |
 | [Final figures](docs/final-figures.md) | The final run's figures, the prose rubric, the questions typed end to end, the held-out read, and how to read them |
 | [Environments](docs/environments.md) | Application and GNN environments |

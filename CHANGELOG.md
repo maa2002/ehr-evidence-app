@@ -16,6 +16,21 @@ change interfaces.
   owner's check, the questions typed end to end, the held-out read of
   MIMIC-IV-Ext-Instr, intervals recomputed by patient as a check added
   after the figures, how to read them, and the record of the protocol.
+- The final evaluation's figures in the tracker
+  ([ADR 0030](docs/decisions/0030-final-figures-in-the-tracker.md)):
+  `tracking.final_figures` reads the final evaluation's protected
+  aggregate records, which must name the same freeze and run, writes
+  their manifest once and creates one task of the kind "Final
+  evaluation", with the configuration of the version evaluated and every
+  figure of `docs/final-figures.md`. The ratings' marks and the rating
+  model are never read.
+
+### Changed
+
+- Controlled tracking's allowlist: the final evaluation's figure names,
+  series and configuration fields; a difference or the limit of an
+  interval may be negative, down to -1; a kind may bound its scalars,
+  the final evaluation's at 1,000 and every other kind at 400 as before.
 
 ## [0.11.2] - 2026-10-04
 

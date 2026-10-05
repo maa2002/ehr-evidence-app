@@ -112,8 +112,8 @@ touch credentials.
 - **Hyperparameters:** `learning_rate`, `batch_size`, `epochs` and
   `weight_decay` only, as finite numeric scalars.
 - **Kinds:** a task is a probe, an inherited input registration, a set of
-  runtime aggregates or a generation measurement, each with a fixed name
-  and type. The aggregates and measurements are named after some of their
+  runtime aggregates, a generation measurement or the final evaluation's
+  figures, each with a fixed name and type. The aggregates and measurements are named after some of their
   configuration fields, such as `Generation measurement: dev-30-v1,
   bf16-mixed, prompt v9, 87027bd`. Only a probe is archived; a lineage
   task is read back and marked completed, so it stays in view and cannot
@@ -136,7 +136,11 @@ touch credentials.
   `drivers`, `history lines`, `context lines`, `median`, `p90`,
   `smallest`, `largest`, `total`), such as `F1` / `lists: conditions`.
   Values are bounded; counts are whole numbers and shares lie between 0
-  and 1.
+  and 1. The final evaluation's figures have names, series and
+  configuration fields of their own
+  ([ADR 0030](decisions/0030-final-figures-in-the-tracker.md)); there, a
+  difference or the limit of an interval lies between -1 and 1, and a
+  task holds up to 1,000 scalars, where other kinds hold 400.
 
 Unknown fields, free-text comments or tags, secrets, patient identifiers and
 content-like fields (prompts, responses, attributions, predictions,
@@ -240,6 +244,38 @@ In the web application, the project's experiments table can show the
 configuration fields (such as `case_set`, `precision`, `prompt_version`
 and `commit`) and the last value of any scalar (such as `release rate` /
 `all`) as columns, and compares selected tasks side by side.
+
+## The final evaluation's figures
+
+`ehr_evidence_app.tracking.final_figures` keeps the final evaluation's
+figures ([final-figures.md](final-figures.md)) in the tracker
+([ADR 0030](decisions/0030-final-figures-in-the-tracker.md)). It reads the
+final evaluation's protected aggregate records: the report of the run,
+the intervals by patient, the ratings' aggregates and the owner's
+agreement, the end-to-end figures and the held-out read, each of which
+must name the same freeze and run. It never reads the ratings' marks or
+the rating model. The figures are written once as a manifest,
+`outputs\lineage\final-figures-<digest>.json`, named by a digest of its
+content: the same figures give the same file, an identical one is left
+untouched and a different one is refused (`manifest_conflict`). The task,
+`Final evaluation: <case set>, <commit>`, carries the configuration of
+the version evaluated (the model, the versions, the limits, the driver
+limit as frozen, the freeze, the question set, the rubric and the
+baseline), lineage tags naming the manifest's path and checksum, and its
+scalars: each metric of ADR 0016 by stratum in both conditions, with its
+paired difference, interval and interval by patient; the prose rubric
+and the owner's agreement; the questions typed end to end; and the
+held-out read by family. An index beside the manifest,
+`final-figures-tasks.json`, keeps the task, so it is sent once.
+`--operator-real` writes the manifest and checks the task offline;
+`--operator-remote` also creates it, reads it back and marks it
+completed.
+
+```powershell
+& $AppPython -m ehr_evidence_app.tracking.final_figures
+& $AppPython -m ehr_evidence_app.tracking.final_figures --operator-real --run <run identifier>
+& $AppPython -m ehr_evidence_app.tracking.final_figures --operator-remote --run <run identifier>
+```
 
 ## The model
 

@@ -741,7 +741,9 @@ def create_controlled_task(adapter, project_id, payload, kind, scalars=()):
     except Exception:  # noqa: BLE001 - reported by its code only
         findings.append("readback_failed")
     try:
-        for event in tracking.build_scalar_events(task_id, list(scalars)):
+        for event in tracking.build_scalar_events(
+                task_id, list(scalars), tracking.TASK_KINDS[kind].get(
+                    "scalars", tracking.MAX_SCALARS)):
             call_service(adapter, "events", "add", event)
     except tracking.UnsafeMetadata:
         findings.append("scalars_refused")
