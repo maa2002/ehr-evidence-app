@@ -251,4 +251,6 @@ held-out claim is needed.
   ([ADR 0029](decisions/0029-the-freeze.md); done: frozen as release
   0.11.2, run once, scored, rated and assessed end to end; figures in
   [final-figures.md](final-figures.md))
-- 65 Demonstrate and release
+- 65 Demonstrate and release (done: release 1.0.0, the evaluated
+  version with its set-up guide, acceptance matrix, figures and limits,
+  linked to the final evaluation's task in the tracker)

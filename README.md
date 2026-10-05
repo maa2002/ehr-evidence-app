@@ -8,16 +8,17 @@ MIMIC-IV 3.1 mapped to the OMOP Common Data Model.
 
 ## What it does
 
-For one selected patient, the application will:
+For one selected patient, the application:
 
-1. answer scoped questions about recorded conditions ("Which conditions are
-   recorded before the final admission?", "Is heart failure recorded?"),
-2. answer scoped questions about the rest of the record: medications,
+1. answers scoped questions about recorded conditions ("Which conditions
+   are recorded before the final admission?", "Is heart failure
+   recorded?"),
+2. answers scoped questions about the rest of the record: medications,
    procedures, laboratory results, microbiology, vital signs, transfers
    and ICU stays, the visits and the person ("What was the last
    potassium?", "Was heparin given?", "How long was the stay?"), and
-3. explain an existing prediction of the inherited E-TRANS GNN from its
-   gradient attribution and the patient's recorded events.
+3. explains an existing prediction of the inherited E-TRANS GNN from
+   its gradient attribution and the patient's recorded events.
 
 Every answer names the patient and scope, states coverage, cites readable
 evidence with provenance, and ends in one explicit outcome: success,
@@ -53,8 +54,12 @@ by the same gate. The final evaluation (Phase 9) compared the
 application with a baseline on the 100-person evaluation set, request by
 request, and assessed question answering end to end, with the version
 frozen as release 0.11.2; its figures are in
-[docs/final-figures.md](docs/final-figures.md). See the
-[roadmap](docs/roadmap.md) and the [changelog](CHANGELOG.md).
+[docs/final-figures.md](docs/final-figures.md). Release 1.0.0 is that
+version, accepted: the [acceptance matrix](docs/acceptance.md) gives each
+of the brief's tests and requirements its observed result, and a clean
+clone was rebuilt and restarted with both workflows working
+([docs/development.md](docs/development.md#reconstruction-and-restart)).
+See the [roadmap](docs/roadmap.md) and the [changelog](CHANGELOG.md).
 
 ## Architecture
 

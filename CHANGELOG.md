@@ -7,6 +7,22 @@ change interfaces.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-06
+
+The application as evaluated and accepted (Phase 10). Its code and
+configuration are those of release 0.11.2, frozen as `freeze-v3` for the
+final evaluation: of the 27 versions and digests the freeze names, only
+the application's number differs, and the only code changed since is the
+tracker's. With it come the set-up guide
+([docs/development.md](docs/development.md),
+[docs/environments.md](docs/environments.md)), the acceptance matrix
+([docs/acceptance.md](docs/acceptance.md)), the final evaluation's figures
+and how to read them, limits included
+([docs/final-figures.md](docs/final-figures.md)), and the record of the
+reconstruction check. The final evaluation's figures are in the tracker:
+project `ehr-evidence-app`, task "Final evaluation: eval-100-v1, d1322c1"
+(`c5587817086e40efac0e0f16b378cf35`). The release carries no attachment.
+
 ### Added
 
 - The acceptance matrix ([docs/acceptance.md](docs/acceptance.md)): the
@@ -19,6 +35,11 @@ change interfaces.
   and the locks; the check made at release 0.12.0, both workflows before
   and after a restart; and the seeds of every step that draws or
   resamples.
+
+### Changed
+
+- The README describes what the application does, and its status, as of
+  this release.
 
 ## [0.12.0] - 2026-10-05
 
@@ -1040,7 +1061,8 @@ Relative to the untagged pre-release development tree:
 - `sources.exports` requires an explicit version label, so a default can no
   longer re-verify (and rewrite the manifest of) the published version.
 
-[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/maa2002/ehr-evidence-app/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.12.0...v1.0.0
 [0.12.0]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.2...v0.12.0
 [0.11.2]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/maa2002/ehr-evidence-app/compare/v0.11.0...v0.11.1
