@@ -143,8 +143,9 @@ See [docs/data-handling.md](docs/data-handling.md).
 | [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, measurements, the final evaluation's figures, the model, lineage |
 | [The final evaluation](docs/assessment.md) | Partition, references, baseline, paired runner, metrics, prose rubric, end-to-end assessment, the freeze |
 | [Final figures](docs/final-figures.md) | The final run's figures, the prose rubric, the questions typed end to end, the held-out read, and how to read them |
+| [Acceptance matrix](docs/acceptance.md) | The brief's acceptance tests and requirements, each with what was run, expected and observed |
 | [Environments](docs/environments.md) | Application and GNN environments |
-| [Development](docs/development.md) | Set-up, tests, quality gates, CI, conventions, releases |
+| [Development](docs/development.md) | Set-up, tests, quality gates, CI, conventions, reconstruction and restart, seeds, releases |
 | [Roadmap](docs/roadmap.md) | Phases and work items |
 | [Decisions](docs/decisions/) | Architecture decision records |
 | [Changelog](CHANGELOG.md) | Release history |

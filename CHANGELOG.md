@@ -7,6 +7,19 @@ change interfaces.
 
 ## [Unreleased]
 
+### Added
+
+- The acceptance matrix ([docs/acceptance.md](docs/acceptance.md)): the
+  brief's acceptance tests T01 to T10, each with what was run, the result
+  expected and observed and the evidence; the other checks the brief
+  names; and a result for each of the seventeen requirements.
+- Reconstruction and restart
+  ([docs/development.md](docs/development.md#reconstruction-and-restart)):
+  how the application is rebuilt from a clean clone, the pinned assets
+  and the locks; the check made at release 0.12.0, both workflows before
+  and after a restart; and the seeds of every step that draws or
+  resamples.
+
 ## [0.12.0] - 2026-10-05
 
 The final evaluation's figures, written up and kept in the tracker. The

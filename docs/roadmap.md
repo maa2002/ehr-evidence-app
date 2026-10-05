@@ -241,8 +241,12 @@ held-out claim is needed.
 
 ## Phase 10. Acceptance and handover
 
-- 62 Complete the acceptance matrix
+- 62 Complete the acceptance matrix ([acceptance.md](acceptance.md);
+  done)
 - 63 Verify reconstruction and restart
+  ([development.md](development.md#reconstruction-and-restart); done:
+  a clean clone at release 0.12.0, both workflows before and after a
+  restart)
 - 64 Freeze and execute the final evaluation
   ([ADR 0029](decisions/0029-the-freeze.md); done: frozen as release
   0.11.2, run once, scored, rated and assessed end to end; figures in

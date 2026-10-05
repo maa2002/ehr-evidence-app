@@ -151,6 +151,61 @@ secret-shaped literal appears in the source.
 **Text files.** UTF-8, LF line endings (enforced by `.gitattributes`); the
 setup script stays ASCII.
 
+## Reconstruction and restart
+
+The application is rebuilt from a clean clone of the repository, the
+pinned assets in the workspace and the hashed locks, without rerunning an
+extraction or a training (work item 63):
+
+1. Clone the repository into its configured location
+   (`source_repository` in `config/paths.json`) and check out a release
+   tag.
+2. Recreate or check the environments from their locks
+   ([environments.md](environments.md)) and run the session set-up above.
+3. Check the environment, the storage and the tracker's configuration,
+   then run the tests:
+
+   ```powershell
+   & $AppPython -m ehr_evidence_app.environment.app
+   & $AppPython -m ehr_evidence_app.storage.runtime
+   & $AppPython -m ehr_evidence_app.storage.destinations
+   & $AppPython -m ehr_evidence_app.quality.publication
+   & $AppPython -m ehr_evidence_app.tracking.policy
+   & $AppPython -m ehr_evidence_app.tracking.connection
+   & $AppPython -m pytest -q
+   ```
+
+4. Start the application on the development case sets
+   (`api.launch --operator-real`, [interface.md](interface.md)) and use
+   both workflows; stop it, start it again and use them again.
+
+The check was made on 2026-10-05 at release 0.12.0. The working checkout
+was set aside by renaming it, and a fresh clone from GitHub took its place
+until the check ended:
+
+| Step | Observed |
+| --- | --- |
+| Environment | The application environment matched its hashed lock; the import probe passed |
+| Storage | The runtime root and the destinations checked: 177 of 177 checks. The bytecode probe failed at first under a shell that set `PYTHONDONTWRITEBYTECODE`; without it, it passed |
+| Publication audit | No secret or data file in the tree or its history |
+| Tracker configuration | The policy and the connection's declaration checked offline |
+| Tests | 1,656 passed, 5 skipped (symbolic links unavailable to the account, and an interpreter layout), none failed |
+| Both workflows | Lists, presence checks, questions about the whole record and the explanation for the first three admitted cases of `dev-30-v1`, 24 requests with the model, answered without a problem, each writing its runtime record |
+| Restart | The API stopped and started again; the same 24 requests gave the same outcomes, writers and texts, compared by digest |
+| Pinned assets | The workspace's protected data and outputs were listed before and after: nothing added, removed or rebuilt; only the set-up's markers and the checks' own reports were rewritten |
+
+**Seeds.** The steps that draw or resample use fixed seeds, so they give
+the same result when run again:
+
+| Step | Seed |
+| --- | --- |
+| The inherited GNN's split of patients (recovered, not rerun) | 7 |
+| The draw of `dev-30-v1` | 20260926 |
+| The draw of `eval-100-v1` | 20260927 |
+| The model's decoding (`config/generation.json`) | 20260927 |
+| The paired bootstrap of the statistics (10,000 replicates) | 20260928 |
+| The rating model's settings, the order of the texts it reads, and the owner's sample | 20261003 |
+
 ## Version control and releases
 
 - Commit with the repository-local author identity; do not change global Git
