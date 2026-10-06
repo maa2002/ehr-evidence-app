@@ -107,9 +107,7 @@ def pinned(case_set):
                          "size_bytes": pin[0], "sha256": pin[1]}}
 
 
-# --------------------------------------------------------------------------
-# The raw extract
-# --------------------------------------------------------------------------
+# The Raw Extract
 
 def text(value):
     """Return a field's stripped text, or None when it is empty."""
@@ -285,9 +283,7 @@ def raw_entries(extract, subject, visit_of):
 _ROW = "row_number"
 
 
-# --------------------------------------------------------------------------
-# Medications: ingredients and the prescription's dose
-# --------------------------------------------------------------------------
+# Medications: Ingredients And The Prescription's Dose
 
 def full_time(value):
     """Return a time as 'YYYY-MM-DD HH:MM:SS', or None."""
@@ -337,9 +333,7 @@ def drug_key(event):
             event.source_value or "")
 
 
-# --------------------------------------------------------------------------
 # Bundles
-# --------------------------------------------------------------------------
 
 def scope_slug(scope):
     """Return the bundle-identifier suffix for a scope."""
@@ -614,9 +608,7 @@ def summary_document(manifest):
                 encode(manifest)).hexdigest()}
 
 
-# --------------------------------------------------------------------------
-# The real run
-# --------------------------------------------------------------------------
+# The Real Run
 
 def real_plan(case_set):
     """Return the pinned inputs and the fixed protected output of a case
@@ -762,9 +754,7 @@ def publish(plan, files):
         raise
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_SUBJECT = "900001"
 

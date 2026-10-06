@@ -79,9 +79,7 @@ def record_key(domain, native_id):
     return ("record", domain, native_id)
 
 
-# --------------------------------------------------------------------------
 # Conditions
-# --------------------------------------------------------------------------
 
 def case_visits(oracle, case):
     """Return {record: visit number} of every condition record of a case:
@@ -131,9 +129,7 @@ def condition_reference(oracle, case_set, case, request_id, task, scope,
         citable=frozenset(names) | {COVERAGE}, source_answerable=complete)
 
 
-# --------------------------------------------------------------------------
 # Explanations
-# --------------------------------------------------------------------------
 
 def configured_limit(path=LIMIT_PATH):
     """Return the frozen number of drivers an explanation describes."""
@@ -224,9 +220,7 @@ def explanation_reference(case_set, case, record, entry, events, limit,
         restrictions=frozenset(case.restrictions))
 
 
-# --------------------------------------------------------------------------
-# Reading a case set's sources
-# --------------------------------------------------------------------------
+# Reading A Case Set's Sources
 
 class Sources:
     """A case set's source records: its snapshot, cases, condition
@@ -292,9 +286,7 @@ class Sources:
                                      self.events, limit, request_id)
 
 
-# --------------------------------------------------------------------------
-# Comparison with the templates on a development case set
-# --------------------------------------------------------------------------
+# Comparison With The Templates On A Development Case Set
 
 def stratum_of(context, template):
     """Return a compared request's stratum, as the development benchmark
@@ -372,9 +364,7 @@ def run_compare(case_set):
     return compare(Sources.read(case_set), pairs, configured_limit())
 
 
-# --------------------------------------------------------------------------
-# Default mode: invented fixtures
-# --------------------------------------------------------------------------
+# Default Mode: Invented Fixtures
 
 def synthetic_sources():
     """Return the Sources of the invented case set the invented bundles

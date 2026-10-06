@@ -336,9 +336,7 @@ class RubricError(Exception):
     """A fail-closed failure carrying a finding code only."""
 
 
-# --------------------------------------------------------------------------
-# Items judged by code
-# --------------------------------------------------------------------------
+# Items Judged By Code
 
 class Marks(typing.NamedTuple):
     """A text's four items: True a pass, False a fail, None not rated."""
@@ -392,9 +390,7 @@ def rated_kind(task):
     return "answer" if task in metrics.QA_TASKS else None
 
 
-# --------------------------------------------------------------------------
-# The rater
-# --------------------------------------------------------------------------
+# The Rater
 
 def loopback(endpoint):
     """Return the endpoint when it is an http address on this
@@ -470,9 +466,7 @@ def rate_all(texts, rater, seed=SEED):
     return {key: rater.rate(text) for key, text in order}
 
 
-# --------------------------------------------------------------------------
-# The rater's check: planted faults on development texts
-# --------------------------------------------------------------------------
+# The Rater's Check: Planted Faults On Development Texts
 
 def planted(text, kind, wordings=("first",)):
     """Return the variants of a passing text: (class, form, expected mark,
@@ -501,9 +495,7 @@ def check_rater(texts, rater, wordings=("first",)):
     return {key: tuple(value) for key, value in sorted(counts.items())}
 
 
-# --------------------------------------------------------------------------
-# The owner's check
-# --------------------------------------------------------------------------
+# The Owner's Check
 
 def owner_sample(marks, seed=SEED, size=SAMPLE, failed=SAMPLE_FAILED):
     """Return the keys of the owner's sample: up to `failed` that the rater
@@ -527,9 +519,7 @@ def agreement(marks, owners):
             for mark, counts in sorted(found.items())}
 
 
-# --------------------------------------------------------------------------
-# A run's texts and their rubric
-# --------------------------------------------------------------------------
+# A Run's Texts And Their Rubric
 
 class Rated(typing.NamedTuple):
     """One text the rubric rates: its request, condition, kind and text,
@@ -614,9 +604,7 @@ def rubric_document(rated, marks):
     return found
 
 
-# --------------------------------------------------------------------------
-# Rating a run, and the owner's check (ADR 0027, decisions 5 and 6)
-# --------------------------------------------------------------------------
+# Rating A Run, And The Owner's Check (ADR 0027, Decisions 5 And 6)
 
 RATINGS_ROOT = "\\assessment\\ratings"
 RATINGS_NAME = "ratings.json"
@@ -810,9 +798,7 @@ def report_rubric(document, sheet):
     print("owner's sheet: %d texts" % sheet)
 
 
-# --------------------------------------------------------------------------
-# Default mode: invented data and a stand-in rater
-# --------------------------------------------------------------------------
+# Default Mode: Invented Data And A Stand-In Rater
 
 class StandIn:
     """A stand-in rater for checks: it fails a text holding any of the
@@ -859,9 +845,7 @@ def run_synthetic():
     return problems
 
 
-# --------------------------------------------------------------------------
-# The operator's check of the rater on a development case set
-# --------------------------------------------------------------------------
+# The Operator's Check Of The Rater On A Development Case Set
 
 CHECKS_ROOT = "\\assessment\\rater-checks"
 

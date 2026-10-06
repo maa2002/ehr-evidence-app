@@ -121,9 +121,7 @@ class BindingError(Exception):
     """A fail-closed precondition failure carrying a finding code only."""
 
 
-# --------------------------------------------------------------------------
 # Plan
-# --------------------------------------------------------------------------
 
 def real_plan():
     """Return the pinned inputs and the fixed protected output."""
@@ -166,9 +164,7 @@ def plan_problem(plan):
     return None
 
 
-# --------------------------------------------------------------------------
-# Canonical JSON and fingerprints
-# --------------------------------------------------------------------------
+# Canonical JSON And Fingerprints
 
 def canonical_json(value):
     """Return canonical UTF-8 JSON bytes (sorted, compact, no NaN)."""
@@ -195,9 +191,7 @@ def encode(document):
     return (text + "\n").encode("utf-8")
 
 
-# --------------------------------------------------------------------------
-# Pure checks (no torch): split, pos_weight, metrics, batch statistics
-# --------------------------------------------------------------------------
+# Pure Checks (No Torch): Split, pos_weight, Metrics, Batch Statistics
 
 def strict_int(value, minimum=0):
     """Return True for a plain int (not bool) of at least minimum."""
@@ -394,9 +388,7 @@ def evaluate_binding(run):
     return status, checks
 
 
-# --------------------------------------------------------------------------
 # Inputs
-# --------------------------------------------------------------------------
 
 def output_preconditions(plan):
     """Refuse an existing, unprotected or input-overlapping output."""
@@ -488,9 +480,7 @@ def metrics_reference(document):
     return test, document.get("args")
 
 
-# --------------------------------------------------------------------------
-# Isolation for upstream evaluation
-# --------------------------------------------------------------------------
+# Isolation For Upstream Evaluation
 
 def forbidden_category(name):
     """Return the forbidden category of a module name, else None."""
@@ -600,9 +590,7 @@ def load_upstream(plan, sources):
     return bridge, trainer
 
 
-# --------------------------------------------------------------------------
-# Real runtime (GNN interpreter only)
-# --------------------------------------------------------------------------
+# Real Runtime (GNN Interpreter Only)
 
 class TorchRuntime:
     """Runs the upstream-dependent part of the verification on CUDA."""
@@ -767,9 +755,7 @@ class TorchRuntime:
         return rows
 
 
-# --------------------------------------------------------------------------
-# Records and publication
-# --------------------------------------------------------------------------
+# Records And Publication
 
 def input_refs(plan):
     """Return path, size and SHA-256 of every pinned input."""
@@ -923,9 +909,7 @@ def run_real(plan=None, runtime_factory=TorchRuntime):
     return summary, digests
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_GRAPHS = 40
 SYNTHETIC_LABELS = 6
@@ -1023,9 +1007,7 @@ def run_synthetic():
     return summary, cases, tampered
 
 
-# --------------------------------------------------------------------------
 # Console
-# --------------------------------------------------------------------------
 
 def report(summary, digests=None):
     """Print the sanitised aggregate summary."""

@@ -226,9 +226,7 @@ def stage(settings, model_dir=None, root=STAGING_ROOT, verify=True):
     return directory, manifest, uploads
 
 
-# --------------------------------------------------------------------------
-# The model registry
-# --------------------------------------------------------------------------
+# The Model Registry
 
 def model_tags(settings):
     """Return the registered model's tags."""
@@ -438,9 +436,7 @@ def remote_result(environ=None, adapter_factory=checker.SdkAdapter,
                                                   "model_upload_failed")}
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented files only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Files Only)
 
 def invented_settings():
     """Return settings pinning two invented files, in memory."""

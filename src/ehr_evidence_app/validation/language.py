@@ -257,9 +257,7 @@ def check(candidate):
                                                  statement.kind)}))
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented wordings only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Wordings Only)
 
 # (wording, expected reason codes)
 SYNTHETIC_WORDINGS = (

@@ -240,9 +240,7 @@ def check_fixed_settings(atol=ATOL, rtol=RTOL, top_k=TOP_K, device=DEVICE):
         raise Step20Error("settings_changed")
 
 
-# --------------------------------------------------------------------------
-# Pinned inputs: identity before deserialisation, re-checked afterwards
-# --------------------------------------------------------------------------
+# Pinned Inputs: Identity Before Deserialisation, Re-Checked Afterwards
 
 def verify_hashed(entry, name, held):
     """Stream-hash a pinned asset without parsing it; hold its signature.
@@ -402,9 +400,7 @@ def confirm_inputs(held, rehash=False):
                                   % name)
 
 
-# --------------------------------------------------------------------------
-# Step 17 selection and Step 19 parity record
-# --------------------------------------------------------------------------
+# Step 17 Selection And Step 19 Parity Record
 
 def strict_int(value, minimum=0):
     """Return True for a plain int (not bool) of at least minimum."""
@@ -563,9 +559,7 @@ def check_preprocessed(graphs, processed, step19):
         raise Step20Error("preprocess_digest_mismatch")
 
 
-# --------------------------------------------------------------------------
-# Bridge record schema and canonical comparison
-# --------------------------------------------------------------------------
+# Bridge Record Schema And Canonical Comparison
 
 def finite_float(value):
     """Return True for a finite plain float."""
@@ -703,9 +697,7 @@ def canonical_prefix(document):
     return document
 
 
-# --------------------------------------------------------------------------
-# Isolation: silencing, network, tracker and tripwires
-# --------------------------------------------------------------------------
+# Isolation: Silencing, Network, Tracker And Tripwires
 
 class _DiscardSink:
     """Internal text stream that accepts and drops everything written."""
@@ -986,9 +978,7 @@ def check_model(model):
         raise Step20Error("model_not_on_cuda")
 
 
-# --------------------------------------------------------------------------
-# Pinned bridge adapter (real mode)
-# --------------------------------------------------------------------------
+# Pinned Bridge Adapter (Real Mode)
 
 def package_record(patient_index, label_index, concept_id, logit,
                    probability, explanation, inverse, names):
@@ -1196,9 +1186,7 @@ def real_runtime():
                                  bridge_factory=pinned_bridge)
 
 
-# --------------------------------------------------------------------------
-# Generation, manifest and atomic publication
-# --------------------------------------------------------------------------
+# Generation, Manifest And Atomic Publication
 
 def generate(bridge, model, processed, indices):
     """Return {index: normalised bridge record} by direct list indexing."""
@@ -1429,9 +1417,7 @@ def run_real(plan=None, runtime=None):
     return prepare_outputs(plan or real_plan(), runtime or real_runtime())
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_SUBJECT_ID_BASE = 9900000
 SYNTHETIC_PERSON_ID_BASE = 7700000

@@ -91,9 +91,7 @@ def real_plan():
     }
 
 
-# --------------------------------------------------------------------------
-# Verified single-pass reading
-# --------------------------------------------------------------------------
+# Verified Single-Pass Reading
 
 class DigestingReader(io.RawIOBase):
     """A raw stream that hashes and counts every byte it hands on."""
@@ -158,9 +156,7 @@ def clean(value):
     return " ".join((value or "").split())
 
 
-# --------------------------------------------------------------------------
-# Row selection (pure)
-# --------------------------------------------------------------------------
+# Row Selection (Pure)
 
 def select_concepts(rows):
     """Return (standard condition ids, ICD ids, concept lines)."""
@@ -269,9 +265,7 @@ def manifest_document(plan, files, counts):
                       for name, data in sorted(files.items())}}
 
 
-# --------------------------------------------------------------------------
 # Publication
-# --------------------------------------------------------------------------
 
 def output_preconditions(plan):
     """Refuse an existing or unprotected output."""
@@ -329,9 +323,7 @@ def run_real(plan=None):
     return counts, publish(plan, files)
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_TABLES = {
     "concept": [

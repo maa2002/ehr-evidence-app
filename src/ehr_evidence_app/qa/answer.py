@@ -121,9 +121,7 @@ class AnswerError(Exception):
     """A fail-closed pipeline failure carrying a finding code only."""
 
 
-# --------------------------------------------------------------------------
-# Bundle sets
-# --------------------------------------------------------------------------
+# Bundle Sets
 
 def bundle_set_plan(case_set):
     """Return the pinned manifest of a case set's current bundle set."""
@@ -204,9 +202,7 @@ def load_bundle_set(plan):
     return BundleSet(plan["label"], plan["directory"], manifest)
 
 
-# --------------------------------------------------------------------------
 # Responses
-# --------------------------------------------------------------------------
 
 @dataclasses.dataclass(frozen=True)
 class Result:
@@ -301,9 +297,7 @@ def resolution_notice(request_id, case, scope, interpretation, resolution):
                             "concept_unknown", task=task, term=term)
 
 
-# --------------------------------------------------------------------------
 # Answers
-# --------------------------------------------------------------------------
 
 def resolve_phrase(interpretation, vocab, suggestions=True):
     """Resolve the longest candidate of the condition phrase that names

@@ -119,9 +119,7 @@ def pinned(version=OUTPUT_VERSION):
             "size_bytes": pin[0], "sha256": pin[1], "version": version}
 
 
-# --------------------------------------------------------------------------
-# Row selection (pure)
-# --------------------------------------------------------------------------
+# Row Selection (Pure)
 
 def concept_kind(row):
     """Return the kind of a concept row the vocabulary keeps, or None."""
@@ -329,9 +327,7 @@ def run_real(plan=None):
     return counts, digests
 
 
-# --------------------------------------------------------------------------
 # Loading
-# --------------------------------------------------------------------------
 
 @dataclasses.dataclass(frozen=True)
 class DrugConcept:
@@ -442,9 +438,7 @@ def drug_ancestors(entry=None):
     return dict(found), digest
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_TABLES = {
     "concept": [

@@ -236,9 +236,7 @@ def finding(section, rule, detail=""):
     return (section, rule, detail)
 
 
-# --------------------------------------------------------------------------
-# Declaration file
-# --------------------------------------------------------------------------
+# Declaration File
 
 def read_declaration(path):
     """Return the parsed declaration from the repository config directory.
@@ -274,9 +272,7 @@ def read_declaration(path):
         raise OperationalError("the declaration is not valid JSON")
 
 
-# --------------------------------------------------------------------------
-# Declaration checks (values are examined, never returned or printed)
-# --------------------------------------------------------------------------
+# Declaration Checks (Values Are Examined, Never Returned Or Printed)
 
 def check_schema(declaration):
     """Return schema findings for the top level of the declaration."""
@@ -426,9 +422,7 @@ def check_step9_policy():
     return []
 
 
-# --------------------------------------------------------------------------
-# Probe environment (checked before the SDK is imported)
-# --------------------------------------------------------------------------
+# Probe Environment (Checked Before The SDK Is Imported)
 
 def config_file_problems(path, lstat):
     """Return findings for the configuration file named by the variable.
@@ -479,9 +473,7 @@ def environment_problems(environ, lstat=os.lstat):
     return findings
 
 
-# --------------------------------------------------------------------------
-# Live probe
-# --------------------------------------------------------------------------
+# Live Probe
 
 def null_logger():
     """Return a logger that discards every record passed to the SDK."""
@@ -937,9 +929,7 @@ def run_probe(create_task, environ, adapter_factory, lstat=os.lstat,
     return findings, facts, timer.summary()
 
 
-# --------------------------------------------------------------------------
-# Command line
-# --------------------------------------------------------------------------
+# Command Line
 
 MODE_TEXT = {
     MODE_DECLARATION: "declaration only (no SDK import, environment read "

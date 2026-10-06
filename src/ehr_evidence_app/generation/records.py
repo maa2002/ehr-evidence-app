@@ -269,9 +269,7 @@ class Recorder:
             request, question, bundle_sha256, written, self.backend()))
 
 
-# --------------------------------------------------------------------------
 # Aggregates
-# --------------------------------------------------------------------------
 
 def rounded(values):
     """Return the median, 90th percentile and largest of some numbers."""
@@ -324,9 +322,7 @@ def aggregate(records):
             "peak_gpu_mib": rounded(peaks)}
 
 
-# --------------------------------------------------------------------------
-# The log audit
-# --------------------------------------------------------------------------
+# The Log Audit
 
 LOGS_ROOT = guard.PRIVATE_ROOT + "\\outputs\\logs"
 MAX_LOG_BYTES = 64 * 1024 * 1024
@@ -403,9 +399,7 @@ def audit_logs(roots, rules=None):
     return flagged, read_files
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def scripted_writer(pairs):
     """Return a writer whose scripted backend writes each invented

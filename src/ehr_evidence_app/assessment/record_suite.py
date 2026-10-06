@@ -281,9 +281,7 @@ def summary(found):
     return dict(counts)
 
 
-# --------------------------------------------------------------------------
-# Default and operator modes
-# --------------------------------------------------------------------------
+# Default And Operator Modes
 
 # The invented case's suite: every question read right is delivered
 # correctly. The invented procedure dictionary holds neither invented

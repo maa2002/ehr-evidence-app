@@ -125,9 +125,7 @@ class Step21Error(Exception):
     """A fail-closed Step 21 failure carrying a finding code only."""
 
 
-# --------------------------------------------------------------------------
-# Plan and configuration
-# --------------------------------------------------------------------------
+# Plan And Configuration
 
 def step20_inventory(assets):
     """Return the asset inventory exactly as the Step 20 manifest holds it."""
@@ -261,9 +259,7 @@ def read_config_bytes(path):
         raise Step21Error("config_unreadable") from None
 
 
-# --------------------------------------------------------------------------
-# Canonical JSON and fingerprint
-# --------------------------------------------------------------------------
+# Canonical JSON And Fingerprint
 
 def canonical_json(value):
     """Return the canonical UTF-8 JSON bytes used for every digest."""
@@ -291,9 +287,7 @@ def fingerprint(body):
     return value, VERSION_PREFIX + value[:VERSION_HEX_CHARS]
 
 
-# --------------------------------------------------------------------------
-# Input verification
-# --------------------------------------------------------------------------
+# Input Verification
 
 def check_bytes(plan, raw):
     """Fail closed unless every pinned role's bytes match size and SHA-256."""
@@ -350,9 +344,7 @@ def parse_documents(raw):
     return documents
 
 
-# --------------------------------------------------------------------------
-# Step 20 manifest, agreement and Step 19 checks
-# --------------------------------------------------------------------------
+# Step 20 Manifest, Agreement And Step 19 Checks
 
 def check_manifest(manifest, plan, raw):
     """Verify the Step 20 manifest against its files, assets and flags.
@@ -454,9 +446,7 @@ def check_policy_sources(plan, mapping_document):
         raise Step21Error("policy_source_mismatch")
 
 
-# --------------------------------------------------------------------------
-# Step 17 records and the Step 20 output bijection
-# --------------------------------------------------------------------------
+# Step 17 Records And The Step 20 Output Bijection
 
 def check_mapping_document(document, plan):
     """Validate the Step 17 mapping as Step 20 selected it; return records.
@@ -570,9 +560,7 @@ def check_outputs(outputs, records):
     return pairs
 
 
-# --------------------------------------------------------------------------
-# Derived records and sidecar
-# --------------------------------------------------------------------------
+# Derived Records And Sidecar
 
 def mapped_visit(node):
     """Return one position's verified mapped source visit."""
@@ -721,9 +709,7 @@ def build_sidecar(plan, raw, config_ref):
     return sidecar
 
 
-# --------------------------------------------------------------------------
 # Publication
-# --------------------------------------------------------------------------
 
 def output_preconditions(plan):
     """Refuse an existing, unprotected or input-overlapping output."""
@@ -832,9 +818,7 @@ def run_real(plan=None):
     return attach(plan or real_plan())
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_PILOT = (1, 3, 4, 6, 7, 8, 10, 11, 12, 13)
 SYNTHETIC_PERSON_BASE = 7700000

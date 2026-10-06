@@ -192,9 +192,7 @@ class Resolution:
     codes: tuple = ()
 
 
-# --------------------------------------------------------------------------
 # Normalisation
-# --------------------------------------------------------------------------
 
 def normalize(text):
     """Return the normalised form of a phrase or vocabulary name."""
@@ -237,9 +235,7 @@ def is_code(text):
     return bool(ICD10.match(key) or ICD9.match(key))
 
 
-# --------------------------------------------------------------------------
 # Loading
-# --------------------------------------------------------------------------
 
 def tsv(data, columns):
     """Return the rows of verified vocabulary TSV bytes."""
@@ -334,9 +330,7 @@ def load(plan=None):
     return parse(files, plan["manifest"]["sha256"].lower())
 
 
-# --------------------------------------------------------------------------
 # Resolution
-# --------------------------------------------------------------------------
 
 def decide(vocab, phrase, rule, ids):
     """Return the resolution for the concepts one rule produced."""
@@ -462,9 +456,7 @@ def suggest(vocab, phrase, limit=SUGGESTIONS):
                  if vocab.descendant_count(concept) <= broad)[:limit]
 
 
-# --------------------------------------------------------------------------
 # Matching
-# --------------------------------------------------------------------------
 
 def negated(words, start):
     """Return True when the phrase at start is preceded by a negation."""

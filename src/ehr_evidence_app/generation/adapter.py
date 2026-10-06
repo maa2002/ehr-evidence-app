@@ -250,9 +250,7 @@ def attempt(writer, context, template, release):
                    output=output)
 
 
-# --------------------------------------------------------------------------
-# Scripted runs: every way a writer can fail, on the template's answers
-# --------------------------------------------------------------------------
+# Scripted Runs: Every Way A Writer Can Fail, On The Template's Answers
 
 def output(text, finished=True):
     """Return a scripted Output of a text."""

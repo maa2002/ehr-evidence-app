@@ -226,9 +226,7 @@ class Step22Error(Exception):
     """A fail-closed Step 22 failure carrying a finding code only."""
 
 
-# --------------------------------------------------------------------------
-# Plan and configuration
-# --------------------------------------------------------------------------
+# Plan And Configuration
 
 def real_plan():
     """Return the pinned inputs, graph identity and fixed protected output."""
@@ -351,9 +349,7 @@ def read_config_bytes(path):
         raise Step22Error("config_unreadable") from None
 
 
-# --------------------------------------------------------------------------
-# Canonical JSON, fingerprint and findings
-# --------------------------------------------------------------------------
+# Canonical JSON, Fingerprint And Findings
 
 def canonical_json(value):
     """Return the canonical UTF-8 JSON bytes used for every digest."""
@@ -391,9 +387,7 @@ def overall(findings, base=VERIFIED):
     return status
 
 
-# --------------------------------------------------------------------------
-# Input verification (fail closed)
-# --------------------------------------------------------------------------
+# Input Verification (Fail Closed)
 
 def check_bytes(plan, raw):
     """Fail closed unless every pinned role's bytes match size and SHA-256."""
@@ -515,9 +509,7 @@ def check_step19(document):
             "graphs_filtered": counts["graphs_filtered"]}
 
 
-# --------------------------------------------------------------------------
-# Run-level evidence (unknown on conflict, unavailable on gaps)
-# --------------------------------------------------------------------------
+# Run-Level Evidence (Unknown On Conflict, Unavailable On Gaps)
 
 def nested(document, *keys):
     """Return a nested value, or None when any level is absent."""
@@ -923,9 +915,7 @@ def check_rng(plan, raw, runtime, findings):
     return summary
 
 
-# --------------------------------------------------------------------------
-# Exact split replay over filtered positions
-# --------------------------------------------------------------------------
+# Exact Split Replay Over Filtered Positions
 
 def split_positions(n, val_frac, test_frac, seed, default_rng):
     """Replay the pinned split_graphs slicing over positions 0..n-1.
@@ -1041,9 +1031,7 @@ def expected_counts(n, agreed, basis, collection):
                            "canonical-run partition counts")}
 
 
-# --------------------------------------------------------------------------
 # Cases
-# --------------------------------------------------------------------------
 
 def strict_index(record):
     """Return a record's patient_index when it is a plain int, else None."""
@@ -1177,9 +1165,7 @@ def case_counts(cases):
     return counts
 
 
-# --------------------------------------------------------------------------
 # Sidecar
-# --------------------------------------------------------------------------
 
 def input_refs(plan, raw):
     """Return path, size and SHA-256 of every role (null when absent)."""
@@ -1322,9 +1308,7 @@ def build_sidecar(plan, raw, config_ref, runtime):
     return sidecar
 
 
-# --------------------------------------------------------------------------
 # Publication
-# --------------------------------------------------------------------------
 
 def output_preconditions(plan):
     """Refuse an existing, unprotected or input-overlapping output."""
@@ -1468,9 +1452,7 @@ def run_real(plan=None, runtime=None):
     return attach(plan or real_plan(), runtime or real_runtime())
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_MARKER = "SYNTHETIC_STEP22_FIXTURE"
 SYNTHETIC_SEED = 20260925

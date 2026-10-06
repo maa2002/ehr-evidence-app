@@ -189,9 +189,7 @@ def text(projection):
     return json.dumps(projection, separators=(",", ":"), ensure_ascii=False)
 
 
-# --------------------------------------------------------------------------
-# The correct document from the projection alone
-# --------------------------------------------------------------------------
+# The Correct Document From The Projection Alone
 
 RESTRICTION_NOTICES = {"batch_sensitive_prediction": "batch_sensitive",
                        "target_attached_drivers_present": "target_attached",
@@ -311,9 +309,7 @@ def answer(projection):
     return explanation_answer(projection)
 
 
-# --------------------------------------------------------------------------
-# Default and operator modes
-# --------------------------------------------------------------------------
+# Default And Operator Modes
 
 def compare(pairs):
     """Return (requests, answered from the projection alone, characters of

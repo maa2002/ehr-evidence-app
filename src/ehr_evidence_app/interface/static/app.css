@@ -123,9 +123,7 @@
   }
 }
 
-/* ---------------------------------------------------------------------------
-   Base
-   --------------------------------------------------------------------------- */
+/* Base */
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -211,9 +209,7 @@ button:disabled { cursor: default; }
 
 body.is-resizing { cursor: col-resize; user-select: none; }
 
-/* ---------------------------------------------------------------------------
-   Controls
-   --------------------------------------------------------------------------- */
+/* Controls */
 
 /* A label is trimmed to its capitals and baseline, so that its control
    centres the letters themselves. Fonts keep more room above their
@@ -299,9 +295,7 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   text-transform: uppercase;
 }
 
-/* ---------------------------------------------------------------------------
-   Menus
-   --------------------------------------------------------------------------- */
+/* Menus */
 
 .menu { position: relative; min-width: 0; }
 
@@ -389,9 +383,7 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   to { opacity: 1; transform: none; }
 }
 
-/* ---------------------------------------------------------------------------
-   Sidebar
-   --------------------------------------------------------------------------- */
+/* Sidebar */
 
 .sidebar {
   flex: 0 0 var(--sidebar-width);
@@ -551,9 +543,7 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .scrim { position: fixed; inset: 0; z-index: 35; background: var(--scrim); }
 
-/* ---------------------------------------------------------------------------
-   Main column: the bars float over the conversation as it scrolls.
-   --------------------------------------------------------------------------- */
+/* Main Column: The Bars Float Over The Conversation As It Scrolls. */
 
 .main {
   position: relative;
@@ -731,9 +721,7 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .welcome-hint { max-width: none; margin: 2px 0 0; color: var(--muted); font-size: 14px; }
 .welcome-hint span { display: block; text-wrap: balance; }
 
-/* ---------------------------------------------------------------------------
-   The thread
-   --------------------------------------------------------------------------- */
+/* The Thread */
 
 .thread {
   display: flex;
@@ -1028,9 +1016,7 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .block[open] > summary .icon { transform: rotate(180deg); }
 .block-body { display: grid; gap: 10px; padding: 0 16px 14px; }
 
-/* ---------------------------------------------------------------------------
-   The composer
-   --------------------------------------------------------------------------- */
+/* The Composer */
 
 .composer {
   display: flex;
@@ -1177,9 +1163,7 @@ button.tool:hover:not(:disabled) { background: var(--glass-strong); color: var(-
   text-wrap: balance;
 }
 
-/* ---------------------------------------------------------------------------
-   The evidence panel
-   --------------------------------------------------------------------------- */
+/* The Evidence Panel */
 
 .panel {
   position: relative;
@@ -1321,9 +1305,7 @@ tr.is-focus td { background: var(--accent-soft); }
 .skeleton span:nth-child(3n) { width: 62%; }
 .skeleton span:nth-child(3n + 1) { width: 88%; }
 
-/* ---------------------------------------------------------------------------
-   Narrower screens
-   --------------------------------------------------------------------------- */
+/* Narrower Screens */
 
 @media (max-width: 1240px) {
   .panel {

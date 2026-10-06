@@ -78,9 +78,7 @@ def out_of_memory(error):
             or "out of memory" in str(error).lower())
 
 
-# --------------------------------------------------------------------------
-# The engines
-# --------------------------------------------------------------------------
+# The Engines
 
 class FakeEngine:
     """A stand-in for tests of the protocol: tokens are counted as one per
@@ -315,9 +313,7 @@ class Engine:
                 "peak_memory_bytes": torch.cuda.max_memory_allocated()}
 
 
-# --------------------------------------------------------------------------
-# The protocol
-# --------------------------------------------------------------------------
+# The Protocol
 
 def handle(engine, request):
     """Return the reply to one request."""

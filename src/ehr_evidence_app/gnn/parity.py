@@ -117,9 +117,7 @@ def real_plan():
     }
 
 
-# --------------------------------------------------------------------------
-# Model-consumed tensors
-# --------------------------------------------------------------------------
+# Model-Consumed Tensors
 
 def to_array(value):
     """Return a numpy view of a tensor or array, None when absent.
@@ -219,9 +217,7 @@ def is_diagnosis_graph(graph):
     return hasattr(graph, "y_diagnosis")
 
 
-# --------------------------------------------------------------------------
-# Independent formula oracle
-# --------------------------------------------------------------------------
+# Independent Formula Oracle
 
 def visit_statistics(collection):
     """Return (mean, std) of z-score columns over all visit rows.
@@ -343,9 +339,7 @@ def compare_exact(first, second):
         raise ParityError("source_path_mismatch")
 
 
-# --------------------------------------------------------------------------
-# Pinned identities, upstream adapters and output
-# --------------------------------------------------------------------------
+# Pinned Identities, Upstream Adapters And Output
 
 def verify_sources(plan):
     """Check each pinned source's path, link safety and SHA-256.
@@ -601,9 +595,7 @@ def run_real(plan=None):
     return summary
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode
-# --------------------------------------------------------------------------
+# Synthetic Default Mode
 
 class SyntheticGraph:
     """Invented heterogeneous graph exposing the fields the check reads."""

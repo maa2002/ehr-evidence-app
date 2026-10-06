@@ -103,9 +103,7 @@ def real_plan(case_set=None):
     return plan
 
 
-# --------------------------------------------------------------------------
-# Pure core (no torch)
-# --------------------------------------------------------------------------
+# Pure Core (No Torch)
 
 def inverse_vocabulary(concept_vocab):
     """Return {domain: {vocab_index: concept_id}} from the concept vocab."""
@@ -271,9 +269,7 @@ def build_record(plan, entries, input_refs):
     return record, summary
 
 
-# --------------------------------------------------------------------------
-# Real runtime (GNN interpreter)
-# --------------------------------------------------------------------------
+# Real Runtime (GNN Interpreter)
 
 class GraphRuntime:
     """Extracts plain per-case graph structure from the verified graphs."""
@@ -416,9 +412,7 @@ def run_real(plan=None, runtime_factory=GraphRuntime):
     return summary, digests
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_PERSON_ID = 77
 SYNTHETIC_SUBJECT_ID = 99

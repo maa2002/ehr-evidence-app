@@ -238,9 +238,7 @@ def run(pairs, writer, release_of, vocabulary=None, directory=None,
     return tally.document(len(pairs))
 
 
-# --------------------------------------------------------------------------
-# A run's directory
-# --------------------------------------------------------------------------
+# A Run's Directory
 
 def run_identifier(case_set, now=None):
     """Return a run's identifier: its case set and UTC start time."""
@@ -283,9 +281,7 @@ def configuration_of(case_set, writer, requests, commit,
             "limits": writer.limits.model_dump(mode="json")}
 
 
-# --------------------------------------------------------------------------
-# Challenges and the default mode
-# --------------------------------------------------------------------------
+# Challenges And The Default Mode
 
 def challenges():
     """Return (name, context, template, expected outcome per condition)
@@ -428,9 +424,7 @@ def report(summary):
         print("%-10s %-24s failure %-14s %d" % (name, task, category, count))
 
 
-# --------------------------------------------------------------------------
-# The operator mode: a development case set with the pinned model
-# --------------------------------------------------------------------------
+# The Operator Mode: A Development Case Set With The Pinned Model
 
 def run_real(case_set, per_group, task=None):
     """Write a case set's sampled requests in both conditions with the

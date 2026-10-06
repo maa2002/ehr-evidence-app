@@ -574,9 +574,7 @@ class Candidate(Frozen):
                                               max_length=MAX_STATEMENTS)
 
 
-# --------------------------------------------------------------------------
 # Rendering
-# --------------------------------------------------------------------------
 
 def placeholders(wording):
     """Return the placeholder names of a wording, in order."""
@@ -879,9 +877,7 @@ def notice(notice_id, **slots):
                      slots=Slots(**slots), notice=notice_id)
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented values only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Values Only)
 
 def synthetic_candidates():
     """Return (valid, invalid) invented candidate documents."""

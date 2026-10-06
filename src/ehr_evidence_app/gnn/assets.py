@@ -113,9 +113,7 @@ class AssetProblem(Exception):
         self.code = code
 
 
-# --------------------------------------------------------------------------
-# Small type checks
-# --------------------------------------------------------------------------
+# Small Type Checks
 
 def is_count(value):
     """Return True for a non-negative integer that is not a boolean."""
@@ -136,9 +134,7 @@ def is_exact(value, required):
     return type(value) is type(required) and value == required
 
 
-# --------------------------------------------------------------------------
-# Bounded, link-free reads
-# --------------------------------------------------------------------------
+# Bounded, Link-Free Reads
 
 def link_walk_problem(path):
     """Return a finding code when path is not a plain regular file, else None.
@@ -243,9 +239,7 @@ def parse_json_bytes(raw, strict=True):
                       object_pairs_hook=unique_object, **extra)
 
 
-# --------------------------------------------------------------------------
-# Configuration authority (checked before any upstream asset is opened)
-# --------------------------------------------------------------------------
+# Configuration Authority (Checked Before Any Upstream Asset Is Opened)
 
 def relative_path_problem(relative):
     """Return True when an upstream-relative path is not plain and safe.
@@ -332,9 +326,7 @@ def load_config():
     return config, digest, config_findings(config)
 
 
-# --------------------------------------------------------------------------
-# Structural checks on verified JSON bytes
-# --------------------------------------------------------------------------
+# Structural Checks On Verified JSON Bytes
 
 def label_vocab_summary(data):
     """Return (summary, findings) for a sequence of scalar labels."""
@@ -420,9 +412,7 @@ def not_evaluated(role):
     return summary
 
 
-# --------------------------------------------------------------------------
-# Checkpoint compatibility probe
-# --------------------------------------------------------------------------
+# Checkpoint Compatibility Probe
 
 def probe_findings(probe, checkpoint_entry, checkpoint_observed):
     """Return findings for the pinned checkpoint probe record.
@@ -482,9 +472,7 @@ def check_probe(checkpoint_entry, checkpoint_observed):
             "label_order_status": probe["label_order_status"]}, []
 
 
-# --------------------------------------------------------------------------
 # Record
-# --------------------------------------------------------------------------
 
 def failed_record(config_digest, findings):
     """Return the record for a configuration failure; no asset was opened."""

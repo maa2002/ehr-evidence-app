@@ -225,9 +225,7 @@ def bootstrap_difference(cases, measure, replicates=REPLICATES, seed=SEED):
                         left_out)
 
 
-# --------------------------------------------------------------------------
-# Default mode: a published worked example and values worked by hand
-# --------------------------------------------------------------------------
+# Default Mode: A Published Worked Example And Values Worked By Hand
 
 def accuracy(terms):
     """Return correct over requests, or None for no requests."""

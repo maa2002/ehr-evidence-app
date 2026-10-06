@@ -115,9 +115,7 @@ def real_plan():
             "output_dir": PARTITION_DIR, "protected_root": PROTECTED_ROOT}
 
 
-# --------------------------------------------------------------------------
-# The archive
-# --------------------------------------------------------------------------
+# The Archive
 
 class Archive:
     """The verified members of the dataset archive, by name."""
@@ -188,9 +186,7 @@ def read_pinned(entry, name, held):
     return data
 
 
-# --------------------------------------------------------------------------
 # Partitions
-# --------------------------------------------------------------------------
 
 def owners(rows):
     """Return {admission: patient} of cohort rows."""
@@ -337,9 +333,7 @@ def run_partition(plan=None):
     return document, (len(data), hashlib.sha256(data).hexdigest())
 
 
-# --------------------------------------------------------------------------
-# The held-out test
-# --------------------------------------------------------------------------
+# The Held-Out Test
 
 def family_of(event_type, question):
     """Return the question family: the all-diagnoses list, a ranking of
@@ -456,9 +450,7 @@ def run_held_out(plan=None):
         "vocabulary_manifest": vocab.digest})
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 # Invented patients and admissions: (patient, admission, split files). The
 # first and fourth patients stand for patients of our case sets.
@@ -528,9 +520,7 @@ def run_synthetic():
     return document, result
 
 
-# --------------------------------------------------------------------------
-# Command line
-# --------------------------------------------------------------------------
+# Command Line
 
 def report_partition(document, pin=None):
     """Print the partition counts and the record pin."""

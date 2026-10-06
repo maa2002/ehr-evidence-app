@@ -119,9 +119,7 @@ def owner_of(request):
     return request.scope.get(gate.SESSION_SCOPE_KEY) or "local"
 
 
-# --------------------------------------------------------------------------
-# What a request names
-# --------------------------------------------------------------------------
+# What A Request Names
 
 def case_set_of(value):
     """Return a case set's label, or refuse one no case set could have."""
@@ -203,9 +201,7 @@ async def body_of(request, fields):
     return value
 
 
-# --------------------------------------------------------------------------
-# The application
-# --------------------------------------------------------------------------
+# The Application
 
 def create_app(client, jobs=None, log=None, version=__version__,
                question_chars=None):
@@ -376,9 +372,7 @@ def create_app(client, jobs=None, log=None, version=__version__,
         lifespan=lifespan)
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def run_synthetic():
     """Serve the invented case set through the API and this application

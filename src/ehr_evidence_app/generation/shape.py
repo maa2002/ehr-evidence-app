@@ -193,9 +193,7 @@ def omitted_drivers(context):
     return explanation.omitted(context.bundle, context.limit)
 
 
-# --------------------------------------------------------------------------
 # Schema
-# --------------------------------------------------------------------------
 
 def wording(kind):
     """Return the schema of a wording of a statement kind: one line of
@@ -409,9 +407,7 @@ def schema(context):
     return dict(found, **{"$defs": definitions})
 
 
-# --------------------------------------------------------------------------
-# Checking a document against its schema
-# --------------------------------------------------------------------------
+# Checking A Document Against Its Schema
 
 TYPES = {"object": dict, "array": list, "string": str, "null": type(None),
          "boolean": bool}
@@ -518,9 +514,7 @@ def violations(value, schema_, path="$", root=None):
     return found
 
 
-# --------------------------------------------------------------------------
-# Documents and candidates
-# --------------------------------------------------------------------------
+# Documents And Candidates
 
 def statement(kind, wording_, refs=(), **slots):
     """Return a statement of a kind with a wording, facts and references."""
@@ -759,9 +753,7 @@ def text(document):
     return json.dumps(document, separators=SEPARATORS, ensure_ascii=False)
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def synthetic_contexts():
     """Return (context, template candidate) pairs of the invented

@@ -65,9 +65,7 @@ def real_plan(label):
     }
 
 
-# --------------------------------------------------------------------------
-# Pure core
-# --------------------------------------------------------------------------
+# Pure Core
 
 def split_facts(summary):
     """Return the verified split facts of a run-binding summary."""
@@ -203,9 +201,7 @@ def build_records(label, value, cases, counts, facts, input_refs):
     return document, summary
 
 
-# --------------------------------------------------------------------------
-# Real run (GNN interpreter, CPU)
-# --------------------------------------------------------------------------
+# Real Run (GNN Interpreter, CPU)
 
 def excluded_indices(value, plan):
     """Return the bridge indices of every case in the excluded sets."""
@@ -312,9 +308,7 @@ def run_real(label, plan=None, loader=mapping.torch_loader):
     return summary, publish(plan, files, held)
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_GRAPHS = 400
 SYNTHETIC_SUBJECT_ID_BASE = 5500000

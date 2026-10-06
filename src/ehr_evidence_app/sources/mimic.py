@@ -274,9 +274,7 @@ def read_files(label, names):
     return found
 
 
-# --------------------------------------------------------------------------
-# Reading one raw table
-# --------------------------------------------------------------------------
+# Reading One Raw Table
 
 def records(handle, counter):
     """Yield the logical CSV records of a binary stream, one bytes value
@@ -403,9 +401,7 @@ def scan(handle, table, routes, emit):
             "sha256": counter["sha256"].hexdigest()}
 
 
-# --------------------------------------------------------------------------
-# The rows kept for one case set
-# --------------------------------------------------------------------------
+# The Rows Kept For One Case Set
 
 class Collector:
     """The rows of one case set's tables, checked as they arrive: each
@@ -445,9 +441,7 @@ class Collector:
         return text.getvalue().encode("utf-8")
 
 
-# --------------------------------------------------------------------------
-# Plan, inputs and the source snapshots
-# --------------------------------------------------------------------------
+# Plan, Inputs And The Source Snapshots
 
 def real_plan():
     """Return the pinned raw inputs, the source snapshot of each case set
@@ -554,9 +548,7 @@ def pin_problem(counts, pin, name):
     return None
 
 
-# --------------------------------------------------------------------------
 # Publishing
-# --------------------------------------------------------------------------
 
 def now_utc():
     """Return the current UTC time in ISO form."""
@@ -747,9 +739,7 @@ def verify(plan, label):
     return problems
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented rows only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Rows Only)
 
 SYNTHETIC_SUBJECTS = {"synthetic-a-v1": {"900001"},
                       "synthetic-b-v1": {"900002"}}

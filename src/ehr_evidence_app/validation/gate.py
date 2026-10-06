@@ -114,9 +114,7 @@ def release(candidate, request_id, case, scope, bundle=None,
     return response
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def crashing(candidate, bundle, vocab):
     """A check that fails to run."""

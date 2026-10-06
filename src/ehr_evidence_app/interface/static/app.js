@@ -32,9 +32,7 @@ const HELP_WORDS = /^(?:help|help me|please help|what can i ask|what can you do)
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const overlaid = window.matchMedia("(max-width: 1240px)");
 
-// ---------------------------------------------------------------------------
 // Elements
-// ---------------------------------------------------------------------------
 
 const byId = (id) => document.getElementById(id);
 
@@ -155,9 +153,7 @@ function kept(name) {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Requests
-// ---------------------------------------------------------------------------
 
 class Refusal extends Error {
   constructor(code, message, status) {
@@ -207,10 +203,9 @@ const post = (path, body) => request(path, {method: "POST", body});
 const casePath = (caseSet, number) =>
   `/api/case-sets/${encodeURIComponent(caseSet)}/cases/${number}`;
 
-// ---------------------------------------------------------------------------
-// Menus: a button that opens a list of choices, in groups, each with what
-// it holds. The list is drawn above the page, so that no panel clips it.
-// ---------------------------------------------------------------------------
+// Menus
+// A button that opens a list of choices, in groups, each with what it holds.
+// The list is drawn above the page, so that no panel clips it.
 
 let openMenu = null;
 let menuCount = 0;
@@ -393,9 +388,7 @@ const menus = {
   }),
 };
 
-// ---------------------------------------------------------------------------
 // State
-// ---------------------------------------------------------------------------
 
 const state = {
   caseSets: [],
@@ -422,9 +415,7 @@ function currentScope() {
   return scopes.find((scope) => scope.key === state.scopeKey) || scopes[0];
 }
 
-// ---------------------------------------------------------------------------
-// The banner and the model's state
-// ---------------------------------------------------------------------------
+// The Banner And The Model's State
 
 // The banner says what failed; kind names what it is about (the state or
 // the case), so that the success of the same thing takes it away.
@@ -479,9 +470,7 @@ async function refreshState() {
   state.timer = setTimeout(refreshState, seconds * 1000);
 }
 
-// ---------------------------------------------------------------------------
-// Cohorts and patients (work item 49)
-// ---------------------------------------------------------------------------
+// Cohorts And Patients (Work Item 49)
 
 // A patient is found by the pseudonym, or by the case's number.
 function matches(item, term) {
@@ -618,9 +607,7 @@ function newConversation() {
   ui.question.focus();
 }
 
-// ---------------------------------------------------------------------------
-// Questions and the explanation (work items 50 and 51)
-// ---------------------------------------------------------------------------
+// Questions And The Explanation (Work Items 50 And 51)
 
 function ask(text) {
   const question = text.trim();
@@ -822,9 +809,7 @@ function tick() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// The thread
-// ---------------------------------------------------------------------------
+// The Thread
 
 function renderThread() {
   for (const turn of state.thread) turn.node = turnNode(turn);
@@ -1057,9 +1042,7 @@ function helpReply(turn) {
     notesBlock(help.notes));
 }
 
-// ---------------------------------------------------------------------------
-// The evidence (work item 52)
-// ---------------------------------------------------------------------------
+// The Evidence (Work Item 52)
 
 function evidenceOf(caseSet, number, key) {
   const id = `${caseSet}/${number}/${key}`;
@@ -1199,9 +1182,7 @@ function bindResizer() {
   ui.resizer.addEventListener("dblclick", () => setPanelWidth(PANEL.standard, true));
 }
 
-// ---------------------------------------------------------------------------
-// The conversation's scroll thumb
-// ---------------------------------------------------------------------------
+// The Conversation's Scroll Thumb
 
 // The column scrolls without the browser's scrollbar, whose lane along its
 // right edge stopped the bars short of that edge (app.css). This thumb
@@ -1262,9 +1243,7 @@ function bindScrollThumb() {
   placeThumb();
 }
 
-// ---------------------------------------------------------------------------
-// The composer and the sidebar on small screens
-// ---------------------------------------------------------------------------
+// The Composer And The Sidebar On Small Screens
 
 // Fit the question box to its text, or to its placeholder when empty; it
 // scrolls only past its largest height.

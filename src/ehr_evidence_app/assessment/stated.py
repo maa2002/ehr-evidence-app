@@ -143,9 +143,7 @@ def read(request_id, outcome, candidate, bundle, has_text, wording=None):
         tuple(candidate.reason_codes))
 
 
-# --------------------------------------------------------------------------
-# Default mode: the invented fixtures' template candidates
-# --------------------------------------------------------------------------
+# Default Mode: The Invented Fixtures' Template Candidates
 
 def run_synthetic():
     """Return the problems of reading the invented fixtures' templates."""

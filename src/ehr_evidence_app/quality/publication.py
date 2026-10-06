@@ -118,11 +118,10 @@ COMMIT_LABEL = "<commit object>"
 TAG_LABEL = "<annotated tag object>"
 PATHLESS_LABEL = "<blob outside every commit tree>"
 
-# --------------------------------------------------------------------------
-# Fixed rules. The policy file must declare these; it may tighten them
-# (fewer publishable types or placeholders, more forbidden entries, probes
-# or signatures) but never weaken them.
-# --------------------------------------------------------------------------
+# Fixed Rules
+# The policy file must declare these; it may tighten them (fewer publishable
+# types or placeholders, more forbidden entries, probes or signatures) but
+# never weaken them.
 
 # Ceilings: the policy may list a subset only.
 PUBLISHABLE_EXTENSIONS = (".cfg", ".ini", ".json", ".md", ".ps1", ".py",
@@ -373,9 +372,7 @@ def bounded_token(words):
                       % "|".join(re.escape(word) for word in words))
 
 
-# --------------------------------------------------------------------------
-# Fixed roots and read-only filesystem inspection
-# --------------------------------------------------------------------------
+# Fixed Roots And Read-Only Filesystem Inspection
 
 def fixed_policy_problem():
     """Return why the roots fixed in this module are unsafe, else None.
@@ -485,9 +482,7 @@ def history_boundary_problem():
     return None
 
 
-# --------------------------------------------------------------------------
 # Policy
-# --------------------------------------------------------------------------
 
 def policy_path_problem(path):
     """Return why the policy file may not be read, else None."""
@@ -772,9 +767,7 @@ def load_rules(path):
     return compile_rules(read_policy(path))
 
 
-# --------------------------------------------------------------------------
-# Path rules
-# --------------------------------------------------------------------------
+# Path Rules
 
 def git_path_problem(relative):
     """Return a rule ID when a Git path is unsafe or names .git, else None.
@@ -832,9 +825,7 @@ def path_findings(relative, rules):
     return found
 
 
-# --------------------------------------------------------------------------
-# Content rules
-# --------------------------------------------------------------------------
+# Content Rules
 
 def is_placeholder(value, rules):
     """Return True for a documented placeholder or clearly synthetic value.
@@ -910,9 +901,7 @@ def content_findings(relative, data, rules):
     return found
 
 
-# --------------------------------------------------------------------------
-# Working-tree candidates
-# --------------------------------------------------------------------------
+# Working-Tree Candidates
 
 def worktree_problem(relative):
     """Return a rule ID when a candidate is not a plain regular file.
@@ -977,9 +966,7 @@ def read_worktree_file(relative, max_bytes):
     return None, data
 
 
-# --------------------------------------------------------------------------
-# Git (read-only)
-# --------------------------------------------------------------------------
+# Git (Read-Only)
 
 def executable_problem(path):
     """Return why an existing git.exe path is unsafe to run, else None.
@@ -1434,9 +1421,7 @@ def history_scope(git, rules):
     return evidence, findings
 
 
-# --------------------------------------------------------------------------
-# Command line
-# --------------------------------------------------------------------------
+# Command Line
 
 def display_path(path):
     """Return path for display with potentially sensitive parts redacted.

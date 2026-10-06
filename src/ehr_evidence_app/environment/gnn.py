@@ -239,9 +239,7 @@ def sha256_file(path):
         return hashlib.sha256(handle.read()).hexdigest()
 
 
-# --------------------------------------------------------------------------
-# Fixed destinations and interpreter checks
-# --------------------------------------------------------------------------
+# Fixed Destinations And Interpreter Checks
 
 def fixed_policy_problem():
     """Return why the fixed manifest or probe-temp location is unsafe."""
@@ -385,9 +383,7 @@ def interpreter_problem(path):
     return None
 
 
-# --------------------------------------------------------------------------
-# Environment fingerprint
-# --------------------------------------------------------------------------
+# Environment Fingerprint
 
 def entry_kind(info):
     """Return the fingerprint type label of lstat-style information."""
@@ -490,9 +486,7 @@ def environment_fingerprint(root):
     return count, digest.hexdigest()
 
 
-# --------------------------------------------------------------------------
-# Probe execution and strict parsing
-# --------------------------------------------------------------------------
+# Probe Execution And Strict Parsing
 
 def probe_spec(python):
     """Return the JSON argument that tells the probe what to inspect."""
@@ -701,9 +695,7 @@ def parse_probe_output(stdout):
     return parse_python(data.get("python")), observed
 
 
-# --------------------------------------------------------------------------
 # Manifest
-# --------------------------------------------------------------------------
 
 def documented_reference():
     """Return the documented reference versions, apart from observations."""

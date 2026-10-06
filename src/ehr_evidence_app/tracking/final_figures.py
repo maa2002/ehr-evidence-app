@@ -120,9 +120,7 @@ class ManifestConflict(Exception):
     """A different manifest already stands at the same path."""
 
 
-# --------------------------------------------------------------------------
-# The protected records
-# --------------------------------------------------------------------------
+# The Protected Records
 
 def source_paths(run, freeze_digest, question_set,
                  protected=PROTECTED, freeze_name=frozen.RECORD_NAME):
@@ -214,9 +212,7 @@ def check_sources(documents, freeze_sha256):
         raise FiguresError("source_unexpected")
 
 
-# --------------------------------------------------------------------------
-# The figures
-# --------------------------------------------------------------------------
+# The Figures
 
 def rounded(value):
     """Return a figure to six decimals."""
@@ -442,9 +438,7 @@ def check_scalars(manifest):
         raise FiguresError("scalars_refused") from None
 
 
-# --------------------------------------------------------------------------
-# The manifest, its task and its index
-# --------------------------------------------------------------------------
+# The Manifest, Its Task And Its Index
 
 def manifest_bytes(manifest):
     """Return a manifest's deterministic bytes."""
@@ -640,9 +634,7 @@ def remote_result(run, environ=None, adapter_factory=checker.SdkAdapter,
                                                   "final_figures_failed")}
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented values only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Values Only)
 
 INVENTED_RUN = "invented-16-v1-20260101T000000Z"
 INVENTED_FREEZE = "f" * 64

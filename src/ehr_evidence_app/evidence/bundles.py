@@ -137,9 +137,7 @@ def concept_of(concept_id, snapshot, legacy):
     return names.concept(concept_id, snapshot.concepts, legacy=legacy)
 
 
-# --------------------------------------------------------------------------
-# QA bundles (work item 29)
-# --------------------------------------------------------------------------
+# QA Bundles (Work Item 29)
 
 def scope_slug(scope):
     """Return the bundle-identifier suffix for a scope."""
@@ -175,9 +173,7 @@ def qa_bundles(snapshot, case_set, case, provenance):
     return bundles
 
 
-# --------------------------------------------------------------------------
-# Explanation bundles (work item 30)
-# --------------------------------------------------------------------------
+# Explanation Bundles (Work Item 30)
 
 def prediction_record(case, record, snapshot, legacy):
     """Return the Prediction copied unchanged from the published output."""
@@ -364,9 +360,7 @@ def name_agreement(bundle, record):
     return counts
 
 
-# --------------------------------------------------------------------------
-# Bundle set
-# --------------------------------------------------------------------------
+# Bundle Set
 
 def check_limits(bundles, limits):
     """Fail closed when a bundle exceeds the evidence or size limits."""
@@ -634,9 +628,7 @@ def run_real(plan=None):
     return summary, digests
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_LIMITS = dict(max_question_chars=500, max_prompt_tokens=16384,
                         max_output_tokens=768, max_concurrent_requests=1,

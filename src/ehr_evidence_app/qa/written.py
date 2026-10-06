@@ -247,9 +247,7 @@ def score(rows, problems, inputs, vocab, limits, digests):
     return document
 
 
-# --------------------------------------------------------------------------
-# Real modes
-# --------------------------------------------------------------------------
+# Real Modes
 
 def development_case_set(label):
     """Refuse a case set that is not a development case set."""
@@ -376,9 +374,7 @@ def run_score(name=SETS[0]):
                  digests)
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 SYNTHETIC_QUESTIONS = (
     COLUMNS,
@@ -428,9 +424,7 @@ def run_synthetic():
                  {"mode": "synthetic"})
 
 
-# --------------------------------------------------------------------------
-# Command line
-# --------------------------------------------------------------------------
+# Command Line
 
 def report(document):
     """Print the scores: aggregate counts and digests only."""

@@ -312,9 +312,7 @@ def write_schemas(directory=SCHEMA_DIR, schemas=None):
             handle.write(schema_text(schema))
 
 
-# --------------------------------------------------------------------------
-# Synthetic examples (invented values only)
-# --------------------------------------------------------------------------
+# Synthetic Examples (Invented Values Only)
 
 SYNTHETIC_DIGEST = "5" * 64
 

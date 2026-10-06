@@ -194,9 +194,7 @@ def sanitise_error(error):
         error).__name__
 
 
-# --------------------------------------------------------------------------
-# Policy file
-# --------------------------------------------------------------------------
+# Policy File
 
 def reject_duplicate_keys(pairs):
     """Build a JSON object, refusing repeated keys that could hide values."""
@@ -238,9 +236,7 @@ def read_policy(path):
         raise OperationalError("the policy is not valid JSON")
 
 
-# --------------------------------------------------------------------------
-# Checks (values are examined, never returned or printed)
-# --------------------------------------------------------------------------
+# Checks (Values Are Examined, Never Returned Or Printed)
 
 def same_value(value, expected):
     """Return True when value equals expected with identical JSON types."""
@@ -512,9 +508,7 @@ def check_policy(policy):
                                               item[1]))
 
 
-# --------------------------------------------------------------------------
-# Command line
-# --------------------------------------------------------------------------
+# Command Line
 
 def report(config_path, findings):
     """Print the policy summary, rule IDs and the PASS/FAIL result."""

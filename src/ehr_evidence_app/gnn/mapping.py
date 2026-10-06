@@ -115,9 +115,7 @@ def real_plan():
     }
 
 
-# --------------------------------------------------------------------------
-# Identifier and input checks
-# --------------------------------------------------------------------------
+# Identifier And Input Checks
 
 def canonical_int(value):
     """Return value as an int only when it round-trips as strict decimal.
@@ -249,9 +247,7 @@ def output_preconditions(plan):
             raise MappingError(problem)
 
 
-# --------------------------------------------------------------------------
-# Source pilot snapshot
-# --------------------------------------------------------------------------
+# Source Pilot Snapshot
 
 def parse_json(data):
     """Parse a JSON document from already verified bytes."""
@@ -337,9 +333,7 @@ def verify_pilot(plan, held):
             "limitations": manifest.get("limitations")}
 
 
-# --------------------------------------------------------------------------
-# Graph metadata (pinned graph read once)
-# --------------------------------------------------------------------------
+# Graph Metadata (Pinned Graph Read Once)
 
 def torch_loader(path):
     """Deserialise the pinned graph list once on CPU (omopgnn only)."""
@@ -407,9 +401,7 @@ def bridge_positions(metadata):
     return positions
 
 
-# --------------------------------------------------------------------------
 # Mapping
-# --------------------------------------------------------------------------
 
 def index_by(rows, key_column, value_column):
     """Group canonical value_column values by canonical key_column value."""

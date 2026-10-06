@@ -273,9 +273,7 @@ def run_partition(plan=None):
     return document, (len(data), hashlib.sha256(data).hexdigest())
 
 
-# --------------------------------------------------------------------------
-# Default mode: invented case sets
-# --------------------------------------------------------------------------
+# Default Mode: Invented Case Sets
 
 def synthetic_case_sets():
     """Return invented case sets: the pilot from two upstream partitions,

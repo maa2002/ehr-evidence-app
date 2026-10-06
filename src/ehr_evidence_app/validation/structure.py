@@ -453,9 +453,7 @@ def check(candidate, request_id, case, scope, bundle=None,
     return tuple(sorted(problems))
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def synthetic_bundle():
     """Return an invented QA bundle with records, and its digest."""

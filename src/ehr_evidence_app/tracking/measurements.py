@@ -83,9 +83,7 @@ class RecordConflict(Exception):
     """A different record already stands at the same path."""
 
 
-# --------------------------------------------------------------------------
 # Records
-# --------------------------------------------------------------------------
 
 def triples(record):
     """Return a record's scalars as (metric, series, value), sorted."""
@@ -261,9 +259,7 @@ def load_history(path=HISTORY_PATH):
     return records
 
 
-# --------------------------------------------------------------------------
 # Tasks
-# --------------------------------------------------------------------------
 
 def fingerprint(configuration, names):
     """Return the SHA-256 of the named configuration fields a record gives,
@@ -465,9 +461,7 @@ def remote_result(environ=None, adapter_factory=checker.SdkAdapter,
                 "created": created}
 
 
-# --------------------------------------------------------------------------
-# The commit a run measures
-# --------------------------------------------------------------------------
+# The Commit A Run Measures
 
 def code_commit(repo=checker.REPO_ROOT, run=subprocess.run):
     """Return the short commit of the checked-out code, which a record
@@ -491,9 +485,7 @@ def code_commit(repo=checker.REPO_ROOT, run=subprocess.run):
     return commit
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented values only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Values Only)
 
 def invented_record():
     """Return a record of invented values in every permitted part."""

@@ -218,9 +218,7 @@ class LoopbackServer:
         self.socket.close()
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def invented_service():
     """Return the service of the invented case set with a scripted model

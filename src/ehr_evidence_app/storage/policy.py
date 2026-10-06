@@ -145,9 +145,7 @@ RESERVED_NAMES = frozenset(
 REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 
 
-# --------------------------------------------------------------------------
-# Lexical checks
-# --------------------------------------------------------------------------
+# Lexical Checks
 
 def component_problem(part):
     """Return why one path component is unsafe on Windows, else None."""
@@ -322,9 +320,7 @@ def runtime_root_setting_problem(value):
     return None
 
 
-# --------------------------------------------------------------------------
-# Filesystem checks (no link is followed)
-# --------------------------------------------------------------------------
+# Filesystem Checks (No Link Is Followed)
 
 def is_link_like(info):
     """Return True for lstat info of a symlink, junction or reparse point."""
@@ -437,9 +433,7 @@ def runtime_volume_problem(root=RUNTIME_ROOT):
     return None
 
 
-# --------------------------------------------------------------------------
-# Environment definitions (config/paths.json)
-# --------------------------------------------------------------------------
+# Environment Definitions (config/paths.json)
 
 def binding_problem(name, kind, entry):
     """Return why a mandatory variable deviates from its fixed binding.
@@ -547,9 +541,7 @@ def environment_set_problems(directories, environment):
     return problems
 
 
-# --------------------------------------------------------------------------
-# Read-only sources
-# --------------------------------------------------------------------------
+# Read-Only Sources
 
 def source_directory_problem(path):
     """Return why a read-only copy source directory is not permitted.

@@ -225,9 +225,7 @@ def report(document):
             print(line)
 
 
-# --------------------------------------------------------------------------
-# Default mode: an invented run
-# --------------------------------------------------------------------------
+# Default Mode: An Invented Run
 
 def synthetic_bundles():
     """Return the Bundles of the invented requests."""

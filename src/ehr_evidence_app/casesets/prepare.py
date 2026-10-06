@@ -97,9 +97,7 @@ def real_plan(label):
     }
 
 
-# --------------------------------------------------------------------------
-# Pinned small inputs
-# --------------------------------------------------------------------------
+# Pinned Small Inputs
 
 def snapshot_entries(manifest, label, reference, size):
     """Return the manifest's file records after checking its run state."""
@@ -147,9 +145,7 @@ def snapshot_rows(plan, entries, held):
     return rows["persons.csv"], rows["visits.csv"], files
 
 
-# --------------------------------------------------------------------------
-# Pure core
-# --------------------------------------------------------------------------
+# Pure Core
 
 def mapping_records(persons, visits, metadata, cases):
     """Return (records in case order, summary) of the identity mapping.
@@ -384,9 +380,7 @@ def encode_files(documents, counts, label):
     return files, summary
 
 
-# --------------------------------------------------------------------------
-# Real runtime (GNN interpreter, CUDA)
-# --------------------------------------------------------------------------
+# Real Runtime (GNN Interpreter, CUDA)
 
 class TorchRuntime:
     """Runs the upstream-dependent sequence once for one case set."""
@@ -630,9 +624,7 @@ def run_real(label, plan=None, runtime=None):
     return prepare(plan, runtime or TorchRuntime())
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def synthetic_inputs(count=3):
     """Return invented pure-core inputs for a small case set."""

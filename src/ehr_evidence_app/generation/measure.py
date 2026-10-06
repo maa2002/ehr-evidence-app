@@ -871,9 +871,7 @@ def paired(case_set, per_group, limits, task=None, drivers=None):
     return results
 
 
-# --------------------------------------------------------------------------
-# Records of the runs (--record)
-# --------------------------------------------------------------------------
+# Records Of The Runs (--record)
 
 def distribution(values):
     """Return the median, 90th percentile and largest of some numbers, as

@@ -145,9 +145,7 @@ def field(row, column):
     return (row.get(column) or "").strip()
 
 
-# --------------------------------------------------------------------------
-# Configuration and destination checks
-# --------------------------------------------------------------------------
+# Configuration And Destination Checks
 
 def all_specs(config):
     """Return every table spec, including the referenced-concept extract."""
@@ -293,9 +291,7 @@ def connection_problem(config, psql_path):
             or guard.executable_problem(psql_path))
 
 
-# --------------------------------------------------------------------------
-# SQL generation: one transaction, one shared cohort CTE, client-side \copy
-# --------------------------------------------------------------------------
+# SQL Generation: One Transaction, One Shared Cohort CTE, Client-Side \copy
 
 def qualified(config, table):
     """Return the schema-qualified name of a source table."""
@@ -483,9 +479,7 @@ def build_sql(config, cases, targets, subjects=None):
     return "\n".join(lines) + "\n"
 
 
-# --------------------------------------------------------------------------
 # Execution
-# --------------------------------------------------------------------------
 
 def psql_environment(config):
     """Return the controlled psql environment with forced read-only options.
@@ -579,9 +573,7 @@ def run_psql(config, version_dir, sql_path, options):
     return record
 
 
-# --------------------------------------------------------------------------
-# Local validation: parses the written files only, never the database
-# --------------------------------------------------------------------------
+# Local Validation: Parses The Written Files Only, Never The Database
 
 def validation_order(config):
     """Return table specs ordered so cohort and visit context exist first."""
@@ -775,9 +767,7 @@ def validate_snapshot(version_dir, config, cases, suffix=""):
     return records, summary
 
 
-# --------------------------------------------------------------------------
-# Manifest, promotion and reporting
-# --------------------------------------------------------------------------
+# Manifest, Promotion And Reporting
 
 def hash_files(version_dir, names, chunk):
     """Return size and SHA256 for each expected completed file."""
@@ -924,9 +914,7 @@ def report(records, summary, manifest, manifest_path, problems=()):
     print("RESULT: %s" % manifest["status"].upper())
 
 
-# --------------------------------------------------------------------------
 # Commands
-# --------------------------------------------------------------------------
 
 def extract(config, args, version_dir, label, cases, psql_path,
             case_set=None):

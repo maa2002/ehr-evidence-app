@@ -131,9 +131,7 @@ class RecordAnswerError(Exception):
     """A fail-closed failure carrying a finding code only."""
 
 
-# --------------------------------------------------------------------------
-# The record bundle set
-# --------------------------------------------------------------------------
+# The Record Bundle Set
 
 class RecordSet:
     """A pinned record bundle set whose bundles are verified when read."""
@@ -222,9 +220,7 @@ class RecordContext:
     terms: resolving.Terms
 
 
-# --------------------------------------------------------------------------
 # Statements
-# --------------------------------------------------------------------------
 
 def wording(name, number=None, record_kind=None):
     """Return a statement kind's template wording: by the kind of record
@@ -348,9 +344,7 @@ def value_lines(items, visits, limit):
     return statements, earlier
 
 
-# --------------------------------------------------------------------------
 # Candidates
-# --------------------------------------------------------------------------
 
 def candidate(request, bundle_ref, outcome, statements, reasons=()):
     """Return a candidate for a record request."""
@@ -656,9 +650,7 @@ def answer_candidate(context, request, bundle, bundle_ref, question,
                           matches)
 
 
-# --------------------------------------------------------------------------
 # Clarifications
-# --------------------------------------------------------------------------
 
 def clarification(request_id, case, scope, question, resolution=None):
     """Return the clarifying candidate of a record question that cannot

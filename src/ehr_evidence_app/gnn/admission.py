@@ -204,9 +204,7 @@ class AdmissionError(Exception):
     """A fail-closed precondition failure carrying a finding code only."""
 
 
-# --------------------------------------------------------------------------
-# Plan and configuration
-# --------------------------------------------------------------------------
+# Plan And Configuration
 
 # Published inherited-run-binding-v1 record (ehr_evidence_app.gnn.binding).
 BINDING_SUMMARY_SHA256 = ("c6dd79cfefe35327b6b56b8812a1d25a"
@@ -322,9 +320,7 @@ def load_config(data):
             "sha256": hashlib.sha256(data).hexdigest()}
 
 
-# --------------------------------------------------------------------------
-# Input verification
-# --------------------------------------------------------------------------
+# Input Verification
 
 def output_preconditions(plan):
     """Refuse an existing, unprotected or input-overlapping output."""
@@ -381,9 +377,7 @@ def read_config(plan):
     return data
 
 
-# --------------------------------------------------------------------------
-# Record checks
-# --------------------------------------------------------------------------
+# Record Checks
 
 def select_pilot(document, plan):
     """Return the verified pilot selection (identity mapping rules)."""
@@ -572,9 +566,7 @@ def layer_b(record, label_vocab):
         return False
 
 
-# --------------------------------------------------------------------------
-# Driver tags
-# --------------------------------------------------------------------------
+# Driver Tags
 
 def attachment(visits, last):
     """Classify the visits a concept node attaches to (target is last)."""
@@ -628,9 +620,7 @@ def tag_drivers(record, attachments, inverse):
     return tags, mismatches
 
 
-# --------------------------------------------------------------------------
-# Graph runtime (GNN interpreter only)
-# --------------------------------------------------------------------------
+# Graph Runtime (GNN Interpreter Only)
 
 class GraphRuntime:
     """Reads the raw graphs through their verified handle (CPU only)."""
@@ -675,9 +665,7 @@ class GraphRuntime:
         return result
 
 
-# --------------------------------------------------------------------------
-# Closure record
-# --------------------------------------------------------------------------
+# Closure Record
 
 def input_refs(plan, raw):
     """Return path, size and SHA-256 of every pinned input."""
@@ -927,9 +915,7 @@ def run_real(plan=None, runtime_factory=GraphRuntime):
     return summary, digests
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def synthetic_attachments(outputs):
     """Return invented attachment classes cycling through every class."""
@@ -1060,9 +1046,7 @@ def run_synthetic():
     return closure, summary
 
 
-# --------------------------------------------------------------------------
 # Console
-# --------------------------------------------------------------------------
 
 def report(summary, digests=None):
     """Print the sanitised aggregate summary."""

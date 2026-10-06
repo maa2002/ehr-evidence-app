@@ -331,9 +331,7 @@ def describe():
             "projection_version": projection.PROJECTION_VERSION}
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def run_synthetic():
     """Return (prompts built, characters of the longest, problems) for the

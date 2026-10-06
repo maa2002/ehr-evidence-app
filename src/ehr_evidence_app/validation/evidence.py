@@ -105,9 +105,7 @@ def explanation_stop(request, bundle):
     return None
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def request_for(bundle):
     """Return an invented QA request bound to a bundle's case and scope."""

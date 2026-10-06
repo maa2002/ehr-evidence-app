@@ -192,9 +192,7 @@ def real_plan(case_set=None):
     }
 
 
-# --------------------------------------------------------------------------
-# Parsing helpers
-# --------------------------------------------------------------------------
+# Parsing Helpers
 
 def read_pinned(entry, name, held):
     """Read one pinned file once and verify size and SHA-256."""
@@ -267,9 +265,7 @@ def optional_datetime(value, name):
     return "%s %s" % match.groups()
 
 
-# --------------------------------------------------------------------------
 # Snapshot
-# --------------------------------------------------------------------------
 
 def manifest_entries(manifest, plan):
     """Return the manifest's file records after checking the run state."""
@@ -401,9 +397,7 @@ def read_legacy_concepts(plan=None):
     return rows, plan["legacy_concepts"]["sha256"].lower()
 
 
-# --------------------------------------------------------------------------
 # Cases
-# --------------------------------------------------------------------------
 
 def driver_tags(domains):
     """Return the closure's driver tags by domain."""

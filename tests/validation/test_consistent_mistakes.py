@@ -53,9 +53,7 @@ CONTEXT = record_mutations.CONTEXT
 VOCAB = suite.synthetic_vocabulary()
 
 
-# --------------------------------------------------------------------------
-# Answers compared as what they state
-# --------------------------------------------------------------------------
+# Answers Compared As What They State
 
 def canonical(candidate, bundle):
     """Return a candidate as data, each list or presence item named by
@@ -118,9 +116,7 @@ def parsed(candidate):
         return None
 
 
-# --------------------------------------------------------------------------
-# A record misread
-# --------------------------------------------------------------------------
+# A Record Misread
 
 def shifted(text, years):
     """Return a time moved by whole years."""
@@ -241,9 +237,7 @@ def misread_events(bundle, ref):
     return found
 
 
-# --------------------------------------------------------------------------
 # Samples
-# --------------------------------------------------------------------------
 
 class RecordSample(record_mutations.Sample):
     """A released answer about the invented record, and how its question
@@ -320,9 +314,7 @@ def given_as(candidate, target):
         "scope": target.scope, "bundle": target.bundle})
 
 
-# --------------------------------------------------------------------------
 # Tests
-# --------------------------------------------------------------------------
 
 class RecordAnswerTests(unittest.TestCase):
     """Answers about the whole record."""

@@ -366,9 +366,7 @@ def explain_written(request, bundle, bundle_sha256, writer=None,
                                            bundle_sha256, limit))
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def driver_blocks(candidate):
     """Return (head, blocks, tail) of an explanation in its order: the
@@ -559,9 +557,7 @@ def run_synthetic():
     return explained, detected, total
 
 
-# --------------------------------------------------------------------------
-# Operator mode (real development case sets; aggregate counts only)
-# --------------------------------------------------------------------------
+# Operator Mode (Real Development Case Sets; Aggregate Counts Only)
 
 def bundle_plan(case_set, final=False):
     """Return (directory, pinned manifest entry) of a development case

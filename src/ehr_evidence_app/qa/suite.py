@@ -141,9 +141,7 @@ class SuiteError(Exception):
     """A suite failure carrying a finding code only."""
 
 
-# --------------------------------------------------------------------------
 # Oracle
-# --------------------------------------------------------------------------
 
 @dataclasses.dataclass(frozen=True)
 class Record:
@@ -336,9 +334,7 @@ class Oracle:
                                                 phrase))[:AMBIGUOUS_POOL]
 
 
-# --------------------------------------------------------------------------
 # Probes
-# --------------------------------------------------------------------------
 
 @dataclasses.dataclass(frozen=True)
 class Probe:
@@ -706,9 +702,7 @@ def generate(oracle):
     return probes, skipped
 
 
-# --------------------------------------------------------------------------
 # Scoring
-# --------------------------------------------------------------------------
 
 def cited(response, bundle):
     """Return the records the response's claims cite."""
@@ -906,9 +900,7 @@ def run(oracle, bundle_set, vocab, limits, inputs, digests):
     return document
 
 
-# --------------------------------------------------------------------------
-# Vocabulary sweep
-# --------------------------------------------------------------------------
+# Vocabulary Sweep
 
 def sweep(vocab):
     """Ask about every standard condition by name, in every presence
@@ -934,9 +926,7 @@ def sweep(vocab):
     return dict(sorted(counts.items()))
 
 
-# --------------------------------------------------------------------------
 # Modes
-# --------------------------------------------------------------------------
 
 SYNTHETIC_FILLERS = range(1100, 1120)
 SYNTHETIC_NAMES = {900: "Clinical finding", 1000: "Synthetic parent disorder",

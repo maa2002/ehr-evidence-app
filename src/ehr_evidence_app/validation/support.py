@@ -174,9 +174,7 @@ def check(candidate, bundle=None, vocab=None):
     return () if supported else ("claim_unsupported",)
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented fixtures only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Fixtures Only)
 
 def synthetic_faults(good):
     """Return candidates with invented unsupported statements."""

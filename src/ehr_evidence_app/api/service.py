@@ -139,9 +139,7 @@ def invented_source(vocabulary=None):
                   invented_records(vocabulary or suite.synthetic_vocabulary()))
 
 
-# --------------------------------------------------------------------------
-# The evidence as displayed (decision D6)
-# --------------------------------------------------------------------------
+# The Evidence As Displayed (Decision D6)
 
 def visit_view(visit):
     """Return a visit as displayed: its reference, number, role and
@@ -341,9 +339,7 @@ def written_view(response, written, seconds):
             "seconds": round(seconds, 3)}
 
 
-# --------------------------------------------------------------------------
-# The service
-# --------------------------------------------------------------------------
+# The Service
 
 class Service:
     """The application's operations over the case sets it serves."""

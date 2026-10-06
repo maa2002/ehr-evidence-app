@@ -308,9 +308,7 @@ def remote_result(case_set, environ=None, adapter_factory=checker.SdkAdapter,
                                                   "aggregates_failed")}
 
 
-# --------------------------------------------------------------------------
-# Synthetic default mode (invented records only)
-# --------------------------------------------------------------------------
+# Synthetic Default Mode (Invented Records Only)
 
 def invented_records():
     """Return the records of the invented requests, written by a scripted

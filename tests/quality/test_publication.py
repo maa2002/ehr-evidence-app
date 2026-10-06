@@ -177,9 +177,7 @@ def make_file_symlink(test, link, target):
     test.addCleanup(os.remove, link)
 
 
-# --------------------------------------------------------------------------
-# Policy contract and pure rules (read the real repository only)
-# --------------------------------------------------------------------------
+# Policy Contract And Pure Rules (Read The Real Repository Only)
 
 @unittest.skipUnless(os.name == "nt", "the audit supports Windows only")
 class PolicyContractTestCase(unittest.TestCase):
@@ -794,9 +792,7 @@ class RealRepositoryTestCase(unittest.TestCase):
         self.assertEqual(audit.ignore_probe_findings(git, self.rules), [])
 
 
-# --------------------------------------------------------------------------
-# Scratch repositories
-# --------------------------------------------------------------------------
+# Scratch Repositories
 
 class ScratchTestCase(unittest.TestCase):
     """A synthetic repository and workspace beneath the workspace test temp."""

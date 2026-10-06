@@ -230,9 +230,7 @@ class RecordReference:
     visits: tuple = ()
 
 
-# --------------------------------------------------------------------------
-# A case's records
-# --------------------------------------------------------------------------
+# A Case's Records
 
 def visits_of(case, snapshot):
     """Return {admission: visit number} of a case's visits; two visits of
@@ -452,9 +450,7 @@ class Case:
                 if row.visit in numbers and row.kind in kinds]
 
 
-# --------------------------------------------------------------------------
-# Matching and the expected answers
-# --------------------------------------------------------------------------
+# Matching And The Expected Answers
 
 def matches(row, asked, descendants):
     """Return True when a record is of the asked item; None for a
@@ -622,9 +618,7 @@ def reference(request_id, case, scope, asked, descendants=lambda concept:
     return item_reference(request_id, case, scope, asked, descendants)
 
 
-# --------------------------------------------------------------------------
-# Comparison with the templates on a development case set
-# --------------------------------------------------------------------------
+# Comparison With The Templates On A Development Case Set
 
 QUESTION_KINDS = tuple(RECORD_KINDS)
 SELECTED_KINDS = ("lab", "vital")
@@ -900,9 +894,7 @@ def details_verdict(found, candidate, bundle, field):
     return "right"
 
 
-# --------------------------------------------------------------------------
-# Default mode: an invented case
-# --------------------------------------------------------------------------
+# Default Mode: An Invented Case
 
 # The invented case's person, subject and admissions.
 SYNTHETIC_PERSON = 7

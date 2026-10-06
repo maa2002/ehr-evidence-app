@@ -152,9 +152,7 @@ class Mutant:
     checks: list | None = None
 
 
-# --------------------------------------------------------------------------
 # Mutations
-# --------------------------------------------------------------------------
 
 def replace(candidate, index, **changes):
     """Return a candidate with one statement changed."""
@@ -547,9 +545,7 @@ def mutants(sample):
     return found
 
 
-# --------------------------------------------------------------------------
 # Running
-# --------------------------------------------------------------------------
 
 def released(sample, candidate, bundle=None, checks=None):
     """Return (outcome, reason codes) of a candidate through the gate, for
@@ -612,9 +608,7 @@ def passed(counts):
                     for entry in counts["classes"].values()))
 
 
-# --------------------------------------------------------------------------
 # Samples
-# --------------------------------------------------------------------------
 
 def qa_samples(case_set, bundle_set, vocab, requested):
     """Return QA samples of every scope bundle of a bundle set: a list, a
