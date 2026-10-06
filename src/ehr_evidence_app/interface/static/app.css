@@ -215,6 +215,23 @@ body.is-resizing { cursor: col-resize; user-select: none; }
    Controls
    --------------------------------------------------------------------------- */
 
+/* A label is trimmed to its capitals and baseline, so that its control
+   centres the letters themselves. Fonts keep more room above their
+   capitals than below their baseline, by an amount that depends on the
+   font, which left labels low or high in their shapes. A control that
+   takes its height from padding adds back what the trim removes,
+   (1lh - 1cap) / 2 on each side, and keeps its size. The count and the
+   reference tags hold their text directly and are labels themselves. */
+.label,
+.count,
+.ref-tag { text-box: trim-both cap alphabetic; }
+
+/* An icon is drawn inside its box with about 2px to spare on each side.
+   An icon leading a label is pulled in by that much, so that what is
+   drawn, the icon and the label together, sits in the middle. */
+.glass-button > .icon:first-child,
+.tool > .icon:first-child { margin-left: -2px; }
+
 .icon-button {
   display: inline-grid;
   place-items: center;
@@ -248,7 +265,10 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .glass-button:disabled { opacity: 0.5; }
 
 .text-button {
-  padding: 5px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(5px + (1lh - 1cap) / 2) 12px;
   border: 1px solid currentColor;
   border-radius: 999px;
   background: transparent;
@@ -303,7 +323,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .menu-button:hover:not(:disabled) { background: var(--glass-strong); }
 .menu-button:disabled { opacity: 0.5; }
 .menu-button .icon { width: 16px; height: 16px; color: var(--muted); }
-.menu-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Room inside the clip for what rises above the capitals or falls below
+   the baseline, which the label's trim leaves outside its box. */
+.menu-value { flex: 1; min-width: 0; margin-block: -0.3em; padding-block: 0.3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-chevron { margin-left: auto; transition: transform 0.15s; }
 .menu-button[aria-expanded="true"] .menu-chevron { transform: rotate(180deg); }
 
@@ -458,8 +480,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .list-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 0 0; }
 .count {
+  display: inline-block;
   min-width: 22px;
-  padding: 1px 7px;
+  padding: calc(1px + (1lh - 1cap) / 2) 7px;
   border-radius: 999px;
   background: var(--fill-strong);
   color: var(--muted);
@@ -741,7 +764,7 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   align-items: center;
   align-self: flex-start;
   gap: 7px;
-  padding: 3px 11px 3px 9px;
+  padding: calc(3px + (1lh - 1cap) / 2) 10px;
   border-radius: 999px;
   background: var(--neutral-soft);
   color: var(--neutral);
@@ -940,7 +963,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .help-row dt { flex: 0 1 13rem; min-width: 10rem; color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.4; }
 .help-row dd { display: flex; flex: 1 1 20rem; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 0; }
 .example {
-  padding: 5px 12px;
+  display: inline-flex;
+  align-items: center;
+  padding: calc(5px + (1lh - 1cap) / 2) 12px;
   border: 1px solid var(--glass-edge);
   border-radius: 999px;
   background: var(--glass-soft);
@@ -1198,7 +1223,8 @@ button.tool:hover:not(:disabled) { background: var(--glass-strong); color: var(-
 details.ev-section > :not(summary) { margin-top: 10px; }
 
 .ref-tag {
-  padding: 2px 6px;
+  display: inline-block;
+  padding: calc(2px + (1lh - 1cap) / 2) 6px;
   border-radius: 6px;
   background: var(--fill-strong);
   color: var(--muted);
@@ -1300,11 +1326,13 @@ tr.is-focus td { background: var(--accent-soft); }
   .main.is-empty .dock { padding-bottom: 6vh; }
   .glass-button span { display: none; }
   .glass-button { width: 36px; padding: 0; justify-content: center; }
+  .glass-button > .icon:first-child { margin-left: 0; }
 }
 
 /* A narrow composer keeps the icons of its tools and the model's dot. */
 @container (max-width: 600px) {
   .tool-text, .model-text { display: none; }
+  .tool > .icon:first-child { margin-left: 0; }
   .menu.tool .menu-value { max-width: 8em; }
 }
 

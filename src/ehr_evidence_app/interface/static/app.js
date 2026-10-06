@@ -97,6 +97,12 @@ function el(tag, props, ...children) {
   return node;
 }
 
+// A control's label: trimmed to its capitals and baseline, so that the
+// control centres the letters themselves (app.css, .label).
+function label(text) {
+  return el("span", {className: "label"}, text);
+}
+
 function icon(name, className = "icon") {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("class", className);
@@ -220,7 +226,7 @@ class Menu {
       "aria-controls": this.id,
       "aria-label": options.label,
     });
-    this.shown = el("span", {className: "menu-value"}, options.empty || "");
+    this.shown = el("span", {className: "menu-value label"}, options.empty || "");
     if (options.icon) this.button.append(icon(options.icon));
     this.button.append(this.shown, icon("chevron", "icon menu-chevron"));
     host.replaceChildren(this.button);
@@ -557,7 +563,7 @@ function renderCase() {
     ui.caseDetail.textContent = current.subtitle;
     ui.welcomeTitle.replaceChildren(...(current.greeting_lines || [current.greeting])
       .map((line) => el("span", {className: "line"}, line)));
-    ui.welcomeTags.replaceChildren(...current.tags.map((tag) => el("span", {className: "tag"}, tag)));
+    ui.welcomeTags.replaceChildren(...current.tags.map((tag) => el("span", {className: "tag"}, label(tag))));
     document.title = `${current.name} · EHR Evidence`;
   } else {
     ui.caseTitle.textContent = listed ? listed.name : "Loading";
@@ -846,11 +852,11 @@ function failure(turn) {
   return el("div", {className: "failure", role: "alert"},
     icon("alert"),
     el("p", {}, turn.error),
-    el("button", {type: "button", className: "text-button", onclick: () => retry(turn)}, "Try Again"));
+    el("button", {type: "button", className: "text-button", onclick: () => retry(turn)}, label("Try Again")));
 }
 
 function badge(outcome) {
-  return el("span", {className: `badge tone-${outcome.tone}`}, outcome.label);
+  return el("span", {className: `badge tone-${outcome.tone}`}, label(outcome.label));
 }
 
 function cite(ref, turn) {
@@ -860,7 +866,7 @@ function cite(ref, turn) {
     title: `Open ${ref} in the Evidence`,
     "aria-label": `Open Reference ${ref} in the Evidence`,
     onclick: () => openPanel(turn.evidenceKey, ref),
-  }, ref);
+  }, label(ref));
 }
 
 // The text line by line: paragraphs, and lists nested by depth, each line
@@ -1019,7 +1025,7 @@ function helpReply(turn) {
     className: "example",
     title: "Put This Question in the Box",
     onclick: () => useExample(text),
-  }, text);
+  }, label(text));
   const row = (item) => el("div", {className: "help-row"},
     el("dt", {}, item.what),
     el("dd", {}, ...item.examples.map(example)));
@@ -1077,7 +1083,7 @@ async function openPanel(key, ref) {
     ui.panelBody.replaceChildren(el("div", {className: "failure", role: "alert"},
       icon("alert"), el("p", {}, error.message),
       el("button", {type: "button", className: "text-button", onclick: () => openPanel(key, ref)},
-        "Try Again")));
+        label("Try Again"))));
   }
 }
 

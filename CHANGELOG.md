@@ -16,6 +16,11 @@ change interfaces.
 - The top bar casts no shadow, and the band behind it blurs what scrolls
   under the bar without darkening it: the column's edges had cut the
   shadow and the band's tint into a dark rectangle around the bar.
+- Every label in a pill, tag or button sits in the middle of its shape:
+  labels are trimmed to their capitals and baseline, so that the room a
+  font keeps above its capitals no longer leaves some low and others
+  high, and an icon leading a label is pulled in by the space it is
+  drawn with. Sizes are unchanged; the answer's badge has even padding.
 
 ## [1.0.0] - 2026-10-06
 

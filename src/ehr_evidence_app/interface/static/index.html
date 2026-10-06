@@ -24,7 +24,7 @@
     </div>
     <button class="new-conversation" id="new-conversation" type="button">
       <span class="new-disc"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-compose"></use></svg></span>
-      <span>New Conversation</span>
+      <span class="label">New Conversation</span>
     </button>
     <div class="sidebar-field">
       <span class="field-label" id="cohort-label">Cohort</span>
@@ -61,13 +61,13 @@
         <div class="case-heading">
           <div class="case-name">
             <h1 id="case-title">Loading</h1>
-            <span class="pill" id="pseudonym-tag" title="The records hold no names; this one is generated for readability." hidden>Pseudonym</span>
+            <span class="pill" id="pseudonym-tag" title="The records hold no names; this one is generated for readability." hidden><span class="label">Pseudonym</span></span>
           </div>
           <p id="case-detail"></p>
         </div>
         <button class="glass-button" id="evidence-button" type="button" aria-controls="panel" aria-expanded="false" disabled>
           <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-panel"></use></svg>
-          <span>Evidence</span>
+          <span class="label">Evidence</span>
         </button>
       </header>
     </div>
@@ -76,7 +76,7 @@
       <div class="banner" id="banner" role="alert" hidden>
         <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-alert"></use></svg>
         <p id="banner-text"></p>
-        <button class="text-button" id="banner-retry" type="button">Try Again</button>
+        <button class="text-button" id="banner-retry" type="button"><span class="label">Try Again</span></button>
       </div>
       <div class="welcome" id="welcome">
         <svg class="mark welcome-mark" aria-hidden="true" focusable="false"><use href="#i-mark"></use></svg>
@@ -95,11 +95,11 @@
           <div class="menu tool" id="scope-menu"></div>
           <button class="tool" id="explain" type="button" disabled>
             <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-spark"></use></svg>
-            <span class="tool-text">Generate the Predicted Diagnosis</span>
+            <span class="tool-text label">Generate the Predicted Diagnosis</span>
           </button>
           <span class="model-state" id="model-state" data-state="unknown">
             <span class="dot" aria-hidden="true"></span>
-            <span class="model-text" id="model-text">Connecting</span>
+            <span class="model-text label" id="model-text">Connecting</span>
           </span>
           <button class="send" id="send" type="submit" aria-label="Ask" disabled>
             <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-up"></use></svg>
@@ -107,12 +107,12 @@
         </div>
       </form>
       <div class="suggestions" id="suggestions">
-        <button class="chip" type="button" data-question="Which conditions are recorded?" title="Which conditions are recorded?">Recorded Conditions</button>
-        <button class="chip" type="button" id="suggest-check" title="Is a condition recorded?">Check a Condition</button>
-        <button class="chip" type="button" data-question="What medications were given?" title="What medications were given?">Medications Given</button>
-        <button class="chip" type="button" data-question="What were the latest lab results?" title="What were the latest lab results?">Latest Lab Results</button>
-        <button class="chip" id="suggest-explain" type="button" hidden>Generate the Predicted Diagnosis</button>
-        <button class="chip" id="suggest-evidence" type="button">View the Evidence</button>
+        <button class="chip" type="button" data-question="Which conditions are recorded?" title="Which conditions are recorded?"><span class="label">Recorded Conditions</span></button>
+        <button class="chip" type="button" id="suggest-check" title="Is a condition recorded?"><span class="label">Check a Condition</span></button>
+        <button class="chip" type="button" data-question="What medications were given?" title="What medications were given?"><span class="label">Medications Given</span></button>
+        <button class="chip" type="button" data-question="What were the latest lab results?" title="What were the latest lab results?"><span class="label">Latest Lab Results</span></button>
+        <button class="chip" id="suggest-explain" type="button" hidden><span class="label">Generate the Predicted Diagnosis</span></button>
+        <button class="chip" id="suggest-evidence" type="button"><span class="label">View the Evidence</span></button>
       </div>
       <p class="footnote">Answers draw only on this patient's records in the selected scope. Prediction scores are not clinical risks.</p>
     </div>
