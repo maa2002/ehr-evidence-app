@@ -751,7 +751,7 @@ the singular and questions about what a medication was given for, is
 asked in
 every scope; none ends in a rejection or an error. The answers' checks
 are tested by breaking correct answers one fact at a time
-(`tests/validation/test_record_mutations.py`): all 1,479 changed answers
+(`tests/validation/test_record_mutations.py`): all 1,481 changed answers
 are withheld, and every answer and control is released.
 
 The same questions, with the heavy ones of the first development check
@@ -928,7 +928,7 @@ without runtime records:
 | The end-to-end test of the written set version 4, without the model | 226 | the same counts at every stage |
 | The record suite | 7,865 and 3,188 | the same counts for every question |
 | The mutation suite ([validation.md](validation.md#mutation-suite)) | 17,414 and 7,356 mutants | as recorded there: every original released unchanged and every mutant detected |
-| Mutants of the record answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 answers, 30,921 mutants | all withheld; every original and the 768 controls released |
+| Mutants of the record answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 answers, 30,921 mutants | all withheld; every original and the 768 controls released, the same counts as before |
 
 ## Limits
 

@@ -402,14 +402,19 @@ records) must be released.
 | Samples | Answers | Mutants withheld | Controls released |
 | --- | --- | --- | --- |
 | Invented edge record (every task and outcome) | 38 | 1,481 of 1,481 | all |
-| Development case sets (3 cases of each, all visits and the history, 25 questions) | 300 | 30,719 of 30,719 | 762 of 762 |
+| Development case sets (3 cases of each, all visits and the history, 25 questions) | 300 | 30,921 of 30,921 | 768 of 768 |
 
 On their first run the tests found two faults, now refused: a visit's or
 the person's field of another statement kind failed the rendering (an
 operational error instead of a rejection), and a single record stated
 as the highest passed. The swapped stays were added with
 [ADR 0023](decisions/0023-consistency-and-junk-input.md) (the counts
-before it were 1,479 and 30,703).
+before it were 1,479 and 30,703). On the development case sets the
+counts were then 30,719 mutants and 762 controls; the record rules
+changed after them in release 0.11.0 (drug-class words, medications
+named by their written drug, names read whole) answer some of the
+sampled questions otherwise, and release 1.0.0 gives the counts above,
+as do the rules after it (2026-10-06).
 
 ### Wrong answers that agree with themselves
 
