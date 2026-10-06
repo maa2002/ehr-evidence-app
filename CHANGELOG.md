@@ -7,6 +7,13 @@ change interfaces.
 
 ## [Unreleased]
 
+### Changed
+
+- The page's notes (the coverage statements, the schema lines and the
+  notices beside answers and evidence) are rounded boxes, the same on
+  every side, instead of carrying a bar on their left; a row of the
+  evidence picked from a reference is tinted, without a bar.
+
 ## [1.0.0] - 2026-10-06
 
 The application as evaluated and accepted (Phase 10). Its code and

@@ -815,17 +815,17 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .meta .icon-button .icon { width: 16px; height: 16px; }
 .meta-text { font-variant-numeric: tabular-nums; }
 
+/* A note: a rounded box tinted by its tone, the same on every side. */
 .note {
   margin: 0;
   padding: 10px 12px;
-  border-left: 3px solid var(--tone, var(--neutral));
-  border-radius: 4px 12px 12px 4px;
+  border-radius: 12px;
   background: var(--tone-soft, var(--neutral-soft));
   color: var(--ink-2);
   font-size: 13.5px;
   line-height: 1.5;
 }
-.note.tone-muted { border-left-color: var(--line-strong); background: var(--fill); }
+.note.tone-muted { background: var(--fill); }
 
 .failure {
   display: flex;
@@ -1244,7 +1244,6 @@ tbody tr:hover td { background: var(--fill); }
 .kind-text { min-width: 8em; }
 
 tr.is-focus td { background: var(--accent-soft); }
-tr.is-focus td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .ev-section.is-focus { box-shadow: 0 0 0 2px var(--accent); padding: 10px; margin: -10px; }
 
 .empty { margin: 0; color: var(--muted); font-size: 13px; }
