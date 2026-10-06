@@ -814,10 +814,21 @@ def shown(value):
     return "%.3g" % value
 
 
+# Statements that begin with the item a question asked about, in the words
+# it was asked in ("chest x ray is not recorded"): a first word in lower
+# case letters alone is given its capital, where a name such as "pH"
+# keeps its own.
+ITEM_FIRST = ("record_absent",)
+LOWER_FIRST_WORD = re.compile(r"[a-z]+\b")
+
+
 def sentence(statement, lookup):
     """Return a statement's wording with its slots filled in."""
-    return PLACEHOLDER.sub(lambda match: slot_text(
+    text = PLACEHOLDER.sub(lambda match: slot_text(
         statement, match.group(1), lookup), statement.wording)
+    if statement.kind in ITEM_FIRST and LOWER_FIRST_WORD.match(text):
+        text = text[0].upper() + text[1:]
+    return text
 
 
 def claims_of(text, refs):

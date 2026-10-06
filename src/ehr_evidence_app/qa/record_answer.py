@@ -38,6 +38,10 @@ until its answers about the record have been measured.
   or a drug class instead (version 3).
 * A medication without a named concept is named by the drug its
   prescription names, as written, and nothing after it (version 4).
+* "Not recorded" begins with the item asked about; when that is the
+  question's own words in lower case, its first letter is a capital
+  ("Chest x ray is not recorded"), where a name such as "pH" keeps its
+  own (version 5; validation.candidate.sentence).
 """
 
 from __future__ import annotations
@@ -55,7 +59,7 @@ from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import record_text as words
 
-RULES_VERSION = "record-answer-v4"
+RULES_VERSION = "record-answer-v5"
 # The values listed of one item: the latest MAX_VALUES when the question
 # names the item or asks what grew in microbiology, the latest one of each
 # item when it asks about another whole kind; the others are counted, and

@@ -820,10 +820,19 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 }
 .prose li { margin: 0.3em 0; }
 .prose li::marker { color: var(--muted); }
-/* A line's references stay together, after its last word. */
-.refs { white-space: nowrap; }
+/* A line's references stay together, after its last word, and wrap
+   within the line's width when there are more than it holds: a line may
+   cite dozens of records. */
+.refs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 3px;
+  vertical-align: 1px;
+}
 
 .cite {
+  position: relative;
   display: inline-flex;
   align-items: center;
   height: 18px;
@@ -836,7 +845,10 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   font: 600 11px/1 var(--font-mono);
   vertical-align: 1px;
 }
-.refs .cite:first-child { margin-left: 7px; }
+/* A reference is small; what a finger can press reaches a little beyond
+   it, up to the next one. */
+.cite::after { content: ""; position: absolute; inset: -5px -2px; }
+.refs .cite { margin-left: 0; }
 .cite:hover, .cite:focus-visible { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
 
 .sources {

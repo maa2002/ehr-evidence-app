@@ -22,10 +22,13 @@ const JOB_FAILURES = 6;
 // remembered in this browser.
 const PANEL = {least: 360, most: 920, step: 24, standard: 480, key: "ehr.panel-width"};
 const CHECK_TEMPLATE = "Is  recorded?";
-// What the box takes as a command rather than a question: /help, and any
-// other word after a slash, which is answered as not a command.
-const COMMAND = /^\/[a-z?]*$/i;
-const HELP = /^\/help$/i;
+// What the box takes as a command rather than a question: a message that
+// begins with a slash; /help, with or without words after it, shows the
+// help, and any other is answered as not a command. A plain request for
+// help ("help", "what can I ask?") shows the help as well.
+const COMMAND = /^\//;
+const HELP = /^\/help(?![a-z0-9])/i;
+const HELP_WORDS = /^(?:help|help me|please help|what can i ask|what can you do)[?.!]*$/i;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const overlaid = window.matchMedia("(max-width: 1240px)");
 
@@ -425,6 +428,9 @@ function currentScope() {
 
 // The banner says what failed; kind names what it is about (the state or
 // the case), so that the success of the same thing takes it away.
+// An ended session cannot be tried again: its link must be opened again.
+const retryable = (error) => error.code !== "session_ended";
+
 function showBanner(message, kind, retry) {
   ui.bannerText.textContent = message;
   state.banner = {kind, retry};
@@ -468,7 +474,7 @@ async function refreshState() {
     }
   } catch (error) {
     showModel({state: "unreachable", label: "Not Connected", detail: error.message});
-    showBanner(error.message, "state", refreshState);
+    showBanner(error.message, "state", retryable(error) ? refreshState : null);
   }
   state.timer = setTimeout(refreshState, seconds * 1000);
 }
@@ -521,7 +527,7 @@ async function selectCaseSet(id) {
     if (state.cases.length) await selectCase(known ? saved : state.cases[0].number);
     else showBanner("This cohort has no admitted patients.", "case", null);
   } catch (error) {
-    showBanner(error.message, "case", () => selectCaseSet(id));
+    showBanner(error.message, "case", retryable(error) ? () => selectCaseSet(id) : null);
   }
 }
 
@@ -547,7 +553,7 @@ async function selectCase(number) {
     if (state.panel.open) openPanel(state.scopeKey, null);
   } catch (error) {
     if (conversation === state.conversation) {
-      showBanner(error.message, "case", () => {
+      showBanner(error.message, "case", !retryable(error) ? null : () => {
         state.caseNumber = null;
         selectCase(number);
       });
@@ -562,8 +568,11 @@ function renderCase() {
   if (current) {
     ui.caseTitle.textContent = current.name;
     ui.caseDetail.textContent = current.subtitle;
+    // The lines are blocks; the space between them is for what reads the
+    // title as text ("Like to", not "Liketo").
     ui.welcomeTitle.replaceChildren(...(current.greeting_lines || [current.greeting])
-      .map((line) => el("span", {className: "line"}, line)));
+      .flatMap((line, index) => (index ? [" "] : []).concat(
+        el("span", {className: "line"}, line))));
     ui.welcomeTags.replaceChildren(...current.tags.map((tag) => el("span", {className: "tag"}, label(tag))));
     document.title = `${current.name} · EHR Evidence`;
   } else {
@@ -615,7 +624,7 @@ function newConversation() {
 
 function ask(text) {
   const question = text.trim();
-  if (COMMAND.test(question)) {
+  if (COMMAND.test(question) || HELP_WORDS.test(question)) {
     command(question);
     return;
   }
@@ -662,7 +671,7 @@ function command(text) {
     conversation: state.conversation,
     kind: "help",
     asked: text,
-    unknown: !HELP.test(text),
+    unknown: !HELP.test(text) && !HELP_WORDS.test(text),
     status: "pending",
     started: Date.now(),
     result: null,
@@ -688,7 +697,7 @@ async function showHelp(turn) {
     ui.announce.textContent = turn.unknown ? state.help.unknown.text : state.help.title;
     turn.node.scrollIntoView({block: "start", behavior: behaviour()});
   } catch (error) {
-    if (live(turn)) fail(turn, error.message);
+    if (live(turn)) fail(turn, error.message, retryable(error));
   }
 }
 
@@ -738,7 +747,7 @@ async function send(turn) {
     turn.job = found.job;
     await follow(turn);
   } catch (error) {
-    if (live(turn)) fail(turn, error.message);
+    if (live(turn)) fail(turn, error.message, retryable(error));
   }
 }
 
@@ -758,7 +767,7 @@ async function follow(turn) {
       failures += 1;
       const lasting = error.status && error.status < 500 && error.status !== 429;
       if (lasting || failures >= JOB_FAILURES) {
-        fail(turn, error.message);
+        fail(turn, error.message, retryable(error));
         return;
       }
       continue;
@@ -783,9 +792,10 @@ function finish(turn, result) {
   turn.node.scrollIntoView({block: "start", behavior: behaviour()});
 }
 
-function fail(turn, message) {
+function fail(turn, message, again = true) {
   turn.status = "failed";
   turn.error = message;
+  turn.again = again;
   renderTurn(turn);
   updateControls();
   ui.announce.textContent = message;
@@ -853,7 +863,8 @@ function failure(turn) {
   return el("div", {className: "failure", role: "alert"},
     icon("alert"),
     el("p", {}, turn.error),
-    el("button", {type: "button", className: "text-button", onclick: () => retry(turn)}, label("Try Again")));
+    turn.again === false ? null
+      : el("button", {type: "button", className: "text-button", onclick: () => retry(turn)}, label("Try Again")));
 }
 
 function badge(outcome) {
@@ -876,9 +887,12 @@ function prose(lines, turn) {
   const body = el("div", {className: "prose"});
   let lists = [];
   for (const line of lines) {
-    const content = [line.text, line.refs.length
-      ? el("span", {className: "refs"}, ...line.refs.map((ref) => cite(ref, turn)))
-      : null];
+    // The space before the references disappears when they wrap to a
+    // line of their own.
+    const content = line.refs.length
+      ? [line.text, " ", el("span", {className: "refs"},
+        ...line.refs.map((ref) => cite(ref, turn)))]
+      : [line.text];
     if (line.depth === null) {
       lists = [];
       body.append(el("p", {}, ...content));
@@ -977,6 +991,7 @@ function copyButton(text) {
     try {
       await navigator.clipboard.writeText(text);
       button.replaceChildren(icon("check"));
+      ui.announce.textContent = "The response is copied.";
       setTimeout(() => button.replaceChildren(icon("copy")), 1500);
     } catch {
       // The browser refused the clipboard; nothing to do.
@@ -1088,10 +1103,14 @@ async function openPanel(key, ref) {
   }
 }
 
+// Closing the panel from within it gives the focus back to the button that
+// opens it, rather than to the page.
 function closePanel() {
+  const within = ui.panel.contains(document.activeElement);
   state.panel = {open: false, key: null, ref: null, request: state.panel.request + 1};
   ui.panel.hidden = true;
   ui.evidenceButton.setAttribute("aria-expanded", "false");
+  if (within) ui.evidenceButton.focus();
 }
 
 function sectionNode(section) {
@@ -1308,7 +1327,8 @@ function bind() {
     if (retryWith) retryWith();
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || openMenu) return;
+    // An Escape a menu has already handled closes only that menu.
+    if (event.key !== "Escape" || openMenu || event.defaultPrevented) return;
     if (ui.app.classList.contains("sidebar-open")) closeSidebar();
     else if (state.panel.open) closePanel();
   });

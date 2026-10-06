@@ -50,6 +50,14 @@ of only some of the conditions ("three of them", "a few", "some of her
 diagnoses") is refused, as rankings are. Negative forms of a presence
 check ("is there no record of X") check X.
 
+A message that is only a greeting, thanks or a request for help ("hi",
+"thanks", "help", "what can you do") is not a question about the
+record: it is not understood, and never read as a condition's name. A
+short phrase on its own is read as a condition's name only when it
+holds no verb of a sentence ("are", "is", "was", "can"): "wich
+condtions are recordd" is a sentence the frames did not read, and is
+not understood rather than looked up as a condition (version 6).
+
 The condition phrase comes with its candidates, longest first: the phrase
 as asked, then with one question word at a time removed from its start
 ("a", "the", "history of", "ICD code") or its end ("recorded", "in the
@@ -67,7 +75,7 @@ import unicodedata
 
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "question-interpretation-v5"
+RULES_VERSION = "question-interpretation-v6"
 CONTRACTIONS = {"what's": "what is", "isn't": "is not", "wasn't": "was not",
                 "doesn't": "does not", "didn't": "did not",
                 "hasn't": "has not", "haven't": "have not",
@@ -178,6 +186,23 @@ RECORD_STATEMENT = re.compile(
     r"never )?(?:given|administered|prescribed|taken|started|stopped|"
     r"measured|checked|tested|drawn|done|performed|ordered|charted|"
     r"obtained|collected|sent|grown|placed|inserted|received)\b")
+# A message that is only a greeting, thanks or a request for help, in one
+# or more of these phrases (version 6).
+GREETING = (r"(?:hi|hello|hey|hiya|greetings|good (?:morning|afternoon|"
+            r"evening|day)|thanks|thank you|thank u|thx|cheers|ok|okay|"
+            r"great|cool|nice|yes|yeah|no|bye|goodbye)")
+HELP_REQUEST = (r"(?:help|help me|i need help|(?:can|could) you help(?: me)?|"
+                r"what can (?:i|you) (?:ask|do)(?: here)?|what do you do|"
+                r"what is this|how does this work|how do i use (?:this|it)|"
+                r"who are you|what are you)")
+FILLER = r"(?: (?:there|again|so much|a lot|very much|please|all|everyone))*"
+CONVERSATION = re.compile(r"(?:%s|%s)%s(?: (?:%s|%s)%s)*" % (
+    GREETING, HELP_REQUEST, FILLER, GREETING, HELP_REQUEST, FILLER))
+# A verb of a sentence: a short phrase that holds one is a sentence the
+# frames did not read, not a condition's name (version 6). "May" is left
+# out, as names hold it ("May-Thurner syndrome").
+SENTENCE_VERB = re.compile(r"\b(?:am|is|are|was|were|be|been|being|do|does|"
+                           r"did|have|has|had|can|could|would|should)\b")
 WRAPPER = re.compile(
     r"^(?:can you |could you |please |would you )?(?:check|find out|tell me|"
     r"confirm|verify|see|determine|show me|let me know) (?:if|whether)"
@@ -452,11 +477,12 @@ def guard_of(text):
 
 
 def is_bare(text):
-    """Return True when the text is a short phrase without a question,
-    and does not state that something was given, measured or done."""
+    """Return True when the text is a short phrase without a question or
+    a verb of a sentence, and does not state that something was given,
+    measured or done."""
     return bool(text) and len(text.split()) <= MAX_BARE_WORDS and not (
         QUESTION_START.match(text) or is_list(text)
-        or RECORD_STATEMENT.search(text))
+        or RECORD_STATEMENT.search(text) or SENTENCE_VERB.search(text))
 
 
 def two_tasks(question):
@@ -515,6 +541,9 @@ def interpret(question):
     if not text:
         return Interpretation("clarify", reason="task_ambiguous",
                               category="empty", text=text)
+    if CONVERSATION.fullmatch(text):
+        return Interpretation("clarify", reason="task_ambiguous",
+                              category="conversation", text=text)
     body = scopes.remove(text, found)
     filtered = FILTERED_LIST.match(body)
     if filtered and clean_term(filtered.group("term")) in LIST_WORDS:

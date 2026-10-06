@@ -27,6 +27,49 @@ change interfaces.
   corners: the right side now matches the left. A thin thumb of the
   column's own runs between the top bar and the composer, clear of both,
   and can be dragged.
+- A greeting, thanks or a request for help ("hi", "thanks", "help") is
+  not understood rather than looked up as a condition's name, and a
+  short phrase that holds a verb of a sentence is not read as a
+  condition's name, so a misspelt question ("wich condtions are
+  recordd?") is not understood rather than looked up
+  (`question-interpretation-v6`). On the page, "help", "what can I ask?"
+  and "/help" with words after it show the help.
+- "When was the first visit?", and the same of another visit, asks for
+  that visit's admission: answered in the visit's scope, and otherwise
+  the scope is to be changed (`record-questions-v7`, rule 12), where the
+  question about dates was declined.
+- "Not recorded" that begins with the question's own words begins with
+  a capital ("Chest x ray is not recorded"), where a name such as "pH"
+  keeps its own (`record-answer-v5`).
+- These rules, and the ranking below, were checked before and after on
+  the development case sets: of 273 questions asked in every scope, only
+  those meant to change do, and the condition suite, the written wording
+  tests, the end-to-end test, the record suite and the mutants give the
+  same results ([qa.md](docs/qa.md#questions-from-a-user-test)).
+- The welcome's title reads as one sentence to screen readers; copying a
+  response is announced; an ended session's banner and failed answers no
+  longer offer Try Again, which could not help; a reference can be
+  pressed a little beyond its edge.
+
+### Fixed
+
+- A ranking that names conditions ("What were the main conditions?",
+  "What is the most important condition?", "What was the first
+  diagnosis?") is declined as the help says, rather than read as a
+  question about the record, and asked back about a test named "main"
+  or "important" or answered: since release 0.10.0 the test that keeps
+  such a ranking declined held two stray control characters for its
+  word boundaries and never matched. It now also knows the singular
+  words (`qa-answer-v7`).
+- References on a line holding many of them wrap within the line, where
+  they ran past the column's edge and could not be seen or pressed: a
+  medication line of a development case cites up to 26 records.
+- Escape on a menu inside the evidence panel closes only the menu, where
+  it closed the panel too; closing the panel from within it gives the
+  focus back to the Evidence button, where it was lost.
+- Before a patient has opened, the suggestions and New Conversation are
+  disabled, as the other controls are, where they looked usable and did
+  nothing.
 
 ## [1.0.0] - 2026-10-06
 

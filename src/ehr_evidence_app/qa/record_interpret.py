@@ -83,12 +83,18 @@ record-questions-v3), by fixed rules and without a model:
     "treat") is read by rule 9 first, and one whose longest name is held
     by two kinds is read as before, as is one in which no span is a
     name.
+12. A question that asks only when one visit named by a scope phrase
+    was ("when was the first visit", "when was visit 2", "what date was
+    the final admission") asks for that visit's admission, as "when was
+    the patient admitted" asks within it; the visit must be the selected
+    scope, as for every scope phrase, or the question asks for the scope
+    to be changed.
 
 Version 2 adds rules 6 to 8; version 3 removes the polite opening
-(rule 1); version 4 adds rule 9, version 5 rule 10 and version 6 rule
-11. Version 6 also reads "all ... values" around a name of up to eight
-words, digits included ("all the hemoglobin a1c values"), where four
-words of letters alone were read before.
+(rule 1); version 4 adds rule 9, version 5 rule 10, version 6 rule 11
+and version 7 rule 12. Version 6 also reads "all ... values" around a
+name of up to eight words, digits included ("all the hemoglobin a1c
+values"), where four words of letters alone were read before.
 """
 
 from __future__ import annotations
@@ -100,7 +106,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v6"
+RULES_VERSION = "record-questions-v7"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -198,6 +204,12 @@ VISIT = (
     ("list", re.compile(r"\b(?:visits|admissions|hospitali[sz]ations|"
                         r"encounters|hospital stays)\b")),
 )
+# Rule 12: all that is left of a question about when one visit, named by a
+# scope phrase, was.
+VISIT_WHEN = re.compile(
+    r"(?:when|what date|what day|which date|which day|on what date|"
+    r"on which date)(?: (?:was|were|is|did))?(?: (?:it|that|this))?"
+    r"(?: (?:happen|start|begin|take place|occur))?")
 COUNT = re.compile(r"\bhow many\b|\bnumber of\b|\bhow often\b|\bcount of\b|"
                    r"\btotal number\b|\bhow frequently\b")
 TIMING = re.compile(r"\bwhen\b|\bwhat (?:date|day|time|dates|days)\b|"
@@ -620,6 +632,10 @@ def interpret(question, terms):
     body = scopes.remove(text, found)
     if not body:
         return RecordQuestion("none")
+    if (len(found) == 1 and found[0].kind == "selected_visit"
+            and VISIT_WHEN.fullmatch(body)):
+        return RecordQuestion("task", task="visit_details", kind="visit",
+                              field="admitted", mentions=found)
     words = body.split()
     field = person_field(body)
     if field is not None and not kinds_named(body) and (

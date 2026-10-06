@@ -144,9 +144,12 @@ value chosen there; the page builds everything it shows as text.
   seconds it took. Who wrote it, the model or a template, is not shown;
   its runtime record names the writer.
   Choosing a reference opens its record in the evidence panel, in the
-  scope the response answered.
+  scope the response answered. A line's references stay together after
+  its last word and wrap within the line when there are more than it
+  holds, and each can be pressed a little beyond its edge.
 - **Help.** Questions are read by fixed rules, so they have to ask for
-  one of the kinds of information the rules read. Typing `/help` shows,
+  one of the kinds of information the rules read. Typing `/help` (with or
+  without words after it), "help" or "what can I ask?" shows,
   in the conversation and without asking the API anything, that the
   questions are not a fixed list but must ask for one of the kinds below,
   then each kind of information with example questions, the predicted
@@ -154,9 +157,16 @@ value chosen there; the page builds everything it shows as text.
   answered. Selecting an example puts it in the box to change and send.
   Every example is read by the rules as its kind's question and answered
   on the invented record (`tests/interface/test_views.py`). Any other
-  word after a slash is answered as not a command; neither is sent as a
-  question or recorded. The welcome names `/help`, and so does every
-  response that asks back or declines.
+  message that begins with a slash is answered as not a command; neither
+  is sent as a question or recorded. The welcome names `/help`, and so
+  does every response that asks back or declines.
+- **Keyboard and failures.** Escape closes an open menu, then the
+  evidence panel or the patient list; closing the panel from within it
+  gives the focus back to the Evidence button. Copying a response is
+  announced to screen readers. Until a patient has opened, the question
+  box, the suggestions and the buttons that need a patient are disabled.
+  A failure offers Try Again, except an ended session, whose link must be
+  opened again.
 - **The explanation** (work item 51). Generate the Predicted Diagnosis
   first says what it is, in plain words: a GNN model that predicts
   diagnoses read the record and predicted a diagnosis for the final

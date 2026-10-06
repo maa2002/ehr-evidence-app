@@ -84,12 +84,23 @@ you tell me", "tell me", "let me know", "I'd like to know (about)", "I
 want to know", "I wonder" or "do you know", with the "if" or "whether"
 after it, but not before "about" or "more", so "tell me about the
 patient" stays as asked. Scope phrases are set aside (see
-[Scope](#scope)). This section describes rules version 5
-(`question-interpretation-v5`), which adds the polite opening and the
-statement form below to version 4
+[Scope](#scope)). This section describes rules version 6
+(`question-interpretation-v6`), which adds the conversation and the
+sentence verbs below to version 5; version 5 added the polite opening and
+the statement form to version 4
 ([ADR 0023](decisions/0023-consistency-and-junk-input.md)); release
-0.6.0 had version 1 and release 0.7.0 version 2, and version 3 was
-measured but not released.
+0.6.0 had version 1 and release 0.7.0 version 2, version 3 was measured
+but not released, releases 0.7.1 to 0.9.0 had version 4 and releases
+0.10.0 to 1.0.0 version 5.
+
+- **Conversation** (version 6): a message that is only a greeting,
+  thanks or a request for help ("hi", "hello there", "thanks", "help",
+  "can you help me", "what can you do") is not a question about the
+  record. It gets `task_ambiguous` with the notice that the question was
+  not understood, and is never looked up as a condition's name, as
+  "help" was before ("Which condition do you mean? "help" was not found
+  as a condition name"). On the page, "help", "what can I ask?" and
+  "/help" with any words after it show the help.
 
 - **Presence frames** give a presence check and the condition phrase:
   "is X recorded", "was X documented", "does the patient have X", "has the
@@ -110,7 +121,12 @@ measured but not released.
   question word or a request verb such as "diagnose" or "treat") is a
   presence check, unless it states that something was given, measured or
   done ("heparin was given?"): that is read as its question form is ("was
-  heparin given?").
+  heparin given?"). Since version 6 it is a presence check only when it
+  holds no verb of a sentence ("is", "are", "was", "have", "can" and the
+  like; "may" is left out, as in "May-Thurner syndrome"): a misspelt
+  question such as "wich condtions are recordd?" is not understood,
+  where it was looked up as a condition named "wich condtions are
+  recordd".
 
 The words outside the condition phrase are checked for requests outside
 the supported tasks:
@@ -585,11 +601,19 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v6`, which removes a polite opening as the
-condition rules do and reads a name whole); so are a dose question, a past question
-about death and a question about a first or last result. A request for
-advice, a question about the future and a ranking of conditions keep
-their refusals. A presence question whose phrase is a fixed word for a
+(rules `record-questions-v7`, which removes a polite opening as the
+condition rules do, reads a name whole and, by rule 12, reads when a
+visit named by a scope phrase was); so are a dose question, a past
+question about death and a question about a first or last result. A
+request for advice, a question about the future and a ranking of
+conditions keep their refusals: since `qa-answer-v7`, a ranking that
+names conditions in the singular as in the plural ("the most important
+condition", "the main conditions"). In versions 5 and 6 of the answer
+rules (releases 0.10.0 to 1.0.0) the test of that ranking held two stray
+control characters for its word boundaries and never matched, so such a
+ranking was read as a question about the record, and asked back or
+answered (see [Questions from a user test](#questions-from-a-user-test)).
+A presence question whose phrase is a fixed word for a
 class of medications ("any nsaids", "any antibiotics") is read as one
 about medications before its condition is looked for, and the word names
 medications rather than a condition of the same name (rules
@@ -867,6 +891,44 @@ only, without the model and without runtime records:
 | Mutants of the answers to questions naming conditions and cultures with such words | 72 answers, 1,899 mutants | all withheld; every original released |
 | Rewordings and nested scopes, as in [Consistency and junk input](#consistency-and-junk-input): every question of the test in every scope, and its 13 rewordings in the history and all visits of 3 cases of each set | 27,020 and 19,836 | 21,150 pairs of nested scopes compared, none contradicting; no rewording answered otherwise; median 0.067 s, the slowest 2.43 s with other checks running beside it |
 | The condition suite | 1,892 and 784 | the summary digests byte for byte |
+
+### Questions from a user test
+
+Trying the page as a user would found five kinds of message the reading
+answered otherwise than the help says. A greeting, thanks or a request
+for help ("hi", "thanks", "help", "help me") was looked up as a
+condition's name and asked back ("Which condition do you mean? "help"
+was not found as a condition name"), and so was a misspelt question
+("wich condtions are recordd?"). A ranking that names conditions ("What
+were the main conditions?", "What is the most important condition?")
+was read as a question about the record and asked back, where the table
+in [Interpretation](#interpretation) declines it: the condition suite
+asks the condition rules alone, which decline it, so the broken test
+between them and the record rules went unseen. "When was the first
+visit?" was declined as a question about dates and times, though "When
+was the patient admitted?" asked in that visit's scope is answered. And
+"not recorded" began with the question's words in lower case ("chest x
+ray is not recorded").
+
+Rules `question-interpretation-v6`, `qa-answer-v7`,
+`record-questions-v7` (rule 12) and `record-answer-v5` change these as
+described above, and `tests/qa/test_user_questions.py` asks each on the
+invented record. The question's words keep their normalised form ("x
+ray" for "x-ray").
+
+Before and after, on the development case sets, with aggregate output
+only, through the service as the page asks, without the model and
+without runtime records:
+
+| Check | Requests | Result |
+| --- | --- | --- |
+| The 228 questions of the earlier comparisons and 45 of the user test's own, in every scope of every case | 52,689 each | 214 give the same responses byte for byte, and 31 differ only in the capital that begins "not recorded". The 28 that change are the ones the rules meant to change: eleven greetings, thanks and requests for help and two misspelt questions are not understood, where each was asked back as a condition's name; nine rankings of conditions are declined in every scope, where eight were asked back and "What was the first diagnosis?" was answered in 190 scopes and not recorded in 3; and six questions about when a named visit was are answered in that visit's scope, which each of the 36 cases has, and ask for the scope to be changed in the other 157, where they were declined. No rejection, error or exception |
+| The condition suite, under the rules' names before | 1,892 and 784 | 100%, with the summary digests byte for byte |
+| The written wording tests, versions 1 to 4, under the rules' names before | 198, 198, 228 and 226 | the summary digests byte for byte |
+| The end-to-end test of the written set version 4, without the model | 226 | the same counts at every stage |
+| The record suite | 7,865 and 3,188 | the same counts for every question |
+| The mutation suite ([validation.md](validation.md#mutation-suite)) | 17,414 and 7,356 mutants | as recorded there: every original released unchanged and every mutant detected |
+| Mutants of the record answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 answers, 30,921 mutants | all withheld; every original and the 768 controls released |
 
 ## Limits
 

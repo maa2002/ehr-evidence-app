@@ -48,7 +48,12 @@ word for a class of medications, before its condition is looked for
 (version 6): "any nsaids" asks about medications, though the condition
 vocabulary also calls an overdose NSAIDs. Every other question the
 condition rules answer is answered exactly as without the records. A
-request for advice, or about the future, keeps its refusal.
+request for advice, or about the future, keeps its refusal, as does a
+ranking that names conditions, in the singular or the plural ("the main
+conditions", "the most important condition"): the test of versions 5
+and 6 held two stray control characters for its word boundaries and
+never matched, so such a ranking was read as a question about the record
+(version 7).
 """
 
 from __future__ import annotations
@@ -73,7 +78,7 @@ from ehr_evidence_app.qa import scope as scopes
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import evidence, gate, record_support
 
-RULES_VERSION = "qa-answer-v6"
+RULES_VERSION = "qa-answer-v7"
 PILOT = "pilot-10-v1"
 # Out-of-scope rules that end in a clarification rather than an abstention,
 # with the notice of each.
@@ -105,6 +110,11 @@ FUTURE = re.compile(r"\b(?:will|would|going to|likely|likelihood|chance|"
                     r"chances|risk|expected|prognosis|outlook|get worse|"
                     r"getting worse|worsen\w*|improve\w*|recover\w*|"
                     r"progress\w*)\b")
+# A word for conditions, singular or plural: a ranking that holds one is a
+# ranking of conditions, which is refused.
+CONDITION_WORDS = re.compile(r"\b(?:conditions?|diagnos[ie]s|problems?|"
+                             r"diseases?|illness(?:es)?|"
+                             r"comorbidit(?:y|ies)|disorders?)\b")
 
 
 class AnswerError(Exception):
@@ -364,7 +374,7 @@ def record_allowed(interpretation):
     if category == "ranking":
         # "The first potassium" is a time; "the first diagnosis" stays a
         # ranking of conditions, which is refused.
-        return not re.search(r"%s" % interpreter.CONDITIONS, text)
+        return not CONDITION_WORDS.search(text)
     return False
 
 
