@@ -21,6 +21,12 @@ change interfaces.
   font keeps above its capitals no longer leaves some low and others
   high, and an icon leading a label is pulled in by the space it is
   drawn with. Sizes are unchanged; the answer's badge has even padding.
+- The conversation's column scrolls without the browser's scrollbar,
+  whose lane along its right edge stopped the top bar and the composer's
+  band short of that edge, against the scrollbar, and ran into the
+  corners: the right side now matches the left. A thin thumb of the
+  column's own runs between the top bar and the composer, clear of both,
+  and can be dragged.
 
 ## [1.0.0] - 2026-10-06
 

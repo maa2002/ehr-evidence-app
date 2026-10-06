@@ -48,6 +48,7 @@ const ui = {
   casesCount: byId("cases-count"),
   version: byId("version"),
   main: byId("main"),
+  scrollThumb: byId("scroll-thumb"),
   caseTitle: byId("case-title"),
   caseDetail: byId("case-detail"),
   pseudonym: byId("pseudonym-tag"),
@@ -1180,6 +1181,69 @@ function bindResizer() {
 }
 
 // ---------------------------------------------------------------------------
+// The conversation's scroll thumb
+// ---------------------------------------------------------------------------
+
+// The column scrolls without the browser's scrollbar, whose lane along its
+// right edge stopped the bars short of that edge (app.css). This thumb
+// takes no room: it runs along the edge between the top bar and the
+// composer, shows where the conversation is, and can be dragged.
+const THUMB = {least: 28, gap: 8};
+
+function thumbTrack() {
+  const column = ui.main.getBoundingClientRect();
+  const top = ui.main.querySelector(".topbar").getBoundingClientRect().bottom + THUMB.gap;
+  const end = ui.main.classList.contains("is-empty")
+    ? column.bottom : ui.composer.getBoundingClientRect().top;
+  return {column, top, length: end - THUMB.gap - top};
+}
+
+function placeThumb() {
+  const {scrollTop, scrollHeight, clientHeight} = ui.main;
+  const range = scrollHeight - clientHeight;
+  const track = thumbTrack();
+  ui.scrollThumb.hidden = range < 1 || track.length < 2 * THUMB.least;
+  if (ui.scrollThumb.hidden) return;
+  const height = Math.max(THUMB.least, track.length * clientHeight / scrollHeight);
+  ui.scrollThumb.style.height = `${height}px`;
+  ui.scrollThumb.style.top = `${track.top + (track.length - height) * scrollTop / range}px`;
+  ui.scrollThumb.style.left = `${track.column.right - ui.scrollThumb.offsetWidth}px`;
+}
+
+function bindScrollThumb() {
+  let frame = 0;
+  const queue = () => {
+    if (!frame) frame = requestAnimationFrame(() => { frame = 0; placeThumb(); });
+  };
+  ui.main.addEventListener("scroll", queue, {passive: true});
+  window.addEventListener("resize", queue);
+  const watch = new ResizeObserver(queue);
+  for (const node of [ui.main, ui.thread, ui.composer]) watch.observe(node);
+  ui.scrollThumb.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    ui.scrollThumb.setPointerCapture(event.pointerId);
+    ui.scrollThumb.classList.add("is-dragging");
+    const start = {y: event.clientY, top: ui.main.scrollTop};
+    const move = (moved) => {
+      const range = ui.main.scrollHeight - ui.main.clientHeight;
+      const room = thumbTrack().length - ui.scrollThumb.offsetHeight;
+      ui.main.scrollTop = start.top + (moved.clientY - start.y) * range / Math.max(1, room);
+    };
+    const end = () => {
+      ui.scrollThumb.removeEventListener("pointermove", move);
+      ui.scrollThumb.removeEventListener("pointerup", end);
+      ui.scrollThumb.removeEventListener("pointercancel", end);
+      ui.scrollThumb.classList.remove("is-dragging");
+    };
+    ui.scrollThumb.addEventListener("pointermove", move);
+    ui.scrollThumb.addEventListener("pointerup", end);
+    ui.scrollThumb.addEventListener("pointercancel", end);
+  });
+  placeThumb();
+}
+
+// ---------------------------------------------------------------------------
 // The composer and the sidebar on small screens
 // ---------------------------------------------------------------------------
 
@@ -1249,6 +1313,7 @@ function bind() {
     else if (state.panel.open) closePanel();
   });
   bindResizer();
+  bindScrollThumb();
   setInterval(tick, 1000);
 }
 
