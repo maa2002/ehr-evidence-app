@@ -1,4 +1,4 @@
-# 0016. Evaluation metrics, fixed before the final evaluation (Phase 9)
+# 0016. Evaluation Metrics, Fixed Before the Final Evaluation (Phase 9)
 
 Status: accepted (2026-09-28), agreed by the project owner before any
 request of `eval-100-v1` is written. These definitions are frozen with
@@ -146,18 +146,18 @@ independent references instead.
     asked about other data, and were to be refused, are scored in these
     strata instead; the condition strata keep the condition questions.
 
-| Metric | Numerator | Denominator | When the denominator is zero |
-| --- | --- | --- | --- |
-| Exact match (lists) | exact lists | list requests with an answer reference | not applicable |
-| Condition, record, driver and line precision | true positives | true and false positives | not applicable |
-| Condition, record, driver and line recall | true positives | true positives and false negatives | not applicable |
-| F1 | twice precision times recall | precision plus recall | 0 when both are 0; not applicable when either is |
-| Scoped accuracy | presence requests with the reference's outcome | presence requests | not applicable |
-| Coverage, over-abstention, correct-answer yield | as in decision 5 | A | not applicable |
-| Selective accuracy | correct answers | answers given to A | not applicable |
-| Appropriate abstention | requests of N given the reference's kind | N | not applicable |
-| Unsupported-answer rate | answers with an unsupported statement | answers given | 0 answers: not applicable |
-| Citation resolution, claim support, unsupported-claim rate | as in decision 7 | as in decision 7 | not applicable |
+| Metric | Numerator | Denominator | When the Denominator Is Zero |
+| :--- | :---: | :---: | ---: |
+| Exact Match (Lists) | Exact Lists | List Requests With an Answer Reference | Not Applicable |
+| Condition, Record, Driver and Line Precision | True Positives | True and False Positives | Not Applicable |
+| Condition, Record, Driver and Line Recall | True Positives | True Positives and False Negatives | Not Applicable |
+| F1 | Twice Precision Times Recall | Precision Plus Recall | 0 When Both Are 0; Not Applicable When Either Is |
+| Scoped Accuracy | Presence Requests With the Reference's Outcome | Presence Requests | Not Applicable |
+| Coverage, Over-Abstention, Correct-Answer Yield | As in Decision 5 | A | Not Applicable |
+| Selective Accuracy | Correct Answers | Answers Given to A | Not Applicable |
+| Appropriate Abstention | Requests of N Given the Reference's Kind | N | Not Applicable |
+| Unsupported-Answer Rate | Answers With an Unsupported Statement | Answers Given | 0 Answers: Not Applicable |
+| Citation Resolution, Claim Support, Unsupported-Claim Rate | As in Decision 7 | As in Decision 7 | Not Applicable |
 
 "Not applicable" is reported as such, never as 0 or 1.
 

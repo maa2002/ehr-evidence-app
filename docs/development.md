@@ -15,7 +15,7 @@ Set up the storage roots and the application environment once, as described
 in [data-handling.md](data-handling.md) and
 [environments.md](environments.md).
 
-## Session set-up
+## Session Set-Up
 
 Every PowerShell session starts with:
 
@@ -83,7 +83,7 @@ example real symbolic-link tests without the symlink privilege. Setup-script
 tests start a child `powershell -NoProfile -NonInteractive` and skip if the
 execution policy blocks scripts.
 
-## Quality gates
+## Quality Gates
 
 Run before every commit:
 
@@ -98,7 +98,7 @@ When dependencies change, also run `& $AppPython -m ehr_evidence_app.environment
 The publication audit scans the working tree, the index and all history; it
 must pass before anything is pushed.
 
-## Continuous integration
+## Continuous Integration
 
 `.github/workflows/ci.yml` runs on every push to `main`, on pull requests
 and on demand, on a Windows runner with Python 3.12.8 and the hashed lock:
@@ -151,7 +151,7 @@ secret-shaped literal appears in the source.
 **Text files.** UTF-8, LF line endings (enforced by `.gitattributes`); the
 setup script stays ASCII.
 
-## Reconstruction and restart
+## Reconstruction and Restart
 
 The application is rebuilt from a clean clone of the repository, the
 pinned assets in the workspace and the hashed locks, without rerunning an
@@ -184,29 +184,29 @@ was set aside by renaming it, and a fresh clone from GitHub took its place
 until the check ended:
 
 | Step | Observed |
-| --- | --- |
-| Environment | The application environment matched its hashed lock; the import probe passed |
-| Storage | The runtime root and the destinations checked: 177 of 177 checks. The bytecode probe failed at first under a shell that set `PYTHONDONTWRITEBYTECODE`; without it, it passed |
-| Publication audit | No secret or data file in the tree or its history |
-| Tracker configuration | The policy and the connection's declaration checked offline |
-| Tests | 1,656 passed, 5 skipped (symbolic links unavailable to the account, and an interpreter layout), none failed |
-| Both workflows | Lists, presence checks, questions about the whole record and the explanation for the first three admitted cases of `dev-30-v1`, 24 requests with the model, answered without a problem, each writing its runtime record |
-| Restart | The API stopped and started again; the same 24 requests gave the same outcomes, writers and texts, compared by digest |
-| Pinned assets | The workspace's protected data and outputs were listed before and after: nothing added, removed or rebuilt; only the set-up's markers and the checks' own reports were rewritten |
+| :--- | ---: |
+| Environment | The Application Environment Matched Its Hashed Lock; the Import Probe Passed |
+| Storage | The Runtime Root and the Destinations Checked: 177 of 177 Checks. The Bytecode Probe Failed at First Under a Shell That Set `PYTHONDONTWRITEBYTECODE`; Without It, It Passed |
+| Publication Audit | No Secret or Data File in the Tree or Its History |
+| Tracker Configuration | The Policy and the Connection's Declaration Checked Offline |
+| Tests | 1,656 Passed, 5 Skipped (Symbolic Links Unavailable to the Account, and an Interpreter Layout), None Failed |
+| Both Workflows | Lists, Presence Checks, Questions About the Whole Record and the Explanation for the First Three Admitted Cases of `dev-30-v1`, 24 Requests With the Model, Answered Without a Problem, Each Writing Its Runtime Record |
+| Restart | The API Stopped and Started Again; the Same 24 Requests Gave the Same Outcomes, Writers and Texts, Compared by Digest |
+| Pinned Assets | The Workspace's Protected Data and Outputs Were Listed Before and After: Nothing Added, Removed or Rebuilt; Only the Set-Up's Markers and the Checks' Own Reports Were Rewritten |
 
 **Seeds.** The steps that draw or resample use fixed seeds, so they give
 the same result when run again:
 
 | Step | Seed |
-| --- | --- |
-| The inherited GNN's split of patients (recovered, not rerun) | 7 |
-| The draw of `dev-30-v1` | 20260926 |
-| The draw of `eval-100-v1` | 20260927 |
-| The model's decoding (`config/generation.json`) | 20260927 |
-| The paired bootstrap of the statistics (10,000 replicates) | 20260928 |
-| The rating model's settings, the order of the texts it reads, and the owner's sample | 20261003 |
+| :--- | ---: |
+| The Inherited GNN's Split of Patients (Recovered, Not Rerun) | 7 |
+| The Draw of `dev-30-v1` | 20260926 |
+| The Draw of `eval-100-v1` | 20260927 |
+| The Model's Decoding (`config/generation.json`) | 20260927 |
+| The Paired Bootstrap of the Statistics (10,000 Replicates) | 20260928 |
+| The Rating Model's Settings, the Order of the Texts It Reads, and the Owner's Sample | 20261003 |
 
-## Version control and releases
+## Version Control and Releases
 
 - Commit with the repository-local author identity; do not change global Git
   configuration.

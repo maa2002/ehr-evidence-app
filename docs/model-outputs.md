@@ -1,4 +1,4 @@
-# Model outputs and provenance
+# Model Outputs and Provenance
 
 The inherited model's predictions and attributions for the 10-person
 development pilot are regenerated offline, bound to verified identities and
@@ -13,16 +13,16 @@ Command examples assume the session set-up in
 All paths are under `G:\Industry Dataset\ehr-evidence-workspace\protected-data`.
 
 | Record | Directory | Module | State |
-| --- | --- | --- | --- |
-| Offline outputs | `model-outputs\step-20-pilot10-v1` | `gnn.outputs` | published, immutable |
-| Executed wrapper recovery | `model-provenance\step-20-executed-wrapper-recovery-v1` | recovery record | published, immutable |
-| Provenance sidecar | `model-provenance\step-21-pilot10-v1` | `gnn.provenance` | published, immutable; some flags superseded |
-| Split membership, first attempt | `model-provenance\step-22-pilot10-v1` | `gnn.split` | superseded (run without PyTorch) |
-| Split membership | `model-provenance\step-22-pilot10-v2` | `gnn.split` | published, immutable; result superseded |
-| Run binding | `verification\inherited-run-binding-v1` | `gnn.binding` | published, immutable |
-| Phase 3 closure | `model-provenance\phase3-closure-v1` | `gnn.admission` | published, immutable; current authority for Phase 4 |
-| Driver-to-event linkage | `evidence\event-linkage-pilot10-v1` | `gnn.linkage` | published, immutable ([evidence.md](evidence.md#event-linkage)) |
-| Evidence bundles | `evidence-bundles\pilot10-v1` | `evidence.bundles` | published, immutable ([evidence.md](evidence.md#published-records)) |
+| :--- | :---: | :---: | ---: |
+| Offline Outputs | `model-outputs\step-20-pilot10-v1` | `gnn.outputs` | Published, Immutable |
+| Executed Wrapper Recovery | `model-provenance\step-20-executed-wrapper-recovery-v1` | Recovery Record | Published, Immutable |
+| Provenance Sidecar | `model-provenance\step-21-pilot10-v1` | `gnn.provenance` | Published, Immutable; Some Flags Superseded |
+| Split Membership, First Attempt | `model-provenance\step-22-pilot10-v1` | `gnn.split` | Superseded (Run Without PyTorch) |
+| Split Membership | `model-provenance\step-22-pilot10-v2` | `gnn.split` | Published, Immutable; Result Superseded |
+| Run Binding | `verification\inherited-run-binding-v1` | `gnn.binding` | Published, Immutable |
+| Phase 3 Closure | `model-provenance\phase3-closure-v1` | `gnn.admission` | Published, Immutable; Current Authority for Phase 4 |
+| Driver-to-Event Linkage | `evidence\event-linkage-pilot10-v1` | `gnn.linkage` | Published, Immutable ([evidence.md](evidence.md#event-linkage)) |
+| Evidence Bundles | `evidence-bundles\pilot10-v1` | `evidence.bundles` | Published, Immutable ([evidence.md](evidence.md#published-records)) |
 
 Published records are never edited. A correction is a new version or a new
 record that references the old one.
@@ -42,7 +42,7 @@ anything. Every default mode runs invented fixtures:
 & $AppPython -m ehr_evidence_app.gnn.admission
 ```
 
-## Offline outputs
+## Offline Outputs
 
 `ehr_evidence_app.gnn.outputs` wraps the pinned bridge for exactly the ten
 verified records of the identity mapping.
@@ -75,7 +75,7 @@ Files: `outputs.json` (the ten bridge records, patient-bearing),
 `canonical-agreement.json` (aggregate) and `manifest.json` (settings,
 runtime versions, asset inventory, file hashes, flags; no patient content).
 
-## Executed wrapper identity
+## Executed Wrapper Identity
 
 The published outputs were produced by wrapper bytes with SHA-256
 `fe37ac0a…44323c9ab`. The last revision of that wrapper before 0.3.0
@@ -87,7 +87,7 @@ needed. The packaged module `ehr_evidence_app.gnn.outputs` carries the same
 logic adapted to the package layout and storage anchor; the pre-0.3.0 bytes
 remain in the private workspace archive, where historical records pin them.
 
-## Provenance sidecar
+## Provenance Sidecar
 
 `ehr_evidence_app.gnn.provenance` links each output to its identity-mapping
 record, the target and history rule, the preprocessing identity and the
@@ -107,7 +107,7 @@ fingerprint (`preparation.fingerprint_sha256`) is the SHA-256 of its
 canonical JSON without the `preparation` block; equal inputs give an equal
 fingerprint.
 
-## Split membership
+## Split Membership
 
 `ehr_evidence_app.gnn.split` replays the pinned `split_graphs` function over
 filtered positions (`numpy.random.default_rng(seed).permutation(n)`; test,
@@ -124,20 +124,20 @@ PyTorch and recorded the saved arguments as unavailable.
 The run-binding evidence in [inherited-gnn.md](inherited-gnn.md#run-binding-and-split-membership)
 supersedes this result: membership is 8 training, 0 validation, 2 test.
 
-## Flags in published records
+## Flags in Published Records
 
-| Flag in published records | Recorded value | Current evidence |
-| --- | --- | --- |
-| `label_index_correspondence` | `not_established` | established by label layers A to C |
-| Executed wrapper `bytes_available`, `retrievable` | `false` | recovered byte-exact |
-| `upstream_split_membership` | `unknown` / `unavailable` | 8 training, 0 validation, 2 test |
-| `phase4_eligible` | `false` for every record | replaced by typed per-case admission in the closure record |
-| `source_event_linkage` | `absent` | linked by `event-linkage-pilot10-v1`: every graph edge and driver verified |
-| `pre_target_only_input` | `false` | unchanged: target-visit inputs remain |
-| `history_only_claim_allowed` | `false` | unchanged |
-| `unseen_patient_status` | `not_inferred` | partition known; "held out" must be defined per claim |
+| Flag in Published Records | Recorded Value | Current Evidence |
+| :--- | :---: | ---: |
+| `label_index_correspondence` | `not_established` | Established by Label Layers A to C |
+| Executed Wrapper `bytes_available`, `retrievable` | `false` | Recovered Byte-Exact |
+| `upstream_split_membership` | `unknown` / `unavailable` | 8 Training, 0 Validation, 2 Test |
+| `phase4_eligible` | `false` for Every Record | Replaced by Typed Per-Case Admission in the Closure Record |
+| `source_event_linkage` | `absent` | Linked by `event-linkage-pilot10-v1`: Every Graph Edge and Driver Verified |
+| `pre_target_only_input` | `false` | Unchanged: Target-Visit Inputs Remain |
+| `history_only_claim_allowed` | `false` | Unchanged |
+| `unseen_patient_status` | `not_inferred` | Partition Known; "held out" Must Be Defined per Claim |
 
-## Phase 4 admission
+## Phase 4 Admission
 
 All ten pilot cases may enter evidence-object construction, subject to the
 claim policy below. Per case, the admissible inputs are:
@@ -155,7 +155,7 @@ claim policy below. Per case, the admissible inputs are:
 Excluded: the zero-score condition entries attached only to the target
 visit (5 across the pilot). They never reach a language model.
 
-### Closure record
+### Closure Record
 
 `ehr_evidence_app.gnn.admission` writes this admission as a record, so Phase 4
 consumes a typed, versioned decision rather than documentation. It verifies
@@ -176,30 +176,30 @@ Published record: `protected-data\model-provenance\phase3-closure-v1`, with
 `closure.json` (patient-bearing) and `summary.json` (aggregate). Its counts:
 
 | Measure | Result |
-| --- | --- |
-| Cases admitted | 10 of 10 |
-| Label layer B / correspondence established | 10 / 10 |
-| Explanation-eligible cases | 10 |
-| Batch-sensitive predictions | 2 |
-| Upstream partition (train / validation / test) | 8 / 0 / 2 |
-| Excluded target-visit diagnoses | 5 |
+| :--- | ---: |
+| Cases Admitted | 10 of 10 |
+| Label Layer B / Correspondence Established | 10 / 10 |
+| Explanation-Eligible Cases | 10 |
+| Batch-Sensitive Predictions | 2 |
+| Upstream Partition (Train / Validation / Test) | 8 / 0 / 2 |
+| Excluded Target-Visit Diagnoses | 5 |
 
 ```powershell
 & $GnnPython -m ehr_evidence_app.gnn.admission --operator-real
 ```
 
-## Claim policy
+## Claim Policy
 
 | Allowed | Prohibited |
-| --- | --- |
-| The selected label, described as one selected output of a multi-label prediction | Calling the selected label the only diagnosis, or the score a clinical risk |
-| The raw logit and an uncalibrated score | Citing the reported AUROC for single-graph bridge predictions |
-| Drivers with a score above zero, described as unsigned local sensitivity | Causal, directional or percentage attribution |
-| A driver's visit tag, used only to restrict or disclose | Presenting target-attached drivers as history |
-| The upstream partition, with the explicit definition above | Prospective or pre-target-only claims |
-| Recorded history, stated within its verified scope | Tying an attribution to a date, a visit or a recurrence |
-| | Any use of the zero-score target diagnoses |
-| | Dated, per-visit, frequency or progression claims about events (no event linkage) |
+| :--- | ---: |
+| The Selected Label, Described as One Selected Output of a Multi-Label Prediction | Calling the Selected Label the Only Diagnosis, or the Score a Clinical Risk |
+| The Raw Logit and an Uncalibrated Score | Citing the Reported AUROC for Single-Graph Bridge Predictions |
+| Drivers With a Score Above Zero, Described as Unsigned Local Sensitivity | Causal, Directional or Percentage Attribution |
+| A Driver's Visit Tag, Used Only to Restrict or Disclose | Presenting Target-Attached Drivers as History |
+| The Upstream Partition, With the Explicit Definition Above | Prospective or Pre-Target-Only Claims |
+| Recorded History, Stated Within Its Verified Scope | Tying an Attribution to a Date, a Visit or a Recurrence |
+| | Any Use of the Zero-Score Target Diagnoses |
+| | Dated, Per-Visit, Frequency or Progression Claims About Events (No Event Linkage) |
 
 This is the policy as published in the closure record. Phase 4 extends it,
 as a separate versioned policy, for events the linkage record ties to a

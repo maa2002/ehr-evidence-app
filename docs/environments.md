@@ -2,16 +2,16 @@
 
 The project uses three Python environments that are never mixed:
 
-| Environment | Purpose | Location | Managed by this project |
-| --- | --- | --- | --- |
-| Application | Tests, tooling, tracking, the generation adapter, and later the API and interface | `UV_PROJECT_ENVIRONMENT` under the runtime root | yes, from a hashed lock |
-| Model | The language model's worker (`generation.worker`): PyTorch with CUDA, Transformers, the schema-constrained decoders | `environments\uv\ehr-evidence-llm` under the runtime root, with a uv-managed interpreter under `python` | yes, from a hashed lock |
-| GNN (`omopgnn`) | Real-data runs that load the inherited graphs or checkpoint | existing conda environment on C: | no: read-only, never modified |
+| Environment | Purpose | Location | Managed by This Project |
+| :--- | :---: | :---: | ---: |
+| Application | Tests, Tooling, Tracking, the Generation Adapter, and Later the API and Interface | `UV_PROJECT_ENVIRONMENT` Under the Runtime Root | Yes, From a Hashed Lock |
+| Model | The Language Model's Worker (`generation.worker`): PyTorch With CUDA, Transformers, the Schema-Constrained Decoders | `environments\uv\ehr-evidence-llm` Under the Runtime Root, With a uv-Managed Interpreter Under `python` | Yes, From a Hashed Lock |
+| GNN (`omopgnn`) | Real-Data Runs That Load the Inherited Graphs or Checkpoint | Existing conda Environment on C: | No: Read-Only, Never Modified |
 
 Command examples assume the session set-up in
 [development.md](development.md#session-set-up).
 
-## Application environment
+## Application Environment
 
 - Python 3.12.8 virtual environment created with uv from an existing,
   non-GNN Python 3.12.8 interpreter (uv-managed Python downloads disabled).
@@ -27,8 +27,8 @@ Command examples assume the session set-up in
 - The application package is imported from `src` (`PYTHONPATH` or pytest's
   `pythonpath`); it is not installed into the environment.
 
-| Direct package | Locked version |
-| --- | --- |
+| Direct Package | Locked Version |
+| :--- | ---: |
 | FastAPI | 0.141.1 |
 | Uvicorn | 0.53.0 |
 | Starlette | 1.7.0 |
@@ -38,7 +38,7 @@ Command examples assume the session set-up in
 | ClearML SDK | 2.1.12 |
 | pytest | 9.1.1 |
 
-### Create or recreate
+### Create or Recreate
 
 Never copy an environment; recreate it from the lock:
 
@@ -75,7 +75,7 @@ or LLM module and no upstream directory on `sys.path`.
 
 It prints the observed versions and `RESULT: PASS` or `RESULT: FAIL`.
 
-## Model environment
+## Model Environment
 
 The language model's worker runs in its own environment on G:, with its
 own interpreter, so that PyTorch and CUDA never enter the application
@@ -92,17 +92,17 @@ environment ([generation.md](generation.md)):
   and the worker runs with Hugging Face offline, without telemetry, and
   with every cache, home and temporary directory under the runtime root.
 
-| Direct package | Locked version |
-| --- | --- |
+| Direct Package | Locked Version |
+| :--- | ---: |
 | PyTorch (CUDA 13.0) | 2.14.0+cu130 |
 | Transformers | 5.17.0 |
 | Accelerate | 1.15.0 |
-| safetensors | 0.8.0 |
-| tokenizers | 0.23.2 |
-| xgrammar | 0.2.8 |
+| Safetensors | 0.8.0 |
+| Tokenizers | 0.23.2 |
+| XGrammar | 0.2.8 |
 | llguidance | 1.8.0 |
 | Jinja2 | 3.1.6 |
-| bitsandbytes (for the 4-bit NF4 precision) | 0.50.2 |
+| bitsandbytes (for the 4-Bit NF4 Precision) | 0.50.2 |
 
 Create or recreate it from the lock; the Python download is the only
 network access besides the packages:
@@ -124,7 +124,7 @@ the diff:
 uv pip compile requirements\llm.txt --python-version 3.12.13 --python-platform x86_64-pc-windows-msvc --torch-backend cu130 --generate-hashes --default-index https://pypi.org/simple -o requirements\llm.lock.txt
 ```
 
-## GNN environment
+## GNN Environment
 
 The inherited model runs only in the existing `omopgnn` conda environment:
 Python 3.12.8, PyTorch 2.11.0+cu128, PyG 2.8.0.post1 and NumPy 1.26.4

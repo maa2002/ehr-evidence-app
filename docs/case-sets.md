@@ -1,4 +1,4 @@
-# Case sets
+# Case Sets
 
 The development pilot (`pilot-10-v1`) was an engineering sample: the first
 ten qualifying persons by identifier. Evaluation needs cases drawn by a
@@ -13,17 +13,17 @@ Command examples assume the session set-up in
 drawn; `config/case_sets.json` mirrors it exactly and loading refuses a
 mismatch.
 
-| Case set | Purpose | Upstream partition | Size | Seed |
-| --- | --- | --- | --- | --- |
-| `dev-30-v1` | Development: building and tuning the application | validation | 30 | 20260926 |
-| `eval-100-v1` | Evaluation: held for the final evaluation, never used for development | test | 100 | 20260927 |
+| Case Set | Purpose | Upstream Partition | Size | Seed |
+| :--- | :---: | :---: | :---: | ---: |
+| `dev-30-v1` | Development: Building and Tuning the Application | Validation | 30 | 20260926 |
+| `eval-100-v1` | Evaluation: Held for the Final Evaluation, Never Used for Development | Test | 100 | 20260927 |
 
 Both exclude the pilot's cases. The two sets come from different
 partitions, so they cannot overlap, and the evaluation set never meets the
 upstream training or validation partitions. The label records the size;
 changing a size, seed or rule is a new version, never an edit.
 
-## Draw rule
+## Draw Rule
 
 A case is eligible when:
 
@@ -41,10 +41,10 @@ index, so anyone can repeat the draw. Cases that later fail admission are
 reported with their reasons, never replaced, so the sample is not shaped by
 the pipeline's own outcomes.
 
-## Drawn case sets
+## Drawn Case Sets
 
-| Case set | Partition size | Eligible | Excluded (pilot) | Selected | Visit nodes (min / median / max / total) |
-| --- | --- | --- | --- | --- | --- |
+| Case Set | Partition Size | Eligible | Excluded (Pilot) | Selected | Visit Nodes (Min / Median / Max / Total) |
+| :--- | :---: | :---: | :---: | :---: | ---: |
 | `dev-30-v1` | 10,016 | 10,016 | 0 | 30 | 2 / 3 / 14 / 124 |
 | `eval-100-v1` | 15,024 | 15,022 | 2 | 100 | 2 / 3 / 29 / 437 |
 
@@ -58,15 +58,15 @@ Each stage publishes one new protected record per case set and never
 overwrites one. After a stage runs, its record's size and SHA-256 are pinned
 in the registry, and the next stage reads the record only through that pin.
 
-| Stage | Module | Runs in | Record (under `protected-data`) |
-| --- | --- | --- | --- |
-| Selection | `casesets.selection` | GNN environment, CPU | `case-sets\<label>` |
-| Source extraction | `sources.pilot --case-set` | application environment, database credentials | `source-casesets\<label>` |
-| Preparation: identity mapping, model outputs, case facts, admission | `casesets.prepare` | GNN environment, CUDA | `case-preparation\<label>` |
-| Event linkage | `gnn.linkage --case-set` | GNN environment, CPU | `evidence\event-linkage-<label>` |
-| Evidence bundles | `evidence.bundles --case-set` | application environment | `evidence-bundles\<label>` |
-| Raw records | `sources.mimic` (every case set at once) | application environment | `source-records\<label>` |
-| Record bundles | `evidence.record_bundles --case-set` | application environment | `evidence-bundles\<label>-records-v1` |
+| Stage | Module | Runs In | Record (Under `protected-data`) |
+| :--- | :---: | :---: | ---: |
+| Selection | `casesets.selection` | GNN Environment, CPU | `case-sets\<label>` |
+| Source Extraction | `sources.pilot --case-set` | Application Environment, Database Credentials | `source-casesets\<label>` |
+| Preparation: Identity Mapping, Model Outputs, Case Facts, Admission | `casesets.prepare` | GNN Environment, CUDA | `case-preparation\<label>` |
+| Event Linkage | `gnn.linkage --case-set` | GNN Environment, CPU | `evidence\event-linkage-<label>` |
+| Evidence Bundles | `evidence.bundles --case-set` | Application Environment | `evidence-bundles\<label>` |
+| Raw Records | `sources.mimic` (Every Case Set at Once) | Application Environment | `source-records\<label>` |
+| Record Bundles | `evidence.record_bundles --case-set` | Application Environment | `evidence-bundles\<label>-records-v1` |
 
 The selection reads the pinned graph collection on the CPU for subjects,
 diagnosis-label presence and visit identifiers only; no model is loaded.
@@ -111,8 +111,8 @@ Every stage record of both case sets is published and pinned in
 **Source snapshots.** Every table complete, no null visit links and no
 concept without metadata.
 
-| Case set | Persons | Visits | Conditions | Procedures | Drug exposures |
-| --- | --- | --- | --- | --- | --- |
+| Case Set | Persons | Visits | Conditions | Procedures | Drug Exposures |
+| :--- | :---: | :---: | :---: | :---: | ---: |
 | `dev-30-v1` | 30 | 116 | 1,495 | 211 | 5,310 |
 | `eval-100-v1` | 100 | 407 | 4,801 | 624 | 14,437 |
 
@@ -122,16 +122,16 @@ passed in both runs. Every quarantined case has repeated visit nodes: one
 source visit at more than one graph position. The Phase 3 rules do not
 admit such cases, because target and history cannot be kept apart.
 
-| Case set | Admitted | Quarantined (repeated visit nodes) | Explanation-eligible | Batch-sensitive | Target-outcome entries excluded (cases) |
-| --- | --- | --- | --- | --- | --- |
+| Case Set | Admitted | Quarantined (Repeated Visit Nodes) | Explanation-Eligible | Batch-Sensitive | Target-Outcome Entries Excluded (Cases) |
+| :--- | :---: | :---: | :---: | :---: | ---: |
 | `dev-30-v1` | 26 of 30 | 4 | 26 | 7 | 18 (10) |
 | `eval-100-v1` | 92 of 100 | 8 | 91 | 23 | 95 (38) |
 
 **Event linkage** (admitted cases). Every graph edge is backed by recorded
 events, every driver links, and no in-vocabulary event lacks an edge.
 
-| Case set | Condition edges | Procedure edges | Drug edges | Drivers verified |
-| --- | --- | --- | --- | --- |
+| Case Set | Condition Edges | Procedure Edges | Drug Edges | Drivers Verified |
+| :--- | :---: | :---: | :---: | ---: |
 | `dev-30-v1` | 867 / 867 | 143 / 143 | 1,132 / 1,132 | 596 |
 | `eval-100-v1` | 3,340 / 3,340 | 511 / 511 | 4,225 / 4,225 | 2,117 |
 
@@ -140,17 +140,17 @@ published outputs (604 and 2,115). The largest bundle is 108 KB, within
 the 1 MB limit.
 
 | Measure | `dev-30-v1` | `eval-100-v1` |
-| --- | --- | --- |
-| QA bundles (history / selected visit / all visits) | 135 (26 / 83 / 26) | 519 (92 / 335 / 92) |
-| QA coverage complete / complete and empty | 134 / 1 | 515 / 4 |
-| Condition records in the pre-target history | 682 | 2,588 |
-| Final-admission condition records excluded from the history | 272 | 1,126 |
-| Unmapped condition records kept (in the history) | 80 (51) | 297 (203) |
-| Explanation bundles, eligible | 26, 26 | 92, 91 |
-| Attributions (all narratable) | 578 | 2,023 |
-| Linked history events | 692 | 2,612 |
-| Final-admission context events | 325 | 1,367 |
-| Final-admission diagnoses withheld | 82 | 267 |
+| :--- | :---: | ---: |
+| QA Bundles (History / Selected Visit / All Visits) | 135 (26 / 83 / 26) | 519 (92 / 335 / 92) |
+| QA Coverage Complete / Complete and Empty | 134 / 1 | 515 / 4 |
+| Condition Records in the Pre-Target History | 682 | 2,588 |
+| Final-Admission Condition Records Excluded From the History | 272 | 1,126 |
+| Unmapped Condition Records Kept (in the History) | 80 (51) | 297 (203) |
+| Explanation Bundles, Eligible | 26, 26 | 92, 91 |
+| Attributions (All Narratable) | 578 | 2,023 |
+| Linked History Events | 692 | 2,612 |
+| Final-Admission Context Events | 325 | 1,367 |
+| Final-Admission Diagnoses Withheld | 82 | 267 |
 
 ## Commands
 

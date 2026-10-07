@@ -1,4 +1,4 @@
-# 0025. The predicted diagnosis against the record
+# 0025. The Predicted Diagnosis Against the Record
 
 Status: accepted (2026-09-30), at the project owner's request. Adds to
 [ADR 0019](0019-api-and-interface.md) (decision 5: the prediction, the

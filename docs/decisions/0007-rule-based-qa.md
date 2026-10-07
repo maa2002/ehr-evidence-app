@@ -1,4 +1,4 @@
-# 0007. Rule-based question interpretation and answers
+# 0007. Rule-Based Question Interpretation and Answers
 
 Status: accepted (2026-09-26).
 

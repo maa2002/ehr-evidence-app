@@ -1,4 +1,4 @@
-# 0013. Compact generation and driver selection (Phase 7)
+# 0013. Compact Generation and Driver Selection (Phase 7)
 
 Status: accepted (2026-09-27). Amends [ADR 0012](0012-generation-design.md),
 decision 1: the model reads a compact projection of the bundle, and an

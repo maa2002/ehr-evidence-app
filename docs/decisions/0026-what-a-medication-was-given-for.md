@@ -1,4 +1,4 @@
-# 0026. What a medication was given for
+# 0026. What a Medication Was Given For
 
 Status: accepted (2026-10-03), by the project owner. Adds to
 [ADR 0021](0021-the-whole-record.md) (questions about the whole record).

@@ -14,16 +14,16 @@ session set-up in [development.md](development.md#session-set-up).
 
 ## Modules
 
-| Work item | Module | Role | State |
-| --- | --- | --- | --- |
-| 35 | `validation.evidence` | Checks before generation | done |
-| 36 | `validation.candidate`, `validation.structure` | The candidate contract; structure and reference checks | done |
-| 37 | `validation.support` | Support of every QA statement by its cited records | done |
-| 38 | `validation.explanation` | Template explanation; prediction and attribution preservation | done |
-| 39 | `validation.language` | Wording rules for every outcome; dates and recurrence | done |
-| 40 | `validation.gate` | The release gate | done |
-| 40.1 | `validation.mutations` | Mutation suite: every error class applied to correct responses | done |
-| 52.6 | `validation.record_text`, `validation.record_support` | How the facts of answers about the whole record are shown; their support | done |
+| Work Item | Module | Role | State |
+| :--- | :---: | :---: | ---: |
+| 35 | `validation.evidence` | Checks Before Generation | Done |
+| 36 | `validation.candidate`, `validation.structure` | The Candidate Contract; Structure and Reference Checks | Done |
+| 37 | `validation.support` | Support of Every QA Statement by Its Cited Records | Done |
+| 38 | `validation.explanation` | Template Explanation; Prediction and Attribution Preservation | Done |
+| 39 | `validation.language` | Wording Rules for Every Outcome; Dates and Recurrence | Done |
+| 40 | `validation.gate` | The Release Gate | Done |
+| 40.1 | `validation.mutations` | Mutation Suite: Every Error Class Applied to Correct Responses | Done |
+| 52.6 | `validation.record_text`, `validation.record_support` | How the Facts of Answers About the Whole Record Are Shown; Their Support | Done |
 
 ## Candidates
 
@@ -43,21 +43,21 @@ and holds an ordered list of statements. Each statement has:
   `{condition}`, for each slot of its kind;
 - the bundle **references** that support it.
 
-| Kind | Slots | Cites | Appears in |
-| --- | --- | --- | --- |
-| `list_summary` | `groups`, `scope`, `records` | nothing; it restates the items | list answers |
-| `list_item` | `condition`, `count`, `visits` | the condition's records | list answers |
-| `list_unmapped` | `unmapped` | the coverage record | list answers |
-| `list_empty` | `scope` | the coverage record | empty lists |
-| `presence_summary` | `condition`, `scope`, `matches` | nothing; it restates the items | presence answers |
-| `presence_item` | `condition`, `count`, `visits`, `match` | the matching records | presence answers |
-| `presence_absent` | `condition`, `scope` | the coverage record | not recorded |
-| `presence_unmapped` | `unmapped` | the coverage record | not recorded |
-| `prediction` | `label`, `score`, `logit` | the prediction (P1) | explanations |
-| `driver` | `rank`, `driver`, `score` | the driver's attribution | explanations |
-| `driver_history` | `driver`, `count`, `visits` | the driver's linked records in pre-target visits | explanations |
-| `driver_context` | `driver`, `count` | the driver's records in the final admission | explanations |
-| `notice` | the notice's own | nothing | any released outcome it is approved for |
+| Kind | Slots | Cites | Appears In |
+| :--- | :---: | :---: | ---: |
+| `list_summary` | `groups`, `scope`, `records` | Nothing; It Restates the Items | List Answers |
+| `list_item` | `condition`, `count`, `visits` | The Condition's Records | List Answers |
+| `list_unmapped` | `unmapped` | The Coverage Record | List Answers |
+| `list_empty` | `scope` | The Coverage Record | Empty Lists |
+| `presence_summary` | `condition`, `scope`, `matches` | Nothing; It Restates the Items | Presence Answers |
+| `presence_item` | `condition`, `count`, `visits`, `match` | The Matching Records | Presence Answers |
+| `presence_absent` | `condition`, `scope` | The Coverage Record | Not Recorded |
+| `presence_unmapped` | `unmapped` | The Coverage Record | Not Recorded |
+| `prediction` | `label`, `score`, `logit` | The Prediction (P1) | Explanations |
+| `driver` | `rank`, `driver`, `score` | The Driver's Attribution | Explanations |
+| `driver_history` | `driver`, `count`, `visits` | The Driver's Linked Records in Pre-Target Visits | Explanations |
+| `driver_context` | `driver`, `count` | The Driver's Records in the Final Admission | Explanations |
+| `notice` | The Notice's Own | Nothing | Any Released Outcome It Is Approved For |
 
 A condition is named by a recorded event (its label comes from the bundle),
 by vocabulary concepts (their names come from the vocabulary) or by an ICD
@@ -81,42 +81,42 @@ contract is version 1.1, which added the notice on the drivers not
 described and its slot; its JSON Schema is committed as
 [schemas/candidate.schema.json](schemas/candidate.schema.json).
 
-## Checks before generation
+## Checks Before Generation
 
 `validation.evidence` checks a request's bundle before any text is written.
 The bundle has already been verified against its pinned manifest.
 
 | Finding | Outcome |
-| --- | --- |
-| The bundle is another case's | case rejection, `identity_inconsistent` |
-| The bundle is another scope's | case rejection, `scope_invalid` |
-| Its visits are not numbered from visit 1 without a gap, or are not the selected visit | case rejection, `history_inconsistent` |
-| A record has neither a name nor a code | case rejection, `evidence_inconsistent` |
-| Coverage is not complete | abstention, `coverage_incomplete` |
+| :--- | ---: |
+| The Bundle Is Another Case's | Case Rejection, `identity_inconsistent` |
+| The Bundle Is Another Scope's | Case Rejection, `scope_invalid` |
+| Its Visits Are Not Numbered From Visit 1 Without a Gap, or Are Not the Selected Visit | Case Rejection, `history_inconsistent` |
+| A Record Has Neither a Name nor a Code | Case Rejection, `evidence_inconsistent` |
+| Coverage Is Not Complete | Abstention, `coverage_incomplete` |
 
 An explanation request is checked the same way against its explanation
 bundle, and also:
 
 | Finding | Outcome |
-| --- | --- |
-| The bundle's prediction is not the one the request selects, by its output-record digest | case rejection, `prediction_link_invalid` |
-| Its visits do not end with the final admission | case rejection, `history_inconsistent` |
-| The coverage of the linked history is not complete | abstention, `evidence_insufficient` |
-| No attribution is positive | abstention, `no_positive_attribution` |
-| No driver may be described | abstention, `explanation_ineligible` |
+| :--- | ---: |
+| The Bundle's Prediction Is Not the One the Request Selects, by Its Output-Record Digest | Case Rejection, `prediction_link_invalid` |
+| Its Visits Do Not End With the Final Admission | Case Rejection, `history_inconsistent` |
+| The Coverage of the Linked History Is Not Complete | Abstention, `evidence_insufficient` |
+| No Attribution Is Positive | Abstention, `no_positive_attribution` |
+| No Driver May Be Described | Abstention, `explanation_ineligible` |
 
 A case rejection releases no text.
 
-## Structure and reference checks
+## Structure and Reference Checks
 
 `validation.structure` checks a candidate against the request it answers and
 the bundle bound to that request:
 
-| Finding | Reason code |
-| --- | --- |
-| A malformed document; an outcome, reason codes, task or bundle that do not fit together; a digit in a wording (counts, visits, dates and scores are slots); a statement of a kind the answer cannot hold, or an answer without the statements it needs (a list needs one summary, at least one item and the completeness notice); a wording whose placeholders are not exactly its kind's slots; a changed notice, a notice stated twice, a notice of another task, or an answer without a notice its task and outcome require (every "not recorded" says that it is not clinical absence, a list that it is complete, a time that dates are shifted); a visit's or the person's field that is not of its statement's kind; statements out of their answer's order (a list's items after its summary, the notice at the end; an explanation's prediction first, then the notice introducing the drivers, each driver followed by its own history and context, then the other notices); a statement that cites what its kind does not cite; a response the renderer cannot build within the response limits | `structure_invalid` |
-| Another request's case or scope; a statement about another scope; another bundle than the one bound to the request; a request with a bound bundle answered without it, such as a refusal of an answerable request; a presence answer about another condition than the one the question was resolved to | `scope_violated` |
-| A reference, event, driver, visit number or concept that the bundle or the vocabulary lacks | `reference_unresolved` |
+| Finding | Reason Code |
+| :--- | ---: |
+| A Malformed Document; an Outcome, Reason Codes, Task or Bundle That Do Not Fit Together; a Digit in a Wording (Counts, Visits, Dates and Scores Are Slots); a Statement of a Kind the Answer Cannot Hold, or an Answer Without the Statements It Needs (a List Needs One Summary, at Least One Item and the Completeness Notice); a Wording Whose Placeholders Are Not Exactly Its Kind's Slots; a Changed Notice, a Notice Stated Twice, a Notice of Another Task, or an Answer Without a Notice Its Task and Outcome Require (Every "not recorded" Says That It Is Not Clinical Absence, a List That It Is Complete, a Time That Dates Are Shifted); a Visit's or the Person's Field That Is Not of Its Statement's Kind; Statements Out of Their Answer's Order (a List's Items After Its Summary, the Notice at the End; an Explanation's Prediction First, Then the Notice Introducing the Drivers, Each Driver Followed by Its Own History and Context, Then the Other Notices); a Statement That Cites What Its Kind Does Not Cite; a Response the Renderer Cannot Build Within the Response Limits | `structure_invalid` |
+| Another Request's Case or Scope; a Statement About Another Scope; Another Bundle Than the One Bound to the Request; a Request With a Bound Bundle Answered Without It, Such as a Refusal of an Answerable Request; a Presence Answer About Another Condition Than the One the Question Was Resolved To | `scope_violated` |
+| A Reference, Event, Driver, Visit Number or Concept That the Bundle or the Vocabulary Lacks | `reference_unresolved` |
 
 The checks extend the citation check of `evidence.schema` to candidates.
 The order, the notices stated twice, the bound bundle and the condition
@@ -129,20 +129,20 @@ records support what a statement says; that is the next check.
 `validation.support` decides whether the cited records support what each
 statement of an answer says. Any failure is `claim_unsupported`.
 
-| Statement | Supported when |
-| --- | --- |
-| A list item | It names the condition of one of the records it cites; every record it cites is of that condition (the same standard concept, or the same source code for a record without one); its count and visits are those of the cited records |
-| A list | It names every condition of the scope once and cites every record of the scope once; its summary counts the scope's conditions and records; its note on records without a standard concept counts them |
-| An empty list | Coverage is complete and empty |
-| A presence item | Every record it cites matches the resolved condition by the match kind it states, found with the resolver's own matching; its count and visits are those of the cited records |
-| A presence answer | It cites every matching record of the scope, names each condition once for each match kind, and its summary counts the matching records |
-| Not recorded | Coverage is complete and no record of the scope matches the condition; its note on records without a standard concept counts them |
-| Any answer | It discloses `unmapped_records_in_scope` exactly when the scope holds records without a standard concept |
+| Statement | Supported When |
+| :--- | ---: |
+| A List Item | It Names the Condition of One of the Records It Cites; Every Record It Cites Is of That Condition (the Same Standard Concept, or the Same Source Code for a Record Without One); Its Count and Visits Are Those of the Cited Records |
+| A List | It Names Every Condition of the Scope Once and Cites Every Record of the Scope Once; Its Summary Counts the Scope's Conditions and Records; Its Note on Records Without a Standard Concept Counts Them |
+| An Empty List | Coverage Is Complete and Empty |
+| A Presence Item | Every Record It Cites Matches the Resolved Condition by the Match Kind It States, Found With the Resolver's Own Matching; Its Count and Visits Are Those of the Cited Records |
+| A Presence Answer | It Cites Every Matching Record of the Scope, Names Each Condition Once for Each Match Kind, and Its Summary Counts the Matching Records |
+| Not Recorded | Coverage Is Complete and No Record of the Scope Matches the Condition; Its Note on Records Without a Standard Concept Counts Them |
+| Any Answer | It Discloses `unmapped_records_in_scope` Exactly When the Scope Holds Records Without a Standard Concept |
 
 Refusals and clarifying questions state no recorded facts and have nothing
 to support.
 
-### Answers about the whole record
+### Answers About the Whole Record
 
 An answer about the record (`qa.record_answer`) names records, visits and
 the person by reference (`R`, `V`, `D1`), and its text is rendered from
@@ -190,24 +190,24 @@ only the writer's words: each slot is replaced by a neutral token first,
 so a condition named "Pneumonia caused by a virus" never trips a rule.
 Rules version `wording-rules-v5`:
 
-| Rule | Examples | Reason code |
-| --- | --- | --- |
-| Causal or directional attribution | "caused", "led to", "due to", "raised the risk", "risk factor", "associated with", "secondary to" | `prohibited_wording` |
-| Percentage contribution | "40%", "percent", "a share of" | `prohibited_wording` |
+| Rule | Examples | Reason Code |
+| :--- | :---: | ---: |
+| Causal or Directional Attribution | "caused", "led to", "due to", "raised the risk", "risk factor", "associated with", "secondary to" | `prohibited_wording` |
+| Percentage Contribution | "40%", "percent", "a share of" | `prohibited_wording` |
 | Exclusivity | "the only diagnosis", "solely", "nothing else" | `prohibited_wording` |
-| Clinical status, severity or course | "the patient has" as a fact, "severe", "resolved", "worsening", "chronic", "currently", "active" | `prohibited_wording` |
+| Clinical Status, Severity or Course | "the patient has" as a Fact, "severe", "resolved", "worsening", "chronic", "currently", "active" | `prohibited_wording` |
 | Advice | "should", "recommend", "start therapy" | `prohibited_wording` |
 | Certainty | "definitely", "proves", "confirms", "clearly" | `prohibited_wording` |
 | Diagnosis | "diagnosed with", "consistent with", "likely has", "suggests", "indicates", "a sign of" | `prohibited_wording` |
-| Model performance | "AUROC", "accuracy" | `prohibited_wording` |
-| In explanations, the score as a risk or probability | "a risk of", "the probability" | `prohibited_wording` |
-| In explanations, the prediction as prospective | "in advance", "forecast" | `prohibited_wording` |
-| In answers and explanations, hedged facts | "possibly", "may", "seems to" | `prohibited_wording` |
-| In answers and explanations, rankings | "the main", "most important", "key" | `prohibited_wording` |
-| In answers and explanations, counts or quantities in words | "three", "several", "most" | `prohibited_wording` |
-| A statement that something is recorded (a summary or item of an answer, the prediction, a driver, its history and context; an answer about the whole record's list, presence, time, count, value, flagged results, visit and person), negated | "No conditions are recorded" above a list | `prohibited_wording` |
-| A statement that something is not recorded (an empty list, a condition, kind or item not recorded) without a negated "recorded" wherever it says "recorded" | "{condition} is recorded within {scope}" for an absence | `prohibited_wording` |
-| Dates, recurrence, frequency and recency typed into a wording | a date, a month, "again", "recurs", "often", "every visit", "recently", "the last admission" | `date_unsupported` |
+| Model Performance | "AUROC", "accuracy" | `prohibited_wording` |
+| In Explanations, the Score as a Risk or Probability | "a risk of", "the probability" | `prohibited_wording` |
+| In Explanations, the Prediction as Prospective | "in advance", "forecast" | `prohibited_wording` |
+| In Answers and Explanations, Hedged Facts | "possibly", "may", "seems to" | `prohibited_wording` |
+| In Answers and Explanations, Rankings | "the main", "most important", "key" | `prohibited_wording` |
+| In Answers and Explanations, Counts or Quantities in Words | "three", "several", "most" | `prohibited_wording` |
+| A Statement That Something Is Recorded (a Summary or Item of an Answer, the Prediction, a Driver, Its History and Context; an Answer About the Whole Record's List, Presence, Time, Count, Value, Flagged Results, Visit and Person), Negated | "No conditions are recorded" Above a List | `prohibited_wording` |
+| A Statement That Something Is Not Recorded (an Empty List, a Condition, Kind or Item Not Recorded) Without a Negated "recorded" Wherever It Says "recorded" | "{condition} is recorded within {scope}" for an Absence | `prohibited_wording` |
+| Dates, Recurrence, Frequency and Recency Typed Into a Wording | A Date, a Month, "again", "recurs", "often", "every visit", "recently", "the last admission" | `date_unsupported` |
 
 A negation shortly before a causal, diagnostic or risk word, in the same
 clause, lets it pass, so "attribution does not mean causation", "this
@@ -263,12 +263,12 @@ explanation (`explanation-template-v3`):
 
 Its checks apply to any explanation candidate, whoever wrote it:
 
-| Finding | Reason code |
-| --- | --- |
-| The prediction is not stated once, with the bundle's label, and its score and logit as a response shows them | `prediction_altered` |
-| The drivers described are not exactly the selected drivers, in their order, with their ranks, and their scores as a response shows them; a zero-score driver, or a driver not selected, is described | `attribution_altered` |
-| A history statement cites other records than the driver's linked events in pre-target visits, or a context statement other records than its final-admission ones, or either miscounts them or their visits; the restrictions disclosed, as reason codes or notices, are not the case's; the drivers not described are not stated, or are miscounted | `claim_unsupported` |
-| A notice on what the scores mean is missing | `structure_invalid` |
+| Finding | Reason Code |
+| :--- | ---: |
+| The Prediction Is Not Stated Once, With the Bundle's Label, and Its Score and Logit as a Response Shows Them | `prediction_altered` |
+| The Drivers Described Are Not Exactly the Selected Drivers, in Their Order, With Their Ranks, and Their Scores as a Response Shows Them; a Zero-Score Driver, or a Driver Not Selected, Is Described | `attribution_altered` |
+| A History Statement Cites Other Records Than the Driver's Linked Events in Pre-Target Visits, or a Context Statement Other Records Than Its Final-Admission Ones, or Either Miscounts Them or Their Visits; the Restrictions Disclosed, as Reason Codes or Notices, Are Not the Case's; the Drivers Not Described Are Not Stated, or Are Miscounted | `claim_unsupported` |
+| A Notice on What the Scores Mean Is Missing | `structure_invalid` |
 
 With the structure checks and the wording rules this enforces the
 evidence claim policy (`evidence-policy-v1`): no score is tied to a date,
@@ -291,8 +291,8 @@ Every case of the development case sets gets its template explanation
 with the configured number of drivers, 5, and every one passes all
 checks:
 
-| Case set | Explanations | Drivers described | Drivers not described | History statements | Context statements | Claims | Restrictions disclosed (batch-sensitive, final-admission drivers, excluded outcome entries) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+| Case Set | Explanations | Drivers Described | Drivers Not Described | History Statements | Context Statements | Claims | Restrictions Disclosed (Batch-Sensitive, Final-Admission Drivers, Excluded Outcome Entries) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | ---: |
 | `dev-30-v1` | 26 of 26 | 130 | 448 | 82 | 59 | 297 | 6, 26, 10 |
 | `pilot-10-v1` | 10 of 10 | 47 | 141 | 36 | 14 | 107 | 2, 9, 3 |
 
@@ -300,7 +300,7 @@ Version 1 described every eligible driver in the model's order: 578
 drivers on `dev-30-v1` and 188 on `pilot-10-v1`; with 10 drivers, version
 2 described 259 and 92.
 
-## Release gate
+## Release Gate
 
 Every response with text leaves the application through
 `validation.gate.release`, for QA answers (`qa.answer`, rules
@@ -313,10 +313,10 @@ the wording rules for every outcome, and finally the citation check on
 the rendered response. Then:
 
 | Finding | Released |
-| --- | --- |
-| Every check passes | The response, rendered from the candidate's statements only |
-| A check finds problems | A validation rejection with their reason codes; no text, no claims |
-| A check fails to run | An operational error, `validator_failed`; no text |
+| :--- | ---: |
+| Every Check Passes | The Response, Rendered From the Candidate's Statements Only |
+| A Check Finds Problems | A Validation Rejection With Their Reason Codes; No Text, No Claims |
+| A Check Fails to Run | An Operational Error, `validator_failed`; No Text |
 
 Since the text is rendered from checked statements only, a candidate
 cannot carry a sentence past the checks: an extra sentence in a notice is
@@ -325,7 +325,7 @@ slots. Responses without text (operational errors and case rejections)
 have no candidate. The QA development suite gives the same results
 through the gate (see [qa.md](qa.md#development-suite)).
 
-## Mutation suite
+## Mutation Suite
 
 `validation.mutations` tests the checks by breaking correct responses
 (`validation-mutations-v4`). Correct candidates are built by the
@@ -338,29 +338,29 @@ added the mistakes a language model can make and a template cannot,
 version 3 the mistakes of driver selection and of a statement's
 polarity, and version 4 checks scores as a response shows them:
 
-| Item | Error classes | Expected |
-| --- | --- | --- |
-| 35 | bundle of another case, bundle of another scope, history gap, record without a name, prediction not selected | case rejection |
-| 35 | incomplete coverage | abstention |
-| 36 | malformed document, missing slot, fact typed into a wording, changed notice | `structure_invalid` |
-| 36 | absent reference | `reference_unresolved` |
-| 36 | another patient, another scope, another bundle | `scope_violated` |
-| 37 | omitted diagnosis, added diagnosis, wrong count, wrong visits, record of another condition, unsupported positive, negative for a recorded condition, negative without complete coverage | `claim_unsupported` |
-| 38 | altered label, altered score | `prediction_altered` |
-| 38 | altered attribution score, reordered drivers, omitted driver, zero-score driver described | `attribution_altered` |
-| 38 | final-admission record as history, restriction misdisclosed | `claim_unsupported` |
-| 39 | causal, directional, percentage, exclusive, diagnostic, advice and status wording | `prohibited_wording` |
-| 39 | a date or recurrence typed into a wording | `date_unsupported` |
-| 40 | a check that fails to run | operational error, `validator_failed` |
-| Model (v2) | a refusal of an answerable request, an answer about another condition | `scope_violated` |
-| Model (v2) | a missing, extra or repeated notice; statements out of their order; a driver's history under another driver | `structure_invalid` |
-| Model (v2) | an empty list for a scope with records; a fact or the name of another record | `claim_unsupported` |
-| Model (v2) | hedged, ranking, interpretive, association, course and certainty wording; a count in words | `prohibited_wording` |
-| Model (v2) | recency typed into a wording | `date_unsupported` |
-| Selection (v3) | a driver not selected described | `attribution_altered` |
-| Selection (v3) | the drivers not described miscounted, or not stated | `claim_unsupported` |
-| Polarity (v3) | a statement that something is recorded negated; a statement that something is not recorded worded as a record | `prohibited_wording` |
-| Scores (v4) | a score wrong in its last shown figure | `prediction_altered`, `attribution_altered` |
+| Item | Error Classes | Expected |
+| :--- | :---: | ---: |
+| 35 | Bundle of Another Case, Bundle of Another Scope, History Gap, Record Without a Name, Prediction Not Selected | Case Rejection |
+| 35 | Incomplete Coverage | Abstention |
+| 36 | Malformed Document, Missing Slot, Fact Typed Into a Wording, Changed Notice | `structure_invalid` |
+| 36 | Absent Reference | `reference_unresolved` |
+| 36 | Another Patient, Another Scope, Another Bundle | `scope_violated` |
+| 37 | Omitted Diagnosis, Added Diagnosis, Wrong Count, Wrong Visits, Record of Another Condition, Unsupported Positive, Negative for a Recorded Condition, Negative Without Complete Coverage | `claim_unsupported` |
+| 38 | Altered Label, Altered Score | `prediction_altered` |
+| 38 | Altered Attribution Score, Reordered Drivers, Omitted Driver, Zero-Score Driver Described | `attribution_altered` |
+| 38 | Final-Admission Record as History, Restriction Misdisclosed | `claim_unsupported` |
+| 39 | Causal, Directional, Percentage, Exclusive, Diagnostic, Advice and Status Wording | `prohibited_wording` |
+| 39 | A Date or Recurrence Typed Into a Wording | `date_unsupported` |
+| 40 | A Check That Fails to Run | Operational Error, `validator_failed` |
+| Model (v2) | A Refusal of an Answerable Request, an Answer About Another Condition | `scope_violated` |
+| Model (v2) | A Missing, Extra or Repeated Notice; Statements Out of Their Order; a Driver's History Under Another Driver | `structure_invalid` |
+| Model (v2) | An Empty List for a Scope With Records; a Fact or the Name of Another Record | `claim_unsupported` |
+| Model (v2) | Hedged, Ranking, Interpretive, Association, Course and Certainty Wording; a Count in Words | `prohibited_wording` |
+| Model (v2) | Recency Typed Into a Wording | `date_unsupported` |
+| Selection (v3) | A Driver Not Selected Described | `attribution_altered` |
+| Selection (v3) | The Drivers Not Described Miscounted, or Not Stated | `claim_unsupported` |
+| Polarity (v3) | A Statement That Something Is Recorded Negated; a Statement That Something Is Not Recorded Worded as a Record | `prohibited_wording` |
+| Scores (v4) | A Score Wrong in Its Last Shown Figure | `prediction_altered`, `attribution_altered` |
 
 A mutant is detected when it ends in its class's outcome with its class's
 reason code. Every original must be released unchanged, and so must
@@ -369,9 +369,9 @@ causation, added to an answer; and in an explanation, a driver's history
 or context left out, and scores stated to the figures a response shows.
 Results, with the evaluation case set untouched:
 
-| Samples | Originals released unchanged | Controls passed | Mutants detected | Error classes |
-| --- | --- | --- | --- | --- |
-| Invented fixtures | 18 of 18 | 21 of 21 | 584 of 584 | 64 |
+| Samples | Originals Released Unchanged | Controls Passed | Mutants Detected | Error Classes |
+| :--- | :---: | :---: | :---: | ---: |
+| Invented Fixtures | 18 of 18 | 21 of 21 | 584 of 584 | 64 |
 | `dev-30-v1` | 434 of 434 | 530 of 530 | 17,414 of 17,414 | 65 |
 | `pilot-10-v1` | 186 of 186 | 220 of 220 | 7,356 of 7,356 | 65 |
 
@@ -385,7 +385,7 @@ error classes; a statement that says something prohibited in words no
 rule knows is outside what it can show, which is why the facts stay in
 slots that no writer types.
 
-### Mutants of answers about the whole record
+### Mutants of Answers About the Whole Record
 
 The answers about the whole record are broken the same way, one fact at
 a time, by `tests/validation/test_record_mutations.py`: a statement left
@@ -399,10 +399,10 @@ withheld when the gate rejects it or it does not parse; the originals
 and the controls (a list or presence item named by another of its own
 records) must be released.
 
-| Samples | Answers | Mutants withheld | Controls released |
-| --- | --- | --- | --- |
-| Invented edge record (every task and outcome) | 38 | 1,481 of 1,481 | all |
-| Development case sets (3 cases of each, all visits and the history, 25 questions) | 300 | 30,921 of 30,921 | 768 of 768 |
+| Samples | Answers | Mutants Withheld | Controls Released |
+| :--- | :---: | :---: | ---: |
+| Invented Edge Record (Every Task and Outcome) | 38 | 1,481 of 1,481 | All |
+| Development Case Sets (3 Cases of Each, All Visits and the History, 25 Questions) | 300 | 30,921 of 30,921 | 768 of 768 |
 
 On their first run the tests found two faults, now refused: a visit's or
 the person's field of another statement kind failed the rendering (an
@@ -416,7 +416,7 @@ named by their written drug, names read whole) answer some of the
 sampled questions otherwise, and release 1.0.0 gives the counts above,
 as do the rules after it (2026-10-06).
 
-### Wrong answers that agree with themselves
+### Wrong Answers That Agree With Themselves
 
 A writer can get more than one fact wrong at once, and at worst in a way
 that agrees with itself: a record left out and every count lowered to
@@ -442,12 +442,12 @@ groups of different items and the notices may come in any order, since
 no reader relies on it. A misreading that leaves the answer as it was is
 not a mistake and is not counted.
 
-| Samples | Two mistakes at once | From a misread record | Another's answer |
-| --- | --- | --- | --- |
-| Invented edge record: 38 answers about the record | 1,761 of 1,761 withheld | 688 of 688 | 320 of 320 |
-| Invented case set: 14 condition answers | 651 of 651 | 29 of 29 | 62 of 62 |
-| Development case sets: 300 answers about the record | 13,965 of 13,965 withheld | 4,012 of 4,012 | 2,230 of 2,230 |
-| Development case sets: 576 condition answers | 13,643 of 13,643 withheld | 7,191 of 7,191 | 6,846 of 6,846 |
+| Samples | Two Mistakes at Once | From a Misread Record | Another's Answer |
+| :--- | :---: | :---: | ---: |
+| Invented Edge Record: 38 Answers About the Record | 1,761 of 1,761 Withheld | 688 of 688 | 320 of 320 |
+| Invented Case Set: 14 Condition Answers | 651 of 651 | 29 of 29 | 62 of 62 |
+| Development Case Sets: 300 Answers About the Record | 13,965 of 13,965 Withheld | 4,012 of 4,012 | 2,230 of 2,230 |
+| Development Case Sets: 576 Condition Answers | 13,643 of 13,643 Withheld | 7,191 of 7,191 | 6,846 of 6,846 |
 
 On their first run the tests found that a list of ICU stays or transfers
 out of time order was released: the check counted every stay but not

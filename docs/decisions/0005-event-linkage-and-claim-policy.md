@@ -1,4 +1,4 @@
-# 0005. Driver-to-event linkage and the evidence claim policy
+# 0005. Driver-to-Event Linkage and the Evidence Claim Policy
 
 Status: accepted (2026-09-26).
 

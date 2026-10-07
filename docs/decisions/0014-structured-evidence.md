@@ -1,4 +1,4 @@
-# 0014. Structured evidence and syntax-only decoding (Phase 7)
+# 0014. Structured Evidence and Syntax-Only Decoding (Phase 7)
 
 Status: accepted (2026-09-27). Amends [ADR 0012](0012-generation-design.md),
 decision 1, and [ADR 0013](0013-compact-generation.md), decisions 1, 6

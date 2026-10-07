@@ -1,4 +1,4 @@
-# 0017. A bounded prompt pass before the lock (Phase 7)
+# 0017. A Bounded Prompt Pass Before the Lock (Phase 7)
 
 Status: accepted (2026-09-28). Amends
 [ADR 0015](0015-generation-configuration.md): explanations read

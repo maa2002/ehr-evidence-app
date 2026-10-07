@@ -1,4 +1,4 @@
-# 0028. Design of the final evaluation (Phase 9)
+# 0028. Design of the Final Evaluation (Phase 9)
 
 Status: accepted (2026-10-03). Carries out
 [ADR 0016](0016-evaluation-metrics.md) and

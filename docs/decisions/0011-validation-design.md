@@ -1,4 +1,4 @@
-# 0011. Validation design (Phase 6)
+# 0011. Validation Design (Phase 6)
 
 Status: accepted (2026-09-26).
 

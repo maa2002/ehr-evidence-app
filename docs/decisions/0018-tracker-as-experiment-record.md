@@ -1,4 +1,4 @@
-# 0018. The tracker as the experiment record (Phase 7)
+# 0018. The Tracker as the Experiment Record (Phase 7)
 
 Status: accepted (2026-09-28). Amends the tracker policy
 (`config/clearml_policy.json`, `model_artefacts`) and the connection

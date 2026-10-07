@@ -1,4 +1,4 @@
-# 0020. The interface as one page over the API (Phase 8)
+# 0020. The Interface as One Page Over the API (Phase 8)
 
 Status: accepted (2026-09-29). Amends points 1 and 7 of
 [ADR 0019](0019-api-and-interface.md).

@@ -1,4 +1,4 @@
-# 0001. Single-volume storage on permission-restricted NTFS
+# 0001. Single-Volume Storage on Permission-Restricted NTFS
 
 Status: accepted (2026-09-25).
 

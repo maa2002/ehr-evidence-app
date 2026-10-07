@@ -1,4 +1,4 @@
-# 0004. Evidence contracts, scopes and bundle-local references
+# 0004. Evidence Contracts, Scopes and Bundle-Local References
 
 Status: accepted (2026-09-26).
 

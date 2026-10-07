@@ -1,4 +1,4 @@
-# 0027. Automatic rating of the prose rubric
+# 0027. Automatic Rating of the Prose Rubric
 
 Status: accepted (2026-10-03), by the project owner, before any request
 of `eval-100-v1` is written. Amends decision 9 of

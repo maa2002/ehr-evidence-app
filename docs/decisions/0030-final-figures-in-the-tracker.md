@@ -1,4 +1,4 @@
-# 0030. The final evaluation's figures in the tracker
+# 0030. The Final Evaluation's Figures in the Tracker
 
 Status: accepted (2026-10-05). The project owner approved the names
 below. Extends the allowlist of controlled tracking

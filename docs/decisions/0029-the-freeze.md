@@ -1,4 +1,4 @@
-# 0029. The freeze and the final evaluation's execution
+# 0029. The Freeze and the Final Evaluation's Execution
 
 Status: accepted (2026-10-04), within the design of
 [ADR 0028](0028-final-evaluation-design.md); the project owner asked for
@@ -83,7 +83,7 @@ before the freeze is made.
   application does with the same questions: the edge and help questions
   and the junk test's questions, without a difference.
 
-## Amendment (2026-10-04): the second freeze
+## Amendment (2026-10-04): The Second Freeze
 
 The first freeze record (`freeze-v1`), of release 0.11.0 (commit
 `f5820ea`), was superseded before any question set was worded or
@@ -105,7 +105,7 @@ passed the gate.
   second.
 - Nothing was measured under the first record.
 
-## Amendment (2026-10-04): the third freeze
+## Amendment (2026-10-04): The Third Freeze
 
 The second freeze record (`freeze-v2`), of release 0.11.1 (commit
 `cafe210`), was superseded before any result of `eval-100-v1` was

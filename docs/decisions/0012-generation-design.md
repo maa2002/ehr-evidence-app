@@ -1,4 +1,4 @@
-# 0012. Generation design (Phase 7)
+# 0012. Generation Design (Phase 7)
 
 Status: accepted (2026-09-27); amended by
 [ADR 0013](0013-compact-generation.md): the model reads a compact

@@ -1,4 +1,4 @@
-# API and interface
+# API and Interface
 
 Phase 8 puts the application in front of a person
 ([ADR 0019](decisions/0019-api-and-interface.md)). A local API serves the
@@ -12,7 +12,7 @@ gate's response exactly, and nothing the gate withheld. Command examples
 assume the session set-up in
 [development.md](development.md#session-set-up).
 
-## The service
+## The Service
 
 `ehr_evidence_app.api.service` holds what the application answers from:
 for `dev-30-v1` and `pilot-10-v1`, the pinned QA bundle set, the
@@ -35,17 +35,17 @@ is loading, ready or unavailable. The model writes one request at a time;
 a second request meanwhile gets the template's response at once
 (`busy`).
 
-## The routes
+## The Routes
 
 | Route | Returns |
-| --- | --- |
-| `GET /health` | The model's state, the served case sets and the versions; open without the token |
-| `GET /case-sets` | The served case sets and their numbers of admitted cases |
-| `GET /case-sets/{case_set}/cases` | The admitted cases, with their numbers of visits and whether each has a prepared prediction |
-| `GET /case-sets/{case_set}/cases/{case_number}` | The case's scopes (the pre-target history, each visit, all case visits) and its prepared prediction |
-| `GET /case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The evidence of a scope (`kind` a scope kind, with `visit` for one visit), or of the prediction (`kind=prediction`) |
-| `POST /questions` | The response to a question about a case in a scope: `{"case_set", "case_number", "scope", "question"}` |
-| `POST /explanations` | The explanation of a case's prepared prediction: `{"case_set", "case_number"}` |
+| :--- | ---: |
+| `GET /health` | The Model's State, the Served Case Sets and the Versions; Open Without the Token |
+| `GET /case-sets` | The Served Case Sets and Their Numbers of Admitted Cases |
+| `GET /case-sets/{case_set}/cases` | The Admitted Cases, With Their Numbers of Visits and Whether Each Has a Prepared Prediction |
+| `GET /case-sets/{case_set}/cases/{case_number}` | The Case's Scopes (the Pre-Target History, Each Visit, All Case Visits) and Its Prepared Prediction |
+| `GET /case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The Evidence of a Scope (`kind` a Scope Kind, With `visit` for One Visit), or of the Prediction (`kind=prediction`) |
+| `POST /questions` | The Response to a Question About a Case in a Scope: `{"case_set", "case_number", "scope", "question"}` |
+| `POST /explanations` | The Explanation of a Case's Prepared Prediction: `{"case_set", "case_number"}` |
 
 The evidence of a prediction also holds `in_record`: the final
 admission's visit number, the coverage of its records, and those of its
@@ -74,7 +74,7 @@ at fault, never their values. A body that cannot be read as JSON (not
 UTF-8, or nested too deeply) is `request_invalid` too, an unknown route
 `not_found` and a method a route does not take `method_not_allowed`.
 
-## The boundary
+## The Boundary
 
 `ehr_evidence_app.api.boundary` wraps the API:
 
@@ -105,7 +105,7 @@ never a value from the path or the query, a question or a response. The
 log audit reads it with the other routine logs
 (`generation.records --operator-real --audit-logs`).
 
-## The interface
+## The Interface
 
 `ehr_evidence_app.interface` is one page, HTML, CSS and JavaScript without
 a build step, served by the interface's own process
@@ -232,15 +232,15 @@ frostier, and where a browser cannot blur it is solid. It fits a phone's
 screen.
 
 | Route | Returns |
-| --- | --- |
-| `GET /api/state` | The model's state, the cohorts, the question limit and the version |
-| `GET /api/help` | What can be asked, shown when `/help` is typed: why questions follow set patterns, each kind of information with example questions, and notes |
-| `GET /api/case-sets/{case_set}/cases` | The cohort's patients, by pseudonym, with each case's number and visits |
-| `GET /api/case-sets/{case_set}/cases/{case_number}` | The case: its pseudonym and greeting, its scopes with their visits' dates, its evidence and its predicted diagnosis |
-| `GET /api/case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The evidence of a scope, or of the prediction, in sections of facts, tables and notes |
-| `POST /api/questions` | Starts answering a question: `{"case_set", "case_number", "scope", "question"}`; returns the job |
-| `POST /api/explanations` | Starts explaining the prediction: `{"case_set", "case_number"}`; returns the job |
-| `GET /api/jobs/{job}` | The job's state, and its result once done |
+| :--- | ---: |
+| `GET /api/state` | The Model's State, the Cohorts, the Question Limit and the Version |
+| `GET /api/help` | What Can Be Asked, Shown When `/help` Is Typed: Why Questions Follow Set Patterns, Each Kind of Information With Example Questions, and Notes |
+| `GET /api/case-sets/{case_set}/cases` | The Cohort's Patients, by Pseudonym, With Each Case's Number and Visits |
+| `GET /api/case-sets/{case_set}/cases/{case_number}` | The Case: Its Pseudonym and Greeting, Its Scopes With Their Visits' Dates, Its Evidence and Its Predicted Diagnosis |
+| `GET /api/case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The Evidence of a Scope, or of the Prediction, in Sections of Facts, Tables and Notes |
+| `POST /api/questions` | Starts Answering a Question: `{"case_set", "case_number", "scope", "question"}`; Returns the Job |
+| `POST /api/explanations` | Starts Explaining the Prediction: `{"case_set", "case_number"}`; Returns the Job |
+| `GET /api/jobs/{job}` | The Job's State, and Its Result Once Done |
 
 What the page could not have sent is refused with a code and what it
 means (`{"error", "message"}`), an unknown route or file as `not_found`
@@ -250,7 +250,7 @@ and a method a route does not take as `method_not_allowed`.
 the interface's access checks: no access log, no server or date header,
 no websocket, and a failure of an operation logged by its type only.
 
-## The access checks of the interface
+## The Access Checks of the Interface
 
 `ehr_evidence_app.interface.gate` stands in front of the page and its
 operations, in the same process:
@@ -284,7 +284,7 @@ key. Anything else is answered as not found. Sessions end after a day,
 or when the interface stops; a job started through the tunnel belongs to
 its session.
 
-## Sharing through the tunnel
+## Sharing Through the Tunnel
 
 `ehr_evidence_app.interface.share` keeps the parts of the sharing, all in
 the workspace's `sharing` directory or the runtime root and none in the
@@ -346,7 +346,7 @@ Setting the tunnel up is the owner's, once, in Cloudflare's dashboard:
    one launch to the next until then. The supervisor must hold MIMIC-IV
    credentialed access.
 
-## Starting the application
+## Starting the Application
 
 `ehr_evidence_app.api.launch` starts the API and the interface as two
 processes on 127.0.0.1, with a fresh launch token that each receives in
@@ -374,7 +374,7 @@ reading and writing nothing: a demonstration without data.
 & $AppPython -m ehr_evidence_app.api.launch --operator-real
 ```
 
-## Operator run
+## Operator Run
 
 Phase 8 closed with an operator run on the final code: the real API on
 `dev-30-v1` with the model, driven over loopback, for the first 3

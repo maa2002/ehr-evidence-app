@@ -1,4 +1,4 @@
-# 0015. The generation configuration (Phase 7)
+# 0015. The Generation Configuration (Phase 7)
 
 Status: accepted (2026-09-28). Amends
 [ADR 0014](0014-structured-evidence.md), decision 3: the worked examples.

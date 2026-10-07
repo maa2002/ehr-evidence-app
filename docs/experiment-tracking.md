@@ -1,4 +1,4 @@
-# Experiment tracking and lineage
+# Experiment Tracking and Lineage
 
 ClearML is the project's experiment record; the protected workspace stays
 the authority for everything patient-bearing. Tracker payloads are metadata,
@@ -13,14 +13,14 @@ session set-up in [development.md](development.md#session-set-up).
 lock) and fixes what may reach a tracker. `ehr_evidence_app.tracking.policy`
 checks it read-only, without importing the SDK or contacting a service.
 
-| Permitted tracker payloads | Never sent to a tracker |
-| --- | --- |
-| Non-patient run metadata and version identifiers | Patient records and identifiers |
-| Code, configuration, evidence-schema and asset fingerprints | Raw or derived clinical content |
-| Aggregate evaluation, validation and operational metrics | Prompts, model responses and attribution text |
-| References to protected workspace files and their checksums | Case-level outputs |
-| The listed pretrained model's files, with its licence notice, agreement copy and manifest | Credentials, tokens and data files |
-| | Models trained on the project's data, such as the GNN checkpoints |
+| Permitted Tracker Payloads | Never Sent to a Tracker |
+| :--- | ---: |
+| Non-Patient Run Metadata and Version Identifiers | Patient Records and Identifiers |
+| Code, Configuration, Evidence-Schema and Asset Fingerprints | Raw or Derived Clinical Content |
+| Aggregate Evaluation, Validation and Operational Metrics | Prompts, Model Responses and Attribution Text |
+| References to Protected Workspace Files and Their Checksums | Case-Level Outputs |
+| The Listed Pretrained Model's Files, With Its Licence Notice, Agreement Copy and Manifest | Credentials, Tokens and Data Files |
+| | Models Trained on the Project's Data, Such as the GNN Checkpoints |
 
 A case-level item is represented in the tracker only by its protected
 workspace reference and checksum. Tracker metadata may be cached in the
@@ -49,11 +49,11 @@ path, account, key or configuration content.
 `ehr_evidence_app.tracking.connection` has four modes:
 
 | Mode | Behaviour |
-| --- | --- |
-| *(default)* | Checks the declaration and the policy offline; no SDK import, no environment read, no network |
-| `--preflight` | Loads the SDK configuration named by `CLEARML_CONFIG_FILE`, compares its hosts with the declaration before any request, authenticates, confirms the workspace and looks up the project; creates nothing |
-| `--synthetic-task` | Preflight, then creates one synthetic metadata-only task, reads it back to confirm no captured script, repository, diff or package content, and archives it |
-| `--controlled-tracking-probe` | Preflight, then submits one fixed, validated metadata payload through the controlled-tracking wrapper, reads it back and archives it |
+| :--- | ---: |
+| *(Default)* | Checks the Declaration and the Policy Offline; No SDK Import, No Environment Read, No Network |
+| `--preflight` | Loads the SDK Configuration Named by `CLEARML_CONFIG_FILE`, Compares Its Hosts With the Declaration Before Any Request, Authenticates, Confirms the Workspace and Looks Up the Project; Creates Nothing |
+| `--synthetic-task` | Preflight, Then Creates One Synthetic Metadata-Only Task, Reads It Back to Confirm No Captured Script, Repository, Diff or Package Content, and Archives It |
+| `--controlled-tracking-probe` | Preflight, Then Submits One Fixed, Validated Metadata Payload Through the Controlled-Tracking Wrapper, Reads It Back and Archives It |
 
 The live modes use only the SDK's session and configuration classes;
 `Task.init` and `Task.create` are never called, so framework, argument,
@@ -88,7 +88,7 @@ Remove-Item Env:CLEARML_OFFLINE_MODE
 
 Use a process-level timeout: the SDK retries unreachable hosts.
 
-## Controlled tracking
+## Controlled Tracking
 
 `ehr_evidence_app.tracking.controlled` is a pure validator that builds task
 metadata from fixed task fields, the lineage schema and an explicit scalar
@@ -146,7 +146,7 @@ Unknown fields, free-text comments or tags, secrets, patient identifiers and
 content-like fields (prompts, responses, attributions, predictions,
 explanations) fail before any request.
 
-## Inherited input registration
+## Inherited Input Registration
 
 `ehr_evidence_app.tracking.registration` reads only the pinned baseline
 record, verifies its digest, the canonical `diag_kg` identity, asset roles,
@@ -168,7 +168,7 @@ model, graph, explanation, vocabulary or source file is uploaded.
 & $AppPython -m ehr_evidence_app.tracking.registration
 ```
 
-## Runtime aggregates
+## Runtime Aggregates
 
 `ehr_evidence_app.tracking.aggregates` describes the protected runtime
 records of one case set (`generation.records`) to the tracker as
@@ -245,7 +245,7 @@ configuration fields (such as `case_set`, `precision`, `prompt_version`
 and `commit`) and the last value of any scalar (such as `release rate` /
 `all`) as columns, and compares selected tasks side by side.
 
-## The final evaluation's figures
+## The Final Evaluation's Figures
 
 `ehr_evidence_app.tracking.final_figures` keeps the final evaluation's
 figures ([final-figures.md](final-figures.md)) in the tracker
@@ -277,7 +277,7 @@ completed.
 & $AppPython -m ehr_evidence_app.tracking.final_figures --operator-remote --run <run identifier>
 ```
 
-## The model
+## The Model
 
 `ehr_evidence_app.tracking.models` keeps MedGemma 1.5 4B IT, the one model
 the policy lists, in the tracker. It is published pretrained by its
@@ -315,7 +315,7 @@ uploaded.
 & $AppPython -m ehr_evidence_app.tracking.models --operator-remote
 ```
 
-## Lineage records
+## Lineage Records
 
 `config/lineage_schema.json` defines a five-stage chain:
 

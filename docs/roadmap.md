@@ -7,13 +7,13 @@ A work item may be split into sub-items such as 0.3.1 and 0.3.2.
 
 ## Completed
 
-| Phase | Work items | Outcome |
-| --- | --- | --- |
-| 0. Workspace and source preparation | 0.1 to 0.4 | Storage roots and destinations; staged legacy exports; bounded read-only source pilot; path and source checks |
-| 1. Repository and environments | 1 to 8 | Inherited baseline record; repository structure and content exclusions; GNN environment capture; application environment |
-| 2. Experiment tracking | 9 to 14 | Tracker policy; ClearML connection checks; controlled metadata tracking; inherited input registration; lineage schema |
-| 3. GNN integration | 15 to 22 | Asset validation; bridge output contract; identity mapping; target and history policy; preprocessing parity; offline outputs; provenance; split membership |
-| 4. Record evidence | 23 to 30.1 | Request, response and evidence contracts; snapshot and case readers; readable names; scoped retrieval; driver-to-event linkage and evidence claim policy; QA and explanation bundles for the pilot, a development set and an evaluation set |
+| Phase | Work Items | Outcome |
+| :--- | :---: | ---: |
+| 0. Workspace and Source Preparation | 0.1 to 0.4 | Storage Roots and Destinations; Staged Legacy Exports; Bounded Read-Only Source Pilot; Path and Source Checks |
+| 1. Repository and Environments | 1 to 8 | Inherited Baseline Record; Repository Structure and Content Exclusions; GNN Environment Capture; Application Environment |
+| 2. Experiment Tracking | 9 to 14 | Tracker Policy; ClearML Connection Checks; Controlled Metadata Tracking; Inherited Input Registration; Lineage Schema |
+| 3. GNN Integration | 15 to 22 | Asset Validation; Bridge Output Contract; Identity Mapping; Target and History Policy; Preprocessing Parity; Offline Outputs; Provenance; Split Membership |
+| 4. Record Evidence | 23 to 30.1 | Request, Response and Evidence Contracts; Snapshot and Case Readers; Readable Names; Scoped Retrieval; Driver-to-Event Linkage and Evidence Claim Policy; QA and Explanation Bundles for the Pilot, a Development Set and an Evaluation Set |
 
 Phase 3 is closed by a run-binding verification and a typed case-admission
 record; see [decisions/0002-phase-3-closure.md](decisions/0002-phase-3-closure.md).
@@ -22,7 +22,7 @@ described in [evidence.md](evidence.md) and decided in
 [ADR 0004](decisions/0004-evidence-contracts.md) and
 [ADR 0005](decisions/0005-event-linkage-and-claim-policy.md).
 
-## Phase 4. Record evidence
+## Phase 4. Record Evidence
 
 - 23 Define configuration and response contracts (done)
 - 24 Define shared evidence contracts (done)
@@ -37,7 +37,7 @@ described in [evidence.md](evidence.md) and decided in
   evaluation case sets (done: `dev-30-v1` and `eval-100-v1`; see
   [case-sets.md](case-sets.md))
 
-## Phase 5. Natural-language QA
+## Phase 5. Natural-Language QA
 
 Described in [qa.md](qa.md) and decided in
 [ADR 0006](decisions/0006-condition-vocabulary.md),
@@ -89,7 +89,7 @@ Described in [validation.md](validation.md) and decided in
   error classes detected on the development case sets, every original
   released unchanged)
 
-## Phase 7. LLM and operations
+## Phase 7. LLM and Operations
 
 Described in [generation.md](generation.md) and decided in
 [ADR 0012](decisions/0012-generation-design.md),
@@ -138,7 +138,7 @@ metrics of Phase 9.
   backfilled from the execution log; the pinned model uploaded with its
   licence notice, agreement and manifest, and registered)
 
-## Phase 8. API and interface
+## Phase 8. API and Interface
 
 Described in [interface.md](interface.md) and decided in
 [ADR 0019](decisions/0019-api-and-interface.md) and
@@ -239,7 +239,7 @@ The upstream partition of every case is recoverable (see
 evaluation cases can be drawn from the upstream test partition when a
 held-out claim is needed.
 
-## Phase 10. Acceptance and handover
+## Phase 10. Acceptance and Handover
 
 - 62 Complete the acceptance matrix ([acceptance.md](acceptance.md);
   done)

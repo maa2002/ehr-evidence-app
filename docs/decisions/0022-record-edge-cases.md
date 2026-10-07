@@ -1,4 +1,4 @@
-# 0022. The whole record at its edges
+# 0022. The Whole Record at Its Edges
 
 Status: accepted (2026-09-30). Amends [ADR 0021](0021-the-whole-record.md)
 (points 5 to 7: terms, answers and checks), before any request of
@@ -127,7 +127,7 @@ output only, on the development case sets. It found:
    chunk size; the builder, vocabulary, rendering, bundle cache under
    threads and evidence panel at their edges.
 
-## Development results
+## Development Results
 
 On the development case sets (`pilot-10-v1`, `dev-30-v1`), with
 aggregate output only and the evaluation set untouched:

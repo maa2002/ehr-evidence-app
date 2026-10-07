@@ -1,4 +1,4 @@
-# Data handling
+# Data Handling
 
 This project processes credentialed clinical data (MIMIC-IV). Patient-bearing
 content never enters Git, console output, logs or the experiment tracker.
@@ -6,15 +6,15 @@ This document describes where data lives and the controls that keep it
 there. Command examples assume the session set-up in
 [development.md](development.md#session-set-up).
 
-## Data classes
+## Data Classes
 
-| Class | Examples | Where it may live |
-| --- | --- | --- |
-| Protected | Source exports and extracts, the case sets' raw MIMIC-IV records (`protected-data\source-records`), identity mappings, model outputs, provenance and split sidecars, prepared evidence and record bundles, external question sets and their partitions, written test questions, runtime records of the generation (`protected-data\runtime-records`) | Workspace `protected-data\` only |
-| Private, non-patient | Verification summaries, environment manifests, lineage manifests, asset-validation records, archives | Workspace `outputs\`, `records\`, `archive\` |
-| Disposable | Environments, package and bytecode caches, temporary files, test temp | Runtime root |
-| Publishable | Code, configuration, documentation, synthetic test fixtures | This repository |
-| Secret | Database credentials, tracker credentials | Process environment or an untracked local file; never stored by this project |
+| Class | Examples | Where It May Live |
+| :--- | :---: | ---: |
+| Protected | Source Exports and Extracts, the Case Sets' Raw MIMIC-IV Records (`protected-data\source-records`), Identity Mappings, Model Outputs, Provenance and Split Sidecars, Prepared Evidence and Record Bundles, External Question Sets and Their Partitions, Written Test Questions, Runtime Records of the Generation (`protected-data\runtime-records`) | Workspace `protected-data\` Only |
+| Private, Non-Patient | Verification Summaries, Environment Manifests, Lineage Manifests, Asset-Validation Records, Archives | Workspace `outputs\`, `records\`, `archive\` |
+| Disposable | Environments, Package and Bytecode Caches, Temporary Files, Test Temp | Runtime Root |
+| Publishable | Code, Configuration, Documentation, Synthetic Test Fixtures | This Repository |
+| Secret | Database Credentials, Tracker Credentials | Process Environment or an Untracked Local File; Never Stored by This Project |
 
 Aggregate verification records (statuses, counts, hashes) may be copied into
 reports. Anything that identifies a person, a visit or an event, and any
@@ -31,16 +31,16 @@ agreement; no model trained on the project's data
 ([experiment-tracking.md](experiment-tracking.md);
 [ADR 0018](decisions/0018-tracker-as-experiment-record.md)).
 
-## Storage layout
+## Storage Layout
 
 All project storage sits under one anchor on an internal NTFS volume:
 
 | Root | Path | Role |
-| --- | --- | --- |
-| Policy anchor | `G:\Industry Dataset` | Fixed in code; every configured destination must lie inside it |
-| Private workspace | `G:\Industry Dataset\ehr-evidence-workspace` | Authoritative store for protected data, outputs, logs, verification records and ClearML configuration |
-| Runtime root | `G:\Industry Dataset\ehr-evidence-runtime` | Disposable environments, caches and temporary files only |
-| Repository | `G:\Industry Dataset\ehr-evidence-app` | Publishable content only |
+| :--- | :---: | ---: |
+| Policy Anchor | `G:\Industry Dataset` | Fixed in Code; Every Configured Destination Must Lie Inside It |
+| Private Workspace | `G:\Industry Dataset\ehr-evidence-workspace` | Authoritative Store for Protected Data, Outputs, Logs, Verification Records and ClearML Configuration |
+| Runtime Root | `G:\Industry Dataset\ehr-evidence-runtime` | Disposable Environments, Caches and Temporary Files Only |
+| Repository | `G:\Industry Dataset\ehr-evidence-app` | Publishable Content Only |
 
 The anchor's access-control list grants access only to the owning user,
 Administrators and SYSTEM; everything below inherits it. Drive encryption is
@@ -59,23 +59,23 @@ entry names a key, a root (`workspace` by default, or `runtime` for the keys
 fixed in `RUNTIME_DIRECTORY_KEYS`) and a path inside that root.
 
 | Key | Root | Path | Purpose |
-| --- | --- | --- | --- |
-| `prepared_data` | workspace | `protected-data\prepared` | Prepared evidence |
-| `outputs` | workspace | `outputs` | Generated responses, evaluation and audit artefacts |
-| `logs` | workspace | `outputs\logs` | Application run logs |
-| `verification` | workspace | `outputs\verification` | Verification reports |
-| `test_scratch` | workspace | `test-scratch` | Scratch for synthetic tests of workspace-only rules |
-| `clearml_local` | workspace | `clearml` | Local ClearML storage and configuration-file destination |
-| `temp` | runtime | `temp` | `TEMP`, `TMP`, `TMPDIR` |
-| `pytest_temp`, `pytest_cache` | runtime | `temp\pytest`, `cache\pytest` | pytest base temp and cache |
-| `pycache` | runtime | `cache\pycache` | `PYTHONPYCACHEPREFIX` |
-| `uv_cache`, `pip_cache`, `xdg_cache` | runtime | `cache\uv`, `cache\pip`, `cache\xdg` | Package and tool caches |
-| `hf_home`, `hf_hub`, `hf_assets`, `hf_datasets`, `torch_home` | runtime | `cache\huggingface\...`, `cache\torch` | Model-library caches |
-| `conda_pkgs`, `conda_envs`, `venvs`, `uv_project_env` | runtime | `cache\conda-pkgs`, `environments\...` | Downstream environments |
-| `llm_env`, `python_installs` | runtime | `environments\uv\ehr-evidence-llm`, `python` | The model environment and its uv-managed interpreter (`UV_PYTHON_INSTALL_DIR`) |
-| `cuda_cache` | runtime | `cache\cuda` | CUDA compute cache (`CUDA_CACHE_PATH`), which otherwise defaults to the user profile on C: |
-| `models` | runtime | `models` | Downloaded model assets |
-| `clearml_cache` | runtime | `cache\clearml` | ClearML cache |
+| :--- | :---: | :---: | ---: |
+| `prepared_data` | Workspace | `protected-data\prepared` | Prepared Evidence |
+| `outputs` | Workspace | `outputs` | Generated Responses, Evaluation and Audit Artefacts |
+| `logs` | Workspace | `outputs\logs` | Application Run Logs |
+| `verification` | Workspace | `outputs\verification` | Verification Reports |
+| `test_scratch` | Workspace | `test-scratch` | Scratch for Synthetic Tests of Workspace-Only Rules |
+| `clearml_local` | Workspace | `clearml` | Local ClearML Storage and Configuration-File Destination |
+| `temp` | Runtime | `temp` | `TEMP`, `TMP`, `TMPDIR` |
+| `pytest_temp`, `pytest_cache` | Runtime | `temp\pytest`, `cache\pytest` | pytest Base Temp and Cache |
+| `pycache` | Runtime | `cache\pycache` | `PYTHONPYCACHEPREFIX` |
+| `uv_cache`, `pip_cache`, `xdg_cache` | Runtime | `cache\uv`, `cache\pip`, `cache\xdg` | Package and Tool Caches |
+| `hf_home`, `hf_hub`, `hf_assets`, `hf_datasets`, `torch_home` | Runtime | `cache\huggingface\...`, `cache\torch` | Model-Library Caches |
+| `conda_pkgs`, `conda_envs`, `venvs`, `uv_project_env` | Runtime | `cache\conda-pkgs`, `environments\...` | Downstream Environments |
+| `llm_env`, `python_installs` | Runtime | `environments\uv\ehr-evidence-llm`, `python` | The Model Environment and Its uv-Managed Interpreter (`UV_PYTHON_INSTALL_DIR`) |
+| `cuda_cache` | Runtime | `cache\cuda` | CUDA Compute Cache (`CUDA_CACHE_PATH`), Which Otherwise Defaults to the User Profile on C: |
+| `models` | Runtime | `models` | Downloaded Model Assets |
+| `clearml_cache` | Runtime | `cache\clearml` | ClearML Cache |
 
 `scripts/setup-destinations.ps1` applies the configuration to the current
 PowerShell process: it validates every entry, creates missing directories
@@ -107,7 +107,7 @@ Each destination is labelled with its evidence class:
   is writable, but the owning tool (Hugging Face, Torch, pip, uv, conda,
   pytest, ClearML) was not run by the verifier.
 
-## Path checks
+## Path Checks
 
 `ehr_evidence_app.storage.policy` and the matching preflight in the setup
 script check every destination before anything is created, written, copied
@@ -151,7 +151,7 @@ Permitted read-only sources:
 
 Any other source must lie under the policy anchor.
 
-## Runtime storage preflight
+## Runtime Storage Preflight
 
 `ehr_evidence_app.storage.runtime` checks the storage volume with read-only
 PowerShell queries:
@@ -175,7 +175,7 @@ sanitised record is `outputs\verification\runtime-storage-preflight.json`.
 & $AppPython -m ehr_evidence_app.storage.destinations
 ```
 
-## Repository content controls
+## Repository Content Controls
 
 Three layers keep protected and generated content out of Git:
 
@@ -238,7 +238,7 @@ weakened; a weakened policy is an operational failure.
 - Tests that need a secret-shaped value assemble it from fragments at run
   time, so no secret-shaped literal appears in the source.
 
-## Output rules
+## Output Rules
 
 - Console output and logs carry statuses, counts, hashes, finding codes and
   public identifiers of artefacts only. `generation.records --operator-real

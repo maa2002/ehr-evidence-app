@@ -1,4 +1,4 @@
-# 0009. Rules version 2 and spelling suggestions
+# 0009. Rules Version 2 and Spelling Suggestions
 
 Status: accepted (2026-09-26).
 

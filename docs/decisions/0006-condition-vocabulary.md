@@ -1,4 +1,4 @@
-# 0006. Condition vocabulary from the Athena release
+# 0006. Condition Vocabulary From the Athena Release
 
 Status: accepted (2026-09-26).
 

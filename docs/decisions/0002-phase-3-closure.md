@@ -1,4 +1,4 @@
-# 0002. Phase 3 closure and Phase 4 admission
+# 0002. Phase 3 Closure and Phase 4 Admission
 
 Status: accepted (2026-09-25).
 

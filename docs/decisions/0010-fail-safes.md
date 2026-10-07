@@ -1,4 +1,4 @@
-# 0010. Fail-safes (rules versions 3 and 4)
+# 0010. Fail-Safes (Rules Versions 3 and 4)
 
 Status: accepted (2026-09-26).
 

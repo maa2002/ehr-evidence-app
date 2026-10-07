@@ -1,4 +1,4 @@
-# 0023. Answers checked against each other, compound mistakes and junk input
+# 0023. Answers Checked Against Each Other, Compound Mistakes and Junk Input
 
 Status: accepted (2026-09-30). Amends [ADR 0022](0022-record-edge-cases.md)
 (decision 7, readings: `record-questions-v3`) and
@@ -94,7 +94,7 @@ development case sets, and found:
      and 51 and 49 malformed requests (bodies, paths, queries and
      methods), over HTTP to the API and to the interface's server.
 
-## Development results
+## Development Results
 
 On invented data: 6,040 rewordings and 1,032 pairs of nested scopes
 compared; of the answers about the invented record, 1,761 with two

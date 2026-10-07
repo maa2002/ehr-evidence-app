@@ -30,7 +30,7 @@ The upstream tree is `G:\Industry Dataset\standardized-omop-gnn-7B82`. It has
 no Git metadata, so SHA-256 identities of the pinned files stand in for a
 revision.
 
-## Pinned identity
+## Pinned Identity
 
 `config/inherited_baseline.json` pins eleven upstream files by size and
 SHA-256: the replication documentation, the four source files
@@ -62,23 +62,23 @@ record always gets a new version name. The published records
 move and record the previous absolute paths; SHA-256 identities are
 unchanged.
 
-## Bridge output contract
+## Bridge Output Contract
 
 The upstream bridge (`src\gnn\explain_patient.py`) loads the checkpoint, runs
 the model on one patient graph at a time and writes one record per selected
 patient:
 
 | Field | Meaning |
-| --- | --- |
-| `patient_index` | Position in the bridge-filtered graph list; not a person or visit identifier |
-| `predicted_diagnosis.label_index` | Argmax over the 275 diagnosis logits |
+| :--- | ---: |
+| `patient_index` | Position in the Bridge-Filtered Graph List; Not a Person or Visit Identifier |
+| `predicted_diagnosis.label_index` | Argmax Over the 275 Diagnosis Logits |
 | `predicted_diagnosis.concept_id` | `label_vocab[label_index]` |
-| `predicted_diagnosis.name` | Readable concept name, or `""` |
-| `predicted_diagnosis.logit` | Raw logit of the selected label |
-| `predicted_diagnosis.probability` | `sigmoid(logit)`; not a calibrated risk |
-| `drivers.condition` / `.procedure` / `.drug` | Up to `top_k` (default 10) entries per domain |
-| driver `vocab_index`, `concept_id`, `name` | Concept identity (`concept_id` may be `null`, `name` may be `""`) |
-| driver `score` | Sum of absolute embedding gradients for the selected label |
+| `predicted_diagnosis.name` | Readable Concept Name, or `""` |
+| `predicted_diagnosis.logit` | Raw Logit of the Selected Label |
+| `predicted_diagnosis.probability` | `sigmoid(logit)`; Not a Calibrated Risk |
+| `drivers.condition` / `.procedure` / `.drug` | Up to `top_k` (Default 10) Entries per Domain |
+| Driver `vocab_index`, `concept_id`, `name` | Concept Identity (`concept_id` May Be `null`, `name` May Be `""`) |
+| Driver `score` | Sum of Absolute Embedding Gradients for the Selected Label |
 
 Semantics:
 
@@ -115,22 +115,22 @@ Synthetic example (all values invented):
 The bridge also prints predictions and drivers to standard output; that
 output is patient-bearing and is always discarded by the wrappers here.
 
-## Label decoding
+## Label Decoding
 
 Whether `concept_id` names the diagnosis the model actually scored rests on
 three layers of evidence:
 
 | Layer | Evidence | Result |
-| --- | --- | --- |
-| A. Rule | Graph builder, trainer, model and bridge share one label axis: output position *i*, training target *i* and `label_vocab[i]` | established from the pinned source |
-| B. Decode | `concept_id == label_vocab[label_index]` for every pilot output | 10 of 10 |
-| C. Run binding | The checkpoint's saved `pos_weight` reproduces exactly from the current graph labels in the current label order under the replayed split; a reversed order does not | 275 of 275 values; reversed order 0 of 105 exact-count values |
+| :--- | :---: | ---: |
+| A. Rule | Graph Builder, Trainer, Model and Bridge Share One Label Axis: Output Position *i*, Training Target *i* and `label_vocab[i]` | Established From the Pinned Source |
+| B. Decode | `concept_id == label_vocab[label_index]` for Every Pilot Output | 10 of 10 |
+| C. Run Binding | The Checkpoint's Saved `pos_weight` Reproduces Exactly From the Current Graph Labels in the Current Label Order Under the Replayed Split; a Reversed Order Does Not | 275 of 275 Values; Reversed Order 0 of 105 Exact-Count Values |
 
 Together these establish the label correspondence for the canonical run.
 Earlier records that say `label_index_correspondence: not_established`
 predate layers B and C; see [model-outputs.md](model-outputs.md).
 
-## Identity mapping
+## Identity Mapping
 
 `ehr_evidence_app.gnn.mapping` links each person of the source pilot
 (`pilot-10-v1`) to a graph and each visit node to a source visit:
@@ -151,7 +151,7 @@ recorded, quarantined. All 10 pilot persons are `verified`: 38 visit nodes,
 10 targets and 28 history links, with no target repeated in its own history.
 The mapping is `protected-data\identity-mappings\step-17-pilot10-v1\mapping.json`.
 
-## Target and history
+## Target and History
 
 - **Target.** The final ordered visit of a graph, position *N*-1, resolved
   through its identity-mapping entry. It is the visit whose conditions form
@@ -173,7 +173,7 @@ The mapping is `protected-data\identity-mappings\step-17-pilot10-v1\mapping.json
   every driver's graph edges to recorded events, and such claims must cite
   those events (see [evidence.md](evidence.md#event-linkage)).
 
-## Preprocessing parity
+## Preprocessing Parity
 
 `ehr_evidence_app.gnn.parity` confirms that the training loader and the
 bridge produce identical model inputs, and that both match an independent
@@ -198,7 +198,7 @@ $GnnPython = 'C:\path\to\omopgnn\python.exe'   # existing omopgnn interpreter
 & $GnnPython -m ehr_evidence_app.gnn.parity --operator-real    # real data, aggregate output
 ```
 
-## Run binding and split membership
+## Run Binding and Split Membership
 
 The checkpoint stores its training arguments, including the 275
 `pos_weight` values computed from the training partition's label counts.
@@ -239,7 +239,7 @@ The earlier split sidecar (`step-22-pilot10-v2`) reports every pilot case as
 exist (an RNG provenance record and a graph-binding record). The run-binding
 record supersedes that result.
 
-## Model limitations
+## Model Limitations
 
 These are properties of the inherited model. They restrict claims; they do
 not stop cases from being used.

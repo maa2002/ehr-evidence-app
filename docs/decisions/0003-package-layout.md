@@ -1,4 +1,4 @@
-# 0003. Package layout and repository structure
+# 0003. Package Layout and Repository Structure
 
 Status: accepted (2026-09-25).
 

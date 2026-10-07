@@ -1,4 +1,4 @@
-# 0024. No fine-tuning
+# 0024. No Fine-Tuning
 
 Status: accepted (2026-09-30), by the project owner. Closes decision 6 of
 [ADR 0012](0012-generation-design.md) and decision 3 of

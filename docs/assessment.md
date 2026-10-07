@@ -1,4 +1,4 @@
-# The final evaluation
+# The Final Evaluation
 
 Phase 9 compares the application as built (the controlled condition) with
 a baseline on the evaluation case set, request by request, and assesses
@@ -13,25 +13,25 @@ everything is built and checked on invented data and the development
 case sets first. Command examples assume the session set-up in
 [development.md](development.md#session-set-up).
 
-## Work items
+## Work Items
 
-| Work item | Module | Role | Status |
-| --- | --- | --- | --- |
-| 53 | `assessment.partition` | The downstream partition of the case sets | done: `downstream-partition-v1` |
-| 54 | `assessment.references` | Independent QA references | built; agree with every template answer of the development case sets |
-| 54 | `assessment.record_references` | References of questions about the whole record (ADR 0016, decision 11) | built; agree with every template answer of the development case sets |
-| 55 | `assessment.references` | Explanation expectations and challenges | expectations built, and agree with every development template explanation; the challenges come with the runner |
-| 56 | `assessment.baseline` | The baseline condition | built and checked on invented data |
-| 57 | `assessment.runner` | The paired runner, with the invented challenges | built; checked on invented data and in a development trial with the model |
-| 58, 59 | `assessment.metrics`, `assessment.stated` | QA, abstention, explanation and evidence metrics, and what each condition wrote read for them | built; checked on invented data and against the release gate's mutation suite |
-| 59 | `assessment.rubric` | The prose rubric (ADR 0027) | built; the rater's instructions frozen as `prose-rubric-v4`; on a fresh set of wordings it failed no passing text and caught 274 of 320 planted faults |
-| 60 | `assessment.end_to_end` | End-to-end QA | built: condition questions agree with the written test on a development set; questions about the whole record are checked on invented data |
-| 60 | `assessment.record_suite` | A generated development suite of questions about the whole record (ADR 0016, decision 11) | built; on the development case sets 10,338 of 11,053 questions are read right and 10,320 delivered correctly |
-| 61 | `assessment.statistics`, `assessment.report` | The paired comparison's statistics, and the scoring of a run | built; checked on invented data and on the development trial's run |
-| 60 | `assessment.instr` | The held-out questions of MIMIC-IV-Ext-Instr, read once with the frozen rules | built; its reading is the application's on every edge, help and junk question |
-| 64 | `assessment.freeze` | The freeze record, its gate on the final case set, and the final question sets' registration ([ADR 0029](decisions/0029-the-freeze.md)) | done: release 0.11.2 frozen as `freeze-v3`, the final run and its assessments done under it ([final-figures.md](final-figures.md)) |
+| Work Item | Module | Role | Status |
+| :--- | :---: | :---: | ---: |
+| 53 | `assessment.partition` | The Downstream Partition of the Case Sets | Done: `downstream-partition-v1` |
+| 54 | `assessment.references` | Independent QA References | Built; Agree With Every Template Answer of the Development Case Sets |
+| 54 | `assessment.record_references` | References of Questions About the Whole Record (ADR 0016, Decision 11) | Built; Agree With Every Template Answer of the Development Case Sets |
+| 55 | `assessment.references` | Explanation Expectations and Challenges | Expectations Built, and Agree With Every Development Template Explanation; the Challenges Come With the Runner |
+| 56 | `assessment.baseline` | The Baseline Condition | Built and Checked on Invented Data |
+| 57 | `assessment.runner` | The Paired Runner, With the Invented Challenges | Built; Checked on Invented Data and in a Development Trial With the Model |
+| 58, 59 | `assessment.metrics`, `assessment.stated` | QA, Abstention, Explanation and Evidence Metrics, and What Each Condition Wrote Read for Them | Built; Checked on Invented Data and Against the Release Gate's Mutation Suite |
+| 59 | `assessment.rubric` | The Prose Rubric (ADR 0027) | Built; the Rater's Instructions Frozen as `prose-rubric-v4`; on a Fresh Set of Wordings It Failed No Passing Text and Caught 274 of 320 Planted Faults |
+| 60 | `assessment.end_to_end` | End-to-End QA | Built: Condition Questions Agree With the Written Test on a Development Set; Questions About the Whole Record Are Checked on Invented Data |
+| 60 | `assessment.record_suite` | A Generated Development Suite of Questions About the Whole Record (ADR 0016, Decision 11) | Built; on the Development Case Sets 10,338 of 11,053 Questions Are Read Right and 10,320 Delivered Correctly |
+| 61 | `assessment.statistics`, `assessment.report` | The Paired Comparison's Statistics, and the Scoring of a Run | Built; Checked on Invented Data and on the Development Trial's Run |
+| 60 | `assessment.instr` | The Held-Out Questions of MIMIC-IV-Ext-Instr, Read Once With the Frozen Rules | Built; Its Reading Is the Application's on Every Edge, Help and Junk Question |
+| 64 | `assessment.freeze` | The Freeze Record, Its Gate on the Final Case Set, and the Final Question Sets' Registration ([ADR 0029](decisions/0029-the-freeze.md)) | Done: Release 0.11.2 Frozen as `freeze-v3`, the Final Run and Its Assessments Done Under It ([final-figures.md](final-figures.md)) |
 
-## The downstream partition
+## The Downstream Partition
 
 `assessment.partition` keeps the final evaluation's cases apart from
 everything the application was built and tuned on:
@@ -56,11 +56,11 @@ the module:
 21,322 bytes, SHA-256
 `1718de367b822d2a03a82c8bfc82be28a032db14331a916e481dc756101f5b0c`.
 
-| Case set | Partition | Drawn from | Cases | Admitted | Upstream partition of the cases | Unseen by the GNN (admitted) |
-| --- | --- | --- | --- | --- | --- | --- |
-| `pilot-10-v1` | development | no partition (the first ten qualifying persons) | 10 | 10 | train 8, test 2 | 2 (2) |
-| `dev-30-v1` | development | validation | 30 | 26 | validation 30 | 0 |
-| `eval-100-v1` | final | test | 100 | 92 | test 100 | 100 (92) |
+| Case Set | Partition | Drawn From | Cases | Admitted | Upstream Partition of the Cases | Unseen by the GNN (Admitted) |
+| :--- | :---: | :---: | :---: | :---: | :---: | ---: |
+| `pilot-10-v1` | Development | No Partition (the First Ten Qualifying Persons) | 10 | 10 | Train 8, Test 2 | 2 (2) |
+| `dev-30-v1` | Development | Validation | 30 | 26 | Validation 30 | 0 |
+| `eval-100-v1` | Final | Test | 100 | 92 | Test 100 | 100 (92) |
 
 The development partition holds 40 persons, the final one 100, and no
 person is in both. Every case of the final evaluation is unseen by the
@@ -69,7 +69,7 @@ validation partition, on which the GNN's checkpoint was chosen, and 8 of
 the pilot's 10 from the partition it was trained on. A claim about
 patients the GNN never saw rests on `eval-100-v1` alone.
 
-## The references
+## The References
 
 `assessment.references` prepares each compared request's reference from
 the source records. It reads no bundle and runs no part of the runtime's
@@ -106,8 +106,8 @@ Every reference is compared with the template's document for the same
 request on the development case sets. The templates pass the release
 gate, so each should score as a correct response. All of them do:
 
-| Case set | Lists | Empty lists | Presence, recorded | Presence, recorded elsewhere | Explanations | Templates differing from their references |
-| --- | --- | --- | --- | --- | --- | --- |
+| Case Set | Lists | Empty Lists | Presence, Recorded | Presence, Recorded Elsewhere | Explanations | Templates Differing From Their References |
+| :--- | :---: | :---: | :---: | :---: | :---: | ---: |
 | `dev-30-v1` | 134 | 1 | 134 | 135 | 26 | 0 of 430 |
 | `pilot-10-v1` | 56 | 2 | 56 | 58 | 10 | 0 of 182 |
 
@@ -115,7 +115,7 @@ The comparison is not empty. On invented data, a condition record removed
 from the snapshot makes the templates that state it differ, and the
 explanation's reference refuses a linked record that is missing.
 
-## The metrics
+## The Metrics
 
 `assessment.metrics` computes every metric of ADR 0016 from pairs of a
 reference and a response, one pair per request and condition. Both are
@@ -178,7 +178,7 @@ samples, using references built from the samples' bundles:
   faulty. These are an unsupported claim, an altered prediction or
   attribution, and an unresolved reference.
 
-## The baseline
+## The Baseline
 
 `assessment.baseline` writes the compared requests as the controlled
 condition does, from the same bundles, projection, schema, model,
@@ -205,7 +205,7 @@ candidate is invalid output in both conditions. A prompt or expected
 answer over its limit, a timeout, exhausted memory or a backend failure
 is the same failure in both.
 
-## The paired runner
+## The Paired Runner
 
 `assessment.runner` writes every request once in each condition, in the
 same order, with one attempt each.
@@ -236,11 +236,11 @@ The invented challenges (work item 55) check how each condition ends
 each invalid case and each failure; all 20 end as they should:
 
 | Challenge | Controlled | Baseline |
-| --- | --- | --- |
-| A bundle of another case or scope, a history with a gap, a record without a name; a prediction that is not the one selected | case rejection | case rejection |
-| Incomplete coverage of a list's scope | abstention | writes an answer |
-| An explanation with incomplete history, no positive attribution or no eligible driver | abstention | writes an explanation |
-| A cut-off, malformed or schema-breaking output; a timeout; exhausted memory; a backend failure or crash; a prompt or expected answer over its limit | that failure | that failure |
+| :--- | :---: | ---: |
+| A Bundle of Another Case or Scope, a History With a Gap, a Record Without a Name; a Prediction That Is Not the One Selected | Case Rejection | Case Rejection |
+| Incomplete Coverage of a List's Scope | Abstention | Writes an Answer |
+| An Explanation With Incomplete History, No Positive Attribution or No Eligible Driver | Abstention | Writes an Explanation |
+| A Cut-Off, Malformed or Schema-Breaking Output; a Timeout; Exhausted Memory; a Backend Failure or Crash; a Prompt or Expected Answer Over Its Limit | That Failure | That Failure |
 
 **The development trial.** The runner wrote two requests of each group
 of `dev-30-v1`, 9 in all, in both conditions with the pinned model, in
@@ -251,7 +251,7 @@ the two explanations, the gate withheld one in the controlled condition
 and the baseline released both. It is a check that the runner, its
 records and the scoring work together, not a measurement.
 
-## Scoring a run
+## Scoring a Run
 
 `assessment.report` scores a finished run against the independent
 references.
@@ -285,7 +285,7 @@ and the baseline gives them. The controlled condition's coverage then
 falls, and the baseline's answers hold unsupported statements and
 references to nothing.
 
-## End-to-end assessment
+## End-to-End Assessment
 
 `assessment.end_to_end` starts from a question's text, in the application
 as deployed: the QA pipeline with the whole record and, when it is
@@ -322,25 +322,25 @@ record, 6 abstentions become the clarifications meant, and 18 list and
 presence questions that the condition rules decline are read as other
 tasks. The set was worded when such questions were refused.
 
-| Intent | Condition rules alone | With the whole record, as deployed | Written test |
-| --- | --- | --- | --- |
-| List (24) | read right 10, each delivered correctly; declined 14 | read right 10, each delivered correctly; declined 7, another task 7 | correct 10, not understood 14 |
-| Presence (117) | read right 60 (resolved exactly 57, related 3), each delivered correctly; declined 57 | read right 60, as alone; declined 46, another task 11 | exact 60, not understood 57 |
-| Refuse (46) | refused 44; answered 2 | refused 27; answered 19 | correct 44, answered 2 |
-| Clarify (39) | clarified 33; abstained 6 | clarified 35; answered 4 | correct 33, abstained 6 |
+| Intent | Condition Rules Alone | With the Whole Record, as Deployed | Written Test |
+| :--- | :---: | :---: | ---: |
+| List (24) | Read Right 10, Each Delivered Correctly; Declined 14 | Read Right 10, Each Delivered Correctly; Declined 7, Another Task 7 | Correct 10, Not Understood 14 |
+| Presence (117) | Read Right 60 (Resolved Exactly 57, Related 3), Each Delivered Correctly; Declined 57 | Read Right 60, as Alone; Declined 46, Another Task 11 | Exact 60, Not Understood 57 |
+| Refuse (46) | Refused 44; Answered 2 | Refused 27; Answered 19 | Correct 44, Answered 2 |
+| Clarify (39) | Clarified 33; Abstained 6 | Clarified 35; Answered 4 | Correct 33, Abstained 6 |
 
 **Questions about the whole record** (ADR 0016, decision 11) have a
 format of their own, since what their writer meant is more than a task
 and a concept:
 
 | Column | Holds |
-| --- | --- |
-| `id`, `case_set`, `case`, `scope`, `question` | As in the written test |
+| :--- | ---: |
+| `id`, `case_set`, `case`, `scope`, `question` | As in the Written Test |
 | `intent` | `answer`, `refuse` or `clarify` |
-| `task`, `kind` | For an answer: what it asks, from `record_list` to `person_details`, and the kind of record, `visit` or `person` |
-| `codes`, `groups`, `concepts`, `written`, `words` | The item meant, as the references name items: laboratory or ICU item numbers, vital-sign groups, condition or drug concepts, the written names of drugs without a concept, the words of a procedure's, a test's or a unit's name. Several are separated by semicolons; a whole kind has none |
-| `selector` | For values: `latest`, `first`, `highest`, `lowest` or `all` |
-| `field` | For a visit or the person: the detail asked about |
+| `task`, `kind` | For an Answer: What It Asks, From `record_list` to `person_details`, and the Kind of Record, `visit` or `person` |
+| `codes`, `groups`, `concepts`, `written`, `words` | The Item Meant, as the References Name Items: Laboratory or ICU Item Numbers, Vital-Sign Groups, Condition or Drug Concepts, the Written Names of Drugs Without a Concept, the Words of a Procedure's, a Test's or a Unit's Name. Several Are Separated by Semicolons; a Whole Kind Has None |
+| `selector` | For Values: `latest`, `first`, `highest`, `lowest` or `all` |
+| `field` | For a Visit or the Person: The Detail Asked About |
 
 A list or a presence check of conditions is a condition question, in the
 written test's format, and a presence check names an item, since whether
@@ -418,17 +418,17 @@ On the development case sets, with aggregate output only (questions,
 read right, delivered correctly):
 
 | Kind | `dev-30-v1` | `pilot-10-v1` |
-| --- | --- | --- |
-| Conditions | 530, 522, 515 (and 1 apart) | 220, 220, 220 |
-| Laboratory results | 2,583, 2,421, 2,421 | 1,092, 1,047, 1,047 |
+| :--- | :---: | ---: |
+| Conditions | 530, 522, 515 (and 1 Apart) | 220, 220, 220 |
+| Laboratory Results | 2,583, 2,421, 2,421 | 1,092, 1,047, 1,047 |
 | Medications | 1,020, 825, 820 | 410, 338, 338 |
 | Microbiology | 341, 300, 300 | 130, 120, 120 |
 | Procedures | 469, 413, 407 | 158, 143, 143 |
-| Vital signs | 492, 459, 459 | 134, 134, 134 |
-| Care units | 405, 353, 353 | 174, 148, 148 |
-| ICU stays | 135, 135, 135 | 58, 58, 58 |
+| Vital Signs | 492, 459, 459 | 134, 134, 134 |
+| Care Units | 405, 353, 353 | 174, 148, 148 |
+| ICU Stays | 135, 135, 135 | 58, 58, 58 |
 | Visits | 945, 945, 945 | 406, 406, 406 |
-| The person | 945, 945, 945 | 406, 406, 406 |
+| The Person | 945, 945, 945 | 406, 406, 406 |
 | All | 7,865, 7,318, 7,300 | 3,188, 3,020, 3,020 |
 
 The suite found that the reading cut names apart, which rules
@@ -455,7 +455,7 @@ still finds:
   for every insulin (rules `record-resolution-v3`), where the suite
   means the ingredient alone.
 
-## The prose rubric
+## The Prose Rubric
 
 `assessment.rubric` rates every explanation and every condition answer
 of both conditions that has text, pass or fail on the four items of
@@ -500,39 +500,39 @@ module refuses a second reported check of the same instructions. A test
 keeps the phrases that carry the kept set's paraphrases out of the
 instructions. The first set, in an explanation:
 
-| Class | Named by the runtime's rules | Paraphrase the rules do not name |
-| --- | --- | --- |
+| Class | Named by the Runtime's Rules | Paraphrase the Rules Do Not Name |
+| :--- | :---: | ---: |
 | Causation | "...caused the predicted diagnosis." | "...brought about the predicted diagnosis." |
 | Direction | "...raised the risk of the predicted diagnosis." | "...pushed the prediction upwards." |
 | Share | "...makes up a share of the prediction." | "...carries the bulk of the prediction." |
 | Exclusivity | "...is the only reason for the prediction." | "Nothing but the first concept accounts for the prediction." |
-| Diagnosis or status | "The patient has the predicted diagnosis." | "The predicted diagnosis is present in this person." |
+| Diagnosis or Status | "The patient has the predicted diagnosis." | "The predicted diagnosis is present in this person." |
 | Risk | "The score is the patient's risk of..." | "...this person is in danger of..." |
 | Advice | "The patient should be treated for..." | "Treating the predicted diagnosis would be wise." |
 | Certainty | "The evidence clearly proves the prediction." | "The evidence leaves no room for doubt about the prediction." |
 
 The second set, in an explanation:
 
-| Class | Named by the runtime's rules | Paraphrase the rules do not name |
-| --- | --- | --- |
+| Class | Named by the Runtime's Rules | Paraphrase the Rules Do Not Name |
+| :--- | :---: | ---: |
 | Causation | "...led to the predicted diagnosis." | "The predicted diagnosis grew out of these recorded concepts." |
 | Direction | "...increased the likelihood of the predicted diagnosis." | "...tipped the prediction higher." |
 | Share | "...accounts for a proportion of the prediction." | "Nearly all of the prediction comes from the first concept." |
 | Exclusivity | "The first concept solely explains the prediction." | "No concept but the first counts toward the prediction." |
-| Diagnosis or status | "The patient is suffering from the predicted diagnosis." | "This person lives with the predicted diagnosis." |
+| Diagnosis or Status | "The patient is suffering from the predicted diagnosis." | "This person lives with the predicted diagnosis." |
 | Risk | "The score gives the probability that the patient develops..." | "The score shows how vulnerable this person is to..." |
 | Advice | "Clinicians should start treatment for..." | "Starting a medicine for the predicted diagnosis would make sense." |
 | Certainty | "The evidence confirms the prediction." | "The evidence settles the prediction beyond dispute." |
 
 The third set, in an explanation:
 
-| Class | Named by the runtime's rules | Paraphrase the rules do not name |
-| --- | --- | --- |
+| Class | Named by the Runtime's Rules | Paraphrase the Rules Do Not Name |
+| :--- | :---: | ---: |
 | Causation | "...triggered the predicted diagnosis." | "The predicted diagnosis sprang from these recorded concepts." |
 | Direction | "...lowered the odds of the predicted diagnosis." | "...sent the prediction up." |
 | Share | "The first concept gives 40% of the prediction." | "The first concept outweighs all the other concepts in the prediction put together." |
 | Exclusivity | "The prediction rests on the first concept and nothing else." | "The first concept is all there is to the prediction." |
-| Diagnosis or status | "The patient was diagnosed with the predicted diagnosis." | "The predicted diagnosis afflicts this person." |
+| Diagnosis or Status | "The patient was diagnosed with the predicted diagnosis." | "The predicted diagnosis afflicts this person." |
 | Risk | "The score is the likelihood that this person gets..." | "The score tells how near this person is to getting..." |
 | Advice | "We recommend treating the predicted diagnosis." | "Putting this person on a medicine for the predicted diagnosis is the sensible next step." |
 | Certainty | "The evidence definitely shows the prediction." | "The evidence makes the prediction a sure thing." |
@@ -561,12 +561,12 @@ changing them needs a new version and a new check. Faults caught on the
 first set, named / paraphrased, of 10 each:
 
 | Class | Answers, v1 | Answers, v2 | Explanations, v1 | Explanations, v2 |
-| --- | --- | --- | --- | --- |
+| :--- | :---: | :---: | :---: | ---: |
 | Causation | 10 / 10 | 10 / 10 | 10 / 10 | 10 / 10 |
 | Direction | 9 / 10 | 10 / 10 | 10 / 0 | 10 / 9 |
 | Share | 10 / 4 | 10 / 10 | 10 / 1 | 10 / 7 |
 | Exclusivity | 9 / 6 | 10 / 6 | 10 / 0 | 10 / 1 |
-| Diagnosis or status | 3 / 2 | 10 / 10 | 9 / 8 | 10 / 10 |
+| Diagnosis or Status | 3 / 2 | 10 / 10 | 9 / 8 | 10 / 10 |
 | Risk | 2 / 10 | 8 / 10 | 10 / 10 | 10 / 10 |
 | Advice | 10 / 10 | 10 / 10 | 10 / 10 | 10 / 10 |
 | Certainty | 4 / 0 | 10 / 4 | 0 / 0 | 10 / 1 |
@@ -577,13 +577,13 @@ mark. It caught 237 of the 320 faults: 136 of 160 in answers and 101 of
 160 in explanations; 141 of the 160 named forms and 96 of the 160
 paraphrases.
 
-| Class | Answers, named / paraphrased | Explanations, named / paraphrased |
-| --- | --- | --- |
+| Class | Answers, Named / Paraphrased | Explanations, Named / Paraphrased |
+| :--- | :---: | ---: |
 | Causation | 10 / 10 | 9 / 0 |
 | Direction | 10 / 10 | 8 / 0 |
 | Share | 10 / 5 | 10 / 4 |
 | Exclusivity | 10 / 0 | 10 / 0 |
-| Diagnosis or status | 10 / 10 | 10 / 10 |
+| Diagnosis or Status | 10 / 10 | 10 / 10 |
 | Risk | 10 / 10 | 10 / 10 |
 | Advice | 10 / 10 | 10 / 10 |
 | Certainty | 4 / 7 | 0 / 0 |
@@ -607,14 +607,14 @@ Each check rates the same 20 texts with both sets seen, 640 faults and
 held the whole rating model. The rater does not reason before its mark:
 with reasoning it took 14 to 27 seconds a text, about four hours a check.
 
-| Instructions | What changed | Passing texts failed | Faults caught, of 640 |
-| --- | --- | --- | --- |
+| Instructions | What Changed | Passing Texts Failed | Faults Caught, of 640 |
+| :--- | :---: | :---: | ---: |
 | `prose-rubric-v2` | | 0 | 531 |
-| candidate a | judge what a sentence means, not its words; examples from the seen sets | 0 | 615 |
-| candidate b | each sentence judged on its own; "the evidence" among what is judged; evidence for a prediction never confirms it | 1 | 632 |
-| candidate c | b without "evidence for a prediction never confirms it" | 0 | 624 |
-| candidate d | b with denials shown to make no claim | 0 | 634 |
-| candidate e | d with "risk factors for" among the examples | 0 | 634 |
+| Candidate a | Judge What a Sentence Means, Not Its Words; Examples From the Seen Sets | 0 | 615 |
+| Candidate b | Each Sentence Judged on Its Own; "the evidence" Among What Is Judged; Evidence for a Prediction Never Confirms It | 1 | 632 |
+| Candidate c | b Without "evidence for a prediction never confirms it" | 0 | 624 |
+| Candidate d | b With Denials Shown to Make No Claim | 0 | 634 |
+| Candidate e | d With "risk factors for" Among the Examples | 0 | 634 |
 
 The rule set before the last candidate, no passing text failed and the
 most faults caught, left d and e tied; d, the one of fewer words, is
@@ -626,13 +626,13 @@ gave every text a mark. It caught 274 of the 320 faults: 147 of 160 in
 answers and 127 of 160 in explanations; 126 of the 160 named forms and
 148 of the 160 paraphrases.
 
-| Class | Answers, named / paraphrased | Explanations, named / paraphrased |
-| --- | --- | --- |
+| Class | Answers, Named / Paraphrased | Explanations, Named / Paraphrased |
+| :--- | :---: | ---: |
 | Causation | 10 / 9 | 9 / 6 |
 | Direction | 10 / 10 | 4 / 10 |
 | Share | 10 / 10 | 10 / 10 |
 | Exclusivity | 6 / 7 | 6 / 10 |
-| Diagnosis or status | 10 / 10 | 10 / 10 |
+| Diagnosis or Status | 10 / 10 | 10 / 10 |
 | Risk | 10 / 10 | 6 / 6 |
 | Advice | 10 / 10 | 10 / 10 |
 | Certainty | 5 / 10 | 0 / 10 |
@@ -674,7 +674,7 @@ minute on the workstation's GPU: the answers passed all four items in
 both conditions; of the baseline's two explanations one failed evidence
 and history by code, and the controlled condition's one passed all four.
 
-## The held-out questions of MIMIC-IV-Ext-Instr
+## The Held-Out Questions of MIMIC-IV-Ext-Instr
 
 `assessment.instr` reads every question of the dataset's held-out
 partition once, after the freeze, without a bundle, as the application
@@ -685,14 +685,14 @@ item does not resolve is asked about, as the application asks. Each
 family's expected reading is fixed before the read
 ([ADR 0029](decisions/0029-the-freeze.md), decision 5):
 
-| Family | Expected reading |
-| --- | --- |
-| All diagnoses | A condition list |
-| A ranking of diagnoses | Not answered |
-| Demographics | The person's details |
-| Admission information | A visit's or the person's details |
-| Transfers | Transfers or ICU stays |
-| Procedures, laboratory results, prescriptions, microbiology | A question about that kind of record |
+| Family | Expected Reading |
+| :--- | ---: |
+| All Diagnoses | A Condition List |
+| A Ranking of Diagnoses | Not Answered |
+| Demographics | The Person's Details |
+| Admission Information | A Visit's or the Person's Details |
+| Transfers | Transfers or ICU Stays |
+| Procedures, Laboratory Results, Prescriptions, Microbiology | A Question About That Kind of Record |
 
 The reading is held to the application's on the same questions: on the
 invented case set, for 158 edge and help questions and 1,100 questions
@@ -701,7 +701,7 @@ and the application's response agree on every one. The result is
 written once to a protected record named by the freeze, and only counts
 are printed.
 
-## The freeze
+## The Freeze
 
 `assessment.freeze` writes the freeze record once, after the release it
 freezes and before the final case set is read
@@ -729,7 +729,7 @@ No test reads the workspace's freeze record: the freeze's directories
 are read when called, and a test-wide setting points them at a
 directory that does not exist.
 
-## References for questions about the whole record
+## References for Questions About the Whole Record
 
 `assessment.record_references` prepares the reference of a question about
 the whole record (ADR 0016, decision 11) from the case set's raw extract
@@ -780,8 +780,8 @@ templates for every kind in every scope, with items taken from the
 records present. Each answer's cited records were compared with its
 reference, and every one agrees:
 
-| Case set | Lists | Presence | Times | Counts | Values | Abnormal | Visits | The person | Differing |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Case Set | Lists | Presence | Times | Counts | Values | Abnormal | Visits | The Person | Differing |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ---: |
 | `dev-30-v1` | 1,080 | 1,362 | 1,360 | 2,442 | 1,850 | 615 | 945 | 945 | 0 of 10,599 |
 | `pilot-10-v1` | 464 | 517 | 517 | 981 | 656 | 254 | 406 | 406 | 0 of 4,201 |
 
@@ -794,7 +794,7 @@ each difference was traced to the references, not to the application:
 - a drug record without a concept is named by its prescription, since
   the snapshot holds only its product code.
 
-## The paired comparison's statistics
+## The Paired Comparison's Statistics
 
 `assessment.statistics` holds the comparison of ADR 0016 (decision 10),
 controlled minus baseline over the same requests:

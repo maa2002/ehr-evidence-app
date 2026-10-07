@@ -1,4 +1,4 @@
-# 0008. Partitions of the MIMIC-IV-Ext-Instr question set
+# 0008. Partitions of the MIMIC-IV-Ext-Instr Question Set
 
 Status: accepted (2026-09-26). Decision 3 settled by
 [ADR 0024](0024-no-fine-tuning.md): the training and validation

@@ -1,4 +1,4 @@
-# Natural-language QA
+# Natural-Language QA
 
 Phase 5 answers one question about the active case and scope from that
 case's verified QA bundle. Interpretation and resolution follow fixed
@@ -24,22 +24,22 @@ examples assume the session set-up in
 
 ## Modules
 
-| Work item | Module | Role |
-| --- | --- | --- |
-| 31 | `qa.interpret` | Question interpretation: task, condition phrase, out-of-scope rules |
-| 32 | `qa.resolve` | Condition term resolution and record matching |
-| 32.1 | `qa.vocabulary` | Condition vocabulary built from the pinned Athena release |
-| 33 | `qa.scope` | Scope phrases and binding to the active scope |
-| 34 | `qa.answer` | List and presence answers from a verified QA bundle |
-| 36 | `qa.templates` | Answers, refusals and clarifying questions written as candidates |
-| 34.1 | `qa.suite` | Development question suite with an independent oracle; vocabulary sweep |
-| 34.2 | `qa.heldout` | Partitions of MIMIC-IV-Ext-Instr; held-out wording test |
-| 34.3 | `qa.written` | Written wording test: template, case overview, scoring by intent and family |
-| 52.2 | `qa.record_vocabulary` | Medication and procedure vocabulary built from the pinned Athena release |
-| 52.4 | `qa.record_interpret`, `qa.record_resolve` | Reading of questions about the whole record; their terms and the records they match |
-| 52.5 | `qa.record_answer` | Answers about the whole record, from its record bundle |
+| Work Item | Module | Role |
+| :--- | :---: | ---: |
+| 31 | `qa.interpret` | Question Interpretation: Task, Condition Phrase, Out-of-Scope Rules |
+| 32 | `qa.resolve` | Condition Term Resolution and Record Matching |
+| 32.1 | `qa.vocabulary` | Condition Vocabulary Built From the Pinned Athena Release |
+| 33 | `qa.scope` | Scope Phrases and Binding to the Active Scope |
+| 34 | `qa.answer` | List and Presence Answers From a Verified QA Bundle |
+| 36 | `qa.templates` | Answers, Refusals and Clarifying Questions Written as Candidates |
+| 34.1 | `qa.suite` | Development Question Suite With an Independent Oracle; Vocabulary Sweep |
+| 34.2 | `qa.heldout` | Partitions of MIMIC-IV-Ext-Instr; Held-Out Wording Test |
+| 34.3 | `qa.written` | Written Wording Test: Template, Case Overview, Scoring by Intent and Family |
+| 52.2 | `qa.record_vocabulary` | Medication and Procedure Vocabulary Built From the Pinned Athena Release |
+| 52.4 | `qa.record_interpret`, `qa.record_resolve` | Reading of Questions About the Whole Record; Their Terms and the Records They Match |
+| 52.5 | `qa.record_answer` | Answers About the Whole Record, From Its Record Bundle |
 
-## From question to response
+## From Question to Response
 
 Every question ends in exactly one response:
 
@@ -61,15 +61,15 @@ Every question ends in exactly one response:
    rejection. Refusals and clarifying questions are written and checked
    the same way.
 
-| Outcome | When | Reason codes |
-| --- | --- | --- |
-| `answer` | A list of a scope with records; a presence check with a matching record | `unmapped_records_in_scope` when the scope holds records without a standard concept |
-| `not_recorded` | A list of an empty scope; a presence check with complete coverage and no match | as for `answer` |
-| `clarification` | The question is unclear or needs a choice the user has to make | `task_ambiguous`, `concept_unknown`, `concept_ambiguous`, `concept_too_broad`, `scope_ambiguous`, `visit_ambiguous`, `case_ambiguous`, `prediction_selection_needed` |
-| `abstention` | The request is outside the supported tasks, or coverage is incomplete | `task_unsupported`, `coverage_incomplete` |
-| `case_rejection` | The case or scope has no bundle, or its bundle does not fit the request | `case_not_admitted`, `scope_invalid`, `identity_inconsistent`, `history_inconsistent`, `evidence_inconsistent` |
-| `validation_rejection` | A candidate fails a check | `structure_invalid`, `reference_unresolved`, `scope_violated`, `claim_unsupported`, `prohibited_wording`, `date_unsupported` |
-| `operational_error` | A limit is exceeded, or a check fails to run | `limit_exceeded`, `validator_failed` |
+| Outcome | When | Reason Codes |
+| :--- | :---: | ---: |
+| `answer` | A List of a Scope With Records; a Presence Check With a Matching Record | `unmapped_records_in_scope` When the Scope Holds Records Without a Standard Concept |
+| `not_recorded` | A List of an Empty Scope; a Presence Check With Complete Coverage and No Match | As for `answer` |
+| `clarification` | The Question Is Unclear or Needs a Choice the User Has to Make | `task_ambiguous`, `concept_unknown`, `concept_ambiguous`, `concept_too_broad`, `scope_ambiguous`, `visit_ambiguous`, `case_ambiguous`, `prediction_selection_needed` |
+| `abstention` | The Request Is Outside the Supported Tasks, or Coverage Is Incomplete | `task_unsupported`, `coverage_incomplete` |
+| `case_rejection` | The Case or Scope Has No Bundle, or Its Bundle Does Not Fit the Request | `case_not_admitted`, `scope_invalid`, `identity_inconsistent`, `history_inconsistent`, `evidence_inconsistent` |
+| `validation_rejection` | A Candidate Fails a Check | `structure_invalid`, `reference_unresolved`, `scope_violated`, `claim_unsupported`, `prohibited_wording`, `date_unsupported` |
+| `operational_error` | A Limit Is Exceeded, or a Check Fails to Run | `limit_exceeded`, `validator_failed` |
 
 A `not_recorded` answer always says that the condition is not recorded
 within the selected scope, and that this is not a statement of clinical
@@ -132,16 +132,16 @@ The words outside the condition phrase are checked for requests outside
 the supported tasks:
 
 | Rule | Outcome | Examples |
-| --- | --- | --- |
-| Explanation of a prediction | clarification, `prediction_selection_needed` | "Why did the model predict sepsis?" |
-| Another patient | clarification, `case_ambiguous` | "Is diabetes recorded for patient 12?", "Does the patient in bed 4 have COPD?" |
-| Treatment or management | abstention, `task_unsupported` | "How should heart failure be treated?" |
-| Prognosis or risk | abstention, `task_unsupported` | "Will the patient survive?", "Will her kidney disease get worse?" |
-| A diagnosis to be made | abstention, `task_unsupported` | "What could the patient have?" |
-| Other data | abstention, `task_unsupported` | "What medications is he taking?", "Show the lab results", "Did she undergo surgery?" |
-| Dates, times, order or counts | abstention, `task_unsupported` | "Was AKI recorded after the transfer?", "Is diabetes documented more than twice?" |
-| A ranking of conditions | abstention, `task_unsupported` | "What were the top three diagnoses?", "What is her main diagnosis?" |
-| Only some of the conditions | abstention, `task_unsupported` | "Give me a few of the diagnoses", "List some of her diagnoses" |
+| :--- | :---: | ---: |
+| Explanation of a Prediction | Clarification, `prediction_selection_needed` | "Why did the model predict sepsis?" |
+| Another Patient | Clarification, `case_ambiguous` | "Is diabetes recorded for patient 12?", "Does the patient in bed 4 have COPD?" |
+| Treatment or Management | Abstention, `task_unsupported` | "How should heart failure be treated?" |
+| Prognosis or Risk | Abstention, `task_unsupported` | "Will the patient survive?", "Will her kidney disease get worse?" |
+| A Diagnosis to Be Made | Abstention, `task_unsupported` | "What could the patient have?" |
+| Other Data | Abstention, `task_unsupported` | "What medications is he taking?", "Show the lab results", "Did she undergo surgery?" |
+| Dates, Times, Order or Counts | Abstention, `task_unsupported` | "Was AKI recorded after the transfer?", "Is diabetes documented more than twice?" |
+| A Ranking of Conditions | Abstention, `task_unsupported` | "What were the top three diagnoses?", "What is her main diagnosis?" |
+| Only Some of the Conditions | Abstention, `task_unsupported` | "Give me a few of the diagnoses", "List some of her diagnoses" |
 
 The same words inside a condition phrase are part of condition names
 ("Poisoning by drug", "Cirrhosis following cardiac procedure", "Hitting
@@ -165,7 +165,7 @@ question with neither. A phrase that is only a pronoun ("is it recorded")
 gets `concept_unknown`. A phrase that is only a word for conditions ("are
 any diagnoses recorded") asks for the list.
 
-### Fail-safes
+### Fail-Safes
 
 Since rules version 3, a list or a presence check is released only when
 every word of the question is accounted for: by a question frame, the
@@ -174,12 +174,12 @@ condition phrase, a scope phrase, or a fixed list of harmless words
 "at any point"). Otherwise the first fail-safe that applies gives a
 clarification:
 
-| Fail-safe | Clarification | Examples |
-| --- | --- | --- |
-| A visit, stay or time named in words that are not a scope phrase | `scope_ambiguous`, naming the selected scope | "Was X coded in the admission before the last one?", "Is X recorded now?", "What are his current diagnoses?" |
-| An exclusion or filter; in a list, also a negation | `task_ambiguous` | "List the conditions except diabetes", "Which conditions are not recorded?" |
-| Any other word | `task_ambiguous` | "List her cardiac conditions", "Is X recorded in his family history?" |
-| Two presence checks in one message | `task_ambiguous` | "Is X recorded? Is Y recorded?" |
+| Fail-Safe | Clarification | Examples |
+| :--- | :---: | ---: |
+| A Visit, Stay or Time Named in Words That Are Not a Scope Phrase | `scope_ambiguous`, Naming the Selected Scope | "Was X coded in the admission before the last one?", "Is X recorded now?", "What are his current diagnoses?" |
+| An Exclusion or Filter; in a List, Also a Negation | `task_ambiguous` | "List the conditions except diabetes", "Which conditions are not recorded?" |
+| Any Other Word | `task_ambiguous` | "List her cardiac conditions", "Is X recorded in his family history?" |
+| Two Presence Checks in One Message | `task_ambiguous` | "Is X recorded? Is Y recorded?" |
 
 The question words removed from the ends of the condition phrase are
 checked for visits, times and exclusions as well. The condition phrase
@@ -195,11 +195,11 @@ A question is answered within the active case and scope chosen in the
 case selector. Recognised scope phrases:
 
 | Scope | Phrases |
-| --- | --- |
-| The active scope, whichever it is | "the selected part of the record", "the selected time frame", "the chosen period" |
-| Pre-target history | "before (prior to) the final (last, latest, most recent, current, this) admission", "before the current, final admission", "before admission", "previous (prior, earlier, past) admissions", "a prior hospitalisation", "pre-target history" |
-| One visit | "visit 2", "admission number 3", "admission two", "visit 2 of 4", "the second admission", "the final (last, current, present) admission", "the current, final admission", "this admission", "her hospital stay" |
-| All case visits | "in any admission", "across all admissions", "across (throughout) her admissions", "all of her admissions, including the current one", "in the entire record" |
+| :--- | ---: |
+| The Active Scope, Whichever It Is | "the selected part of the record", "the selected time frame", "the chosen period" |
+| Pre-Target History | "before (prior to) the final (last, latest, most recent, current, this) admission", "before the current, final admission", "before admission", "previous (prior, earlier, past) admissions", "a prior hospitalisation", "pre-target history" |
+| One Visit | "visit 2", "admission number 3", "admission two", "visit 2 of 4", "the second admission", "the final (last, current, present) admission", "the current, final admission", "this admission", "her hospital stay" |
+| All Case Visits | "in any admission", "across all admissions", "across (throughout) her admissions", "all of her admissions, including the current one", "in the entire record" |
 
 An admission may also be called a visit, stay, encounter or
 hospitalisation, with "hospital", "inpatient" or "ICU" before it; a
@@ -217,7 +217,7 @@ does not have gets a clarification (`scope_ambiguous` or
 `visit_ambiguous`); the scope never changes silently. "Ever" and "at any
 time" are not scope phrases: the answer states its scope.
 
-## Resolution and matching
+## Resolution and Matching
 
 A condition phrase resolves, by fixed rules in order, as an ICD-9-CM or
 ICD-10-CM code, the name of standard condition concepts, or an English
@@ -233,12 +233,12 @@ unknown words (version 2). The rules are in
 A record matches a resolved phrase, and the answer states how:
 
 | Match | Rule |
-| --- | --- |
-| exact concept | The record's standard concept is the resolved concept |
-| more specific concept | It descends from the resolved concept in the SNOMED hierarchy |
-| ICD code | For a code phrase, the record's ICD source code equals it |
-| more specific ICD code | For a code phrase, the record's ICD source code starts with it |
-| ICD description | A record without a standard concept whose ICD description contains the name or a synonym of the concept or a descendant, not negated |
+| :--- | ---: |
+| Exact Concept | The Record's Standard Concept Is the Resolved Concept |
+| More Specific Concept | It Descends From the Resolved Concept in the SNOMED Hierarchy |
+| ICD Code | For a Code Phrase, the Record's ICD Source Code Equals It |
+| More Specific ICD Code | For a Code Phrase, the Record's ICD Source Code Starts With It |
+| ICD Description | A Record Without a Standard Concept Whose ICD Description Contains the Name or a Synonym of the Concept or a Descendant, Not Negated |
 
 ## Answers
 
@@ -268,7 +268,7 @@ most 50 records, and a response carries at most 200 claims. Before
 release, every response is checked against its bundle by identifier and
 digest with the citation rules (`evidence.schema.citation_problems`).
 
-## Development suite
+## Development Suite
 
 `qa.suite` asks generated questions about every admitted case of a
 development case set, in every scope, through the whole pipeline, and
@@ -286,20 +286,20 @@ source snapshot, the case set's visits and the vocabulary tables:
   counted apart and not scored.
 
 | Family | Questions | Expected |
-| --- | --- | --- |
-| `list` | One list per scope | Every record, grouped |
-| `presence_name`, `presence_synonym` | Concepts of the scope, by name or a synonym that names only them | Their records and those of descendants |
-| `presence_ancestor` | The most specific broader concept of a recorded one | Every record it covers |
-| `presence_code` | An ICD code of the scope | Records whose code equals or extends it |
-| `presence_absent` | Concepts recorded elsewhere in the case set, matching nothing in the scope | `not_recorded` |
-| `scope_same`, `scope_other` | A phrase naming the active scope, or another one | The answer, or `scope_ambiguous` |
-| `visit_missing` | A visit the case does not have | `visit_ambiguous` |
-| `unsupported`, `explanation`, `other_patient` | Fixed requests | Their abstention or clarification |
-| `unknown_term`, `too_broad`, `ambiguous_term` | Invented, broad and ambiguous terms | Their clarification |
-| `ranking`, `two_requests` | Fixed requests (suite version 2) | An abstention, or `task_ambiguous` |
-| `misspelling` | A recorded concept's name with one letter dropped (suite version 2) | `concept_unknown`, suggesting the concept |
-| `presence_negated` | A concept of the scope, asked in a negative wording (suite version 3) | Its records, or `not_recorded` |
-| `scope_unrecognised`, `count_list`, `qualified`, `unexplained`, `two_conditions` | A fixed request for each fail-safe (suite version 3) | `scope_ambiguous`, an abstention, or `task_ambiguous` |
+| :--- | :---: | ---: |
+| `list` | One List per Scope | Every Record, Grouped |
+| `presence_name`, `presence_synonym` | Concepts of the Scope, by Name or a Synonym That Names Only Them | Their Records and Those of Descendants |
+| `presence_ancestor` | The Most Specific Broader Concept of a Recorded One | Every Record It Covers |
+| `presence_code` | An ICD Code of the Scope | Records Whose Code Equals or Extends It |
+| `presence_absent` | Concepts Recorded Elsewhere in the Case Set, Matching Nothing in the Scope | `not_recorded` |
+| `scope_same`, `scope_other` | A Phrase Naming the Active Scope, or Another One | The Answer, or `scope_ambiguous` |
+| `visit_missing` | A Visit the Case Does Not Have | `visit_ambiguous` |
+| `unsupported`, `explanation`, `other_patient` | Fixed Requests | Their Abstention or Clarification |
+| `unknown_term`, `too_broad`, `ambiguous_term` | Invented, Broad and Ambiguous Terms | Their Clarification |
+| `ranking`, `two_requests` | Fixed Requests (Suite Version 2) | An Abstention, or `task_ambiguous` |
+| `misspelling` | A Recorded Concept's Name With One Letter Dropped (Suite Version 2) | `concept_unknown`, Suggesting the Concept |
+| `presence_negated` | A Concept of the Scope, Asked in a Negative Wording (Suite Version 3) | Its Records, or `not_recorded` |
+| `scope_unrecognised`, `count_list`, `qualified`, `unexplained`, `two_conditions` | A Fixed Request for Each Fail-Safe (Suite Version 3) | `scope_ambiguous`, an Abstention, or `task_ambiguous` |
 
 A response is correct when its outcome, reason codes, task and scope are
 as expected, it returns exactly the expected records, a list names exactly
@@ -312,16 +312,16 @@ for Phase 9.
 Results (suite version 1 with the rules of release 0.6.0, and each
 later suite version with the rule version of the same number):
 
-| Suite | Case set | Admitted cases | Questions | Correct | Presence records (expected, returned, correct) | Unscored description matches | Summary SHA-256 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| v1 | `dev-30-v1` | 26 | 1,550 | 1,550 | 892, 892, 892 | 21 records in 6 questions | `c5374924494c088f9eb17434e24f836ea11f46b634d3df0d8fa16f5cc4a482d9` |
-| v1 | `pilot-10-v1` | 10 | 648 | 648 | 368, 368, 368 | none | `d3da7b6cecce15b247304c054984a06bbd078c07609a8fc3679b8d7cef70cacb` |
-| v2 | `dev-30-v1` | 26 | 1,628 | 1,628 | 919, 919, 919 | 15 records in 5 questions | `af9f5e5c86bd9415a099bee5b143552019eae182faf6405c1afc96b1a24413a6` |
-| v2 | `pilot-10-v1` | 10 | 678 | 678 | 389, 389, 389 | none | `61a38f7a8aabcb9ee4596ee1527c54733478f9a079c5a8ae87c4345cc434c634` |
-| v3 | `dev-30-v1` | 26 | 1,892 | 1,892 | 1,089, 1,089, 1,089 | 10 records in 5 questions | `83b82783ffab9597ee2d8d4d9ff4e651a1c6452cc8e346be1d9cc81fc3fe4588` |
-| v3 | `pilot-10-v1` | 10 | 784 | 784 | 439, 439, 439 | 3 records in 1 question | `17f0671a9385d20b7524e1c44f65c6919130a77e5d0d3678e50dfb381c7f9a89` |
-| v4 | `dev-30-v1` | 26 | 1,892 | 1,892 | 1,169, 1,169, 1,169 | 10 records in 7 questions | `fce42eb09ef0c9e0660d565a65eebd3fa0f06da4a01ab9032e7384a8cf9aaf28` |
-| v4 | `pilot-10-v1` | 10 | 784 | 784 | 447, 447, 447 | 2 records in 2 questions | `04d33370291c796a955563392abcd7864f4be29d5babc8c88a27aa4c1643c055` |
+| Suite | Case Set | Admitted Cases | Questions | Correct | Presence Records (Expected, Returned, Correct) | Unscored Description Matches | Summary SHA-256 |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | ---: |
+| v1 | `dev-30-v1` | 26 | 1,550 | 1,550 | 892, 892, 892 | 21 Records in 6 Questions | `c5374924494c088f9eb17434e24f836ea11f46b634d3df0d8fa16f5cc4a482d9` |
+| v1 | `pilot-10-v1` | 10 | 648 | 648 | 368, 368, 368 | None | `d3da7b6cecce15b247304c054984a06bbd078c07609a8fc3679b8d7cef70cacb` |
+| v2 | `dev-30-v1` | 26 | 1,628 | 1,628 | 919, 919, 919 | 15 Records in 5 Questions | `af9f5e5c86bd9415a099bee5b143552019eae182faf6405c1afc96b1a24413a6` |
+| v2 | `pilot-10-v1` | 10 | 678 | 678 | 389, 389, 389 | None | `61a38f7a8aabcb9ee4596ee1527c54733478f9a079c5a8ae87c4345cc434c634` |
+| v3 | `dev-30-v1` | 26 | 1,892 | 1,892 | 1,089, 1,089, 1,089 | 10 Records in 5 Questions | `83b82783ffab9597ee2d8d4d9ff4e651a1c6452cc8e346be1d9cc81fc3fe4588` |
+| v3 | `pilot-10-v1` | 10 | 784 | 784 | 439, 439, 439 | 3 Records in 1 Question | `17f0671a9385d20b7524e1c44f65c6919130a77e5d0d3678e50dfb381c7f9a89` |
+| v4 | `dev-30-v1` | 26 | 1,892 | 1,892 | 1,169, 1,169, 1,169 | 10 Records in 7 Questions | `fce42eb09ef0c9e0660d565a65eebd3fa0f06da4a01ab9032e7384a8cf9aaf28` |
+| v4 | `pilot-10-v1` | 10 | 784 | 784 | 447, 447, 447 | 2 Records in 2 Questions | `04d33370291c796a955563392abcd7864f4be29d5babc8c88a27aa4c1643c055` |
 
 The vocabulary sweep asks about every standard condition by name in each
 of the suite's seven presence wordings, and reads no patient data. Of
@@ -349,7 +349,7 @@ real records. The wording comes from the suite's own paraphrases, written
 with the rules, so they say nothing about other people's wording; that is
 the held-out test below. They are not a measure of clinical correctness.
 
-## Held-out wording test
+## Held-Out Wording Test
 
 Work item 34.2 measures interpretation on questions written by others:
 MIMIC-IV-Ext-Instr 1.0.0 (PhysioNet, credentialed), a dataset built to
@@ -369,11 +369,11 @@ split is patient-level, but its validation file holds the whole test set,
 5,755 admissions are in no split (183 of their patients are test
 patients), and 26 patients of our case sets are in its training split.
 
-| Partition | Rule | Admissions | Patients | Structured questions | Note questions |
-| --- | --- | --- | --- | --- | --- |
-| held-out | The test admissions | 5,400 | 4,309 | 32,392 | 10,791 |
-| validation | Validation admissions outside the test set | 572 | 473 | 3,431 | 1,143 |
-| training | Training admissions | 47,749 | 38,273 | 286,401 | 95,462 |
+| Partition | Rule | Admissions | Patients | Structured Questions | Note Questions |
+| :--- | :---: | :---: | :---: | :---: | ---: |
+| Held-Out | The Test Admissions | 5,400 | 4,309 | 32,392 | 10,791 |
+| Validation | Validation Admissions Outside the Test Set | 572 | 473 | 3,431 | 1,143 |
+| Training | Training Admissions | 47,749 | 38,273 | 286,401 | 95,462 |
 
 Admissions in no split are excluded, and the 37 training admissions of
 patients in our case sets are removed. Only the held-out partition is
@@ -382,7 +382,7 @@ Phase 9 plans decide their use, for example for a fine-tuned comparison
 model. Record `mimic-iv-ext-instr-partitions-v1`: 485,743 bytes, SHA-256
 `4bfa37dd40235d5cbee6d3608ea7e20c20e17bbc26821c0b05186f9a14144f95`.
 
-### What is tested
+### What Is Tested
 
 The structured questions come from public templates. The diagnosis
 questions come from four list templates: all billed diagnoses, the first,
@@ -407,12 +407,12 @@ Test `instr-held-out-wording-v1` with the rules of release 0.6.0
 (summary SHA-256
 `f15451d156f55db342d1e142a2db9557499bf09bfc27aca24e3177fe91e82a93`):
 
-| Questions | Number | As expected | Readings |
-| --- | --- | --- | --- |
-| All diagnoses | 1,056 | 886 (83.9%) | 886 lists; 170 clarifications (96 unrecognised, 74 unknown condition phrases) |
-| Ranking of diagnoses | 3,101 | 2,114 (68.2%) | 2,114 clarifications; 987 answered with an unranked list |
-| Other data (seven event types) | 28,235 | 28,235 (100%) | 15,367 abstentions, 12,868 clarifications |
-| All | 32,392 | 31,235 (96.4%) | 987 answered out of scope, all ranking questions |
+| Questions | Number | As Expected | Readings |
+| :--- | :---: | :---: | ---: |
+| All Diagnoses | 1,056 | 886 (83.9%) | 886 Lists; 170 Clarifications (96 Unrecognised, 74 Unknown Condition Phrases) |
+| Ranking of Diagnoses | 3,101 | 2,114 (68.2%) | 2,114 Clarifications; 987 Answered With an Unranked List |
+| Other Data (Seven Event Types) | 28,235 | 28,235 (100%) | 15,367 Abstentions, 12,868 Clarifications |
+| All | 32,392 | 31,235 (96.4%) | 987 Answered Out of Scope, All Ranking Questions |
 
 No question about other data was answered as a condition question. The
 all-diagnoses questions that were not read as lists ended in a
@@ -436,7 +436,7 @@ of conditions and no question about other data answered; 781 of the
 for version 3
 `7440fa00ab94ae70868a21f8f3e0cd62fb3c4f8566bcfbcd3ba14c3f36406731`).
 
-## Written wording test
+## Written Wording Test
 
 Work item 34.3 measures presence-check wording, which the dataset above
 does not contain, and the other intents on new wording: questions worded
@@ -448,15 +448,15 @@ questions file of a set is
 spreadsheet), one row per question:
 
 | Column | Content |
-| --- | --- |
-| `id` | A unique label, such as `q001` |
+| :--- | ---: |
+| `id` | A Unique Label, Such as `q001` |
 | `case_set` | `dev-30-v1` (or `pilot-10-v1`) |
-| `case` | The case number |
-| `scope` | The scope imagined as selected: `history`, `all` or `visit N` |
-| `question` | The question, as it would be typed |
-| `intent` | `list` (the recorded conditions), `presence` (whether one condition is recorded), `refuse` (something the application should not answer, such as a treatment, a laboratory value or a number of conditions) or `clarify` (a question it should answer with a clarifying question: one naming another part of the record or a visit the case lacks, two requests or two conditions at once, a list of only some conditions, or one too vague to act on) |
-| `concept` | For `presence`, the OMOP concept ID of the condition meant; empty otherwise |
-| `family` | Optional: a label that groups the results |
+| `case` | The Case Number |
+| `scope` | The Scope Imagined as Selected: `history`, `all` or `visit N` |
+| `question` | The Question, as It Would Be Typed |
+| `intent` | `list` (the Recorded Conditions), `presence` (Whether One Condition Is Recorded), `refuse` (Something the Application Should Not Answer, Such as a Treatment, a Laboratory Value or a Number of Conditions) or `clarify` (a Question It Should Answer With a Clarifying Question: One Naming Another Part of the Record or a Visit the Case Lacks, Two Requests or Two Conditions at Once, a List of Only Some Conditions, or One Too Vague to Act On) |
+| `concept` | For `presence`, the OMOP Concept ID of the Condition Meant; Empty Otherwise |
+| `family` | Optional: A Label That Groups the Results |
 
 The overview `case-overview-dev-30-v1.csv` in the same folder lists each
 case's recorded conditions by scope with their concept IDs; concepts that
@@ -482,18 +482,18 @@ presence checks name the scope in words (questions file SHA-256
 summary SHA-256
 `c3200af8b35047f0a6f1bc7dc76f83041234e20899266a5bb3121266037bcc33`):
 
-| Family | Questions | As expected | Otherwise |
-| --- | --- | --- | --- |
-| List | 23 | 17 lists citing exactly the scope's records | 6 clarifications or abstentions |
-| Presence, recorded condition | 45 | 25 exact | 1 related concept; 19 clarifications or abstentions |
-| Presence, broader condition | 20 | 9 exact | 11 clarifications or abstentions |
-| Presence, condition not recorded | 45 | 33 exact | 12 clarifications or abstentions |
-| Refuse | 40 | 38 refused | 2 answered as condition questions |
-| Clarify: another part of the record | 10 | 7 clarifications | 3 answered within the selected scope |
-| Clarify: two requests at once | 6 | 2 clarifications | 4 answered for one request |
-| Clarify: too vague | 5 | 4 clarifications | 1 abstention |
-| Clarify: a visit the case lacks | 4 | 4 clarifications | none |
-| All | 198 | 139 (70.2%) | 1 related-concept answer; 9 wrong answers; 49 clarifications or abstentions instead of an answer |
+| Family | Questions | As Expected | Otherwise |
+| :--- | :---: | :---: | ---: |
+| List | 23 | 17 Lists Citing Exactly the Scope's Records | 6 Clarifications or Abstentions |
+| Presence, Recorded Condition | 45 | 25 Exact | 1 Related Concept; 19 Clarifications or Abstentions |
+| Presence, Broader Condition | 20 | 9 Exact | 11 Clarifications or Abstentions |
+| Presence, Condition Not Recorded | 45 | 33 Exact | 12 Clarifications or Abstentions |
+| Refuse | 40 | 38 Refused | 2 Answered as Condition Questions |
+| Clarify: Another Part of the Record | 10 | 7 Clarifications | 3 Answered Within the Selected Scope |
+| Clarify: Two Requests at Once | 6 | 2 Clarifications | 4 Answered for One Request |
+| Clarify: Too Vague | 5 | 4 Clarifications | 1 Abstention |
+| Clarify: A Visit the Case Lacks | 4 | 4 Clarifications | None |
+| All | 198 | 139 (70.2%) | 1 Related-Concept Answer; 9 Wrong Answers; 49 Clarifications or Abstentions Instead of an Answer |
 
 Every presence answer was about the condition meant, and every list that
 was given cited exactly the scope's records. Of the 42 presence checks
@@ -511,18 +511,18 @@ rules version 2 (questions file SHA-256
 summary SHA-256
 `ae0d2ffbfe2d09d0f1dcec394e9394535b000467091d606ae5bcdd495c9cfe93`):
 
-| Family | Questions | As expected | Otherwise |
-| --- | --- | --- | --- |
-| List | 24 | 17 lists citing exactly the scope's records | 7 clarifications or abstentions |
-| Presence, recorded condition | 45 | 25 exact | 20 clarifications or abstentions |
-| Presence, broader condition | 20 | 9 exact | 11 clarifications or abstentions |
-| Presence, condition not recorded | 45 | 36 exact | 9 clarifications or abstentions |
-| Refuse | 40 | 40 refused | none |
-| Clarify: another part of the record | 10 | 7 clarifications | 3 answered within the selected scope |
-| Clarify: two requests at once | 6 | 6 clarifications | none |
-| Clarify: too vague | 5 | 4 clarifications | 1 abstention |
-| Clarify: a visit the case lacks | 3 | 3 clarifications | none |
-| All | 198 | 147 (74.2%) | 3 wrong answers; 48 clarifications or abstentions instead of an answer |
+| Family | Questions | As Expected | Otherwise |
+| :--- | :---: | :---: | ---: |
+| List | 24 | 17 Lists Citing Exactly the Scope's Records | 7 Clarifications or Abstentions |
+| Presence, Recorded Condition | 45 | 25 Exact | 20 Clarifications or Abstentions |
+| Presence, Broader Condition | 20 | 9 Exact | 11 Clarifications or Abstentions |
+| Presence, Condition Not Recorded | 45 | 36 Exact | 9 Clarifications or Abstentions |
+| Refuse | 40 | 40 Refused | None |
+| Clarify: Another Part of the Record | 10 | 7 Clarifications | 3 Answered Within the Selected Scope |
+| Clarify: Two Requests at Once | 6 | 6 Clarifications | None |
+| Clarify: Too Vague | 5 | 4 Clarifications | 1 Abstention |
+| Clarify: A Visit the Case Lacks | 3 | 3 Clarifications | None |
+| All | 198 | 147 (74.2%) | 3 Wrong Answers; 48 Clarifications or Abstentions Instead of an Answer |
 
 Every presence answer was again about the condition meant. The wrong
 answers fell from 9 to 3, all scope wordings the rules still do not
@@ -540,11 +540,11 @@ summary SHA-256
 Scoring the same questions with each rule version shows what version 3
 changed:
 
-| Rules on `written-v3` | As expected | Wrong answers | Lists | Presence exact | Refused | Clarified |
-| --- | --- | --- | --- | --- | --- | --- |
+| Rules on `written-v3` | As Expected | Wrong Answers | Lists | Presence Exact | Refused | Clarified |
+| :--- | :---: | :---: | :---: | :---: | :---: | ---: |
 | Version 2 | 151 of 228 (66.2%) | 9 | 18 of 25 | 58 of 116 | 45 of 48 | 30 of 39 |
-| Version 3, scored once | 105 of 228 (46.1%) | 1 | 3 of 25 | 19 of 116 | 47 of 48 | 36 of 39 |
-| Version 4, development | 148 of 228 (64.9%) | 0 | 12 of 25 | 54 of 116 | 48 of 48 | 34 of 39 |
+| Version 3, Scored Once | 105 of 228 (46.1%) | 1 | 3 of 25 | 19 of 116 | 47 of 48 | 36 of 39 |
+| Version 4, Development | 148 of 228 (64.9%) | 0 | 12 of 25 | 54 of 116 | 48 of 48 | 34 of 39 |
 
 Version 3 removed 8 of the 9 wrong answers of version 2, but its
 fail-safes also stopped 55 questions that version 2 answered correctly:
@@ -561,22 +561,22 @@ with rules version 4 (questions file SHA-256
 summary SHA-256
 `9fc9b0867f25d3f0bc57ec3202d0c59b8492a89b497e8bc4fa272c99e849165e`):
 
-| Family | Questions | As expected | Otherwise |
-| --- | --- | --- | --- |
-| List | 24 | 10 lists citing exactly the scope's records | 14 clarifications or abstentions |
-| Presence, recorded condition | 45 | 24 exact | 21 clarifications or abstentions |
-| Presence, broader condition | 20 | 11 exact | 9 clarifications or abstentions |
-| Presence, condition not recorded | 44 | 23 exact | 21 clarifications or abstentions |
-| Presence, asked in a negative way | 8 | 2 exact | 6 clarifications or abstentions |
-| Refuse | 40 | 38 refused | 2 answered as condition questions |
-| Refuse: a number of conditions | 6 | 6 refused | none |
-| Clarify: another part of the record | 10 | 5 clarifications | 5 abstentions |
-| Clarify: two requests at once | 6 | 6 clarifications | none |
-| Clarify: two conditions at once | 6 | 6 clarifications | none |
-| Clarify: a list of only some conditions | 8 | 8 clarifications | none |
-| Clarify: too vague | 5 | 4 clarifications | 1 abstention |
-| Clarify: a visit the case lacks | 4 | 4 clarifications | none |
-| All | 226 | 147 (65.0%) | 2 wrong answers; 77 clarifications or abstentions instead of an answer |
+| Family | Questions | As Expected | Otherwise |
+| :--- | :---: | :---: | ---: |
+| List | 24 | 10 Lists Citing Exactly the Scope's Records | 14 Clarifications or Abstentions |
+| Presence, Recorded Condition | 45 | 24 Exact | 21 Clarifications or Abstentions |
+| Presence, Broader Condition | 20 | 11 Exact | 9 Clarifications or Abstentions |
+| Presence, Condition Not Recorded | 44 | 23 Exact | 21 Clarifications or Abstentions |
+| Presence, Asked in a Negative Way | 8 | 2 Exact | 6 Clarifications or Abstentions |
+| Refuse | 40 | 38 Refused | 2 Answered as Condition Questions |
+| Refuse: A Number of Conditions | 6 | 6 Refused | None |
+| Clarify: Another Part of the Record | 10 | 5 Clarifications | 5 Abstentions |
+| Clarify: Two Requests at Once | 6 | 6 Clarifications | None |
+| Clarify: Two Conditions at Once | 6 | 6 Clarifications | None |
+| Clarify: A List of Only Some Conditions | 8 | 8 Clarifications | None |
+| Clarify: Too Vague | 5 | 4 Clarifications | 1 Abstention |
+| Clarify: A Visit the Case Lacks | 4 | 4 Clarifications | None |
+| All | 226 | 147 (65.0%) | 2 Wrong Answers; 77 Clarifications or Abstentions Instead of an Answer |
 
 Every presence answer was about the condition meant and every list that
 was given was exact. On the same questions, rules version 2 gives 154
@@ -591,7 +591,7 @@ a clarification get an abstention; 8 presence checks that version 2
 could not read, and the 7 questions it answered wrongly, are now as
 expected.
 
-## Questions about the whole record
+## Questions About the Whole Record
 
 The rest of the record can be asked about too
 ([ADR 0021](decisions/0021-the-whole-record.md)): medications,
@@ -637,15 +637,15 @@ without a kind's word, it was answered as a question about the
 condition, or about a vital sign of the same name.
 
 | Task | Examples | Answer |
-| --- | --- | --- |
-| `record_list` | "What medications were given?", "Show me the labs", "Was she in the ICU?" | Every item of the kind within the scope, with its records and visits; each ICU stay and transfer with its times |
-| `record_presence` | "Was heparin given?", "Was she on Lasix?", "Any antibiotics?", "Was a chest x-ray done?" | Every matching record, grouped by item and by how it matched; or not recorded within the scope |
-| `record_timing` | "When was heparin first given?", "When was hypertension first recorded?" | The first and the last matching record |
-| `record_count` | "How many potassium results are there?", "How many medications?" | The number of matching records and their visits, or of a kind's items and records |
-| `record_values` | "What was the last potassium?", "Highest creatinine?", "Show the hemoglobin trend", "What dose of heparin was given?", "What doses were given?", "What organisms grew?" | Each matching item's latest, first, highest or lowest value, or its values in time order |
-| `record_abnormal` | "Were any labs abnormal?", "Was the potassium high?", "Were any labs low?" | Every result the laboratory flagged abnormal (for microbiology, every result reported resistant) |
-| `visit_details` | "How many visits?", "When was she admitted?", "Where was she discharged to?" | The field asked about, for every visit of the scope |
-| `person_details` | "How old was the patient?", "What is her race?", "Did the patient die?" | The person's sex or date of death, or the field recorded with each visit of the scope |
+| :--- | :---: | ---: |
+| `record_list` | "What medications were given?", "Show me the labs", "Was she in the ICU?" | Every Item of the Kind Within the Scope, With Its Records and Visits; Each ICU Stay and Transfer With Its Times |
+| `record_presence` | "Was heparin given?", "Was she on Lasix?", "Any antibiotics?", "Was a chest x-ray done?" | Every Matching Record, Grouped by Item and by How It Matched; or Not Recorded Within the Scope |
+| `record_timing` | "When was heparin first given?", "When was hypertension first recorded?" | The First and the Last Matching Record |
+| `record_count` | "How many potassium results are there?", "How many medications?" | The Number of Matching Records and Their Visits, or of a Kind's Items and Records |
+| `record_values` | "What was the last potassium?", "Highest creatinine?", "Show the hemoglobin trend", "What dose of heparin was given?", "What doses were given?", "What organisms grew?" | Each Matching Item's Latest, First, Highest or Lowest Value, or Its Values in Time Order |
+| `record_abnormal` | "Were any labs abnormal?", "Was the potassium high?", "Were any labs low?" | Every Result the Laboratory Flagged Abnormal (for Microbiology, Every Result Reported Resistant) |
+| `visit_details` | "How many visits?", "When was she admitted?", "Where was she discharged to?" | The Field Asked About, for Every Visit of the Scope |
+| `person_details` | "How old was the patient?", "What is her race?", "Did the patient die?" | The Person's Sex or Date of Death, or the Field Recorded With Each Visit of the Scope |
 
 The question's frame gives its task, its words or its phrase the kind,
 and a selector (last, first, highest, lowest, all) the values it wants.
@@ -734,7 +734,7 @@ length. Ages are the anchor age plus the years to the visit, so they may
 be one more than the age on the day, and ages over 89 are not given;
 dates are the shifted dates of MIMIC-IV.
 
-### Edge cases tested
+### Edge Cases Tested
 
 The rules are tested at their edges on an invented record built for
 them (`tests/qa/record_cases.py`): results of one test across visits out
@@ -765,7 +765,7 @@ get the same response with and without the record. The answers' checks
 were broken the same way on 300 of these answers (see
 [validation.md](validation.md#mutants-of-answers-about-the-whole-record)).
 
-### Consistency and junk input
+### Consistency and Junk Input
 
 Two more tests need no answer key
 ([ADR 0023](decisions/0023-consistency-and-junk-input.md)).
@@ -811,13 +811,13 @@ On the development case sets, with aggregate output only, through the
 service without the model and without runtime records:
 
 | Check | Requests | Result |
-| --- | --- | --- |
-| Nested scopes: every question of the test in every scope of every case | 25,669 | 20,475 pairs of nested scopes compared, none contradicting |
-| Rewordings: the 133 questions in 13 rewordings, in the history and all visits of 3 cases of each set | 18,828 | none answered otherwise |
-| Junk: 3,000 junk questions in the history and all visits of 2 cases of each set | 24,000 | no error or exception; 160 over the length limit, each `limit_exceeded`; median 0.055 s, the slowest 1.14 s |
-| The edge questions again, in every scope of every case | 31,652 | the same outcomes as before the rules changed; no condition question answered otherwise with the record |
+| :--- | :---: | ---: |
+| Nested Scopes: Every Question of the Test in Every Scope of Every Case | 25,669 | 20,475 Pairs of Nested Scopes Compared, None Contradicting |
+| Rewordings: The 133 Questions in 13 Rewordings, in the History and All Visits of 3 Cases of Each Set | 18,828 | None Answered Otherwise |
+| Junk: 3,000 Junk Questions in the History and All Visits of 2 Cases of Each Set | 24,000 | No Error or Exception; 160 Over the Length Limit, Each `limit_exceeded`; Median 0.055 s, the Slowest 1.14 s |
+| The Edge Questions Again, in Every Scope of Every Case | 31,652 | The Same Outcomes as Before the Rules Changed; No Condition Question Answered Otherwise With the Record |
 
-### What a medication was given for, and drug classes
+### What a Medication Was Given For, and Drug Classes
 
 A clinician trying the shared interface asked which medications were
 given for a recorded condition
@@ -832,14 +832,14 @@ scope of every case with the rules before and after, and a digest of its
 responses compared:
 
 | Check | Requests | Result |
-| --- | --- | --- |
-| The 228 questions, before and after | 44,004 each | 207 give the same responses byte for byte; the 21 that change are the ones the rules meant to change |
-| Twelve wordings asking what medications were given for something | 2,316 | ten now get the clarification; six of them were answered before as another question: a condition's presence ("what is he taking for his seizures"), a vital sign ("what was given for pain", "for blood pressure") or a test ("for the potassium"); "what medications treat his seizures" keeps the condition rules' refusal of treatment questions, and "for diabetes" a clarification, since the word alone names no condition |
-| Eleven questions naming a class in the singular | 2,123 | each gives the outcomes of its plural, where each was a clarification before |
-| The medication questions again, and every class word, after a class word kept its classes | 13,124 | only the three antibiotic questions changed: "Any antibiotics?" is answered in 103 of the 193 scopes instead of 62 |
-| Mutants of the class answers | 60 answers, 1,862 mutants | all withheld; every original and its 24 controls released |
-| Mutants of the record answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 answers, 30,719 mutants | all withheld; every original and the 762 controls released |
-| The condition suite | 1,892 and 784 | 100%, with the summary digests of rules version 5 byte for byte |
+| :--- | :---: | ---: |
+| The 228 Questions, Before and After | 44,004 Each | 207 Give the Same Responses Byte for Byte; the 21 That Change Are the Ones the Rules Meant to Change |
+| Twelve Wordings Asking What Medications Were Given for Something | 2,316 | Ten Now Get the Clarification; Six of Them Were Answered Before as Another Question: A Condition's Presence ("what is he taking for his seizures"), a Vital Sign ("what was given for pain", "for blood pressure") or a Test ("for the potassium"); "what medications treat his seizures" Keeps the Condition Rules' Refusal of Treatment Questions, and "for diabetes" a Clarification, Since the Word Alone Names No Condition |
+| Eleven Questions Naming a Class in the Singular | 2,123 | Each Gives the Outcomes of Its Plural, Where Each Was a Clarification Before |
+| The Medication Questions Again, and Every Class Word, After a Class Word Kept Its Classes | 13,124 | Only the Three Antibiotic Questions Changed: "Any antibiotics?" Is Answered in 103 of the 193 Scopes Instead of 62 |
+| Mutants of the Class Answers | 60 Answers, 1,862 Mutants | All Withheld; Every Original and Its 24 Controls Released |
+| Mutants of the Record Answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 Answers, 30,719 Mutants | All Withheld; Every Original and the 762 Controls Released |
+| The Condition Suite | 1,892 and 784 | 100%, With the Summary Digests of Rules Version 5 Byte for Byte |
 
 "Any nsaids?" was then still read by the condition rules as a condition,
 "Non-steroidal anti-inflammatory overdose", which the condition
@@ -854,7 +854,7 @@ answers (36 answers, 1,365 mutants) are all withheld and every original
 and its 15 controls released, and the condition suite, run under the
 name of `qa-answer-v5`, gives its summary digests byte for byte.
 
-### Names read whole
+### Names Read Whole
 
 Asking about records by their own names found that the reading cut names
 apart. A question's phrase is what is left once its frame, the kinds'
@@ -885,14 +885,14 @@ Before and after, on the development case sets, with aggregate output
 only, without the model and without runtime records:
 
 | Check | Requests | Result |
-| --- | --- | --- |
-| "When was {name} first recorded?" for every condition record's name in every scope | 2,638 each | read whole 2,614 times instead of 1,399; answered "not recorded" while the scope records the condition never, instead of 46 times |
-| The 228 questions of the last comparison, and 22 naming conditions and cultures with such words, in every scope; and, from each scope's own records, up to three conditions named with such a word, asked when and how often (324 each), and its cultures (141) | 49,039 each | 225 of the 228 give the same responses byte for byte. The blood culture questions ask about blood cultures rather than every specimen of blood (answered in 42 scopes instead of 49), and "What was the platelet count?" names the platelet count rather than every test whose name holds "platelet". Of the 22, the condition questions that were asked back are answered or not recorded, and "anxiety disorder" is answered in 16 scopes rather than anxiety's 23. The generated condition questions are answered 321 times of 324 instead of 16; each answer cites exactly the independent reference's records (`assessment.record_references`), but for 3 times that rest on records without a standard concept, which are unjudged, and none is "not recorded" while recorded, where 3 were |
-| Mutants of the answers to questions naming conditions and cultures with such words | 72 answers, 1,899 mutants | all withheld; every original released |
-| Rewordings and nested scopes, as in [Consistency and junk input](#consistency-and-junk-input): every question of the test in every scope, and its 13 rewordings in the history and all visits of 3 cases of each set | 27,020 and 19,836 | 21,150 pairs of nested scopes compared, none contradicting; no rewording answered otherwise; median 0.067 s, the slowest 2.43 s with other checks running beside it |
-| The condition suite | 1,892 and 784 | the summary digests byte for byte |
+| :--- | :---: | ---: |
+| "When was {name} first recorded?" for Every Condition Record's Name in Every Scope | 2,638 Each | Read Whole 2,614 Times Instead of 1,399; Answered "not recorded" While the Scope Records the Condition Never, Instead of 46 Times |
+| The 228 Questions of the Last Comparison, and 22 Naming Conditions and Cultures With Such Words, in Every Scope; and, From Each Scope's Own Records, Up to Three Conditions Named With Such a Word, Asked When and How Often (324 Each), and Its Cultures (141) | 49,039 Each | 225 of the 228 Give the Same Responses Byte for Byte. The Blood Culture Questions Ask About Blood Cultures Rather Than Every Specimen of Blood (Answered in 42 Scopes Instead of 49), and "What was the platelet count?" Names the Platelet Count Rather Than Every Test Whose Name Holds "platelet". Of the 22, the Condition Questions That Were Asked Back Are Answered or Not Recorded, and "anxiety disorder" Is Answered in 16 Scopes Rather Than Anxiety's 23. The Generated Condition Questions Are Answered 321 Times of 324 Instead of 16; Each Answer Cites Exactly the Independent Reference's Records (`assessment.record_references`), but for 3 Times That Rest on Records Without a Standard Concept, Which Are Unjudged, and None Is "not recorded" While Recorded, Where 3 Were |
+| Mutants of the Answers to Questions Naming Conditions and Cultures With Such Words | 72 Answers, 1,899 Mutants | All Withheld; Every Original Released |
+| Rewordings and Nested Scopes, as in [Consistency and Junk Input](#consistency-and-junk-input): Every Question of the Test in Every Scope, and Its 13 Rewordings in the History and All Visits of 3 Cases of Each Set | 27,020 and 19,836 | 21,150 Pairs of Nested Scopes Compared, None Contradicting; No Rewording Answered Otherwise; Median 0.067 s, the Slowest 2.43 s With Other Checks Running Beside It |
+| The Condition Suite | 1,892 and 784 | The Summary Digests Byte for Byte |
 
-### Questions from a user test
+### Questions From a User Test
 
 Trying the page as a user would found five kinds of message the reading
 answered otherwise than the help says. A greeting, thanks or a request
@@ -921,14 +921,14 @@ only, through the service as the page asks, without the model and
 without runtime records:
 
 | Check | Requests | Result |
-| --- | --- | --- |
-| The 228 questions of the earlier comparisons and 45 of the user test's own, in every scope of every case | 52,689 each | 214 give the same responses byte for byte, and 31 differ only in the capital that begins "not recorded". The 28 that change are the ones the rules meant to change: eleven greetings, thanks and requests for help and two misspelt questions are not understood, where each was asked back as a condition's name; nine rankings of conditions are declined in every scope, where eight were asked back and "What was the first diagnosis?" was answered in 190 scopes and not recorded in 3; and six questions about when a named visit was are answered in that visit's scope, which each of the 36 cases has, and ask for the scope to be changed in the other 157, where they were declined. No rejection, error or exception |
-| The condition suite, under the rules' names before | 1,892 and 784 | 100%, with the summary digests byte for byte |
-| The written wording tests, versions 1 to 4, under the rules' names before | 198, 198, 228 and 226 | the summary digests byte for byte |
-| The end-to-end test of the written set version 4, without the model | 226 | the same counts at every stage |
-| The record suite | 7,865 and 3,188 | the same counts for every question |
-| The mutation suite ([validation.md](validation.md#mutation-suite)) | 17,414 and 7,356 mutants | as recorded there: every original released unchanged and every mutant detected |
-| Mutants of the record answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 answers, 30,921 mutants | all withheld; every original and the 768 controls released, the same counts as before |
+| :--- | :---: | ---: |
+| The 228 Questions of the Earlier Comparisons and 45 of the User Test's Own, in Every Scope of Every Case | 52,689 Each | 214 Give the Same Responses Byte for Byte, and 31 Differ Only in the Capital That Begins "not recorded". The 28 That Change Are the Ones the Rules Meant to Change: Eleven Greetings, Thanks and Requests for Help and Two Misspelt Questions Are Not Understood, Where Each Was Asked Back as a Condition's Name; Nine Rankings of Conditions Are Declined in Every Scope, Where Eight Were Asked Back and "What was the first diagnosis?" Was Answered in 190 Scopes and Not Recorded in 3; and Six Questions About When a Named Visit Was Are Answered in That Visit's Scope, Which Each of the 36 Cases Has, and Ask for the Scope to Be Changed in the Other 157, Where They Were Declined. No Rejection, Error or Exception |
+| The Condition Suite, Under the Rules' Names Before | 1,892 and 784 | 100%, With the Summary Digests Byte for Byte |
+| The Written Wording Tests, Versions 1 to 4, Under the Rules' Names Before | 198, 198, 228 and 226 | The Summary Digests Byte for Byte |
+| The End-to-End Test of the Written Set Version 4, Without the Model | 226 | The Same Counts at Every Stage |
+| The Record Suite | 7,865 and 3,188 | The Same Counts for Every Question |
+| The Mutation Suite ([validation.md](validation.md#mutation-suite)) | 17,414 and 7,356 Mutants | As Recorded There: Every Original Released Unchanged and Every Mutant Detected |
+| Mutants of the Record Answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 Answers, 30,921 Mutants | All Withheld; Every Original and the 768 Controls Released, the Same Counts as Before |
 
 ## Limits
 

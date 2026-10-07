@@ -1,4 +1,4 @@
-# Source data
+# Source Data
 
 The clinical source is MIMIC-IV 3.1, transformed to the OMOP Common Data
 Model by the upstream OHDSI MIMIC ETL and loaded into a local PostgreSQL
@@ -7,11 +7,11 @@ it never modifies them. Command examples assume the session set-up in
 [development.md](development.md#session-set-up).
 
 | Source | Location | Access |
-| --- | --- | --- |
-| OMOP CDM database | local PostgreSQL 18, database `mimiciv_omop`, schema `omopcdm` | read-only transactions on loopback |
-| Legacy CSV exports | `C:\omop_export` | read-only copy source |
-| Raw MIMIC-IV 3.1 hospital and ICU modules | external archive disk | eleven pinned files read once, read-only, for exactly the case sets' persons ([Raw MIMIC-IV records](#raw-mimic-iv-records)) |
-| Athena vocabularies (release of 31 August 2026) | external archive disk | four pinned files read once, read-only, to build the condition vocabulary ([ADR 0006](decisions/0006-condition-vocabulary.md)) and the medication and procedure vocabulary ([ADR 0021](decisions/0021-the-whole-record.md); version 2 in [ADR 0022](decisions/0022-record-edge-cases.md)) |
+| :--- | :---: | ---: |
+| OMOP CDM Database | Local PostgreSQL 18, Database `mimiciv_omop`, Schema `omopcdm` | Read-Only Transactions on Loopback |
+| Legacy CSV Exports | `C:\omop_export` | Read-Only Copy Source |
+| Raw MIMIC-IV 3.1 Hospital and ICU Modules | External Archive Disk | Eleven Pinned Files Read Once, Read-Only, for Exactly the Case Sets' Persons ([Raw MIMIC-IV Records](#raw-mimic-iv-records)) |
+| Athena Vocabularies (Release of 31 August 2026) | External Archive Disk | Four Pinned Files Read Once, Read-Only, to Build the Condition Vocabulary ([ADR 0006](decisions/0006-condition-vocabulary.md)) and the Medication and Procedure Vocabulary ([ADR 0021](decisions/0021-the-whole-record.md); Version 2 in [ADR 0022](decisions/0022-record-edge-cases.md)) |
 
 **Source identity.** The upstream ETL code is in the inherited tree
 (`OHDSI_MIMIC\`) and its loader reads the MIMIC-IV 3.1 files. This is
@@ -19,7 +19,7 @@ documented provenance: nothing cryptographically binds the database contents
 to a specific release or ETL run. Records therefore store the observed
 database name, schema, server version and snapshot, not a claimed release.
 
-## Staged legacy exports
+## Staged Legacy Exports
 
 `ehr_evidence_app.sources.exports` copies five files from `C:\omop_export`
 into a versioned protected directory and profiles the copies:
@@ -81,7 +81,7 @@ Options: `--version-label` (required), `--source-dir`, `--dest-root`,
 an existing version re-verifies it and rewrites its manifest, so the label
 must name a new or unpublished version, never `legacy-export-20260901-v1`.
 
-## Bounded read-only pilot
+## Bounded Read-Only Pilot
 
 `ehr_evidence_app.sources.pilot` extracts, in one read-only transaction,
 every row of the core OMOP tables for a small, deterministic set of persons.
@@ -97,14 +97,14 @@ and was not chosen for clinical representativeness.
 **Extracted tables**, for exactly the selected persons, with no visit-type,
 date or concept filter:
 
-| Table | File | Native key |
-| --- | --- | --- |
+| Table | File | Native Key |
+| :--- | :---: | ---: |
 | `person` | `persons.csv` | `person_id` (`person_source_value` as `subject_id`) |
 | `visit_occurrence` | `visits.csv` | `visit_occurrence_id` |
 | `condition_occurrence` | `conditions.csv` | `condition_occurrence_id` |
 | `procedure_occurrence` | `procedures.csv` | `procedure_occurrence_id` |
 | `drug_exposure` | `drugs.csv` | `drug_exposure_id` |
-| `concept` (referenced ids only) | `concepts.csv` | `concept_id` |
+| `concept` (Referenced IDs Only) | `concepts.csv` | `concept_id` |
 
 The cohort is applied as a semi-join, so extraction can neither multiply nor
 drop source rows. Events with a null visit link, repeated events and concept
@@ -176,7 +176,7 @@ person selection is applied. This is not a statement of clinical absence or
 of complete EHR coverage: measurements, observations, notes, devices, deaths
 and other sources are not queried.
 
-## Connection policy
+## Connection Policy
 
 Fixed in code; configuration may narrow it but not widen it:
 
@@ -194,7 +194,7 @@ psql runs with an allow-listed environment: operating-system basics, the
 validated connection variables and the forced options. An inherited
 `PGOPTIONS`, `PGPASSFILE` or other `PG*` variable is never passed on.
 
-## Raw MIMIC-IV records
+## Raw MIMIC-IV Records
 
 The OMOP snapshots hold visits, conditions, procedures and drug
 exposures. The rest of a patient's record is read from the raw MIMIC-IV
@@ -205,16 +205,16 @@ details. `ehr_evidence_app.sources.mimic` reads, from
 `W:\Industry Dataset\mimic-iv-3.1`:
 
 | Table | Kept | Key |
-| --- | --- | --- |
-| `hosp\patients` | sex, anchor age and year, anchor year group, date of death | `subject_id` |
-| `hosp\admissions` | every column but the admitting provider | `hadm_id` |
-| `hosp\transfers` | every column | `transfer_id` |
-| `icu\icustays` | every column | `stay_id` |
-| `hosp\labevents`, `hosp\d_labitems` | results with value, unit, reference range, flag and priority; not the comments or the ordering provider | `labevent_id` |
-| `hosp\microbiologyevents` | specimens, tests, organisms, antibiotics, dilutions and interpretations; not the comments or the ordering provider | `microevent_id` |
-| `hosp\prescriptions` | drug, strength, form, dose, unit and route; not the order or pharmacy identifiers | row number |
-| `icu\chartevents`, `icu\d_items` | the vital-sign items of a fixed list (`VITAL_GROUPS`); not the caregiver | row number |
-| `icu\procedureevents` | ICU procedure events; not the caregiver or the order identifiers | row number |
+| :--- | :---: | ---: |
+| `hosp\patients` | Sex, Anchor Age and Year, Anchor Year Group, Date of Death | `subject_id` |
+| `hosp\admissions` | Every Column but the Admitting Provider | `hadm_id` |
+| `hosp\transfers` | Every Column | `transfer_id` |
+| `icu\icustays` | Every Column | `stay_id` |
+| `hosp\labevents`, `hosp\d_labitems` | Results With Value, Unit, Reference Range, Flag and Priority; Not the Comments or the Ordering Provider | `labevent_id` |
+| `hosp\microbiologyevents` | Specimens, Tests, Organisms, Antibiotics, Dilutions and Interpretations; Not the Comments or the Ordering Provider | `microevent_id` |
+| `hosp\prescriptions` | Drug, Strength, Form, Dose, Unit and Route; Not the Order or Pharmacy Identifiers | Row Number |
+| `icu\chartevents`, `icu\d_items` | The Vital-Sign Items of a Fixed List (`VITAL_GROUPS`); Not the Caregiver | Row Number |
+| `icu\procedureevents` | ICU Procedure Events; Not the Caregiver or the Order Identifiers | Row Number |
 
 Every input is pinned by the size and SHA-256 of the file in the archive
 (`INPUTS`; the archive's own checksums are of the compressed files), read
@@ -243,8 +243,8 @@ code (`EXTRACT_PINS`). Console output carries counts only.
 & $AppPython -m ehr_evidence_app.sources.mimic --operator-real --verify-only
 ```
 
-| Case set | Admissions | Transfers | ICU stays | Laboratory results (in snapshot visits) | Microbiology rows | Prescriptions | Vital-sign rows | ICU procedure events |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Case Set | Admissions | Transfers | ICU Stays | Laboratory Results (in Snapshot Visits) | Microbiology Rows | Prescriptions | Vital-Sign Rows | ICU Procedure Events |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ---: |
 | `pilot-10-v1` | 38 | 135 | 1 | 6,698 (3,531) | 208 | 886 | 294 | 6 |
 | `dev-30-v1` | 116 | 461 | 27 | 46,887 (27,971) | 792 | 5,290 | 18,289 | 167 |
 | `eval-100-v1` | 407 | 1,629 | 53 | 104,254 (54,612) | 3,335 | 14,402 | 24,263 | 316 |

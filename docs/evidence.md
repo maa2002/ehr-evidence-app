@@ -1,4 +1,4 @@
-# Record evidence
+# Record Evidence
 
 Phase 4 turns the admitted cases of the Phase 3 closure into versioned
 evidence bundles. A bundle is the only thing later layers (question
@@ -15,16 +15,16 @@ session set-up in [development.md](development.md#session-set-up).
 
 ## Modules
 
-| Work item | Module | Role |
-| --- | --- | --- |
-| 23 | `evidence.contracts` | Request, response and execution-limit contracts; committed JSON Schemas |
-| 24 | `evidence.schema` | Evidence records and the QA and explanation bundle types |
-| 25 | `evidence.readers` | Pinned readers for the source snapshot and the closure record's cases |
-| 26 | `evidence.concepts` | Readable concept names with a stated source |
-| 27 | `evidence.retrieval` | Scoped retrieval with an explicit coverage record |
-| 28 | `gnn.linkage`, `evidence.policy` | Driver-to-event linkage record; evidence claim policy |
-| 29, 30 | `evidence.bundles` | QA and explanation bundle sets |
-| 52.3 | `evidence.record`, `evidence.record_bundles` | Record bundles: the whole record of a case, scope by scope |
+| Work Item | Module | Role |
+| :--- | :---: | ---: |
+| 23 | `evidence.contracts` | Request, Response and Execution-Limit Contracts; Committed JSON Schemas |
+| 24 | `evidence.schema` | Evidence Records and the QA and Explanation Bundle Types |
+| 25 | `evidence.readers` | Pinned Readers for the Source Snapshot and the Closure Record's Cases |
+| 26 | `evidence.concepts` | Readable Concept Names With a Stated Source |
+| 27 | `evidence.retrieval` | Scoped Retrieval With an Explicit Coverage Record |
+| 28 | `gnn.linkage`, `evidence.policy` | Driver-to-Event Linkage Record; Evidence Claim Policy |
+| 29, 30 | `evidence.bundles` | QA and Explanation Bundle Sets |
+| 52.3 | `evidence.record`, `evidence.record_bundles` | Record Bundles: The Whole Record of a Case, Scope by Scope |
 
 Closed vocabularies (tasks, scopes, outcomes, reason codes, coverage states,
 visit roles, attachment classes, link states) are fixed in
@@ -40,12 +40,12 @@ and the pre-target history scope.
 
 A response carries exactly one outcome:
 
-| Outcome | Text released | Reason codes |
-| --- | --- | --- |
-| `answer`, `not_recorded` | yes, with claims citing its bundle | optional disclosure (`unmapped_records_in_scope`) |
-| `explanation` | yes, with claims citing its bundle | optional disclosure (restrictions) |
-| `clarification`, `abstention` | yes | required, from the outcome's own list |
-| `case_rejection`, `validation_rejection`, `operational_error` | no text, no claims | required, from the outcome's own list |
+| Outcome | Text Released | Reason Codes |
+| :--- | :---: | ---: |
+| `answer`, `not_recorded` | Yes, With Claims Citing Its Bundle | Optional Disclosure (`unmapped_records_in_scope`) |
+| `explanation` | Yes, With Claims Citing Its Bundle | Optional Disclosure (Restrictions) |
+| `clarification`, `abstention` | Yes | Required, From the Outcome's Own List |
+| `case_rejection`, `validation_rejection`, `operational_error` | No Text, No Claims | Required, From the Outcome's Own List |
 
 `not_recorded` means *not recorded within the selected scope*; it never
 states clinical absence. Contracts are strict, immutable and refuse unknown
@@ -60,20 +60,20 @@ a request outside a limit ends as an explicit outcome. On the generation
 path the model's attempt ends instead and the template answers, a
 recorded fallback ([generation.md](generation.md#limits)).
 
-## Evidence records
+## Evidence Records
 
 Records are referenced inside a bundle by bundle-local identifiers, so a
 response cites evidence without exposing native record numbers. The native
 identifiers stay in the records.
 
 | Reference | Record | Content |
-| --- | --- | --- |
-| `V1`.. | Visit | Graph position, visit number (position + 1), role (`pre_target`, `final_admission`), visit concept and dates |
-| `E1`.. | Event | One recorded condition, procedure or drug row: native identifier, source table, visit, concept, dates |
-| `P1` | Prediction | Selected label, raw logit, uncalibrated score, output-record digest, partition, batch sensitivity |
-| `A1`.. | Attribution | One published driver: concept, unsigned score, closure tags, link status, linked events |
-| `C1` | Coverage | Scope, status, counts and the coverage statement |
-| - | Provenance | Name and SHA-256 of every input, schema version and builder |
+| :--- | :---: | ---: |
+| `V1`.. | Visit | Graph Position, Visit Number (Position + 1), Role (`pre_target`, `final_admission`), Visit Concept and Dates |
+| `E1`.. | Event | One Recorded Condition, Procedure or Drug Row: Native Identifier, Source Table, Visit, Concept, Dates |
+| `P1` | Prediction | Selected Label, Raw Logit, Uncalibrated Score, Output-Record Digest, Partition, Batch Sensitivity |
+| `A1`.. | Attribution | One Published Driver: Concept, Unsigned Score, Closure Tags, Link Status, Linked Events |
+| `C1` | Coverage | Scope, Status, Counts and the Coverage Statement |
+| - | Provenance | Name and SHA-256 of Every Input, Schema Version and Builder |
 
 Invariants enforced by the record types:
 
@@ -107,13 +107,13 @@ patient's records). Every name states its source. For the pilot, all 198
 names in the explanation bundles (10 predictions, 188 attributions) equal
 the names in the published outputs.
 
-## Scopes and coverage
+## Scopes and Coverage
 
-| Scope | Visits | Used by |
-| --- | --- | --- |
-| `pre_target_history` (default) | positions 0 to *N*-2 | QA and explanations |
-| `selected_visit` | one visit, numbered from 1 in graph order | QA only |
-| `case_visits` | all case visits, including the final admission | QA only |
+| Scope | Visits | Used By |
+| :--- | :---: | ---: |
+| `pre_target_history` (Default) | Positions 0 to *N*-2 | QA and Explanations |
+| `selected_visit` | One Visit, Numbered From 1 in Graph Order | QA Only |
+| `case_visits` | All Case Visits, Including the Final Admission | QA Only |
 
 Coverage is complete only for an admitted case read from a complete
 snapshot. It counts unmapped records in scope, final-admission records a
@@ -126,7 +126,7 @@ Records without a standard concept (concept 0) are kept, with their source
 code, and disclosed through the coverage counts and the
 `unmapped_records_in_scope` reason code.
 
-## Event linkage
+## Event Linkage
 
 `gnn.linkage` links each published driver's visit-to-concept graph edges to
 the source events of the same person, visit and concept in the bounded
@@ -141,8 +141,8 @@ The record states its overall status; the bundle builder accepts it only
 when every edge and driver verifies. It reads the raw graphs through their
 verified handle on the CPU in the GNN environment; no model is loaded.
 
-| Domain | Edges verified | Drivers verified | In-vocabulary events without an edge |
-| --- | --- | --- | --- |
+| Domain | Edges Verified | Drivers Verified | In-Vocabulary Events Without an Edge |
+| :--- | :---: | :---: | ---: |
 | Condition | 324 of 324 | 82 | 0 |
 | Procedure | 30 of 30 | 26 | 0 |
 | Drug | 301 of 301 | 85 | 0 |
@@ -150,7 +150,7 @@ verified handle on the CPU in the GNN environment; no model is loaded.
 Events outside the model's vocabulary are exactly the unmapped (concept 0)
 records.
 
-## QA bundles
+## QA Bundles
 
 For every admitted case, one bundle per scope: the pre-target history, each
 case visit, and all case visits (`qa-c01-history`, `qa-c01-visit-1`,
@@ -158,7 +158,7 @@ case visit, and all case visits (`qa-c01-history`, `qa-c01-visit-1`,
 event in them, and the coverage record. Listing and presence checking use
 the same bundle.
 
-## Explanation bundles
+## Explanation Bundles
 
 For every admitted case, one bundle (`exp-c01`, ...) holding:
 
@@ -178,7 +178,7 @@ The builder checks each driver's closure attachment against the visits its
 linkage entry lists, and the bundle's eligibility against the closure
 record.
 
-## Record bundles
+## Record Bundles
 
 Questions about the whole record ([ADR 0021](decisions/0021-the-whole-record.md))
 are answered from record bundles, one per case and scope like the QA
@@ -190,13 +190,13 @@ status, race), every record of those visits (`R1`..) and a coverage
 (`C1`) of every kind:
 
 | Kind | Source | Holds |
-| --- | --- | --- |
-| condition, procedure, medication | OMOP snapshot | concept, source code and dates; a medication's ingredients and ATC classes, and its prescription's dose and route |
-| lab | raw laboratory results | test, fluid and category, value, unit, reference range, flag, time |
-| microbiology | raw microbiology | specimen, test, organism, antibiotic, interpretation, time |
-| vital | raw ICU chart events | the vital sign, its value and unit, time |
-| transfer, icu_stay | raw transfers and ICU stays | care unit, event, times, length |
-| icu_procedure | raw ICU procedure events | the procedure, its value, category and times |
+| :--- | :---: | ---: |
+| Condition, Procedure, Medication | OMOP Snapshot | Concept, Source Code and Dates; a Medication's Ingredients and ATC Classes, and Its Prescription's Dose and Route |
+| Lab | Raw Laboratory Results | Test, Fluid and Category, Value, Unit, Reference Range, Flag, Time |
+| Microbiology | Raw Microbiology | Specimen, Test, Organism, Antibiotic, Interpretation, Time |
+| Vital | Raw ICU Chart Events | The Vital Sign, Its Value and Unit, Time |
+| Transfer, icu_stay | Raw Transfers and ICU Stays | Care Unit, Event, Times, Length |
+| icu_procedure | Raw ICU Procedure Events | The Procedure, Its Value, Category and Times |
 
 A raw row belongs to a case visit when its admission is the one the
 snapshot records for the visit (`visit_source_value`,
@@ -216,31 +216,31 @@ drug name. The record types enforce that a record holds the fields of its
 kind only and that the coverage counts agree with the records.
 
 | Measure | `pilot-10-v1` | `dev-30-v1` | `eval-100-v1` |
-| --- | --- | --- | --- |
-| Record bundles | 58 | 135 | 519 |
-| Records in case visits (all-visits scope) | 5,270 | 29,514 | 81,297 |
-| Laboratory results | 3,531 | 13,390 | 43,002 |
-| Vital-sign records | 294 | 11,001 | 21,092 |
-| Medications (with dose, without a standard concept) | 887 (871, 385) | 3,209 (2,984, 1,455) | 11,223 (10,709, 4,777) |
-| Microbiology, transfers, ICU stays, ICU procedures | 41, 121, 1, 6 | 321, 318, 20, 146 | 1,199, 1,187, 46, 282 |
-| Largest bundle (records, bytes) | 1,479, 1,048,833 | 3,999, 2,825,542 | 6,975, 4,870,133 |
+| :--- | :---: | :---: | ---: |
+| Record Bundles | 58 | 135 | 519 |
+| Records in Case Visits (All-Visits Scope) | 5,270 | 29,514 | 81,297 |
+| Laboratory Results | 3,531 | 13,390 | 43,002 |
+| Vital-Sign Records | 294 | 11,001 | 21,092 |
+| Medications (With Dose, Without a Standard Concept) | 887 (871, 385) | 3,209 (2,984, 1,455) | 11,223 (10,709, 4,777) |
+| Microbiology, Transfers, ICU Stays, ICU Procedures | 41, 121, 1, 6 | 321, 318, 20, 146 | 1,199, 1,187, 46, 282 |
+| Largest Bundle (Records, Bytes) | 1,479, 1,048,833 | 3,999, 2,825,542 | 6,975, 4,870,133 |
 
 ```powershell
 & $AppPython -m ehr_evidence_app.evidence.record_bundles
 & $AppPython -m ehr_evidence_app.evidence.record_bundles --operator-real --case-set dev-30-v1
 ```
 
-## Claim policy
+## Claim Policy
 
 `evidence.policy` extends the closure record's claim policy as a new,
 versioned policy (`evidence-policy-v1`, mirrored in
 `config/evidence_policy.json`); the closure record itself is unchanged.
 
 | Change | Statement |
-| --- | --- |
-| Added | When, and in how many pre-target visits, a driver's concept was recorded, citing the linked events |
-| Added | Repeated recordings of a driver's concept, citing each event |
-| Narrowed | "Dated, frequency or progression claims about events" becomes "event claims without cited, linked events" |
+| :--- | ---: |
+| Added | When, and in How Many Pre-Target Visits, a Driver's Concept Was Recorded, Citing the Linked Events |
+| Added | Repeated Recordings of a Driver's Concept, Citing Each Event |
+| Narrowed | "Dated, frequency or progression claims about events" Becomes "event claims without cited, linked events" |
 
 Every other prohibition stands, including tying a score to a date, a visit
 or a recurrence. Conditions attached to the policy: history statements cite
@@ -249,31 +249,31 @@ records are described only as final-admission context; final-admission
 diagnoses never enter an explanation. The template explanation and its
 checks enforce the policy (see [validation.md](validation.md#explanations)).
 
-## Published records
+## Published Records
 
 Paths are under `G:\Industry Dataset\ehr-evidence-workspace\protected-data`.
 
 | Record | Directory | Files |
-| --- | --- | --- |
-| Event linkage | `evidence\event-linkage-pilot10-v1` | `linkage.json` (patient-bearing; pinned in `evidence.bundles`), `summary.json` (aggregate) |
-| Evidence bundles | `evidence-bundles\pilot10-v1` | `qa\*.json`, `explanation\*.json` (patient-bearing); `manifest.json` (identifiers, digests, sizes); `summary.json` (aggregate) |
+| :--- | :---: | ---: |
+| Event Linkage | `evidence\event-linkage-pilot10-v1` | `linkage.json` (Patient-Bearing; Pinned in `evidence.bundles`), `summary.json` (Aggregate) |
+| Evidence Bundles | `evidence-bundles\pilot10-v1` | `qa\*.json`, `explanation\*.json` (Patient-Bearing); `manifest.json` (Identifiers, Digests, Sizes); `summary.json` (Aggregate) |
 
 Bundle-set counts for the development pilot:
 
 | Measure | Result |
-| --- | --- |
-| QA bundles (history / selected visit / all visits) | 58 (10 / 38 / 10) |
-| QA coverage complete / complete and empty | 56 / 2 |
-| Condition records in the pre-target history | 251 |
-| Final-admission condition records excluded from the history | 105 |
-| Condition records in all case visits | 356 |
-| Unmapped condition records kept (in the history) | 29 (19) |
-| Explanation bundles, eligible | 10, 10 |
-| Attributions (all narratable) | 188 |
-| Target-outcome entries excluded | 5 |
-| Linked history events | 289 |
-| Final-admission context events | 136 |
-| Final-admission diagnoses withheld | 31 |
+| :--- | ---: |
+| QA Bundles (History / Selected Visit / All Visits) | 58 (10 / 38 / 10) |
+| QA Coverage Complete / Complete and Empty | 56 / 2 |
+| Condition Records in the Pre-Target History | 251 |
+| Final-Admission Condition Records Excluded From the History | 105 |
+| Condition Records in All Case Visits | 356 |
+| Unmapped Condition Records Kept (in the History) | 29 (19) |
+| Explanation Bundles, Eligible | 10, 10 |
+| Attributions (All Narratable) | 188 |
+| Target-Outcome Entries Excluded | 5 |
+| Linked History Events | 289 |
+| Final-Admission Context Events | 136 |
+| Final-Admission Diagnoses Withheld | 31 |
 
 The manifest's digest is recorded in `summary.json`; every bundle file is
 listed in the manifest with its size and SHA-256.
@@ -296,7 +296,7 @@ records exist, so a re-run refuses:
 & $AppPython -m ehr_evidence_app.evidence.bundles --operator-real
 ```
 
-## Case sets
+## Case Sets
 
 The same linkage and bundle builders run for the development and
 evaluation case sets of work item 30.1, from each set's own pinned records;
