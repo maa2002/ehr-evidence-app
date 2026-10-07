@@ -38,20 +38,20 @@ for the final admission and the recorded concepts behind it.
 For one patient of [MIMIC-IV 3.1](https://physionet.org/content/mimiciv/3.1/)
 mapped to the OMOP Common Data Model, the application:
 
-- answers questions about the whole record (conditions, medications,
+- Answers questions about the whole record (conditions, medications,
   procedures, laboratory results, microbiology, vital signs, transfers, ICU
   stays, the visits and the person) within a scope the user picks: the visits
   before the final admission, all visits, or one visit;
-- explains a predicted diagnosis: a patient-journey graph neural network
+- Explains a predicted diagnosis: a patient-journey graph neural network
   predicts a diagnosis for the final admission, and the application shows the
   prediction, whether that admission records it, and the recorded concepts its
   score was most sensitive to;
-- cites every fact, with references that open the evidence panel at the record
+- Cites every fact, with references that open the evidence panel at the record
   each statement rests on;
-- checks every answer before showing it: a release gate checks the answer's
+- Checks every answer before showing it: a release gate checks the answer's
   structure, its references, that the cited records support every statement,
   and its wording, and withholds an answer that fails;
-- refuses rankings and advice, asks back when it cannot read a question, and
+- Refuses rankings and advice, asks back when it cannot read a question, and
   reports "not recorded" as a fact about the scope searched, never as clinical
   absence.
 
