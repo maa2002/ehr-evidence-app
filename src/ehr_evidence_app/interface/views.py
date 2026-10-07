@@ -138,7 +138,7 @@ def row(cells, ref=None):
                                   for cell in cells]}
 
 
-# The Model, The Cohorts And The Patients (Work Item 49)
+# The Model, the Cohorts and the Patients (Work Item 49)
 
 def scope_key(scope):
     """Return the key of a scope: its kind, and its visit's number for a
@@ -326,7 +326,7 @@ def case_view(case, visits=None):
             else None}
 
 
-# Responses (Work Items 50 And 51)
+# Responses (Work Items 50 and 51)
 
 def normal(text):
     """Return text as a claim is compared with a line: its spaces folded
@@ -610,7 +610,7 @@ def scope_evidence_view(view):
             "title": labels.scope(view["scope"]), "sections": sections}
 
 
-# The Whole Record Of A Scope
+# The Whole Record of a Scope
 
 def person_section(person):
     """Return the person: sex, the age MIMIC-IV anchors and the date of

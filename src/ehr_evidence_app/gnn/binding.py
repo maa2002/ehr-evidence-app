@@ -164,7 +164,7 @@ def plan_problem(plan):
     return None
 
 
-# Canonical JSON And Fingerprints
+# Canonical JSON and Fingerprints
 
 def canonical_json(value):
     """Return canonical UTF-8 JSON bytes (sorted, compact, no NaN)."""
@@ -480,7 +480,7 @@ def metrics_reference(document):
     return test, document.get("args")
 
 
-# Isolation For Upstream Evaluation
+# Isolation for Upstream Evaluation
 
 def forbidden_category(name):
     """Return the forbidden category of a module name, else None."""
@@ -755,7 +755,7 @@ class TorchRuntime:
         return rows
 
 
-# Records And Publication
+# Records and Publication
 
 def input_refs(plan):
     """Return path, size and SHA-256 of every pinned input."""

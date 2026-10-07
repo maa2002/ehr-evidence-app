@@ -388,7 +388,7 @@ def bounded_token(words):
                       % "|".join(re.escape(word) for word in words))
 
 
-# Fixed Roots And Read-Only Filesystem Inspection
+# Fixed Roots and Read-Only Filesystem Inspection
 
 def fixed_policy_problem():
     """Return why the roots fixed in this module are unsafe, else None.

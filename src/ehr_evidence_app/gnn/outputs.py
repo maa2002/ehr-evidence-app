@@ -400,7 +400,7 @@ def confirm_inputs(held, rehash=False):
                                   % name)
 
 
-# Step 17 Selection And Step 19 Parity Record
+# Step 17 Selection and Step 19 Parity Record
 
 def strict_int(value, minimum=0):
     """Return True for a plain int (not bool) of at least minimum."""
@@ -559,7 +559,7 @@ def check_preprocessed(graphs, processed, step19):
         raise Step20Error("preprocess_digest_mismatch")
 
 
-# Bridge Record Schema And Canonical Comparison
+# Bridge Record Schema and Canonical Comparison
 
 def finite_float(value):
     """Return True for a finite plain float."""
@@ -697,7 +697,7 @@ def canonical_prefix(document):
     return document
 
 
-# Isolation: Silencing, Network, Tracker And Tripwires
+# Isolation: Silencing, Network, Tracker and Tripwires
 
 class _DiscardSink:
     """Internal text stream that accepts and drops everything written."""
@@ -1186,7 +1186,7 @@ def real_runtime():
                                  bridge_factory=pinned_bridge)
 
 
-# Generation, Manifest And Atomic Publication
+# Generation, Manifest and Atomic Publication
 
 def generate(bridge, model, processed, indices):
     """Return {index: normalised bridge record} by direct list indexing."""

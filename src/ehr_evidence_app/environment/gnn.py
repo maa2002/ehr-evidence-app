@@ -239,7 +239,7 @@ def sha256_file(path):
         return hashlib.sha256(handle.read()).hexdigest()
 
 
-# Fixed Destinations And Interpreter Checks
+# Fixed Destinations and Interpreter Checks
 
 def fixed_policy_problem():
     """Return why the fixed manifest or probe-temp location is unsafe."""
@@ -486,7 +486,7 @@ def environment_fingerprint(root):
     return count, digest.hexdigest()
 
 
-# Probe Execution And Strict Parsing
+# Probe Execution and Strict Parsing
 
 def probe_spec(python):
     """Return the JSON argument that tells the probe what to inspect."""

@@ -326,7 +326,7 @@ def load_config():
     return config, digest, config_findings(config)
 
 
-# Structural Checks On Verified JSON Bytes
+# Structural Checks on Verified JSON Bytes
 
 def label_vocab_summary(data):
     """Return (summary, findings) for a sequence of scalar labels."""

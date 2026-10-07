@@ -53,7 +53,7 @@ CONTEXT = record_mutations.CONTEXT
 VOCAB = suite.synthetic_vocabulary()
 
 
-# Answers Compared As What They State
+# Answers Compared as What They State
 
 def canonical(candidate, bundle):
     """Return a candidate as data, each list or presence item named by

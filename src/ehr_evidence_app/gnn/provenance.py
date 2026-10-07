@@ -125,7 +125,7 @@ class Step21Error(Exception):
     """A fail-closed Step 21 failure carrying a finding code only."""
 
 
-# Plan And Configuration
+# Plan and Configuration
 
 def step20_inventory(assets):
     """Return the asset inventory exactly as the Step 20 manifest holds it."""
@@ -259,7 +259,7 @@ def read_config_bytes(path):
         raise Step21Error("config_unreadable") from None
 
 
-# Canonical JSON And Fingerprint
+# Canonical JSON and Fingerprint
 
 def canonical_json(value):
     """Return the canonical UTF-8 JSON bytes used for every digest."""
@@ -344,7 +344,7 @@ def parse_documents(raw):
     return documents
 
 
-# Step 20 Manifest, Agreement And Step 19 Checks
+# Step 20 Manifest, Agreement and Step 19 Checks
 
 def check_manifest(manifest, plan, raw):
     """Verify the Step 20 manifest against its files, assets and flags.
@@ -446,7 +446,7 @@ def check_policy_sources(plan, mapping_document):
         raise Step21Error("policy_source_mismatch")
 
 
-# Step 17 Records And The Step 20 Output Bijection
+# Step 17 Records and the Step 20 Output Bijection
 
 def check_mapping_document(document, plan):
     """Validate the Step 17 mapping as Step 20 selected it; return records.
@@ -560,7 +560,7 @@ def check_outputs(outputs, records):
     return pairs
 
 
-# Derived Records And Sidecar
+# Derived Records and Sidecar
 
 def mapped_visit(node):
     """Return one position's verified mapped source visit."""

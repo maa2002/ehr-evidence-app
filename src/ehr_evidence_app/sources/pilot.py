@@ -145,7 +145,7 @@ def field(row, column):
     return (row.get(column) or "").strip()
 
 
-# Configuration And Destination Checks
+# Configuration and Destination Checks
 
 def all_specs(config):
     """Return every table spec, including the referenced-concept extract."""
@@ -573,7 +573,7 @@ def run_psql(config, version_dir, sql_path, options):
     return record
 
 
-# Local Validation: Parses The Written Files Only, Never The Database
+# Local Validation: Parses the Written Files Only, Never the Database
 
 def validation_order(config):
     """Return table specs ordered so cohort and visit context exist first."""
@@ -767,7 +767,7 @@ def validate_snapshot(version_dir, config, cases, suffix=""):
     return records, summary
 
 
-# Manifest, Promotion And Reporting
+# Manifest, Promotion and Reporting
 
 def hash_files(version_dir, names, chunk):
     """Return size and SHA256 for each expected completed file."""

@@ -204,7 +204,7 @@ class AdmissionError(Exception):
     """A fail-closed precondition failure carrying a finding code only."""
 
 
-# Plan And Configuration
+# Plan and Configuration
 
 # Published inherited-run-binding-v1 record (ehr_evidence_app.gnn.binding).
 BINDING_SUMMARY_SHA256 = ("c6dd79cfefe35327b6b56b8812a1d25a"

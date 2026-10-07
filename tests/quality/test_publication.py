@@ -202,7 +202,7 @@ def make_file_symlink(test, link, target):
     test.addCleanup(os.remove, link)
 
 
-# Policy Contract And Pure Rules (Read The Real Repository Only)
+# Policy Contract and Pure Rules (Read the Real Repository Only)
 
 @unittest.skipUnless(os.name == "nt", "the audit supports Windows only")
 class PolicyContractTestCase(unittest.TestCase):

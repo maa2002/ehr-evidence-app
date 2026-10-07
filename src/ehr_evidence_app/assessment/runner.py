@@ -281,7 +281,7 @@ def configuration_of(case_set, writer, requests, commit,
             "limits": writer.limits.model_dump(mode="json")}
 
 
-# Challenges And The Default Mode
+# Challenges and the Default Mode
 
 def challenges():
     """Return (name, context, template, expected outcome per condition)
@@ -424,7 +424,7 @@ def report(summary):
         print("%-10s %-24s failure %-14s %d" % (name, task, category, count))
 
 
-# The Operator Mode: A Development Case Set With The Pinned Model
+# The Operator Mode: A Development Case Set With the Pinned Model
 
 def run_real(case_set, per_group, task=None):
     """Write a case set's sampled requests in both conditions with the

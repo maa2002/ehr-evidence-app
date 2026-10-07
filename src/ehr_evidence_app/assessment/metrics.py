@@ -251,7 +251,7 @@ METRICS = (
 BY_NAME = {metric.name: metric for metric in METRICS}
 
 
-# Reading A Statement Against The Reference
+# Reading a Statement Against the Reference
 
 def shown(value):
     """Return a score or logit as a response shows it: to three
@@ -437,7 +437,7 @@ def disclosure_verdicts(reference, response):
     return verdicts
 
 
-# Terms Of One Request
+# Terms of One Request
 
 def counted_apart(reference, response):
     """Return True for a presence answer resting only on unjudged records
@@ -620,7 +620,7 @@ def score(reference, response):
                   reference.stratum, terms)
 
 
-# Summaries And The Paired Comparison
+# Summaries and the Paired Comparison
 
 def ratio(numerator, denominator):
     """Return numerator over denominator, or None when it is zero."""
@@ -700,7 +700,7 @@ def compare(baseline, controlled, metric):
     return None if found.difference is None else found
 
 
-# Default Mode: Examples Worked By Hand
+# Default Mode: Examples Worked by Hand
 
 def record(number):
     """Return an invented condition record's key."""

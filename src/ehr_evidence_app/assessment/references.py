@@ -220,7 +220,7 @@ def explanation_reference(case_set, case, record, entry, events, limit,
         restrictions=frozenset(case.restrictions))
 
 
-# Reading A Case Set's Sources
+# Reading a Case Set's Sources
 
 class Sources:
     """A case set's source records: its snapshot, cases, condition
@@ -286,7 +286,7 @@ class Sources:
                                      self.events, limit, request_id)
 
 
-# Comparison With The Templates On A Development Case Set
+# Comparison With the Templates on a Development Case Set
 
 def stratum_of(context, template):
     """Return a compared request's stratum, as the development benchmark

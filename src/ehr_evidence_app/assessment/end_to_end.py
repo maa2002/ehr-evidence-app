@@ -225,7 +225,7 @@ def tally(assessed):
             left_out, dict(sorted(writers.items())))
 
 
-# Questions About The Whole Record
+# Questions About the Whole Record
 
 RECORD_COLUMNS = ("id", "case_set", "case", "scope", "question", "intent",
                   "task", "kind", "codes", "groups", "concepts", "written",
@@ -555,7 +555,7 @@ def assess_records(rows, inputs, limits, writer=None):
             for number, row in enumerate(rows, 1)]
 
 
-# Default And Operator Modes
+# Default and Operator Modes
 
 def synthetic_inputs():
     """Return (rows, inputs, vocabulary, limits) of the written test's

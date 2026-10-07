@@ -226,7 +226,7 @@ def run_final():
     return document
 
 
-# Default Mode: An Invented Archive And Invented Dictionaries
+# Default Mode: An Invented Archive and Invented Dictionaries
 
 SYNTHETIC_QUESTIONS = (
     (9103, "diagnoses_icd", "Can you list the diagnoses billed for this "

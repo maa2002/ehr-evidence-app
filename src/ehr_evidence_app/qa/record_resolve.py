@@ -790,7 +790,7 @@ def record_texts(entry):
     return texts
 
 
-# Loading From The Raw Extract's Dictionaries
+# Loading From the Raw Extract's Dictionaries
 
 def extract_dictionaries(tables):
     """Return (labs, items, micro names, units) from a raw extract's

@@ -309,7 +309,7 @@ def read_question_file(name, file, root=None, directory=None):
     return data
 
 
-# Default And Operator Modes
+# Default and Operator Modes
 
 def run_synthetic():
     """Return the problems of the freeze's checks on a stand-in

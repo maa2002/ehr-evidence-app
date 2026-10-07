@@ -119,7 +119,7 @@ def owner_of(request):
     return request.scope.get(gate.SESSION_SCOPE_KEY) or "local"
 
 
-# What A Request Names
+# What a Request Names
 
 def case_set_of(value):
     """Return a case set's label, or refuse one no case set could have."""

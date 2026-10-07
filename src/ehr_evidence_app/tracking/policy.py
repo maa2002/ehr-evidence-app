@@ -236,7 +236,7 @@ def read_policy(path):
         raise OperationalError("the policy is not valid JSON")
 
 
-# Checks (Values Are Examined, Never Returned Or Printed)
+# Checks (Values Are Examined, Never Returned or Printed)
 
 def same_value(value, expected):
     """Return True when value equals expected with identical JSON types."""

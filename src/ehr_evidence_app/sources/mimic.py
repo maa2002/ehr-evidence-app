@@ -401,7 +401,7 @@ def scan(handle, table, routes, emit):
             "sha256": counter["sha256"].hexdigest()}
 
 
-# The Rows Kept For One Case Set
+# The Rows Kept for One Case Set
 
 class Collector:
     """The rows of one case set's tables, checked as they arrive: each
@@ -441,7 +441,7 @@ class Collector:
         return text.getvalue().encode("utf-8")
 
 
-# Plan, Inputs And The Source Snapshots
+# Plan, Inputs and the Source Snapshots
 
 def real_plan():
     """Return the pinned raw inputs, the source snapshot of each case set

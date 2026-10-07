@@ -189,7 +189,7 @@ def attempt(writer, context, template, vocabulary=None):
                    released=True)
 
 
-# Default Mode: Invented Requests And Scripted Backends
+# Default Mode: Invented Requests and Scripted Backends
 
 def run_synthetic():
     """Return the problems of the baseline on the invented requests."""

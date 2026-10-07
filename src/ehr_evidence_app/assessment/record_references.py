@@ -450,7 +450,7 @@ class Case:
                 if row.visit in numbers and row.kind in kinds]
 
 
-# Matching And The Expected Answers
+# Matching and the Expected Answers
 
 def matches(row, asked, descendants):
     """Return True when a record is of the asked item; None for a
@@ -618,7 +618,7 @@ def reference(request_id, case, scope, asked, descendants=lambda concept:
     return item_reference(request_id, case, scope, asked, descendants)
 
 
-# Comparison With The Templates On A Development Case Set
+# Comparison With the Templates on a Development Case Set
 
 QUESTION_KINDS = tuple(RECORD_KINDS)
 SELECTED_KINDS = ("lab", "vital")

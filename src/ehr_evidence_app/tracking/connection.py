@@ -272,7 +272,7 @@ def read_declaration(path):
         raise OperationalError("the declaration is not valid JSON")
 
 
-# Declaration Checks (Values Are Examined, Never Returned Or Printed)
+# Declaration Checks (Values Are Examined, Never Returned or Printed)
 
 def check_schema(declaration):
     """Return schema findings for the top level of the declaration."""
@@ -422,7 +422,7 @@ def check_step9_policy():
     return []
 
 
-# Probe Environment (Checked Before The SDK Is Imported)
+# Probe Environment (Checked Before the SDK Is Imported)
 
 def config_file_problems(path, lstat):
     """Return findings for the configuration file named by the variable.

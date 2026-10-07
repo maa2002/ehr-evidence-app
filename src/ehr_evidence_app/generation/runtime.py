@@ -380,7 +380,7 @@ class WorkerBackend:
                 pass
 
 
-# Default Mode (The Configuration) And The Operator Check
+# Default Mode (the Configuration) and the Operator Check
 
 def check_settings():
     """Return problems of the committed configuration."""

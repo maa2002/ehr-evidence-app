@@ -438,7 +438,7 @@ def check_scalars(manifest):
         raise FiguresError("scalars_refused") from None
 
 
-# The Manifest, Its Task And Its Index
+# The Manifest, Its Task and Its Index
 
 def manifest_bytes(manifest):
     """Return a manifest's deterministic bytes."""

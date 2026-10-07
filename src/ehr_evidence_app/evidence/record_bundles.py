@@ -283,7 +283,7 @@ def raw_entries(extract, subject, visit_of):
 _ROW = "row_number"
 
 
-# Medications: Ingredients And The Prescription's Dose
+# Medications: Ingredients and the Prescription's Dose
 
 def full_time(value):
     """Return a time as 'YYYY-MM-DD HH:MM:SS', or None."""

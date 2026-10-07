@@ -139,7 +139,7 @@ def invented_source(vocabulary=None):
                   invented_records(vocabulary or suite.synthetic_vocabulary()))
 
 
-# The Evidence As Displayed (Decision D6)
+# The Evidence as Displayed (Decision D6)
 
 def visit_view(visit):
     """Return a visit as displayed: its reference, number, role and

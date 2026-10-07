@@ -226,7 +226,7 @@ class Step22Error(Exception):
     """A fail-closed Step 22 failure carrying a finding code only."""
 
 
-# Plan And Configuration
+# Plan and Configuration
 
 def real_plan():
     """Return the pinned inputs, graph identity and fixed protected output."""
@@ -349,7 +349,7 @@ def read_config_bytes(path):
         raise Step22Error("config_unreadable") from None
 
 
-# Canonical JSON, Fingerprint And Findings
+# Canonical JSON, Fingerprint and Findings
 
 def canonical_json(value):
     """Return the canonical UTF-8 JSON bytes used for every digest."""
@@ -509,7 +509,7 @@ def check_step19(document):
             "graphs_filtered": counts["graphs_filtered"]}
 
 
-# Run-Level Evidence (Unknown On Conflict, Unavailable On Gaps)
+# Run-Level Evidence (Unknown on Conflict, Unavailable on Gaps)
 
 def nested(document, *keys):
     """Return a nested value, or None when any level is absent."""

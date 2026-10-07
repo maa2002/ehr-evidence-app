@@ -461,7 +461,7 @@ def remote_result(environ=None, adapter_factory=checker.SdkAdapter,
                 "created": created}
 
 
-# The Commit A Run Measures
+# The Commit a Run Measures
 
 def code_commit(repo=checker.REPO_ROOT, run=subprocess.run):
     """Return the short commit of the checked-out code, which a record

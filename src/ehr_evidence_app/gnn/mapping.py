@@ -115,7 +115,7 @@ def real_plan():
     }
 
 
-# Identifier And Input Checks
+# Identifier and Input Checks
 
 def canonical_int(value):
     """Return value as an int only when it round-trips as strict decimal.

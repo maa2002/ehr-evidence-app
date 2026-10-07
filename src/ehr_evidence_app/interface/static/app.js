@@ -415,7 +415,7 @@ function currentScope() {
   return scopes.find((scope) => scope.key === state.scopeKey) || scopes[0];
 }
 
-// The Banner And The Model's State
+// The Banner and the Model's State
 
 // The banner says what failed; kind names what it is about (the state or
 // the case), so that the success of the same thing takes it away.
@@ -470,7 +470,7 @@ async function refreshState() {
   state.timer = setTimeout(refreshState, seconds * 1000);
 }
 
-// Cohorts And Patients (Work Item 49)
+// Cohorts and Patients (Work Item 49)
 
 // A patient is found by the pseudonym, or by the case's number.
 function matches(item, term) {
@@ -607,7 +607,7 @@ function newConversation() {
   ui.question.focus();
 }
 
-// Questions And The Explanation (Work Items 50 And 51)
+// Questions and the Explanation (Work Items 50 and 51)
 
 function ask(text) {
   const question = text.trim();
@@ -1243,7 +1243,7 @@ function bindScrollThumb() {
   placeThumb();
 }
 
-// The Composer And The Sidebar On Small Screens
+// The Composer and the Sidebar on Small Screens
 
 // Fit the question box to its text, or to its placeholder when empty; it
 // scrolls only past its largest height.

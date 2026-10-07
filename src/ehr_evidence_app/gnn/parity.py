@@ -339,7 +339,7 @@ def compare_exact(first, second):
         raise ParityError("source_path_mismatch")
 
 
-# Pinned Identities, Upstream Adapters And Output
+# Pinned Identities, Upstream Adapters and Output
 
 def verify_sources(plan):
     """Check each pinned source's path, link safety and SHA-256.

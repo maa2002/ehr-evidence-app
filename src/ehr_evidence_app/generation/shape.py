@@ -407,7 +407,7 @@ def schema(context):
     return dict(found, **{"$defs": definitions})
 
 
-# Checking A Document Against Its Schema
+# Checking a Document Against Its Schema
 
 TYPES = {"object": dict, "array": list, "string": str, "null": type(None),
          "boolean": bool}
@@ -514,7 +514,7 @@ def violations(value, schema_, path="$", root=None):
     return found
 
 
-# Documents And Candidates
+# Documents and Candidates
 
 def statement(kind, wording_, refs=(), **slots):
     """Return a statement of a kind with a wording, facts and references."""

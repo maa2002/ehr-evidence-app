@@ -160,7 +160,7 @@ def sha256_stream(path):
     return digest.hexdigest(), count
 
 
-# Fixed Roots, Configuration And Path Preflight
+# Fixed Roots, Configuration and Path Preflight
 
 def fixed_policy_problem():
     """Return why the fixed roots in this module are unsafe, else None.
@@ -419,7 +419,7 @@ def sources_problem(config):
     return None
 
 
-# Git Revision (Optional; Absent For The Real Upstream Tree)
+# Git Revision (Optional; Absent for the Real Upstream Tree)
 
 def git_record(status, note, invoked, revision=None, tree=None, count=None):
     """Return the upstream revision block in its fixed shape."""
@@ -503,7 +503,7 @@ def git_state(root):
     return run_git(root)
 
 
-# Asset Identity, Documentation Metadata And Reported Metrics
+# Asset Identity, Documentation Metadata and Reported Metrics
 
 def capture_asset(entry):
     """Hash one preflighted asset and check it against its expected identity.
@@ -696,7 +696,7 @@ def reported_metrics(path, expected):
     }
 
 
-# Record, Write And Report
+# Record, Write and Report
 
 def build_record(config, config_path, assets, documentation, metrics, git):
     """Assemble the deterministic baseline record.
