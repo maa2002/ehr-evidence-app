@@ -28,7 +28,10 @@ refused because its history would be incomplete. Four checks run:
 Every path is checked for sensitive, generated and unapproved categories,
 even when force-added or present only in history. The interface's page
 (HTML, CSS, JavaScript and an SVG icon) is a publishable type in the page's
-own directory only, a fixed rule the policy cannot widen. Publishable files and
+own directory only, and the documentation's PNG and GIF images in
+docs/images only, fixed rules the policy cannot widen. An image must be one
+complete image of the type its name says, with no block that can carry text
+or metadata. Other publishable files and
 history objects must be bounded UTF-8 text and are scanned for
 high-confidence secret signatures, private keys, credential-bearing URIs,
 quoted and unquoted secret assignments, machine-specific user-profile paths
@@ -60,6 +63,7 @@ import re
 import stat
 import subprocess
 import sys
+import zlib
 
 from ehr_evidence_app.storage import policy as guard
 
@@ -131,6 +135,17 @@ PUBLISHABLE_NAMES = (".editorconfig", ".env.example", ".gitattributes",
 # The interface's page files are publishable in its own directory only.
 PAGE_DIRECTORY = "src/ehr_evidence_app/interface/static"
 PAGE_EXTENSIONS = (".css", ".html", ".js", ".svg")
+# The documentation's images are publishable in their own directory only,
+# as complete PNG or GIF images of the type their name says, without any
+# block that can carry text or metadata.
+IMAGE_DIRECTORY = "docs/images"
+IMAGE_EXTENSIONS = (".gif", ".png")
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+PNG_CHUNKS = (b"IHDR", b"PLTE", b"tRNS", b"gAMA", b"cHRM", b"sRGB", b"pHYs",
+              b"IDAT", b"IEND")
+GIF_SIGNATURES = (b"GIF87a", b"GIF89a")
+# The application extensions that only set how often an animation loops.
+GIF_APPLICATIONS = (b"NETSCAPE2.0", b"ANIMEXTS1.0")
 FORBIDDEN_NAME_EXCEPTIONS = (".env.example",)
 
 # Mandatory minimums: the policy must list at least these. Names that are
@@ -316,7 +331,8 @@ PATH_RULE_IDS = ("unsafe_path", "git_metadata_path", "forbidden_directory",
 ENTRY_RULE_IDS = ("link_or_reparse_point", "gitlink_entry",
                   "unsupported_entry", "file_ancestor", "not_regular_file",
                   "missing_file", "unreadable_file", "changed_during_read")
-CONTENT_RULE_IDS = ("oversized", "binary_content", "not_utf8", USER_PATH_ID,
+CONTENT_RULE_IDS = ("oversized", "binary_content", "not_utf8",
+                    "image_invalid", "image_metadata", USER_PATH_ID,
                     PATIENT_RULE_ID)
 PROBE_RULE_IDS = ("ignore_probe_not_ignored", "ignore_rule_outside_gitignore",
                   "trackable_probe_ignored")
@@ -820,9 +836,99 @@ def path_findings(relative, rules):
     page = (posixpath.dirname(relative) == PAGE_DIRECTORY
             and extension in PAGE_EXTENSIONS)
     if (not found and name not in rules.publishable_names
-            and extension not in rules.publishable_extensions and not page):
+            and extension not in rules.publishable_extensions and not page
+            and not is_image(relative)):
         found.append("unapproved_type")
     return found
+
+
+def is_image(relative):
+    """Return True for a path of the documentation's images."""
+    return (posixpath.dirname(relative) == IMAGE_DIRECTORY
+            and posixpath.splitext(relative.lower())[1] in IMAGE_EXTENSIONS)
+
+
+# Image Rules
+
+def image_findings(relative, data):
+    """Return image_invalid when an image's bytes are not one complete image
+    of the type its name says, and image_metadata when it holds a block
+    that can carry text or metadata."""
+    if relative.lower().endswith(".png"):
+        return png_findings(data)
+    return gif_findings(data)
+
+
+def png_findings(data):
+    """Return the findings of PNG bytes: every chunk whole, its CRC right,
+    IHDR first and IEND last, and no chunk outside PNG_CHUNKS."""
+    if not data.startswith(PNG_SIGNATURE):
+        return ["image_invalid"]
+    position, kinds = len(PNG_SIGNATURE), []
+    while position < len(data):
+        if (kinds and kinds[-1] == b"IEND") or position + 12 > len(data):
+            return ["image_invalid"]
+        length = int.from_bytes(data[position:position + 4], "big")
+        kind = data[position + 4:position + 8]
+        end = position + 12 + length
+        if end > len(data) or zlib.crc32(data[position + 4:end - 4]) != (
+                int.from_bytes(data[end - 4:end], "big")):
+            return ["image_invalid"]
+        kinds.append(kind)
+        position = end
+    if not kinds or kinds[0] != b"IHDR" or kinds[-1] != b"IEND":
+        return ["image_invalid"]
+    if any(kind not in PNG_CHUNKS for kind in kinds):
+        return ["image_metadata"]
+    return []
+
+
+def sub_blocks_end(data, position):
+    """Return the position after a GIF's data sub-blocks, or None when
+    they run past the end."""
+    while position < len(data):
+        size = data[position]
+        position += 1
+        if size == 0:
+            return position
+        position += size
+    return None
+
+
+def gif_findings(data):
+    """Return the findings of GIF bytes: whole blocks up to the trailer and
+    nothing after it, and no extension but graphic control and the
+    looping applications."""
+    if data[:6] not in GIF_SIGNATURES or len(data) < 13:
+        return ["image_invalid"]
+    position, metadata = 13, False
+    if data[10] & 0x80:
+        position += 3 * (2 << (data[10] & 7))
+    while position is not None and position < len(data):
+        block = data[position]
+        if block == 0x3B:
+            if position + 1 != len(data):
+                return ["image_invalid"]
+            return ["image_metadata"] if metadata else []
+        if block == 0x2C and position + 10 <= len(data):
+            packed = data[position + 9]
+            position += 10
+            if packed & 0x80:
+                position += 3 * (2 << (packed & 7))
+            position = sub_blocks_end(data, position + 1)
+        elif block == 0x21 and position + 2 <= len(data):
+            label = data[position + 1]
+            position += 2
+            if label == 0xFF:
+                metadata |= not (
+                    position < len(data) and data[position] == 11
+                    and data[position + 1:position + 12] in GIF_APPLICATIONS)
+            elif label != 0xF9:
+                metadata = True
+            position = sub_blocks_end(data, position)
+        else:
+            return ["image_invalid"]
+    return ["image_invalid"]
 
 
 # Content Rules
@@ -861,7 +967,8 @@ def synthetic_fixture(relative, text, rules):
 
 
 def content_findings(relative, data, rules):
-    """Return content rule IDs (one per occurrence) for publishable text.
+    """Return content rule IDs (one per occurrence) for publishable text,
+    or the image rules' findings for the documentation's images.
 
     relative is the repository path, or "" for a history object without a
     path. The data must be at most the policy size, free of NUL bytes and
@@ -870,6 +977,8 @@ def content_findings(relative, data, rules):
     """
     if len(data) > rules.max_bytes:
         return ["oversized"]
+    if is_image(relative):
+        return image_findings(relative, data)
     if b"\0" in data:
         return ["binary_content"]
     try:

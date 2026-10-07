@@ -206,6 +206,13 @@ and is scanned for:
 - numeric patient-identifier assignments (`person_id`, `subject_id`,
   `hadm_id`, `patient_index` with two or more digits).
 
+The only files that are not text are the documentation's images, and
+only in `docs/images`: each must be one complete PNG or GIF image of the
+type its name says, within 1 MiB, with no block that can carry text or
+metadata (text chunks, comments, colour profiles, Exif or private
+blocks), so that nothing but pixels is published. The images show
+invented patients only.
+
 Documented placeholders (`<password>`, `${NAME}`, `SYNTHETIC`, `EXAMPLE`,
 `REDACTED` and similar) are exempt from the secret rules. Identifier
 assignments are allowed only in declared synthetic fixtures under `tests/`.

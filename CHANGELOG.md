@@ -7,6 +7,17 @@ change interfaces.
 
 ## [Unreleased]
 
+### Added
+
+- The README presents the project: screenshots and a short animation of an
+  invented patient, the final evaluation's main figures, a demonstration that
+  runs without data, what reproducing the full system needs, the licences and
+  the citations.
+- The code is released under the MIT licence (`LICENSE`).
+- The publication audit admits the documentation's PNG and GIF images in
+  `docs/images` only, each one complete image of the type its name says with
+  no block that can carry text or metadata.
+
 ### Changed
 
 - The page's notes (the coverage statements, the schema lines and the

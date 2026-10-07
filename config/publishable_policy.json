@@ -9,7 +9,8 @@
     "Placeholder markers count only as whole tokens with no letter or digit on either side; placeholder patterns must match the whole value.",
     "The unquoted_assignment category is not applied to Python sources, where an unquoted value is an expression; quoted Python literals are covered by secret_assignment.",
     "Synthetic-fixture exemption applies to the patient-identifier rule only: a file beneath a fixture root whose name has synthetic as a whole token, or a test module whose opening docstring line declares it synthetic.",
-    "The interface's page files (.css, .html, .js, .svg) are publishable in src/ehr_evidence_app/interface/static only, a fixed rule of the script that this file cannot widen."
+    "The interface's page files (.css, .html, .js, .svg) are publishable in src/ehr_evidence_app/interface/static only, a fixed rule of the script that this file cannot widen.",
+    "The documentation's images (.gif, .png) are publishable in docs/images only, each one complete image of the type its name says with no block that can carry text or metadata, a fixed rule of the script that this file cannot widen."
   ],
   "max_candidate_bytes": 1048576,
   "publishable": {

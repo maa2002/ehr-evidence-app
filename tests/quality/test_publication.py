@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zlib
 from contextlib import redirect_stderr, redirect_stdout
 from types import SimpleNamespace
 from unittest import mock
@@ -93,6 +94,30 @@ def assignment(key, separator, value, quote=""):
 def patient_line(field="person_id", separator=": "):
     """Return a synthetic numeric patient-identifier assignment."""
     return field + separator + DIGITS + "\n"
+
+
+def png_chunk(kind, body):
+    """Return one PNG chunk with its length and CRC."""
+    return (len(body).to_bytes(4, "big") + kind + body
+            + zlib.crc32(kind + body).to_bytes(4, "big"))
+
+
+def png_image(*extra):
+    """Return a one-pixel PNG, with extra chunks before its image data."""
+    header = png_chunk(b"IHDR", (1).to_bytes(4, "big") * 2 + b"\x08\x02"
+                       + b"\x00\x00\x00")
+    pixels = png_chunk(b"IDAT", zlib.compress(b"\x00\x10\x20\x30"))
+    return (audit.PNG_SIGNATURE + header + b"".join(extra) + pixels
+            + png_chunk(b"IEND", b""))
+
+
+def gif_image(*extensions):
+    """Return a one-pixel GIF, with extension blocks before the image."""
+    screen = b"GIF89a" + b"\x01\x00\x01\x00" + b"\x80\x00\x00"
+    colours = b"\x00\x00\x00\xff\xff\xff"
+    image = b"\x2c" + b"\x00" * 4 + b"\x01\x00\x01\x00" + b"\x00"
+    pixels = b"\x02\x02\x44\x01\x00"
+    return screen + colours + b"".join(extensions) + image + pixels + b"\x3b"
 
 
 def configured_test_temp():
@@ -469,6 +494,12 @@ class RuleTestCase(unittest.TestCase):
                  ["unapproved_type"]),
                 ("src/ehr_evidence_app/interface/static/image.png",
                  ["unapproved_type"]),
+                ("docs/images/answer.png", []),
+                ("docs/images/demo.gif", []),
+                ("docs/images/nested/answer.png", ["unapproved_type"]),
+                ("docs/images/answer.jpg", ["unapproved_type"]),
+                ("docs/images/answer.svg", ["unapproved_type"]),
+                ("docs/answer.png", ["unapproved_type"]),
                 ("docs/report.html", ["unapproved_type"]),
                 ("src/ehr_evidence_app/interface/app.js",
                  ["unapproved_type"]),
@@ -685,6 +716,64 @@ class RuleTestCase(unittest.TestCase):
         self.assertEqual(self.scan("docs/x.md", b"\xef\xbb\xbfclean\n"), [])
         big = b"a" * (self.rules.max_bytes + 1)
         self.assertEqual(self.scan("docs/x.md", big), ["oversized"])
+
+    def test_documentation_images(self):
+        """An image passes only as one complete image of its named type
+        without text or metadata blocks; elsewhere it is binary content."""
+        loop = (b"\x21\xff\x0b" + b"NETSCAPE2.0" + b"\x03\x01\x00\x00"
+                + b"\x00")
+        control = b"\x21\xf9\x04\x00\x0a\x00\x00\x00"
+        text = png_chunk(b"tEXt", b"Comment\x00synthetic note")
+        for relative, data, expected in (
+                ("docs/images/a.png", png_image(), []),
+                ("docs/images/a.PNG", png_image(), []),
+                ("docs/images/a.png",
+                 png_image(png_chunk(b"pHYs", b"\x00" * 9)), []),
+                ("docs/images/a.png", png_image(text), ["image_metadata"]),
+                ("docs/images/a.png",
+                 png_image(png_chunk(b"iTXt", b"x\x00\x00\x00\x00\x00y")),
+                 ["image_metadata"]),
+                ("docs/images/a.png",
+                 png_image(png_chunk(b"eXIf", b"MM\x00*")),
+                 ["image_metadata"]),
+                ("docs/images/a.png",
+                 png_image(png_chunk(b"iCCP", b"p\x00\x00x")),
+                 ["image_metadata"]),
+                ("docs/images/a.png", png_image()[:-6], ["image_invalid"]),
+                ("docs/images/a.png", png_image() + b"\x00",
+                 ["image_invalid"]),
+                ("docs/images/a.png",
+                 png_image() + png_chunk(b"IDAT", b"synthetic")
+                 + png_chunk(b"IEND", b""), ["image_invalid"]),
+                ("docs/images/a.png",
+                 audit.PNG_SIGNATURE + png_chunk(b"IDAT", b"x")
+                 + png_image()[len(audit.PNG_SIGNATURE):],
+                 ["image_invalid"]),
+                ("docs/images/a.png",
+                 png_image()[:-1] + bytes([png_image()[-1] ^ 1]),
+                 ["image_invalid"]),
+                ("docs/images/a.png", gif_image(), ["image_invalid"]),
+                ("docs/images/a.png", b"# text\n", ["image_invalid"]),
+                ("docs/images/a.gif", gif_image(), []),
+                ("docs/images/a.gif", gif_image(loop, control), []),
+                ("docs/images/a.gif",
+                 gif_image(b"\x21\xfe\x09synthetic\x00"),
+                 ["image_metadata"]),
+                ("docs/images/a.gif",
+                 gif_image(b"\x21\xff\x0b" + b"XMP DataXMP" + b"\x01x\x00"),
+                 ["image_metadata"]),
+                ("docs/images/a.gif",
+                 gif_image(b"\x21\x01\x01x\x00"), ["image_metadata"]),
+                ("docs/images/a.gif", gif_image()[:-1], ["image_invalid"]),
+                ("docs/images/a.gif", gif_image() + b"\x00",
+                 ["image_invalid"]),
+                ("docs/images/a.gif", png_image(), ["image_invalid"]),
+                ("docs/a.png", png_image(), ["binary_content"]),
+                ("docs/images/a.md", png_image(), ["binary_content"])):
+            with self.subTest(relative=relative, data=data[-12:]):
+                self.assertEqual(self.scan(relative, data), expected)
+        big = png_image() + b"\x00" * self.rules.max_bytes
+        self.assertEqual(self.scan("docs/images/a.png", big), ["oversized"])
 
     def test_display_path_redacts_sensitive_components(self):
         """Digit runs, signatures and control characters are hidden."""

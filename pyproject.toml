@@ -11,7 +11,7 @@
 # runtime is added with the generation layer.
 
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -19,6 +19,8 @@ name = "ehr-evidence-app"
 version = "1.0.0"
 description = "Evidence-grounded EHR question answering and explanation of inherited GNN predictions (research prototype)."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115",
