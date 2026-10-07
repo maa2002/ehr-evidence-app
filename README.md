@@ -113,7 +113,7 @@ recorded is reported with the scope it was looked for in.
 `/help` lists the kinds of question the rules read, with examples to try, and
 every question is answered within the scope chosen in the composer.
 
-### On a Phone (Light and Dark)
+### On a Phone + Light and Dark Modes
 
 <table>
   <tr>
