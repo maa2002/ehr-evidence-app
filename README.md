@@ -33,7 +33,7 @@ for the final admission and the recorded concepts behind it.
 > made up, while the diagnoses, medicines and tests are named from the same
 > vocabularies the real records use.
 
-## What it does
+## What It Does
 
 For one patient of [MIMIC-IV 3.1](https://physionet.org/content/mimiciv/3.1/)
 mapped to the OMOP Common Data Model, the application:
@@ -60,7 +60,7 @@ answers about conditions and the explanations from a structured view of the
 evidence; templates write the other answers, and stand in whenever the gate
 withholds the model's text.
 
-## See it work
+## See It Work
 
 <p align="center">
   <img alt="A question typed into the box, the model's answer listing two matching records with references, and the first reference opening the evidence panel at that record" src="docs/images/demo.gif" width="100%">
@@ -71,16 +71,16 @@ matched exactly and one as a more specific concept, and the first reference
 opening the evidence at the record it cites. The 12.6 seconds of writing are
 cut short here.
 
-## A tour
+## A Tour
 
-### The whole record
+### The Whole Record
 
 ![Two answers: every creatinine value across three visits, flagged against its reference range, and a blood culture's organism with its antibiotic susceptibilities, each line citing its record](docs/images/whole-record.png)
 
 Laboratory results keep their reference ranges and flags, and a culture lists
 its organism with every susceptibility. Each line cites its record.
 
-### The predicted diagnosis
+### The Predicted Diagnosis
 
 ![The predicted diagnosis card: Acute Kidney Injury, score 0.741 and logit 1.05, the earlier visits and the final admission where it is predicted, and a note that the final admission records it](docs/images/prediction.png)
 
@@ -94,7 +94,7 @@ Below it, the explanation lists the recorded concepts the score was most
 sensitive to, each with the visits that hold it, and notes what attribution
 scores do and do not show.
 
-### Questions it will not answer
+### Questions It Will Not Answer
 
 ![Three replies: a word that names no condition answered with suggestions, a ranking of conditions declined, and a condition reported as not recorded within the scope](docs/images/safety.png)
 
@@ -102,7 +102,7 @@ A word that names no condition gets suggestions, a ranking of conditions is
 declined because the record does not rank them, and a condition that is not
 recorded is reported with the scope it was looked for in.
 
-### Help and scopes
+### Help And Scopes
 
 <table>
   <tr>
@@ -114,7 +114,7 @@ recorded is reported with the scope it was looked for in.
 `/help` lists the kinds of question the rules read, with examples to try, and
 every question is answered within the scope chosen in the composer.
 
-### On a phone, in light and dark
+### On A Phone, In Light And Dark
 
 <table>
   <tr>
@@ -127,7 +127,7 @@ every question is answered within the scope chosen in the composer.
   </tr>
 </table>
 
-## How it works
+## How It Works
 
 ```mermaid
 flowchart LR
@@ -173,15 +173,15 @@ never saw (92 admitted, 1,644 requests). The same model wrote every request
 twice: once with no grounding rules, no checks before generation and no
 release gate (the baseline), and once as the application does.
 
-| Measure | Baseline | Application | Difference (95% interval) |
+| Measure | Baseline | Application | Difference (95% Interval) |
 | --- | --- | --- | --- |
-| Unsupported-claim rate | 7.1% | 0.0% | -7.1 (-8.2 to -5.9) |
-| Claim support | 98.0% | 100.0% | +2.0 (+1.5 to +2.6) |
-| Selective accuracy | 93.4% | 100.0% | +6.6 (+5.3 to +7.8) |
-| Exact match | 64.5% | 71.5% | +6.9 (+4.4 to +9.5) |
-| Correct-answer yield | 87.3% | 89.6% | +2.4 (+1.5 to +3.3) |
-| Coverage | 93.4% | 89.6% | -3.7 (-5.0 to -2.6) |
-| Condition recall | 57.2% | 53.4% | -3.8 (-7.8 to -0.1) |
+| Unsupported-Claim Rate | 7.1% | 0.0% | -7.1 (-8.2 To -5.9) |
+| Claim Support | 98.0% | 100.0% | +2.0 (+1.5 To +2.6) |
+| Selective Accuracy | 93.4% | 100.0% | +6.6 (+5.3 To +7.8) |
+| Exact Match | 64.5% | 71.5% | +6.9 (+4.4 To +9.5) |
+| Correct-Answer Yield | 87.3% | 89.6% | +2.4 (+1.5 To +3.3) |
+| Coverage | 93.4% | 89.6% | -3.7 (-5.0 To -2.6) |
+| Condition Recall | 57.2% | 53.4% | -3.8 (-7.8 To -0.1) |
 
 Selective accuracy counts only the answers given; correct-answer yield counts
 the correct answers among all requests; coverage is the share of requests
@@ -224,7 +224,7 @@ questions                                    1892
 correct                                      1892 (100.0%)
 ```
 
-## Run the demo
+## Run The Demo
 
 The demo serves invented patients with a scripted model, so it needs no data,
 GPU or credentials, only Windows and Python 3.12.
@@ -245,45 +245,45 @@ Then open <http://127.0.0.1:8501/>; Ctrl+C stops it. The tests run with
 
 | Document | Contents |
 | --- | --- |
-| [Architecture](docs/architecture.md) | Purpose, data flow, packages, configuration, design rules |
-| [Data handling](docs/data-handling.md) | Storage layout, destinations, path checks, publication audit, secrets |
-| [Source data](docs/source-data.md) | OMOP source, staged exports, bounded pilot extraction |
-| [Inherited GNN](docs/inherited-gnn.md) | Model, bridge contract, identity mapping, target and history, parity, limitations |
-| [Model outputs](docs/model-outputs.md) | Published records, superseded flags, admission, claim policy |
-| [Record evidence](docs/evidence.md) | Contracts, evidence records, scopes and coverage, event linkage, bundles |
-| [Case sets](docs/case-sets.md) | Development and evaluation case sets: registry, draw rule, preparation |
-| [Natural-language QA](docs/qa.md) | Interpretation, scope, concept resolution and matching, answers, suites |
-| [Validation](docs/validation.md) | Candidate contract, checks, explanations, release gate, mutation suite |
-| [Generation](docs/generation.md) | Model-written candidates: schema, the model's view of the evidence, prompt, limits, fallbacks |
-| [API and interface](docs/interface.md) | The local API, its routes, the page, access checks and the launcher |
-| [Experiment tracking](docs/experiment-tracking.md) | ClearML policy and connection, controlled tracking, the final figures, lineage |
-| [The final evaluation](docs/assessment.md) | Partition, references, baseline, paired runner, metrics, prose rubric, the freeze |
-| [Final figures](docs/final-figures.md) | The final run's figures and how to read them |
-| [Acceptance matrix](docs/acceptance.md) | Each acceptance test and requirement, with what was run and observed |
-| [Environments](docs/environments.md) and [development](docs/development.md) | Environments, set-up, tests, CI, reconstruction, releases |
-| [Decisions](docs/decisions/) and [changelog](CHANGELOG.md) | Architecture decision records and release history |
+| [Architecture](docs/architecture.md) | Purpose, Data Flow, Packages, Configuration, Design Rules |
+| [Data Handling](docs/data-handling.md) | Storage Layout, Destinations, Path Checks, Publication Audit, Secrets |
+| [Source Data](docs/source-data.md) | OMOP Source, Staged Exports, Bounded Pilot Extraction |
+| [Inherited GNN](docs/inherited-gnn.md) | Model, Bridge Contract, Identity Mapping, Target And History, Parity, Limitations |
+| [Model Outputs](docs/model-outputs.md) | Published Records, Superseded Flags, Admission, Claim Policy |
+| [Record Evidence](docs/evidence.md) | Contracts, Evidence Records, Scopes And Coverage, Event Linkage, Bundles |
+| [Case Sets](docs/case-sets.md) | Development And Evaluation Case Sets: Registry, Draw Rule, Preparation |
+| [Natural-Language QA](docs/qa.md) | Interpretation, Scope, Concept Resolution And Matching, Answers, Suites |
+| [Validation](docs/validation.md) | Candidate Contract, Checks, Explanations, Release Gate, Mutation Suite |
+| [Generation](docs/generation.md) | Model-Written Candidates: Schema, The Model's View Of The Evidence, Prompt, Limits, Fallbacks |
+| [API And Interface](docs/interface.md) | The Local API, Its Routes, The Page, Access Checks And The Launcher |
+| [Experiment Tracking](docs/experiment-tracking.md) | ClearML Policy And Connection, Controlled Tracking, The Final Figures, Lineage |
+| [The Final Evaluation](docs/assessment.md) | Partition, References, Baseline, Paired Runner, Metrics, Prose Rubric, The Freeze |
+| [Final Figures](docs/final-figures.md) | The Final Run's Figures And How To Read Them |
+| [Acceptance Matrix](docs/acceptance.md) | Each Acceptance Test And Requirement, With What Was Run And Observed |
+| [Environments](docs/environments.md) And [Development](docs/development.md) | Environments, Set-Up, Tests, CI, Reconstruction, Releases |
+| [Decisions](docs/decisions/) And [Changelog](CHANGELOG.md) | Architecture Decision Records And Release History |
 
 <details>
-<summary>Packages in <code>src/ehr_evidence_app</code></summary>
+<summary>Packages In <code>src/ehr_evidence_app</code></summary>
 
 | Package | Responsibility |
 | --- | --- |
-| `storage` | Fixed storage roots, path checks, destination set-up, volume preflight |
-| `sources` | OMOP export staging; bounded read-only extraction of MIMIC-IV tables |
-| `gnn` | The inherited model's identity, validation, identity mapping, parity, outputs, provenance, event linkage |
-| `evidence` | Request and response contracts, evidence records, scoped retrieval, QA, explanation and record bundles |
-| `casesets` | Versioned development and evaluation case sets: registry and seeded selection |
-| `qa` | Vocabularies, question interpretation, concept and scope resolution, answers, suites |
-| `validation` | Candidate contract, checks, template explanation, release gate, mutation suite |
-| `generation` | Model-written candidates: document schema, the model's view of the evidence, prompt, adapter, worker, measurement |
-| `assessment` | The final evaluation: partition, references, baseline, paired runner, metrics, rubric, end-to-end assessment, freeze |
-| `api` and `interface` | The local API, its access boundary, the launcher and the page |
-| `tracking` | Tracker policy, ClearML connection checks, controlled tracking, measurements, lineage |
-| `environment` and `quality` | Environment verification; publication audit and release checks |
+| `storage` | Fixed Storage Roots, Path Checks, Destination Set-Up, Volume Preflight |
+| `sources` | OMOP Export Staging; Bounded Read-Only Extraction Of MIMIC-IV Tables |
+| `gnn` | The Inherited Model's Identity, Validation, Identity Mapping, Parity, Outputs, Provenance, Event Linkage |
+| `evidence` | Request And Response Contracts, Evidence Records, Scoped Retrieval, QA, Explanation And Record Bundles |
+| `casesets` | Versioned Development And Evaluation Case Sets: Registry And Seeded Selection |
+| `qa` | Vocabularies, Question Interpretation, Concept And Scope Resolution, Answers, Suites |
+| `validation` | Candidate Contract, Checks, Template Explanation, Release Gate, Mutation Suite |
+| `generation` | Model-Written Candidates: Document Schema, The Model's View Of The Evidence, Prompt, Adapter, Worker, Measurement |
+| `assessment` | The Final Evaluation: Partition, References, Baseline, Paired Runner, Metrics, Rubric, End-To-End Assessment, Freeze |
+| `api` And `interface` | The Local API, Its Access Boundary, The Launcher And The Page |
+| `tracking` | Tracker Policy, ClearML Connection Checks, Controlled Tracking, Measurements, Lineage |
+| `environment` And `quality` | Environment Verification; Publication Audit And Release Checks |
 
 </details>
 
-## Reproducing the full system
+## Reproducing The Full System
 
 The full system needs credentialed data and a few external pieces. With them,
 [docs/environments.md](docs/environments.md) and
@@ -293,16 +293,16 @@ order in which a fresh clone was rebuilt and restarted.
 
 | What | Where |
 | --- | --- |
-| PhysioNet credentialed access (training and a signed data use agreement) | [physionet.org](https://physionet.org/) |
-| MIMIC-IV 3.1, hospital and ICU modules | [physionet.org/content/mimiciv/3.1](https://physionet.org/content/mimiciv/3.1/) |
-| MIMIC-IV-Ext-Instr 1.0.0, for the held-out reading test | [physionet.org/content/mimic-iv-ext-instr/1.0.0](https://physionet.org/content/mimic-iv-ext-instr/1.0.0/) |
-| MIMIC-IV in the OMOP CDM, in PostgreSQL, built with the OHDSI MIMIC ETL | [github.com/OHDSI/MIMIC](https://github.com/OHDSI/MIMIC) |
-| The OMOP standardized vocabularies (CONCEPT, CONCEPT_ANCESTOR and the rest) | [athena.ohdsi.org](https://athena.ohdsi.org/) |
-| The patient-journey GNN (`standardized-omop-gnn`), trained on the same OMOP data | [anonymous.4open.science/r/standardized-omop-gnn-7B82](https://anonymous.4open.science/r/standardized-omop-gnn-7B82/) |
-| MedGemma 1.5 4B IT, after accepting its terms on Hugging Face | [huggingface.co/google/medgemma-1.5-4b-it](https://huggingface.co/google/medgemma-1.5-4b-it) |
-| Windows 11 with PowerShell 5.1, Git, uv and Python 3.12.8 | |
-| An NVIDIA GPU with 8 GB of memory, for the model in bfloat16 | |
-| Optional: a ClearML account for experiment tracking, and a Cloudflare tunnel with a domain for sharing | |
+| PhysioNet Credentialed Access (Training And A Signed Data Use Agreement) | [physionet.org](https://physionet.org/) |
+| MIMIC-IV 3.1, Hospital And ICU Modules | [physionet.org/content/mimiciv/3.1](https://physionet.org/content/mimiciv/3.1/) |
+| MIMIC-IV-Ext-Instr 1.0.0, For The Held-Out Reading Test | [physionet.org/content/mimic-iv-ext-instr/1.0.0](https://physionet.org/content/mimic-iv-ext-instr/1.0.0/) |
+| MIMIC-IV In The OMOP CDM, In PostgreSQL, Built With The OHDSI MIMIC ETL | [github.com/OHDSI/MIMIC](https://github.com/OHDSI/MIMIC) |
+| The OMOP Standardized Vocabularies (CONCEPT, CONCEPT_ANCESTOR And The Rest) | [athena.ohdsi.org](https://athena.ohdsi.org/) |
+| The Patient-Journey GNN (`standardized-omop-gnn`), Trained On The Same OMOP Data | [anonymous.4open.science/r/standardized-omop-gnn-7B82](https://anonymous.4open.science/r/standardized-omop-gnn-7B82/) |
+| MedGemma 1.5 4B IT, After Accepting Its Terms On Hugging Face | [huggingface.co/google/medgemma-1.5-4b-it](https://huggingface.co/google/medgemma-1.5-4b-it) |
+| Windows 11 With PowerShell 5.1, Git, uv And Python 3.12.8 | |
+| An NVIDIA GPU With 8 GB Of Memory, For The Model In bfloat16 | |
+| Optional: A ClearML Account For Experiment Tracking, And A Cloudflare Tunnel With A Domain For Sharing | |
 
 The GNN run this project uses is the knowledge-graph variant of the diagnosis
 task, replicated with a test macro AUROC of 0.906 over 275 diagnosis labels
