@@ -18,17 +18,17 @@ case sets first. Command examples assume the session set-up in
 | Work Item | Module | Role | Status |
 | :--- | :---: | :---: | :--- |
 | 53 | `assessment.partition` | The Downstream Partition of the Case Sets | Done: `downstream-partition-v1` |
-| 54 | `assessment.references` | Independent QA References | Built; Agree With Every Template Answer of the Development Case Sets |
-| 54 | `assessment.record_references` | References of Questions About the Whole Record (ADR 0016, Decision 11) | Built; Agree With Every Template Answer of the Development Case Sets |
-| 55 | `assessment.references` | Explanation Expectations and Challenges | Expectations Built, and Agree With Every Development Template Explanation; the Challenges Come With the Runner |
+| 54 | `assessment.references` | Independent QA References | Built; Agree with Every Template Answer of the Development Case Sets |
+| 54 | `assessment.record_references` | References of Questions About the Whole Record (ADR 0016, Decision 11) | Built; Agree with Every Template Answer of the Development Case Sets |
+| 55 | `assessment.references` | Explanation Expectations and Challenges | Expectations Built, and Agree with Every Development Template Explanation; the Challenges Come with the Runner |
 | 56 | `assessment.baseline` | The Baseline Condition | Built and Checked on Invented Data |
-| 57 | `assessment.runner` | The Paired Runner, With the Invented Challenges | Built; Checked on Invented Data and in a Development Trial With the Model |
+| 57 | `assessment.runner` | The Paired Runner, with the Invented Challenges | Built; Checked on Invented Data and in a Development Trial with the Model |
 | 58, 59 | `assessment.metrics`, `assessment.stated` | QA, Abstention, Explanation and Evidence Metrics, and What Each Condition Wrote Read for Them | Built; Checked on Invented Data and Against the Release Gate's Mutation Suite |
 | 59 | `assessment.rubric` | The Prose Rubric (ADR 0027) | Built; the Rater's Instructions Frozen as `prose-rubric-v4`; on a Fresh Set of Wordings It Failed No Passing Text and Caught 274 of 320 Planted Faults |
-| 60 | `assessment.end_to_end` | End-to-End QA | Built: Condition Questions Agree With the Written Test on a Development Set; Questions About the Whole Record Are Checked on Invented Data |
+| 60 | `assessment.end_to_end` | End-to-End QA | Built: Condition Questions Agree with the Written Test on a Development Set; Questions About the Whole Record Are Checked on Invented Data |
 | 60 | `assessment.record_suite` | A Generated Development Suite of Questions About the Whole Record (ADR 0016, Decision 11) | Built; on the Development Case Sets 10,338 of 11,053 Questions Are Read Right and 10,320 Delivered Correctly |
 | 61 | `assessment.statistics`, `assessment.report` | The Paired Comparison's Statistics, and the Scoring of a Run | Built; Checked on Invented Data and on the Development Trial's Run |
-| 60 | `assessment.instr` | The Held-Out Questions of MIMIC-IV-Ext-Instr, Read Once With the Frozen Rules | Built; Its Reading Is the Application's on Every Edge, Help and Junk Question |
+| 60 | `assessment.instr` | The Held-Out Questions of MIMIC-IV-Ext-Instr, Read Once with the Frozen Rules | Built; Its Reading Is the Application's on Every Edge, Help and Junk Question |
 | 64 | `assessment.freeze` | The Freeze Record, Its Gate on the Final Case Set, and the Final Question Sets' Registration ([ADR 0029](decisions/0029-the-freeze.md)) | Done: Release 0.11.2 Frozen as `freeze-v3`, the Final Run and Its Assessments Done Under It ([final-figures.md](final-figures.md)) |
 
 ## The Downstream Partition
@@ -237,9 +237,9 @@ each invalid case and each failure; all 20 end as they should:
 
 | Challenge | Controlled | Baseline |
 | :--- | :---: | :--- |
-| A Bundle of Another Case or Scope, a History With a Gap, a Record Without a Name; a Prediction That Is Not the One Selected | Case Rejection | Case Rejection |
+| A Bundle of Another Case or Scope, a History with a Gap, a Record Without a Name; a Prediction That Is Not the One Selected | Case Rejection | Case Rejection |
 | Incomplete Coverage of a List's Scope | Abstention | Writes an Answer |
-| An Explanation With Incomplete History, No Positive Attribution or No Eligible Driver | Abstention | Writes an Explanation |
+| An Explanation with Incomplete History, No Positive Attribution or No Eligible Driver | Abstention | Writes an Explanation |
 | A Cut-Off, Malformed or Schema-Breaking Output; a Timeout; Exhausted Memory; a Backend Failure or Crash; a Prompt or Expected Answer Over Its Limit | That Failure | That Failure |
 
 **The development trial.** The runner wrote two requests of each group
@@ -613,8 +613,8 @@ with reasoning it took 14 to 27 seconds a text, about four hours a check.
 | Candidate a | Judge What a Sentence Means, Not Its Words; Examples From the Seen Sets | 0 | 615 |
 | Candidate b | Each Sentence Judged on Its Own; "the evidence" Among What Is Judged; Evidence for a Prediction Never Confirms It | 1 | 632 |
 | Candidate c | b Without "evidence for a prediction never confirms it" | 0 | 624 |
-| Candidate d | b With Denials Shown to Make No Claim | 0 | 634 |
-| Candidate e | d With "risk factors for" Among the Examples | 0 | 634 |
+| Candidate d | b with Denials Shown to Make No Claim | 0 | 634 |
+| Candidate e | d with "risk factors for" Among the Examples | 0 | 634 |
 
 The rule set before the last candidate, no passing text failed and the
 most faults caught, left d and e tied; d, the one of fewer words, is

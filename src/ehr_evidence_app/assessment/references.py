@@ -286,7 +286,7 @@ class Sources:
                                      self.events, limit, request_id)
 
 
-# Comparison With the Templates on a Development Case Set
+# Comparison with the Templates on a Development Case Set
 
 def stratum_of(context, template):
     """Return a compared request's stratum, as the development benchmark

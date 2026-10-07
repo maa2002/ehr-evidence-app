@@ -140,7 +140,7 @@ flowchart LR
     evidence --> writer
     records --> writer
     writer --> gate{Release Gate}
-    gate -->|Passes| answer([Answer With References])
+    gate -->|Passes| answer([Answer with References])
     gate -->|Fails| withheld([Withheld])
 ```
 
@@ -258,7 +258,7 @@ Then open <http://127.0.0.1:8501/>; Ctrl+C stops it. The tests run with
 | [Experiment Tracking](docs/experiment-tracking.md) | ClearML Policy and Connection, Controlled Tracking, the Final Figures, Lineage |
 | [The Final Evaluation](docs/assessment.md) | Partition, References, Baseline, Paired Runner, Metrics, Prose Rubric, the Freeze |
 | [Final Figures](docs/final-figures.md) | The Final Run's Figures and How to Read Them |
-| [Acceptance Matrix](docs/acceptance.md) | Each Acceptance Test and Requirement, With What Was Run and Observed |
+| [Acceptance Matrix](docs/acceptance.md) | Each Acceptance Test and Requirement, with What Was Run and Observed |
 | [Environments](docs/environments.md) and [Development](docs/development.md) | Environments, Set-Up, Tests, CI, Reconstruction, Releases |
 | [Decisions](docs/decisions/) and [Changelog](CHANGELOG.md) | Architecture Decision Records and Release History |
 
@@ -295,7 +295,7 @@ order in which a fresh clone was rebuilt and restarted.
 | PhysioNet Credentialed Access | [physionet.org](https://physionet.org/) |
 | MIMIC-IV 3.1, Hospital and ICU Modules | [physionet.org/content/mimiciv/3.1](https://physionet.org/content/mimiciv/3.1/) |
 | MIMIC-IV-Ext-Instr 1.0.0, for the Held-Out Reading Test | [physionet.org/content/mimic-iv-ext-instr/1.0.0](https://physionet.org/content/mimic-iv-ext-instr/1.0.0/) |
-| MIMIC-IV in the OMOP CDM, in PostgreSQL, Built With the OHDSI MIMIC ETL | [github.com/OHDSI/MIMIC](https://github.com/OHDSI/MIMIC) |
+| MIMIC-IV in the OMOP CDM, in PostgreSQL, Built with the OHDSI MIMIC ETL | [github.com/OHDSI/MIMIC](https://github.com/OHDSI/MIMIC) |
 | The OMOP Standardized Vocabularies (CONCEPT, CONCEPT_ANCESTOR and the Rest) | [athena.ohdsi.org](https://athena.ohdsi.org/) |
 | The Patient-Journey GNN (`standardized-omop-gnn`), Trained on the Same OMOP Data | [anonymous.4open.science/r/standardized-omop-gnn-7B82](https://anonymous.4open.science/r/standardized-omop-gnn-7B82/) |
 | MedGemma 1.5 4B IT | [huggingface.co/google/medgemma-1.5-4b-it](https://huggingface.co/google/medgemma-1.5-4b-it) |

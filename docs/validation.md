@@ -100,7 +100,7 @@ bundle, and also:
 | Finding | Outcome |
 | :--- | :--- |
 | The Bundle's Prediction Is Not the One the Request Selects, by Its Output-Record Digest | Case Rejection, `prediction_link_invalid` |
-| Its Visits Do Not End With the Final Admission | Case Rejection, `history_inconsistent` |
+| Its Visits Do Not End with the Final Admission | Case Rejection, `history_inconsistent` |
 | The Coverage of the Linked History Is Not Complete | Abstention, `evidence_insufficient` |
 | No Attribution Is Positive | Abstention, `no_positive_attribution` |
 | No Driver May Be Described | Abstention, `explanation_ineligible` |
@@ -115,7 +115,7 @@ the bundle bound to that request:
 | Finding | Reason Code |
 | :--- | :--- |
 | A Malformed Document; an Outcome, Reason Codes, Task or Bundle That Do Not Fit Together; a Digit in a Wording (Counts, Visits, Dates and Scores Are Slots); a Statement of a Kind the Answer Cannot Hold, or an Answer Without the Statements It Needs (a List Needs One Summary, at Least One Item and the Completeness Notice); a Wording Whose Placeholders Are Not Exactly Its Kind's Slots; a Changed Notice, a Notice Stated Twice, a Notice of Another Task, or an Answer Without a Notice Its Task and Outcome Require (Every "not recorded" Says That It Is Not Clinical Absence, a List That It Is Complete, a Time That Dates Are Shifted); a Visit's or the Person's Field That Is Not of Its Statement's Kind; Statements Out of Their Answer's Order (a List's Items After Its Summary, the Notice at the End; an Explanation's Prediction First, Then the Notice Introducing the Drivers, Each Driver Followed by Its Own History and Context, Then the Other Notices); a Statement That Cites What Its Kind Does Not Cite; a Response the Renderer Cannot Build Within the Response Limits | `structure_invalid` |
-| Another Request's Case or Scope; a Statement About Another Scope; Another Bundle Than the One Bound to the Request; a Request With a Bound Bundle Answered Without It, Such as a Refusal of an Answerable Request; a Presence Answer About Another Condition Than the One the Question Was Resolved To | `scope_violated` |
+| Another Request's Case or Scope; a Statement About Another Scope; Another Bundle Than the One Bound to the Request; a Request with a Bound Bundle Answered Without It, Such as a Refusal of an Answerable Request; a Presence Answer About Another Condition Than the One the Question Was Resolved To | `scope_violated` |
 | A Reference, Event, Driver, Visit Number or Concept That the Bundle or the Vocabulary Lacks | `reference_unresolved` |
 
 The checks extend the citation check of `evidence.schema` to candidates.
@@ -134,7 +134,7 @@ statement of an answer says. Any failure is `claim_unsupported`.
 | A List Item | It Names the Condition of One of the Records It Cites; Every Record It Cites Is of That Condition (the Same Standard Concept, or the Same Source Code for a Record Without One); Its Count and Visits Are Those of the Cited Records |
 | A List | It Names Every Condition of the Scope Once and Cites Every Record of the Scope Once; Its Summary Counts the Scope's Conditions and Records; Its Note on Records Without a Standard Concept Counts Them |
 | An Empty List | Coverage Is Complete and Empty |
-| A Presence Item | Every Record It Cites Matches the Resolved Condition by the Match Kind It States, Found With the Resolver's Own Matching; Its Count and Visits Are Those of the Cited Records |
+| A Presence Item | Every Record It Cites Matches the Resolved Condition by the Match Kind It States, Found with the Resolver's Own Matching; Its Count and Visits Are Those of the Cited Records |
 | A Presence Answer | It Cites Every Matching Record of the Scope, Names Each Condition Once for Each Match Kind, and Its Summary Counts the Matching Records |
 | Not Recorded | Coverage Is Complete and No Record of the Scope Matches the Condition; Its Note on Records Without a Standard Concept Counts Them |
 | Any Answer | It Discloses `unmapped_records_in_scope` Exactly When the Scope Holds Records Without a Standard Concept |
@@ -265,8 +265,8 @@ Its checks apply to any explanation candidate, whoever wrote it:
 
 | Finding | Reason Code |
 | :--- | :--- |
-| The Prediction Is Not Stated Once, With the Bundle's Label, and Its Score and Logit as a Response Shows Them | `prediction_altered` |
-| The Drivers Described Are Not Exactly the Selected Drivers, in Their Order, With Their Ranks, and Their Scores as a Response Shows Them; a Zero-Score Driver, or a Driver Not Selected, Is Described | `attribution_altered` |
+| The Prediction Is Not Stated Once, with the Bundle's Label, and Its Score and Logit as a Response Shows Them | `prediction_altered` |
+| The Drivers Described Are Not Exactly the Selected Drivers, in Their Order, with Their Ranks, and Their Scores as a Response Shows Them; a Zero-Score Driver, or a Driver Not Selected, Is Described | `attribution_altered` |
 | A History Statement Cites Other Records Than the Driver's Linked Events in Pre-Target Visits, or a Context Statement Other Records Than Its Final-Admission Ones, or Either Miscounts Them or Their Visits; the Restrictions Disclosed, as Reason Codes or Notices, Are Not the Case's; the Drivers Not Described Are Not Stated, or Are Miscounted | `claim_unsupported` |
 | A Notice on What the Scores Mean Is Missing | `structure_invalid` |
 
@@ -315,7 +315,7 @@ the rendered response. Then:
 | Finding | Released |
 | :--- | :--- |
 | Every Check Passes | The Response, Rendered From the Candidate's Statements Only |
-| A Check Finds Problems | A Validation Rejection With Their Reason Codes; No Text, No Claims |
+| A Check Finds Problems | A Validation Rejection with Their Reason Codes; No Text, No Claims |
 | A Check Fails to Run | An Operational Error, `validator_failed`; No Text |
 
 Since the text is rendered from checked statements only, a candidate
@@ -354,7 +354,7 @@ polarity, and version 4 checks scores as a response shows them:
 | 40 | A Check That Fails to Run | Operational Error, `validator_failed` |
 | Model (v2) | A Refusal of an Answerable Request, an Answer About Another Condition | `scope_violated` |
 | Model (v2) | A Missing, Extra or Repeated Notice; Statements Out of Their Order; a Driver's History Under Another Driver | `structure_invalid` |
-| Model (v2) | An Empty List for a Scope With Records; a Fact or the Name of Another Record | `claim_unsupported` |
+| Model (v2) | An Empty List for a Scope with Records; a Fact or the Name of Another Record | `claim_unsupported` |
 | Model (v2) | Hedged, Ranking, Interpretive, Association, Course and Certainty Wording; a Count in Words | `prohibited_wording` |
 | Model (v2) | Recency Typed Into a Wording | `date_unsupported` |
 | Selection (v3) | A Driver Not Selected Described | `attribution_altered` |
@@ -416,7 +416,7 @@ named by their written drug, names read whole) answer some of the
 sampled questions otherwise, and release 1.0.0 gives the counts above,
 as do the rules after it (2026-10-06).
 
-### Wrong Answers That Agree With Themselves
+### Wrong Answers That Agree with Themselves
 
 A writer can get more than one fact wrong at once, and at worst in a way
 that agrees with itself: a record left out and every count lowered to

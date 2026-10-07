@@ -41,9 +41,9 @@ a second request meanwhile gets the template's response at once
 | :--- | :--- |
 | `GET /health` | The Model's State, the Served Case Sets and the Versions; Open Without the Token |
 | `GET /case-sets` | The Served Case Sets and Their Numbers of Admitted Cases |
-| `GET /case-sets/{case_set}/cases` | The Admitted Cases, With Their Numbers of Visits and Whether Each Has a Prepared Prediction |
+| `GET /case-sets/{case_set}/cases` | The Admitted Cases, with Their Numbers of Visits and Whether Each Has a Prepared Prediction |
 | `GET /case-sets/{case_set}/cases/{case_number}` | The Case's Scopes (the Pre-Target History, Each Visit, All Case Visits) and Its Prepared Prediction |
-| `GET /case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The Evidence of a Scope (`kind` a Scope Kind, With `visit` for One Visit), or of the Prediction (`kind=prediction`) |
+| `GET /case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The Evidence of a Scope (`kind` a Scope Kind, with `visit` for One Visit), or of the Prediction (`kind=prediction`) |
 | `POST /questions` | The Response to a Question About a Case in a Scope: `{"case_set", "case_number", "scope", "question"}` |
 | `POST /explanations` | The Explanation of a Case's Prepared Prediction: `{"case_set", "case_number"}` |
 
@@ -234,9 +234,9 @@ screen.
 | Route | Returns |
 | :--- | :--- |
 | `GET /api/state` | The Model's State, the Cohorts, the Question Limit and the Version |
-| `GET /api/help` | What Can Be Asked, Shown When `/help` Is Typed: Why Questions Follow Set Patterns, Each Kind of Information With Example Questions, and Notes |
-| `GET /api/case-sets/{case_set}/cases` | The Cohort's Patients, by Pseudonym, With Each Case's Number and Visits |
-| `GET /api/case-sets/{case_set}/cases/{case_number}` | The Case: Its Pseudonym and Greeting, Its Scopes With Their Visits' Dates, Its Evidence and Its Predicted Diagnosis |
+| `GET /api/help` | What Can Be Asked, Shown When `/help` Is Typed: Why Questions Follow Set Patterns, Each Kind of Information with Example Questions, and Notes |
+| `GET /api/case-sets/{case_set}/cases` | The Cohort's Patients, by Pseudonym, with Each Case's Number and Visits |
+| `GET /api/case-sets/{case_set}/cases/{case_number}` | The Case: Its Pseudonym and Greeting, Its Scopes with Their Visits' Dates, Its Evidence and Its Predicted Diagnosis |
 | `GET /api/case-sets/{case_set}/cases/{case_number}/evidence?kind=…&visit=…` | The Evidence of a Scope, or of the Prediction, in Sections of Facts, Tables and Notes |
 | `POST /api/questions` | Starts Answering a Question: `{"case_set", "case_number", "scope", "question"}`; Returns the Job |
 | `POST /api/explanations` | Starts Explaining the Prediction: `{"case_set", "case_number"}`; Returns the Job |

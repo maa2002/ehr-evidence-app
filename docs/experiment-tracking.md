@@ -19,7 +19,7 @@ checks it read-only, without importing the SDK or contacting a service.
 | Code, Configuration, Evidence-Schema and Asset Fingerprints | Raw or Derived Clinical Content |
 | Aggregate Evaluation, Validation and Operational Metrics | Prompts, Model Responses and Attribution Text |
 | References to Protected Workspace Files and Their Checksums | Case-Level Outputs |
-| The Listed Pretrained Model's Files, With Its Licence Notice, Agreement Copy and Manifest | Credentials, Tokens and Data Files |
+| The Listed Pretrained Model's Files, with Its Licence Notice, Agreement Copy and Manifest | Credentials, Tokens and Data Files |
 | | Models Trained on the Project's Data, Such as the GNN Checkpoints |
 
 A case-level item is represented in the tracker only by its protected
@@ -51,7 +51,7 @@ path, account, key or configuration content.
 | Mode | Behaviour |
 | :--- | :--- |
 | *(Default)* | Checks the Declaration and the Policy Offline; No SDK Import, No Environment Read, No Network |
-| `--preflight` | Loads the SDK Configuration Named by `CLEARML_CONFIG_FILE`, Compares Its Hosts With the Declaration Before Any Request, Authenticates, Confirms the Workspace and Looks Up the Project; Creates Nothing |
+| `--preflight` | Loads the SDK Configuration Named by `CLEARML_CONFIG_FILE`, Compares Its Hosts with the Declaration Before Any Request, Authenticates, Confirms the Workspace and Looks Up the Project; Creates Nothing |
 | `--synthetic-task` | Preflight, Then Creates One Synthetic Metadata-Only Task, Reads It Back to Confirm No Captured Script, Repository, Diff or Package Content, and Archives It |
 | `--controlled-tracking-probe` | Preflight, Then Submits One Fixed, Validated Metadata Payload Through the Controlled-Tracking Wrapper, Reads It Back and Archives It |
 

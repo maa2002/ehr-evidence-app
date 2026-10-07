@@ -194,9 +194,9 @@ Published record: `protected-data\model-provenance\phase3-closure-v1`, with
 | :--- | :--- |
 | The Selected Label, Described as One Selected Output of a Multi-Label Prediction | Calling the Selected Label the Only Diagnosis, or the Score a Clinical Risk |
 | The Raw Logit and an Uncalibrated Score | Citing the Reported AUROC for Single-Graph Bridge Predictions |
-| Drivers With a Score Above Zero, Described as Unsigned Local Sensitivity | Causal, Directional or Percentage Attribution |
+| Drivers with a Score Above Zero, Described as Unsigned Local Sensitivity | Causal, Directional or Percentage Attribution |
 | A Driver's Visit Tag, Used Only to Restrict or Disclose | Presenting Target-Attached Drivers as History |
-| The Upstream Partition, With the Explicit Definition Above | Prospective or Pre-Target-Only Claims |
+| The Upstream Partition, with the Explicit Definition Above | Prospective or Pre-Target-Only Claims |
 | Recorded History, Stated Within Its Verified Scope | Tying an Attribution to a Date, a Visit or a Recurrence |
 | | Any Use of the Zero-Score Target Diagnoses |
 | | Dated, Per-Visit, Frequency or Progression Claims About Events (No Event Linkage) |

@@ -210,7 +210,7 @@ details. `ehr_evidence_app.sources.mimic` reads, from
 | `hosp\admissions` | Every Column but the Admitting Provider | `hadm_id` |
 | `hosp\transfers` | Every Column | `transfer_id` |
 | `icu\icustays` | Every Column | `stay_id` |
-| `hosp\labevents`, `hosp\d_labitems` | Results With Value, Unit, Reference Range, Flag and Priority; Not the Comments or the Ordering Provider | `labevent_id` |
+| `hosp\labevents`, `hosp\d_labitems` | Results with Value, Unit, Reference Range, Flag and Priority; Not the Comments or the Ordering Provider | `labevent_id` |
 | `hosp\microbiologyevents` | Specimens, Tests, Organisms, Antibiotics, Dilutions and Interpretations; Not the Comments or the Ordering Provider | `microevent_id` |
 | `hosp\prescriptions` | Drug, Strength, Form, Dose, Unit and Route; Not the Order or Pharmacy Identifiers | Row Number |
 | `icu\chartevents`, `icu\d_items` | The Vital-Sign Items of a Fixed List (`VITAL_GROUPS`); Not the Caregiver | Row Number |

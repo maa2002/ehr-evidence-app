@@ -20,8 +20,8 @@ session set-up in [development.md](development.md#session-set-up).
 | 23 | `evidence.contracts` | Request, Response and Execution-Limit Contracts; Committed JSON Schemas |
 | 24 | `evidence.schema` | Evidence Records and the QA and Explanation Bundle Types |
 | 25 | `evidence.readers` | Pinned Readers for the Source Snapshot and the Closure Record's Cases |
-| 26 | `evidence.concepts` | Readable Concept Names With a Stated Source |
-| 27 | `evidence.retrieval` | Scoped Retrieval With an Explicit Coverage Record |
+| 26 | `evidence.concepts` | Readable Concept Names with a Stated Source |
+| 27 | `evidence.retrieval` | Scoped Retrieval with an Explicit Coverage Record |
 | 28 | `gnn.linkage`, `evidence.policy` | Driver-to-Event Linkage Record; Evidence Claim Policy |
 | 29, 30 | `evidence.bundles` | QA and Explanation Bundle Sets |
 | 52.3 | `evidence.record`, `evidence.record_bundles` | Record Bundles: The Whole Record of a Case, Scope by Scope |
@@ -42,8 +42,8 @@ A response carries exactly one outcome:
 
 | Outcome | Text Released | Reason Codes |
 | :--- | :---: | :--- |
-| `answer`, `not_recorded` | Yes, With Claims Citing Its Bundle | Optional Disclosure (`unmapped_records_in_scope`) |
-| `explanation` | Yes, With Claims Citing Its Bundle | Optional Disclosure (Restrictions) |
+| `answer`, `not_recorded` | Yes, with Claims Citing Its Bundle | Optional Disclosure (`unmapped_records_in_scope`) |
+| `explanation` | Yes, with Claims Citing Its Bundle | Optional Disclosure (Restrictions) |
 | `clarification`, `abstention` | Yes | Required, From the Outcome's Own List |
 | `case_rejection`, `validation_rejection`, `operational_error` | No Text, No Claims | Required, From the Outcome's Own List |
 
@@ -221,7 +221,7 @@ kind only and that the coverage counts agree with the records.
 | Records in Case Visits (All-Visits Scope) | 5,270 | 29,514 | 81,297 |
 | Laboratory Results | 3,531 | 13,390 | 43,002 |
 | Vital-Sign Records | 294 | 11,001 | 21,092 |
-| Medications (With Dose, Without a Standard Concept) | 887 (871, 385) | 3,209 (2,984, 1,455) | 11,223 (10,709, 4,777) |
+| Medications (with Dose, Without a Standard Concept) | 887 (871, 385) | 3,209 (2,984, 1,455) | 11,223 (10,709, 4,777) |
 | Microbiology, Transfers, ICU Stays, ICU Procedures | 41, 121, 1, 6 | 321, 318, 20, 146 | 1,199, 1,187, 46, 282 |
 | Largest Bundle (Records, Bytes) | 1,479, 1,048,833 | 3,999, 2,825,542 | 6,975, 4,870,133 |
 

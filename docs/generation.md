@@ -33,7 +33,7 @@ the session set-up in [development.md](development.md#session-set-up).
 | 44 | `qa.answer` | Answers From Evidence Written Through the Adapter | Done; Measured on the Development Case Sets |
 | 45 | `validation.explanation` | Explanations of the Selected Drivers Written Through the Adapter | Done; Measured on the Development Case Sets |
 | 46 | `generation.records`, `tracking.aggregates` | Protected Runtime Records, Tracker Aggregates, the Log Audit | Done |
-| 46.1 | `generation.measure` | Development Measurement: Token Distributions, the Benchmark With Its Scores and the Paired Precision Comparison | Done |
+| 46.1 | `generation.measure` | Development Measurement: Token Distributions, the Benchmark with Its Scores and the Paired Precision Comparison | Done |
 
 ## What the Model Writes
 
@@ -55,7 +55,7 @@ the model counts what it has already written:
 | Empty List | `outcome`, `reason_codes`, `empty` (Wording), `notices` |
 | Presence Answer | `outcome`, `reason_codes`; `item_wording`; `items`, Rows `[condition, match, refs, visits, count]`; `summary` (Wording, `matches`) |
 | Not Recorded | `outcome`, `reason_codes`, `absent` (Wording), `unmapped`, `notices` |
-| Explanation | `outcome`, `reason_codes`; `prediction` (Wording, `label`, `score`, `logit`); `driver_wording`, `history_wording`, `context_wording`; `drivers`, One Row per Selected Driver, `[driver, rank, score, history, context]`, With History as `[refs, visits, count]` and Context as `[refs, count]`, Either null; `notices`; `omitted`, How Many Eligible Drivers Are Not Described |
+| Explanation | `outcome`, `reason_codes`; `prediction` (Wording, `label`, `score`, `logit`); `driver_wording`, `history_wording`, `context_wording`; `drivers`, One Row per Selected Driver, `[driver, rank, score, history, context]`, with History as `[refs, visits, count]` and Context as `[refs, count]`, Either null; `notices`; `omitted`, How Many Eligible Drivers Are Not Described |
 
 A list states every condition and an explanation every selected driver;
 only the prose is shared. A wording holds the placeholders of its
@@ -77,9 +77,9 @@ serialization redundancy or unrelated fields:
 
 | Task | The Projection Holds |
 | :--- | :--- |
-| Lists | The Coverage Status, the Number of Records Without a Standard Concept, the Numbers of Conditions and Records, and the Scope's Records Grouped by Condition (a Standard Concept, or the ICD Source Code of Records Without One), in the Order of Each Condition's First Record, Each Record as `[ref, visit]`, Each Group With Its Number of Records and Visit Numbers |
-| Presence Checks | The Coverage Status, the Number of Records Without a Standard Concept, the Number of Matching Records, and the Records That Match the Condition Asked About, as the Resolver Matches Them (`qa.resolve.match`), Grouped by Condition and Match Kind in the Same Way, With Their Numbers and Visit Numbers; an Empty Set When None Matches |
-| Explanations | The Prediction's Label, Score and Logit; the Case's Restrictions, With the Approved Notice That Discloses Each; One Block per Selected Driver, Highest Score First, With Its Rank, Reference and Attribution Score, Its History (Its Own Linked Records in Pre-Target Visits: Their References, Visit Numbers and Number) and Its Context (Its Records in the Final Admission: Their References and Number), Each null When It Has None, as the Reply States Them; How Many Eligible Drivers Are Not Described |
+| Lists | The Coverage Status, the Number of Records Without a Standard Concept, the Numbers of Conditions and Records, and the Scope's Records Grouped by Condition (a Standard Concept, or the ICD Source Code of Records Without One), in the Order of Each Condition's First Record, Each Record as `[ref, visit]`, Each Group with Its Number of Records and Visit Numbers |
+| Presence Checks | The Coverage Status, the Number of Records Without a Standard Concept, the Number of Matching Records, and the Records That Match the Condition Asked About, as the Resolver Matches Them (`qa.resolve.match`), Grouped by Condition and Match Kind in the Same Way, with Their Numbers and Visit Numbers; an Empty Set When None Matches |
+| Explanations | The Prediction's Label, Score and Logit; the Case's Restrictions, with the Approved Notice That Discloses Each; One Block per Selected Driver, Highest Score First, with Its Rank, Reference and Attribution Score, Its History (Its Own Linked Records in Pre-Target Visits: Their References, Visit Numbers and Number) and Its Context (Its Records in the Final Admission: Their References and Number), Each null When It Has None, as the Reply States Them; How Many Eligible Drivers Are Not Described |
 
 Names, dates, native identifiers, visit and record metadata and provenance
 are left out: the model refers to records by their references, and every
@@ -279,7 +279,7 @@ network port:
 
 | Request | Reply |
 | :--- | :--- |
-| `count` a Prompt (With Its Chat Template) or a Text | Its Tokens |
+| `count` a Prompt (with Its Chat Template) or a Text | Its Tokens |
 | `generate` From a Prompt, a Schema and an Output Limit | The Text, Prompt and Output Tokens, Whether It Finished, Seconds and Peak GPU Memory; or `resource_exhausted` or `backend_failed` |
 | `stop` | The Worker Ends |
 
@@ -297,8 +297,8 @@ The 4,300,079,472 parameters are loaded in one of two precisions, set by
 
 | Precision | Placement |
 | :--- | :--- |
-| `bf16-mixed` (Configured) | BF16, Full Precision (ADR 0012, Decision 2), With a Mixed GPU/CPU Placement: The Language Layers, Final Norm and Rotary Embeddings, 6,121 MiB, on the GPU; the Image Encoder (801 MiB), Which a Text Request Never Runs, and the Token Embedding Table (1,280 MiB), Which Gemma Also Uses as Its Output Layer, in System Memory, Run on the Processor. The Model Is Not GPU-Resident. |
-| `nf4` | 4-Bit NF4 Weights With BF16 Computation (bitsandbytes), the Whole Model on the GPU |
+| `bf16-mixed` (Configured) | BF16, Full Precision (ADR 0012, Decision 2), with a Mixed GPU/CPU Placement: The Language Layers, Final Norm and Rotary Embeddings, 6,121 MiB, on the GPU; the Image Encoder (801 MiB), Which a Text Request Never Runs, and the Token Embedding Table (1,280 MiB), Which Gemma Also Uses as Its Output Layer, in System Memory, Run on the Processor. The Model Is Not GPU-Resident. |
+| `nf4` | 4-Bit NF4 Weights with BF16 Computation (bitsandbytes), the Whole Model on the GPU |
 
 ## Runtime Records
 

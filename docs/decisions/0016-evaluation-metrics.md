@@ -148,15 +148,15 @@ independent references instead.
 
 | Metric | Numerator | Denominator | When the Denominator Is Zero |
 | :--- | :---: | :---: | :--- |
-| Exact Match (Lists) | Exact Lists | List Requests With an Answer Reference | Not Applicable |
+| Exact Match (Lists) | Exact Lists | List Requests with an Answer Reference | Not Applicable |
 | Condition, Record, Driver and Line Precision | True Positives | True and False Positives | Not Applicable |
 | Condition, Record, Driver and Line Recall | True Positives | True Positives and False Negatives | Not Applicable |
 | F1 | Twice Precision Times Recall | Precision Plus Recall | 0 When Both Are 0; Not Applicable When Either Is |
-| Scoped Accuracy | Presence Requests With the Reference's Outcome | Presence Requests | Not Applicable |
+| Scoped Accuracy | Presence Requests with the Reference's Outcome | Presence Requests | Not Applicable |
 | Coverage, Over-Abstention, Correct-Answer Yield | As in Decision 5 | A | Not Applicable |
 | Selective Accuracy | Correct Answers | Answers Given to A | Not Applicable |
 | Appropriate Abstention | Requests of N Given the Reference's Kind | N | Not Applicable |
-| Unsupported-Answer Rate | Answers With an Unsupported Statement | Answers Given | 0 Answers: Not Applicable |
+| Unsupported-Answer Rate | Answers with an Unsupported Statement | Answers Given | 0 Answers: Not Applicable |
 | Citation Resolution, Claim Support, Unsupported-Claim Rate | As in Decision 7 | As in Decision 7 | Not Applicable |
 
 "Not applicable" is reported as such, never as 0 or 1.

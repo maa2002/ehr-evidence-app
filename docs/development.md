@@ -190,7 +190,7 @@ until the check ended:
 | Publication Audit | No Secret or Data File in the Tree or Its History |
 | Tracker Configuration | The Policy and the Connection's Declaration Checked Offline |
 | Tests | 1,656 Passed, 5 Skipped (Symbolic Links Unavailable to the Account, and an Interpreter Layout), None Failed |
-| Both Workflows | Lists, Presence Checks, Questions About the Whole Record and the Explanation for the First Three Admitted Cases of `dev-30-v1`, 24 Requests With the Model, Answered Without a Problem, Each Writing Its Runtime Record |
+| Both Workflows | Lists, Presence Checks, Questions About the Whole Record and the Explanation for the First Three Admitted Cases of `dev-30-v1`, 24 Requests with the Model, Answered Without a Problem, Each Writing Its Runtime Record |
 | Restart | The API Stopped and Started Again; the Same 24 Requests Gave the Same Outcomes, Writers and Texts, Compared by Digest |
 | Pinned Assets | The Workspace's Protected Data and Outputs Were Listed Before and After: Nothing Added, Removed or Rebuilt; Only the Set-Up's Markers and the Checks' Own Reports Were Rewritten |
 

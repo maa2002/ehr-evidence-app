@@ -424,7 +424,7 @@ def report(summary):
         print("%-10s %-24s failure %-14s %d" % (name, task, category, count))
 
 
-# The Operator Mode: A Development Case Set With the Pinned Model
+# The Operator Mode: A Development Case Set with the Pinned Model
 
 def run_real(case_set, per_group, task=None):
     """Write a case set's sampled requests in both conditions with the

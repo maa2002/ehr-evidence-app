@@ -618,7 +618,7 @@ def reference(request_id, case, scope, asked, descendants=lambda concept:
     return item_reference(request_id, case, scope, asked, descendants)
 
 
-# Comparison With the Templates on a Development Case Set
+# Comparison with the Templates on a Development Case Set
 
 QUESTION_KINDS = tuple(RECORD_KINDS)
 SELECTED_KINDS = ("lab", "vital")

@@ -32,7 +32,7 @@ examples assume the session set-up in
 | 33 | `qa.scope` | Scope Phrases and Binding to the Active Scope |
 | 34 | `qa.answer` | List and Presence Answers From a Verified QA Bundle |
 | 36 | `qa.templates` | Answers, Refusals and Clarifying Questions Written as Candidates |
-| 34.1 | `qa.suite` | Development Question Suite With an Independent Oracle; Vocabulary Sweep |
+| 34.1 | `qa.suite` | Development Question Suite with an Independent Oracle; Vocabulary Sweep |
 | 34.2 | `qa.heldout` | Partitions of MIMIC-IV-Ext-Instr; Held-Out Wording Test |
 | 34.3 | `qa.written` | Written Wording Test: Template, Case Overview, Scoring by Intent and Family |
 | 52.2 | `qa.record_vocabulary` | Medication and Procedure Vocabulary Built From the Pinned Athena Release |
@@ -63,8 +63,8 @@ Every question ends in exactly one response:
 
 | Outcome | When | Reason Codes |
 | :--- | :---: | :--- |
-| `answer` | A List of a Scope With Records; a Presence Check With a Matching Record | `unmapped_records_in_scope` When the Scope Holds Records Without a Standard Concept |
-| `not_recorded` | A List of an Empty Scope; a Presence Check With Complete Coverage and No Match | As for `answer` |
+| `answer` | A List of a Scope with Records; a Presence Check with a Matching Record | `unmapped_records_in_scope` When the Scope Holds Records Without a Standard Concept |
+| `not_recorded` | A List of an Empty Scope; a Presence Check with Complete Coverage and No Match | As for `answer` |
 | `clarification` | The Question Is Unclear or Needs a Choice the User Has to Make | `task_ambiguous`, `concept_unknown`, `concept_ambiguous`, `concept_too_broad`, `scope_ambiguous`, `visit_ambiguous`, `case_ambiguous`, `prediction_selection_needed` |
 | `abstention` | The Request Is Outside the Supported Tasks, or Coverage Is Incomplete | `task_unsupported`, `coverage_incomplete` |
 | `case_rejection` | The Case or Scope Has No Bundle, or Its Bundle Does Not Fit the Request | `case_not_admitted`, `scope_invalid`, `identity_inconsistent`, `history_inconsistent`, `evidence_inconsistent` |
@@ -237,7 +237,7 @@ A record matches a resolved phrase, and the answer states how:
 | Exact Concept | The Record's Standard Concept Is the Resolved Concept |
 | More Specific Concept | It Descends From the Resolved Concept in the SNOMED Hierarchy |
 | ICD Code | For a Code Phrase, the Record's ICD Source Code Equals It |
-| More Specific ICD Code | For a Code Phrase, the Record's ICD Source Code Starts With It |
+| More Specific ICD Code | For a Code Phrase, the Record's ICD Source Code Starts with It |
 | ICD Description | A Record Without a Standard Concept Whose ICD Description Contains the Name or a Synonym of the Concept or a Descendant, Not Negated |
 
 ## Answers
@@ -297,7 +297,7 @@ source snapshot, the case set's visits and the vocabulary tables:
 | `unsupported`, `explanation`, `other_patient` | Fixed Requests | Their Abstention or Clarification |
 | `unknown_term`, `too_broad`, `ambiguous_term` | Invented, Broad and Ambiguous Terms | Their Clarification |
 | `ranking`, `two_requests` | Fixed Requests (Suite Version 2) | An Abstention, or `task_ambiguous` |
-| `misspelling` | A Recorded Concept's Name With One Letter Dropped (Suite Version 2) | `concept_unknown`, Suggesting the Concept |
+| `misspelling` | A Recorded Concept's Name with One Letter Dropped (Suite Version 2) | `concept_unknown`, Suggesting the Concept |
 | `presence_negated` | A Concept of the Scope, Asked in a Negative Wording (Suite Version 3) | Its Records, or `not_recorded` |
 | `scope_unrecognised`, `count_list`, `qualified`, `unexplained`, `two_conditions` | A Fixed Request for Each Fail-Safe (Suite Version 3) | `scope_ambiguous`, an Abstention, or `task_ambiguous` |
 
@@ -410,7 +410,7 @@ Test `instr-held-out-wording-v1` with the rules of release 0.6.0
 | Questions | Number | As Expected | Readings |
 | :--- | :---: | :---: | :--- |
 | All Diagnoses | 1,056 | 886 (83.9%) | 886 Lists; 170 Clarifications (96 Unrecognised, 74 Unknown Condition Phrases) |
-| Ranking of Diagnoses | 3,101 | 2,114 (68.2%) | 2,114 Clarifications; 987 Answered With an Unranked List |
+| Ranking of Diagnoses | 3,101 | 2,114 (68.2%) | 2,114 Clarifications; 987 Answered with an Unranked List |
 | Other Data (Seven Event Types) | 28,235 | 28,235 (100%) | 15,367 Abstentions, 12,868 Clarifications |
 | All | 32,392 | 31,235 (96.4%) | 987 Answered Out of Scope, All Ranking Questions |
 
@@ -454,7 +454,7 @@ spreadsheet), one row per question:
 | `case` | The Case Number |
 | `scope` | The Scope Imagined as Selected: `history`, `all` or `visit N` |
 | `question` | The Question, as It Would Be Typed |
-| `intent` | `list` (the Recorded Conditions), `presence` (Whether One Condition Is Recorded), `refuse` (Something the Application Should Not Answer, Such as a Treatment, a Laboratory Value or a Number of Conditions) or `clarify` (a Question It Should Answer With a Clarifying Question: One Naming Another Part of the Record or a Visit the Case Lacks, Two Requests or Two Conditions at Once, a List of Only Some Conditions, or One Too Vague to Act On) |
+| `intent` | `list` (the Recorded Conditions), `presence` (Whether One Condition Is Recorded), `refuse` (Something the Application Should Not Answer, Such as a Treatment, a Laboratory Value or a Number of Conditions) or `clarify` (a Question It Should Answer with a Clarifying Question: One Naming Another Part of the Record or a Visit the Case Lacks, Two Requests or Two Conditions at Once, a List of Only Some Conditions, or One Too Vague to Act On) |
 | `concept` | For `presence`, the OMOP Concept ID of the Condition Meant; Empty Otherwise |
 | `family` | Optional: A Label That Groups the Results |
 
@@ -638,14 +638,14 @@ condition, or about a vital sign of the same name.
 
 | Task | Examples | Answer |
 | :--- | :---: | :--- |
-| `record_list` | "What medications were given?", "Show me the labs", "Was she in the ICU?" | Every Item of the Kind Within the Scope, With Its Records and Visits; Each ICU Stay and Transfer With Its Times |
+| `record_list` | "What medications were given?", "Show me the labs", "Was she in the ICU?" | Every Item of the Kind Within the Scope, with Its Records and Visits; Each ICU Stay and Transfer with Its Times |
 | `record_presence` | "Was heparin given?", "Was she on Lasix?", "Any antibiotics?", "Was a chest x-ray done?" | Every Matching Record, Grouped by Item and by How It Matched; or Not Recorded Within the Scope |
 | `record_timing` | "When was heparin first given?", "When was hypertension first recorded?" | The First and the Last Matching Record |
 | `record_count` | "How many potassium results are there?", "How many medications?" | The Number of Matching Records and Their Visits, or of a Kind's Items and Records |
 | `record_values` | "What was the last potassium?", "Highest creatinine?", "Show the hemoglobin trend", "What dose of heparin was given?", "What doses were given?", "What organisms grew?" | Each Matching Item's Latest, First, Highest or Lowest Value, or Its Values in Time Order |
 | `record_abnormal` | "Were any labs abnormal?", "Was the potassium high?", "Were any labs low?" | Every Result the Laboratory Flagged Abnormal (for Microbiology, Every Result Reported Resistant) |
 | `visit_details` | "How many visits?", "When was she admitted?", "Where was she discharged to?" | The Field Asked About, for Every Visit of the Scope |
-| `person_details` | "How old was the patient?", "What is her race?", "Did the patient die?" | The Person's Sex or Date of Death, or the Field Recorded With Each Visit of the Scope |
+| `person_details` | "How old was the patient?", "What is her race?", "Did the patient die?" | The Person's Sex or Date of Death, or the Field Recorded with Each Visit of the Scope |
 
 The question's frame gives its task, its words or its phrase the kind,
 and a selector (last, first, highest, lowest, all) the values it wants.
@@ -815,7 +815,7 @@ service without the model and without runtime records:
 | Nested Scopes: Every Question of the Test in Every Scope of Every Case | 25,669 | 20,475 Pairs of Nested Scopes Compared, None Contradicting |
 | Rewordings: The 133 Questions in 13 Rewordings, in the History and All Visits of 3 Cases of Each Set | 18,828 | None Answered Otherwise |
 | Junk: 3,000 Junk Questions in the History and All Visits of 2 Cases of Each Set | 24,000 | No Error or Exception; 160 Over the Length Limit, Each `limit_exceeded`; Median 0.055 s, the Slowest 1.14 s |
-| The Edge Questions Again, in Every Scope of Every Case | 31,652 | The Same Outcomes as Before the Rules Changed; No Condition Question Answered Otherwise With the Record |
+| The Edge Questions Again, in Every Scope of Every Case | 31,652 | The Same Outcomes as Before the Rules Changed; No Condition Question Answered Otherwise with the Record |
 
 ### What a Medication Was Given For, and Drug Classes
 
@@ -839,7 +839,7 @@ responses compared:
 | The Medication Questions Again, and Every Class Word, After a Class Word Kept Its Classes | 13,124 | Only the Three Antibiotic Questions Changed: "Any antibiotics?" Is Answered in 103 of the 193 Scopes Instead of 62 |
 | Mutants of the Class Answers | 60 Answers, 1,862 Mutants | All Withheld; Every Original and Its 24 Controls Released |
 | Mutants of the Record Answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 Answers, 30,719 Mutants | All Withheld; Every Original and the 762 Controls Released |
-| The Condition Suite | 1,892 and 784 | 100%, With the Summary Digests of Rules Version 5 Byte for Byte |
+| The Condition Suite | 1,892 and 784 | 100%, with the Summary Digests of Rules Version 5 Byte for Byte |
 
 "Any nsaids?" was then still read by the condition rules as a condition,
 "Non-steroidal anti-inflammatory overdose", which the condition
@@ -887,9 +887,9 @@ only, without the model and without runtime records:
 | Check | Requests | Result |
 | :--- | :---: | :--- |
 | "When was {name} first recorded?" for Every Condition Record's Name in Every Scope | 2,638 Each | Read Whole 2,614 Times Instead of 1,399; Answered "not recorded" While the Scope Records the Condition Never, Instead of 46 Times |
-| The 228 Questions of the Last Comparison, and 22 Naming Conditions and Cultures With Such Words, in Every Scope; and, From Each Scope's Own Records, Up to Three Conditions Named With Such a Word, Asked When and How Often (324 Each), and Its Cultures (141) | 49,039 Each | 225 of the 228 Give the Same Responses Byte for Byte. The Blood Culture Questions Ask About Blood Cultures Rather Than Every Specimen of Blood (Answered in 42 Scopes Instead of 49), and "What was the platelet count?" Names the Platelet Count Rather Than Every Test Whose Name Holds "platelet". Of the 22, the Condition Questions That Were Asked Back Are Answered or Not Recorded, and "anxiety disorder" Is Answered in 16 Scopes Rather Than Anxiety's 23. The Generated Condition Questions Are Answered 321 Times of 324 Instead of 16; Each Answer Cites Exactly the Independent Reference's Records (`assessment.record_references`), but for 3 Times That Rest on Records Without a Standard Concept, Which Are Unjudged, and None Is "not recorded" While Recorded, Where 3 Were |
-| Mutants of the Answers to Questions Naming Conditions and Cultures With Such Words | 72 Answers, 1,899 Mutants | All Withheld; Every Original Released |
-| Rewordings and Nested Scopes, as in [Consistency and Junk Input](#consistency-and-junk-input): Every Question of the Test in Every Scope, and Its 13 Rewordings in the History and All Visits of 3 Cases of Each Set | 27,020 and 19,836 | 21,150 Pairs of Nested Scopes Compared, None Contradicting; No Rewording Answered Otherwise; Median 0.067 s, the Slowest 2.43 s With Other Checks Running Beside It |
+| The 228 Questions of the Last Comparison, and 22 Naming Conditions and Cultures with Such Words, in Every Scope; and, From Each Scope's Own Records, Up to Three Conditions Named with Such a Word, Asked When and How Often (324 Each), and Its Cultures (141) | 49,039 Each | 225 of the 228 Give the Same Responses Byte for Byte. The Blood Culture Questions Ask About Blood Cultures Rather Than Every Specimen of Blood (Answered in 42 Scopes Instead of 49), and "What was the platelet count?" Names the Platelet Count Rather Than Every Test Whose Name Holds "platelet". Of the 22, the Condition Questions That Were Asked Back Are Answered or Not Recorded, and "anxiety disorder" Is Answered in 16 Scopes Rather Than Anxiety's 23. The Generated Condition Questions Are Answered 321 Times of 324 Instead of 16; Each Answer Cites Exactly the Independent Reference's Records (`assessment.record_references`), but for 3 Times That Rest on Records Without a Standard Concept, Which Are Unjudged, and None Is "not recorded" While Recorded, Where 3 Were |
+| Mutants of the Answers to Questions Naming Conditions and Cultures with Such Words | 72 Answers, 1,899 Mutants | All Withheld; Every Original Released |
+| Rewordings and Nested Scopes, as in [Consistency and Junk Input](#consistency-and-junk-input): Every Question of the Test in Every Scope, and Its 13 Rewordings in the History and All Visits of 3 Cases of Each Set | 27,020 and 19,836 | 21,150 Pairs of Nested Scopes Compared, None Contradicting; No Rewording Answered Otherwise; Median 0.067 s, the Slowest 2.43 s with Other Checks Running Beside It |
 | The Condition Suite | 1,892 and 784 | The Summary Digests Byte for Byte |
 
 ### Questions From a User Test
@@ -923,7 +923,7 @@ without runtime records:
 | Check | Requests | Result |
 | :--- | :---: | :--- |
 | The 228 Questions of the Earlier Comparisons and 45 of the User Test's Own, in Every Scope of Every Case | 52,689 Each | 214 Give the Same Responses Byte for Byte, and 31 Differ Only in the Capital That Begins "not recorded". The 28 That Change Are the Ones the Rules Meant to Change: Eleven Greetings, Thanks and Requests for Help and Two Misspelt Questions Are Not Understood, Where Each Was Asked Back as a Condition's Name; Nine Rankings of Conditions Are Declined in Every Scope, Where Eight Were Asked Back and "What was the first diagnosis?" Was Answered in 190 Scopes and Not Recorded in 3; and Six Questions About When a Named Visit Was Are Answered in That Visit's Scope, Which Each of the 36 Cases Has, and Ask for the Scope to Be Changed in the Other 157, Where They Were Declined. No Rejection, Error or Exception |
-| The Condition Suite, Under the Rules' Names Before | 1,892 and 784 | 100%, With the Summary Digests Byte for Byte |
+| The Condition Suite, Under the Rules' Names Before | 1,892 and 784 | 100%, with the Summary Digests Byte for Byte |
 | The Written Wording Tests, Versions 1 to 4, Under the Rules' Names Before | 198, 198, 228 and 226 | The Summary Digests Byte for Byte |
 | The End-to-End Test of the Written Set Version 4, Without the Model | 226 | The Same Counts at Every Stage |
 | The Record Suite | 7,865 and 3,188 | The Same Counts for Every Question |

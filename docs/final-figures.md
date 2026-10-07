@@ -13,9 +13,9 @@ workspace and are named here only by their place in it.
 | Frozen Version | Release 0.11.2, Commit `d1322c1`, Freeze Record `freeze-v3` (SHA-256 `ed84d362…d705`) |
 | Model | MedGemma 1.5 4B IT in bfloat16 (`bf16-mixed` Placement), the Same in Both Conditions; One Attempt a Request |
 | Limits | 16,384 Prompt Tokens, 768 Output Tokens and 180 Seconds a Request |
-| Case Set | `eval-100-v1`: 100 Persons, None in a Development Case Set, All of the GNN's Upstream Test Partition and so Unseen by It; 92 Admitted, With 519 Scopes |
+| Case Set | `eval-100-v1`: 100 Persons, None in a Development Case Set, All of the GNN's Upstream Test Partition and so Unseen by It; 92 Admitted, with 519 Scopes |
 | Run | `eval-100-v1-20261004T082135Z`, From 2026-10-04 19:21 to 2026-10-05 21:03 (92,552 Seconds), Every Request in Both Conditions |
-| Requests | 519 Condition Lists (4 of Them With an Empty Reference), 1,034 Presence Checks (515 of a Condition Recorded in the Scope, 519 of a Condition Recorded Elsewhere in the Case Set Only) and 91 Explanations: 1,644 |
+| Requests | 519 Condition Lists (4 of Them with an Empty Reference), 1,034 Presence Checks (515 of a Condition Recorded in the Scope, 519 of a Condition Recorded Elsewhere in the Case Set Only) and 91 Explanations: 1,644 |
 | Protected Records | `protected-data\assessment\paired\<run>` (One Record a Request), the Report `protected-data\assessment\reports\<run>.json`, the Ratings and the Owner's Agreement in `protected-data\assessment\ratings\<run>` |
 
 ## The Paired Comparison
