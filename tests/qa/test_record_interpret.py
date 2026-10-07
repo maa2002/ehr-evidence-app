@@ -173,6 +173,123 @@ class ReadingTests(unittest.TestCase):
         self.assertReads("Did the blood culture grow anything?",
                          task="record_values", kind="microbiology")
 
+    def test_positive_and_negative_cultures(self):
+        """Rule 13: positive and negative ask whether anything grew, about
+        the culture the question names."""
+        for question in ("Was the blood culture positive?",
+                         "Was the blood culture negative?"):
+            self.assertReads(question, task="record_values",
+                             kind="microbiology", phrase="blood culture",
+                             selector="all")
+        self.assertReads("Were the blood cultures negative?",
+                         task="record_values", kind="microbiology",
+                         selector="all")
+        self.assertReads("Were any cultures negative?",
+                         task="record_values", kind="microbiology",
+                         selector="all")
+
+    def test_the_latest_or_first_culture(self):
+        """Rule 13: the latest or the first asks about one culture; the
+        highest or lowest about all of them."""
+        self.assertReads("Was the latest blood culture positive?",
+                         task="record_values", kind="microbiology",
+                         selector="latest")
+        self.assertReads("Did the first urine culture grow anything?",
+                         task="record_values", kind="microbiology",
+                         selector="first")
+        self.assertReads("What was the highest culture growth?",
+                         task="record_values", kind="microbiology",
+                         selector="all")
+
+    def test_how_a_result_reads(self):
+        """Rule 14: normal, positive or negative at the end of a question
+        asks for the results the laboratory flagged; a kind without a flag
+        is asked back, as for abnormal."""
+        for question in ("Was the potassium normal?",
+                         "Was the troponin positive?",
+                         "Was the troponin T negative?",
+                         "Is the glucose within normal limits?",
+                         "Was the creatinine normal or abnormal?"):
+            self.assertReads(question, task="record_abnormal", kind="lab")
+        self.assertReads("Were any labs normal?", task="record_abnormal",
+                         kind="lab")
+        for question in ("Was the heart rate normal?", "Was heparin normal?"):
+            self.assertReads(question, status="clarify",
+                             category="flag_unrecorded")
+
+    def test_quality_words_within_a_name(self):
+        """Rule 14: within a question the words stay part of the phrase."""
+        reading = self.read("Was normal heparin given?")
+        self.assertNotEqual(reading.task, "record_abnormal")
+        self.assertEqual(reader.left_words("normal heparin", ()),
+                         ["normal", "heparin"])
+        self.assertEqual(reader.QUALITY.search("gram negative rods"), None)
+
+    def test_a_selected_result_and_its_flag(self):
+        """Rule 15: a result a selector picks, asked about by its flag,
+        keeps its selector; a vital sign and a plain selector do not ask
+        for a flag."""
+        for question, selector in (
+                ("Was the latest potassium high?", "latest"),
+                ("Is the latest creatinine abnormal?", "latest"),
+                ("Was the first glucose normal?", "first"),
+                ("Was the highest potassium abnormal?", "highest"),
+                ("Was the lowest hemoglobin low?", "lowest")):
+            self.assertReads(question, task="record_values", kind="lab",
+                             selector=selector, category="lab_flag")
+        self.assertReads("What was the highest potassium?",
+                         task="record_values", selector="highest",
+                         category=None)
+        self.assertReads("Was the latest heart rate high?",
+                         task="record_values", kind="vital",
+                         selector="latest", category=None)
+        self.assertReads("Was the latest culture resistant?",
+                         task="record_values", kind="microbiology",
+                         selector="latest")
+        self.assertReads("Were any cultures resistant?",
+                         task="record_abnormal", kind="microbiology")
+
+    def test_surgery_and_the_prediction(self):
+        """Rules 16 and 17: procedures asked about as surgery, and the
+        prediction."""
+        self.assertReads("Did the patient have surgery?", task="record_list",
+                         kind="procedure", category="surgery")
+        self.assertReads("How many operations?", task="record_count",
+                         kind="procedure", category="surgery")
+        self.assertReads("Which procedures were done?", task="record_list",
+                         category=None)
+        for question in ("Is the predicted diagnosis recorded?",
+                         "Does the patient have the predicted diagnosis?"):
+            self.assertReads(question, status="clarify",
+                             reason="prediction_selection_needed",
+                             category="prediction")
+
+    def test_visits_and_the_person_in_other_words(self):
+        """Rule 18: the visits' and the person's fields in other words;
+        an age is answered, never compared."""
+        for question, field in (
+                ("Was the patient admitted through the ED?",
+                 "admitted_from"),
+                ("Did she come in via the emergency department?",
+                 "admitted_from"),
+                ("Was it an emergency?", "type"),
+                ("Was the admission urgent?", "type"),
+                ("Was the patient readmitted?", "list")):
+            self.assertReads(question, task="visit_details", field=field)
+        for question, field in (("Is the patient over 65?", "age"),
+                                ("Is she older than 80 years?", "age"),
+                                ("Was the patient alive at discharge?",
+                                 "death"),
+                                ("Did the patient die in hospital?",
+                                 "death")):
+            self.assertReads(question, task="person_details", field=field)
+        reading = self.read("When was the patient discharged from the "
+                            "emergency department?")
+        self.assertNotEqual((reading.task, reading.field),
+                            ("visit_details", "discharged"))
+        self.assertReads("Was potassium above 5?", status="clarify",
+                         category="qualified")
+
     def test_doses(self):
         """A dose question asks for the values of a medication."""
         self.assertReads("What dose of heparin was given?",
@@ -328,6 +445,15 @@ class EdgeReadingTests(unittest.TestCase):
         ("What were the microbiology results?", {
             "task": "record_values", "kind": "microbiology",
             "selector": "all"}),
+        ("Any positive cultures?", {"task": "record_values",
+                                    "kind": "microbiology",
+                                    "selector": "all"}),
+        ("Was the latest culture negative?", {"task": "record_values",
+                                              "kind": "microbiology",
+                                              "selector": "latest"}),
+        ("What was the last blood culture result?", {
+            "task": "record_values", "kind": "microbiology",
+            "selector": "latest"}),
         # ICU stays, visits and the person.
         ("Was she in intensive care?", {"task": "record_list",
                                         "kind": "icu_stay"}),

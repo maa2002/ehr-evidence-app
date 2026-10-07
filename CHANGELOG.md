@@ -61,6 +61,48 @@ change interfaces.
   response is announced; an ended session's banner and failed answers no
   longer offer Try Again, which could not help; a reference can be
   pressed a little beyond its edge.
+- An answer about microbiology results says first whether an organism is
+  recorded ("An organism is recorded in the results of BLOOD CULTURE
+  within ...", or "No organism is recorded in the results of ..."), then
+  shows each test's cultures, each organism once with its antibiotic
+  results grouped by interpretation and each culture that grew nothing on
+  its own line, without counting each antibiotic result as a record.
+  Every culture that grew is shown; past 30 cultures of a test, the
+  earliest of the others are counted (`record-answer-v6`). "Was the blood
+  culture negative?" is read as "positive" is, the latest or the first
+  culture is asked about when the question says so, and an organism named
+  instead of a test ("Did any culture grow e coli?") is answered from its
+  own records (`record-questions-v8`, rule 13); the release gate checks
+  the new statements, and the independent references pick the same
+  records.
+- A laboratory result that the latest, first, highest or lowest picks,
+  asked about as high, low, abnormal, normal, positive or negative ("Was
+  the latest potassium high?"), is answered by whether an abnormal flag is
+  recorded for that result, then the result, with the notice that a
+  result without the flag is not stated to be normal. "Normal",
+  "positive" and "negative" at the end of a question, or "within normal
+  limits", ask for the results the laboratory flagged, as "abnormal"
+  does, and are asked back of vital signs, which carry no flag; within a
+  question "normal" and "negative" stay part of a name ("normal saline")
+  (rules 14 and 15).
+- Procedures asked about as surgery ("Did the patient have surgery?",
+  "How many operations?") are listed or counted with a notice that the
+  record does not mark which were surgery, and a question about the
+  prediction ("Is the predicted diagnosis recorded?") is pointed to the
+  prediction's own workflow, as the condition rules point one (rules 16
+  and 17).
+- Where a visit's admission came from is also asked as "admitted through
+  the ED", its type as "was it an emergency" or "urgent", the visits as
+  "readmitted", the age as "over 65" (answered with the ages, never
+  compared) and death as "alive at discharge" or "died in hospital"
+  (rule 18); these were not understood or asked back.
+- These rules were checked before and after on the development case
+  sets: of 407 questions asked in every scope, only the 87 meant to
+  change do, with no rejection or error; the record suite, the mutation
+  suite, the independent references and the final evaluation's questions
+  about the record give the same results, and every mutant of the
+  answers, real ones about cultures included, is withheld
+  ([qa.md](docs/qa.md#questions-that-ask-yes-or-no)).
 
 ### Fixed
 
@@ -72,6 +114,16 @@ change interfaces.
   such a ranking declined held two stray control characters for its
   word boundaries and never matched. It now also knows the singular
   words (`qa-answer-v7`).
+- A question about microbiology that asked whether a culture grew ("Was
+  the blood culture positive?") was answered with every record of the
+  culture, one per line, headed by their number, without saying whether
+  anything grew; "Was the blood culture negative?" was asked back; and
+  the latest or first culture got every culture, or a single antibiotic
+  result (`record-questions-v8`, `record-answer-v6`, above).
+- "Is the latest creatinine abnormal?" was answered with every flagged
+  creatinine result, the latest left out, and "Was the latest potassium
+  high?" with the value alone, without whether the laboratory flagged it
+  (above).
 - References on a line holding many of them wrap within the line, where
   they ran past the column's edge and could not be seen or pressed: a
   medication line of a development case cites up to 26 records.

@@ -89,12 +89,48 @@ record-questions-v3), by fixed rules and without a model:
     the patient admitted" asks within it; the visit must be the selected
     scope, as for every scope phrase, or the question asks for the scope
     to be changed.
+13. A question about microbiology that asks whether anything grew
+    ("grew", "growth", "organisms", "bacteria", "isolated", "positive",
+    or "normal", "positive" or "negative" at its end) asks for the values
+    of its tests, whose answer says first whether an organism is recorded
+    (qa.record_answer); so does one that asks about the latest or first
+    culture's resistance. The latest or the first ("was the latest blood
+    culture positive") asks about the latest or the first culture of each
+    test; any other selector, or none, about all of them.
+14. "Normal", "positive" or "negative" at the end of a question, or
+    "within normal limits", asks how a result reads: set aside from the
+    phrase, it asks for the results the laboratory flagged, as "abnormal"
+    does, and for a kind that carries no flag it gets the clarification
+    of rule 8. Within a question the words stay part of a name ("normal
+    saline", "gram negative rods").
+15. A laboratory result that a selector picks (the latest, first,
+    highest or lowest) asked about as high, low, abnormal, normal,
+    positive or negative asks for that result with whether the
+    laboratory flagged it, where the selector was left out before.
+16. A question about procedures as surgery ("did the patient have
+    surgery", "how many operations") lists or counts every procedure,
+    with a notice that the record does not mark which were surgery.
+17. A question about the prediction ("is the predicted diagnosis
+    recorded") gets the clarification the condition rules give one: the
+    prediction and its explanation are shown in their own workflow.
+18. Where the patient was admitted from is also asked as "admitted
+    through the ED" or "came via the emergency department"; the type of
+    admission as "was it an emergency" or "urgent"; the visits as
+    "readmitted"; the age as "over 65" or "older than 80", answered with
+    the ages and never compared; and death as "alive at discharge" or
+    "died in hospital", with each visit's death in hospital.
 
 Version 2 adds rules 6 to 8; version 3 removes the polite opening
-(rule 1); version 4 adds rule 9, version 5 rule 10, version 6 rule 11
-and version 7 rule 12. Version 6 also reads "all ... values" around a
-name of up to eight words, digits included ("all the hemoglobin a1c
-values"), where four words of letters alone were read before.
+(rule 1); version 4 adds rule 9, version 5 rule 10, version 6 rule 11,
+version 7 rule 12 and version 8 rules 13 to 18. Before version 8 a
+question about what grew asked about all of a test's results whatever
+its selector; "negative" or "normal" at the end of a question, a
+prediction, arriving through the ED, an emergency, readmission, an age
+over a number and death at discharge were asked back or not understood;
+and a selected laboratory result asked about as abnormal lost its
+selector. Version 6 also reads "all ... values" around a name of up to
+eight words, digits included ("all the hemoglobin a1c values"), where
+four words of letters alone were read before.
 """
 
 from __future__ import annotations
@@ -106,7 +142,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v7"
+RULES_VERSION = "record-questions-v8"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -159,7 +195,10 @@ PERSON = (
                        r"woman))?\b|\bmale or female\b|"
                        r"\bfemale or male\b")),
     ("age", re.compile(r"\bhow old\b|\bages?\b|\baged\b|\byears? old\b|"
-                       r"\bborn\b|\bbirth\b|\bbirthday\b")),
+                       r"\bborn\b|\bbirth\b|\bbirthday\b|\b(?:over|under|"
+                       r"older than|younger than|above|below|at least|"
+                       r"more than|less than) [0-9]{1,3}(?: years?)?"
+                       r"(?: old)?(?: (?:please|thanks|thank you))*$")),
     ("race", re.compile(r"\b(?:race|ethnicity|ethnic|ethnic background)\b")),
     ("language", re.compile(r"\b(?:language|languages|speak|speaks|spoke|"
                             r"interpreter)\b")),
@@ -186,7 +225,11 @@ VISIT = (
                                  r"from\b|\badmission (?:location|source)\b|"
                                  r"\bsource of admission\b|\bwhere (?:was|"
                                  r"did) (?:the patient|he|she|they) "
-                                 r"(?:admitted|come)\b")),
+                                 r"(?:admitted|come)\b|\badmitted (?:through|"
+                                 r"via)\b|\b(?:come|came|arrive|arrived) "
+                                 r"(?:in )?(?:through|via)\b|\b(?:through|"
+                                 r"via) (?:the )?(?:ed|er|emergency "
+                                 r"(?:department|room))\b")),
     ("discharged_to", re.compile(r"\bdischarged? (?:to|home)\b|\bdischarge "
                                  r"(?:location|disposition|destination)\b|"
                                  r"\bdisposition\b|\bwhere (?:was|did) "
@@ -195,15 +238,30 @@ VISIT = (
     ("type", re.compile(r"\b(?:type|kind) of (?:admission|visit|stay|"
                         r"encounter)\b|\badmission type\b|\bvisit type\b|"
                         r"\belective\b|\bemergency admission\b|"
-                        r"\burgent admission\b")),
+                        r"\burgent admission\b|\b(?:an? )?(?:emergency|"
+                        r"urgent)\b(?! (?:department|room|ward|unit))")),
     ("discharged", re.compile(r"\bdischarged?\b|\bdischarge date\b|"
                               r"\bdate of discharge\b|\bwent home\b")),
     ("admitted", re.compile(r"\badmitted\b|\badmission date\b|\bdate of "
                             r"admission\b|\badmission dates\b|"
                             r"\bhospitali[sz]ed\b")),
     ("list", re.compile(r"\b(?:visits|admissions|hospitali[sz]ations|"
-                        r"encounters|hospital stays)\b")),
+                        r"encounters|hospital stays)\b|\breadmi(?:t|ts|"
+                        r"tted|tting|ssion|ssions)\b")),
 )
+# Words a question about the visits may hold besides its field's, and
+# those only a question about where the patient came from may hold
+# ("admitted through the emergency department").
+VISIT_REST = frozenset(("admission", "admissions", "visit", "visits", "stay",
+                        "stays", "hospital", "discharge", "discharged",
+                        "admitted", "long", "length", "type", "kind", "home",
+                        "location", "source", "go", "come", "came", "went",
+                        "sent", "dates", "date"))
+ARRIVAL_REST = frozenset(("ed", "er", "emergency", "department", "room"))
+# Words a question about the person may hold besides its field's.
+PERSON_REST = frozenset(("admission", "visit", "admitted", "time", "old",
+                         "year", "years", "discharge", "discharged",
+                         "hospital", "stay"))
 # Rule 12: all that is left of a question about when one visit, named by a
 # scope phrase, was.
 VISIT_WHEN = re.compile(
@@ -247,6 +305,26 @@ SELECTOR_WORDS = re.compile(r"\b(?:last|latest|most recent|recent|newest|"
 GROWTH = re.compile(r"\b(?:grew|grow|grown|growth|organisms?|bacteria|"
                     r"bacterium|isolated|positive|sensitivit(?:y|ies)|"
                     r"susceptibilit(?:y|ies))\b")
+# The end of a question, after any closing courtesy ("..., please").
+COURTESY_END = r"(?: (?:please|thanks|thank you))*$"
+# How a result reads, asked at the end of a question ("was the creatinine
+# normal", "was the blood culture negative"): for a laboratory test its
+# flag, for microbiology whether anything grew (rules 13 and 14). Within a
+# question, the words stay part of a name ("normal saline", "gram negative
+# rods").
+QUALITY = re.compile(
+    r"(?:\b(?:normal|positive|negatives?)(?: or (?:not|normal|abnormal|"
+    r"positive|negatives?))?|\b(?:within|in) (?:the )?(?:normal|reference) "
+    r"(?:limits|range))" + COURTESY_END)
+# Selectors that pick one result of an item.
+SINGLE = ("latest", "first", "highest", "lowest")
+# Procedures asked about as surgery, which the record does not mark (rule
+# 16).
+SURGERY = re.compile(r"\b(?:surgery|surgeries|surgical|operations?|"
+                     r"operated)\b")
+# The predicted diagnosis, which its own workflow shows (rule 17).
+PREDICTION = re.compile(r"\b(?:predicted|predict|predicts|prediction|"
+                        r"predictions)\b")
 # Words of results, which point to tests and vital signs.
 RESULTS = re.compile(r"\b(?:results?|values?|levels?|readings?|"
                      r"measurements?)\b")
@@ -628,6 +706,10 @@ def interpret(question, terms):
     text = marked(conditions.courteous(conditions.normalize(question)))
     if not text or ADVICE.search(text):
         return RecordQuestion("none")
+    if PREDICTION.search(text):
+        # Rule 17: the prediction and its explanation have their own
+        # workflow, as the condition rules say.
+        return clarify("prediction_selection_needed", "prediction")
     found = scopes.mentions(text)
     body = scopes.remove(text, found)
     if not body:
@@ -642,8 +724,7 @@ def interpret(question, terms):
             "icustay" not in words):
         rest = [word for word in left_words(blank(PERSON[
             PERSON_FIELDS.index(field)][1], body))
-            if word not in ("admission", "visit", "admitted", "time",
-                            "old", "year", "years")]
+            if word not in PERSON_REST]
         if not rest:
             return RecordQuestion("task", task="person_details",
                                   kind="person", field=field,
@@ -653,13 +734,10 @@ def interpret(question, terms):
     field = visit_field(body)
     if field is not None and not (set(kinds_named(body)) - {"transfer"}):
         pattern = dict(VISIT)[field]
+        allowed = VISIT_REST | (ARRIVAL_REST if field == "admitted_from"
+                                else frozenset())
         rest = [word for word in left_words(blank(pattern, body))
-                if word not in ("admission", "admissions", "visit",
-                                "visits", "stay", "stays", "hospital",
-                                "discharge", "discharged", "admitted",
-                                "long", "length", "type", "kind", "home",
-                                "location", "source", "go", "come",
-                                "came", "went", "sent", "dates", "date")]
+                if word not in allowed]
         if not rest:
             return RecordQuestion("task", task="visit_details",
                                   kind="visit", field=field,
@@ -709,16 +787,23 @@ def default_selector(task, kind, selector):
 
 def item_question(body, found, terms):
     """Read a question about records of one kind."""
+    quality = QUALITY.search(body)
+    if quality:
+        # Rules 13 and 14: how a result reads, asked at the end, is set
+        # aside from the phrase.
+        body = body[:quality.start()].rstrip()
     selector = selector_of(body)
     task = task_of(body, selector)
     kinds = kinds_named(body)
     hints = hints_of(body)
     prefer = ("lab", "vital") if task in (
-        "record_values", "record_abnormal") or RESULTS.search(body) else ()
+        "record_values", "record_abnormal") or RESULTS.search(body) or (
+        quality) else ()
     whole = whole_name(terms, body, kinds, hints, prefer)
     if whole is not None:
         kind, _, phrase = whole
-        return item_reading(body, found, task, selector, kind, phrase)
+        return item_reading(body, found, task, selector, kind, phrase,
+                            bool(quality))
     if FILTERS.search(body):
         return clarify("task_ambiguous", "qualified", found)
     if len(kinds) > 1 and not (set(kinds) <= {"lab", "microbiology"}):
@@ -741,10 +826,13 @@ def item_question(body, found, terms):
             # "Which labs were not done?": a filter of the kind.
             return clarify("task_ambiguous", "qualified", found)
         kind = kinds[0]
-        if kind == "microbiology" and task in (None, "record_values") and (
-                GROWTH.search(body)):
-            return RecordQuestion("task", task="record_values", kind=kind,
-                                  selector="all", mentions=found)
+        read = read_flags(kind, task, selector, body, quality)
+        if read is not None:
+            task, selector, category = read
+            if category == "lab_flag" or kind == "microbiology":
+                return RecordQuestion("task", task=task, kind=kind,
+                                      selector=selector, mentions=found,
+                                      category=category)
         flags = flag_rules(kind, task, selector, body)
         if flags is None:
             return clarify("task_ambiguous", "flag_unrecorded", found)
@@ -755,6 +843,11 @@ def item_question(body, found, terms):
                 "lab", "vital", "microbiology") and not (
                 kind == "medication" and DOSE.search(body)):
             task = "record_list"
+        if kind == "procedure" and task in ("record_list", "record_count") \
+                and SURGERY.search(body):
+            # Rule 16: the record does not mark which procedures were
+            # surgery, and the answer says so.
+            category = "surgery"
         return RecordQuestion("task", task=task, kind=kind,
                               selector=default_selector(task, kind,
                                                         selector),
@@ -780,16 +873,48 @@ def item_question(body, found, terms):
                        names=tuple(resolution), phrase=phrase)
     if kind is None:
         return RecordQuestion("none", phrase=phrase)
-    return item_reading(body, found, task, selector, kind, phrase)
+    return item_reading(body, found, task, selector, kind, phrase,
+                        bool(quality))
 
 
-def item_reading(body, found, task, selector, kind, phrase):
+def growth_selector(selector):
+    """Return the selector of a question about what grew (rule 13): the
+    latest or the first culture, or all of them."""
+    return selector if selector in ("latest", "first") else "all"
+
+
+def read_flags(kind, task, selector, body, quality):
+    """Return (task, selector, category) of a question about what grew or
+    how a result reads (rules 13 to 15), or None when it is neither:
+    microbiology's values, by culture; one laboratory result a selector
+    picks, with whether it is flagged; or the results the laboratory
+    flagged."""
+    if kind == "microbiology" and (
+            (task in (None, "record_values")
+             and (quality or GROWTH.search(body)))
+            or (task == "record_abnormal" and selector in ("latest",
+                                                           "first"))):
+        return "record_values", growth_selector(selector), None
+    if kind == "lab" and selector in SINGLE and (
+            task == "record_abnormal" or quality or HIGH.search(body)
+            or LOW.search(body)):
+        return "record_values", selector, "lab_flag"
+    if quality and task in (None, "record_values"):
+        return "record_abnormal", selector, None
+    return None
+
+
+def item_reading(body, found, task, selector, kind, phrase, quality=False):
     """Return the reading of a question about an item of a kind: its task,
     by default a presence check, with the flags and selector its kind
     takes."""
-    if kind == "microbiology" and task in (None, "record_values") and (
-            GROWTH.search(body)):
-        task, selector = "record_values", "all"
+    read = read_flags(kind, task, selector, body, quality)
+    if read is not None:
+        task, selector, category = read
+        if category == "lab_flag" or kind == "microbiology":
+            return RecordQuestion("task", task=task, kind=kind,
+                                  phrase=phrase, selector=selector,
+                                  mentions=found, category=category)
     if task is None:
         task = "record_presence"
     flags = flag_rules(kind, task, selector, body)

@@ -26,9 +26,10 @@ until its answers about the record have been measured.
   number of items and records of a kind.
 * A values question gives, for each matching item, its latest, first,
   highest or lowest value (a single record is the only one), or its
-  values in time order: the latest MAX_VALUES of a named item and of
-  each microbiology test, the latest of each item of another whole kind,
-  the others counted; each item is named by its earliest record.
+  values in time order: the latest MAX_VALUES of a named item, the latest
+  of each item of another whole kind, the others counted; each item is
+  named by its earliest record. Microbiology is answered by culture
+  (version 6, below).
 * A question about abnormal results cites every result the laboratory
   flagged abnormal (for microbiology, every result reported resistant).
 * Visits and the person are answered from the visits of the scope and
@@ -42,6 +43,24 @@ until its answers about the record have been measured.
   question's own words in lower case, its first letter is a capital
   ("Chest x ray is not recorded"), where a name such as "pH" keeps its
   own (version 5; validation.candidate.sentence).
+* Microbiology values (version 6) say first whether an organism is
+  recorded: in any culture of the matching tests, or in the latest or the
+  first culture of each, as the question asks. Then, test by test, each
+  culture shown (the records of one test taken at one time): each
+  organism once, with its antibiotic results by interpretation, and the
+  records that name no organism. Every culture that grew is shown; of the
+  others the latest, up to MAX_VALUES cultures of a test in all, and the
+  rest are counted. Before version 6 microbiology values were listed one
+  record to a line, headed by the number of records, with no statement of
+  whether anything grew, and the latest or first was a single record.
+* A laboratory result a selector picks, asked about by its flag ("was
+  the latest potassium high"), is stated with whether the laboratory
+  flagged it abnormal, and a result without the flag is not stated to be
+  normal (version 6).
+* Procedures asked about as surgery are listed or counted with a notice
+  that the record does not mark which were surgery, and a question about
+  the prediction gets the condition rules' clarification, which points to
+  the prediction's own workflow (version 6).
 """
 
 from __future__ import annotations
@@ -59,10 +78,11 @@ from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.validation import candidate as candidates
 from ehr_evidence_app.validation import record_text as words
 
-RULES_VERSION = "record-answer-v5"
+RULES_VERSION = "record-answer-v6"
 # The values listed of one item: the latest MAX_VALUES when the question
-# names the item or asks what grew in microbiology, the latest one of each
-# item when it asks about another whole kind; the others are counted, and
+# names the item, and of a microbiology test's resistant results; the
+# latest one of each item when it asks about another whole kind; at most
+# MAX_VALUES cultures of a microbiology test. The others are counted, and
 # kept in the evidence.
 MAX_VALUES = 30
 # Record bundles kept parsed, most recently read last.
@@ -110,6 +130,24 @@ WORDINGS = {
     "record_value": "{selector} {item}: {value}, {when}, in {visit}.",
     "record_value_group": "{item} ({count}):",
     "record_value_item": "{value}, {when}, in {visit}",
+    "record_growth_found": "An organism is recorded in the results of "
+                           "{item} within {scope}.",
+    "record_growth_none": "No organism is recorded in the results of "
+                          "{item} within {scope}.",
+    "record_growth_found_selected": "An organism is recorded in the "
+                                    "results of the {selector} {item} "
+                                    "within {scope}.",
+    "record_growth_none_selected": "No organism is recorded in the "
+                                   "results of the {selector} {item} "
+                                   "within {scope}.",
+    "record_growth_group": "{item}:",
+    "record_growth_selected_group": "{selector} {item}:",
+    "record_growth_item": "{organism}, {when}, in {visit}: {results}",
+    "record_growth_negative": "No organism recorded, {when}, in {visit}",
+    "record_flag_found": "An abnormal flag is recorded for the {selector} "
+                         "result of {item} within {scope}:",
+    "record_flag_none": "No abnormal flag is recorded for the {selector} "
+                        "result of {item} within {scope}:",
     "record_abnormal_summary": {
         "lab": "Results of {item} within {scope} flagged abnormal by the "
                "laboratory: {matches}.",
@@ -424,9 +462,16 @@ def list_candidate(request, bundle, bundle_ref, question):
             visits=visit_numbers(bundle, items)) for items in groups]
     statements.append(candidates.notice("record_list_complete"))
     statements += [candidates.notice(notice)
-                   for notice in kind_notices(question)]
+                   for notice in kind_notices(question)
+                   + surgery_notices(question)]
     return candidate(request, bundle_ref, "answer", statements,
                      disclosure(bundle, question.kind))
+
+
+def surgery_notices(question):
+    """Return the notice of procedures asked about as surgery, which the
+    record does not mark."""
+    return ("surgery_unmarked",) if question.category == "surgery" else ()
 
 
 def matching(context, bundle, question, resolution):
@@ -509,14 +554,148 @@ def count_candidate(request, bundle, bundle_ref, question, resolution,
                            item=item_terms(question, resolution),
                            count=len(entries), scope=request.scope,
                            visits=visit_numbers(bundle, entries))]
+    items += [candidates.notice(notice) for notice in
+              surgery_notices(question)]
     return candidate(request, bundle_ref, "answer", items,
+                     disclosure(bundle, question.kind))
+
+
+def cultures(entries):
+    """Return a microbiology test's records by culture: those taken at one
+    time, in time order, each in time order."""
+    found = collections.OrderedDict()
+    for entry in sorted(entries, key=timed):
+        found.setdefault(entry.start or "", []).append(entry)
+    return list(found.values())
+
+
+def grown(culture):
+    """Return True when a culture's records name an organism."""
+    return any(entry.microbe.organism is not None for entry in culture)
+
+
+def shown_cultures(tests):
+    """Return (the cultures of a test an answer shows, the records of the
+    others): every culture that grew, and the latest of the others, up to
+    MAX_VALUES cultures in all."""
+    positive = [culture for culture in tests if grown(culture)]
+    negative = [culture for culture in tests if not grown(culture)]
+    room = max(0, MAX_VALUES - len(positive))
+    kept = negative[len(negative) - room:] if room else []
+    shown = [culture for culture in tests
+             if grown(culture) or any(culture is item for item in kept)]
+    return shown, sum(len(culture) for culture in tests) - sum(
+        len(culture) for culture in shown)
+
+
+def culture_lines(culture, visits):
+    """Return the statements of one culture: each organism with its
+    antibiotic results, in the order of its first record, then the
+    records that name no organism."""
+    organisms = collections.OrderedDict()
+    negative = []
+    for entry in culture:
+        if entry.microbe.organism is None:
+            negative.append(entry)
+        else:
+            organisms.setdefault(entry.microbe.organism, []).append(entry)
+    statements = [statement(
+        "record_growth_item", refs=[entry.ref for entry in rows],
+        organism=rows[0].ref, when=rows[0].ref,
+        visit=visits[rows[0].visit_ref],
+        results=tuple(entry.ref for entry in rows))
+        for rows in organisms.values()]
+    if negative:
+        statements.append(statement(
+            "record_growth_negative", refs=[entry.ref for entry in negative],
+            when=negative[0].ref, visit=visits[negative[0].visit_ref]))
+    return statements
+
+
+def growth_candidate(request, bundle, bundle_ref, question, resolution,
+                     matches):
+    """Return the values of microbiology tests: whether an organism is
+    recorded, in every culture or in the latest or the first of each test,
+    then each test's cultures shown."""
+    entries = [entry for entry, _ in matches]
+    if not entries:
+        return absent(request, bundle, bundle_ref, question, resolution,
+                      kind_notices(question))
+    visits = {visit.ref: visit.ref for visit in bundle.visits}
+    selected = question.selector in ("latest", "first")
+    body, earlier, found = [], 0, False
+    for group in grouped(entries):
+        tests = cultures(group)
+        if selected:
+            shown = [tests[-1] if question.selector == "latest" else tests[0]]
+            body.append(statement(
+                "record_growth_selected_group",
+                selector="only" if len(tests) == 1 else question.selector,
+                item=candidates.ItemName(record=shown[0][0].ref)))
+        else:
+            shown, left = shown_cultures(tests)
+            earlier += left
+            body.append(statement(
+                "record_growth_group",
+                item=candidates.ItemName(record=tests[0][0].ref)))
+        for culture in shown:
+            found = found or grown(culture)
+            body += culture_lines(culture, visits)
+    item = item_terms(question, resolution)
+    if selected:
+        lead = statement("record_growth_found_selected" if found
+                         else "record_growth_none_selected",
+                         selector=question.selector, item=item,
+                         scope=request.scope)
+    else:
+        lead = statement("record_growth_found" if found
+                         else "record_growth_none", item=item,
+                         scope=request.scope)
+    statements = [lead] + body
+    if earlier:
+        statements.append(candidates.notice("values_omitted",
+                                            earlier=earlier))
+    statements += [candidates.notice(notice)
+                   for notice in kind_notices(question)]
+    return candidate(request, bundle_ref, "answer", statements,
+                     disclosure(bundle, question.kind))
+
+
+def flag_candidate(request, bundle, bundle_ref, question, resolution,
+                   matches):
+    """Return, for each matching laboratory test, the result a selector
+    picks and whether the laboratory flagged it abnormal."""
+    entries = [entry for entry, _ in matches if has_value(entry)]
+    if not entries:
+        return absent(request, bundle, bundle_ref, question, resolution,
+                      kind_notices(question))
+    visits = {visit.ref: visit.ref for visit in bundle.visits}
+    statements = []
+    for items in grouped(entries):
+        entry, selector = chosen(items, question.selector)
+        statements.append(statement(
+            "record_flag_found" if flagged(entry) else "record_flag_none",
+            selector=selector, item=candidates.ItemName(record=entry.ref),
+            scope=request.scope))
+        statements.append(statement(
+            "record_value_item", refs=(entry.ref,), value=entry.ref,
+            when=entry.ref, visit=visits[entry.visit_ref]))
+    statements.append(candidates.notice("not_flagged"))
+    return candidate(request, bundle_ref, "answer", statements,
                      disclosure(bundle, question.kind))
 
 
 def values_candidate(request, bundle, bundle_ref, question, resolution,
                      matches):
     """Return the values of each matching item: the one a selector
-    picks, or all of them in time order."""
+    picks, or all of them in time order; microbiology's by culture; a
+    laboratory result asked about by its flag, with the flag."""
+    if question.kind == "microbiology":
+        return growth_candidate(request, bundle, bundle_ref, question,
+                                resolution, matches)
+    if question.category == "lab_flag":
+        return flag_candidate(request, bundle, bundle_ref, question,
+                              resolution, matches)
     entries = [entry for entry, _ in matches if has_value(entry)]
     if not entries:
         return absent(request, bundle, bundle_ref, question, resolution,
@@ -657,6 +836,10 @@ def clarification(request_id, case, scope, question, resolution=None):
     be answered as asked."""
     from ehr_evidence_app.qa import templates
     term = templates.term_slot(question.phrase or "")
+    if question.category == "prediction":
+        return templates.notice(request_id, case, scope, "clarification",
+                                "prediction_selection_needed",
+                                "prediction_selection")
     if question.category == "indication":
         return templates.notice(request_id, case, scope, "clarification",
                                 "task_ambiguous", "indication_unrecorded",

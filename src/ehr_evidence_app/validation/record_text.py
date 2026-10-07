@@ -168,6 +168,40 @@ def microbe_text(microbe):
     return text
 
 
+def organism_text(entry):
+    """Return the organism a microbiology row names."""
+    return entry.microbe.organism
+
+
+# The order an organism's antibiotic results are given in, by
+# interpretation; results without one come last.
+RESULT_ORDER = (("R", "resistant to"), ("I", "intermediate to"),
+                ("S", "sensitive to"), ("P", "pending for"),
+                (None, "tested without an interpretation against"))
+
+
+def joined(names):
+    """Return names joined as a list: "A", "A and B", "A, B and C"."""
+    if len(names) < 2:
+        return "".join(names)
+    return "%s and %s" % (", ".join(names[:-1]), names[-1])
+
+
+def results_text(entries):
+    """Return the antibiotic results of one organism's microbiology rows,
+    by interpretation, each antibiotic named once, or that none is
+    recorded."""
+    parts = []
+    for reading, words in RESULT_ORDER:
+        names = sorted({entry.microbe.antibiotic for entry in entries
+                        if entry.microbe.antibiotic is not None
+                        and entry.microbe.interpretation == reading},
+                       key=lambda name: (name.casefold(), name))
+        if names:
+            parts.append("%s %s" % (words, joined(names)))
+    return "; ".join(parts) or "no antibiotic results recorded"
+
+
 def stay_text(entry):
     """Return a stay's times and length."""
     text = "%s to %s" % (date_text(entry.start), date_text(entry.end)

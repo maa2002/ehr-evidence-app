@@ -4,9 +4,12 @@ Correct answers about the invented record (tests.qa.record_cases), of
 every task and outcome, are broken one fact at a time: a statement left
 out or repeated, a count, selector, match kind, field, kind, visit, value,
 time or named item changed, a reference dropped, added or swapped for a
-record of another item, a notice replaced or added, the outcome, the
-reason codes, the scope, the case or the bundle changed, a summary moved,
-stays listed out of time order.
+record of another item, an organism or an antibiotic result taken from
+another record or left out, whether an organism or an abnormal flag is
+recorded stated the other way, a notice replaced or added, the outcome,
+the reason codes, the
+scope, the case or the bundle changed, a summary moved, stays listed out
+of time order.
 A writer that is not the templates can make each of these mistakes; the
 gate must withhold every one (a validation rejection, or a document that
 does not parse), and must release every original and every control (a
@@ -53,6 +56,14 @@ SAMPLES = (
     ("What were all the potassium values?", cases.ALL),
     ("Were any vitals high?", cases.ALL),
     ("What organisms grew?", cases.ALL),
+    ("Was the blood culture positive?", VISIT[1]),
+    ("Was the latest urine culture positive?", cases.ALL),
+    ("Was the first blood culture positive?", cases.ALL),
+    ("Was the urine culture positive?", cases.HISTORY),
+    ("Was the latest potassium high?", cases.ALL),
+    ("Was the first potassium normal?", cases.ALL),
+    ("Did she have surgery?", cases.ALL),
+    ("How many operations?", cases.ALL),
     ("What doses were given?", cases.ALL),
     ("What was the last troponin?", cases.HISTORY),
     ("Were any labs abnormal?", cases.ALL),
@@ -75,6 +86,15 @@ FIELDS = ("sex", "age", "race", "death", "admitted", "length", "summary",
           "hospital_death", "insurance")
 KINDS = ("condition", "procedure", "medication", "lab", "microbiology",
          "vital", "transfer", "icu_stay")
+# The statements that say whether an organism or an abnormal flag is
+# recorded, each with the one that says the opposite in the same slots.
+GROWTH_PAIRS = {
+    "record_growth_found": "record_growth_none",
+    "record_growth_none": "record_growth_found",
+    "record_growth_found_selected": "record_growth_none_selected",
+    "record_growth_none_selected": "record_growth_found_selected",
+    "record_flag_found": "record_flag_none",
+    "record_flag_none": "record_flag_found"}
 VOCAB = suite.synthetic_vocabulary()
 CONTEXT = cases.context()
 
@@ -209,6 +229,23 @@ def mutants(sample):
             found.append((label + " another term", with_slots(
                 good, index, item=candidates.ItemName(
                     terms=slots.item.terms + ("another item",)))))
+        if slots.organism is not None:
+            found.append((label + " organism of another record", with_slots(
+                good, index, organism=other_item(bundle, slots.organism))))
+        if slots.results:
+            if len(slots.results) > 1:
+                found.append((label + " a result left out", with_slots(
+                    good, index, results=slots.results[:-1])))
+            found.append((label + " a result of another item added",
+                          with_slots(good, index, results=slots.results + (
+                              other_item(bundle, slots.results[0],
+                                         exclude=cited),))))
+        if statement.kind in GROWTH_PAIRS:
+            pair = GROWTH_PAIRS[statement.kind]
+            found.append(("%s stated as %s" % (label, pair), replaced(
+                good, index, statement.model_copy(update={
+                    "kind": pair,
+                    "wording": record_answer.WORDINGS[pair]}))))
         if slots.scope is not None:
             other = next(scope for scope in cases.SCOPES
                          if scope != slots.scope)
@@ -266,7 +303,8 @@ def mutants(sample):
             if statement.kind != "notice"]
     if first.kind in ("record_list_summary", "record_presence_summary",
                       "record_abnormal_summary", "visit_summary",
-                      "record_value_group") and len(body) > 1:
+                      "record_value_group") + tuple(GROWTH_PAIRS) and len(
+                          body) > 1:
         moved = statements[1:body[-1] + 1] + (first,) + statements[
             body[-1] + 1:]
         found.append(("summary moved after its items", good.model_copy(

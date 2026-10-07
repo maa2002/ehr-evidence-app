@@ -771,7 +771,11 @@ identifiers), selector and field.
     is the only one.
   - All values, and flagged results, show the latest 30 of a named item
     or of a microbiology test, and the latest one of each item of a
-    whole kind.
+    whole kind. Since `record-answer-v6`, a microbiology test's values
+    are its cultures (its records taken at one time): the latest or the
+    first culture, or every culture that grew an organism and the latest
+    of the others, 30 cultures in all; its flagged results are as
+    before.
   - Medication doses are not prepared, so a question about doses has no
     reference.
 

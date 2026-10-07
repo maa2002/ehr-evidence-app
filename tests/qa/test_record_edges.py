@@ -45,6 +45,22 @@ QUESTIONS = (
     "Was the hemoglobin low?", "Any resistant organisms?",
     "Were any cultures resistant?", "What organisms grew?",
     "Was the blood culture positive?", "What were the microbiology results?",
+    "Was the blood culture negative?", "Were any cultures negative?",
+    "Did the urine culture grow anything?",
+    "Was the latest blood culture positive?",
+    "What was the first urine culture result?",
+    "What was the latest culture result?",
+    "Was the latest potassium high?", "Was the first potassium normal?",
+    "Is the latest creatinine abnormal?", "Was the troponin positive?",
+    "Was the troponin T negative?", "Were any labs normal?",
+    "Was the heart rate normal?", "Was the highest glucose abnormal?",
+    "Was the latest culture resistant?", "Did she have surgery?",
+    "How many operations?", "Was she admitted through the ED?",
+    "Was it an emergency?", "Was she readmitted?", "Is she over 65?",
+    "Was she alive at discharge?", "Did she die in hospital?",
+    "Is the predicted diagnosis recorded?", "Was normal saline given?",
+    "Did the culture grow gram negative rods?",
+    "Did any culture grow e coli?", "Was the creatinine normal, please?",
     "Was heparin given?", "Was heparin not given?", "Did she never get "
     "heparin?", "Was she on Lasix?", "Was furosemide given?",
     "Any antibiotics?", "Any opioids?", "Was insulin given?",
@@ -237,15 +253,66 @@ class ValueTests(unittest.TestCase):
                       found.response.text)
         self.assertNotIn("de-identification mEq/L", found.response.text)
 
-    def test_microbiology_lists_every_result_of_a_test(self):
-        """What grew lists each organism and antibiotic of a culture."""
+    def test_microbiology_says_whether_an_organism_is_recorded(self):
+        """What grew says first that an organism is recorded, then each
+        test's cultures: each organism once with its antibiotic results,
+        and a culture that grew nothing."""
         found = ask("What organisms grew?", cases.ALL)
-        text = found.response.text
-        for words in ("AMPICILLIN resistant (R)", "CEFAZOLIN sensitive (S)",
-                      "NITROFURANTOIN intermediate (I)",
-                      "BLOOD CULTURE; no organism recorded"):
-            self.assertIn(words, text)
+        self.assertEqual(found.response.text, "\n".join((
+            "An organism is recorded in the results of microbiology tests "
+            "within all case visits, including the final admission.",
+            "Blood Culture, Routine (BLOOD CULTURE):",
+            "- No organism recorded, 10 Jan 2150 10:00, in visit 1",
+            "URINE CULTURE (URINE):",
+            "- ESCHERICHIA COLI, 2 Jun 2151 08:00, in visit 3: resistant to "
+            "AMPICILLIN; intermediate to NITROFURANTOIN; sensitive to "
+            "CEFAZOLIN")))
         self.assertNotIn("values_omitted", notices_of(found))
+        bundle, _ = CONTEXT.records.bundle(1, cases.ALL)
+        micro = {entry.ref for entry in bundle.records
+                 if entry.kind == "microbiology"}
+        self.assertEqual(refs_cited(found.response), micro)
+
+    def test_a_culture_that_grew_nothing(self):
+        """Positive and negative ask the same: no organism is recorded."""
+        for question in ("Was the blood culture positive?",
+                         "Was the blood culture negative?"):
+            found = ask(question, VISIT[1])
+            self.assertEqual(found.response.outcome, "answer")
+            self.assertEqual(found.response.text.splitlines()[0],
+                             "No organism is recorded in the results of "
+                             "BLOOD CULTURE within visit 1.")
+
+    def test_the_latest_or_first_culture(self):
+        """The latest or the first asks about one culture of each test,
+        the only one when the test has one."""
+        found = ask("Was the latest urine culture positive?", cases.ALL)
+        self.assertEqual(found.response.text.splitlines()[:2], [
+            "An organism is recorded in the results of the latest URINE "
+            "CULTURE within all case visits, including the final admission.",
+            "Only URINE CULTURE (URINE):"])
+        found = ask("Was the first blood culture positive?", cases.ALL)
+        self.assertEqual(kinds_of(found), [
+            "record_growth_none_selected", "record_growth_selected_group",
+            "record_growth_negative"])
+
+    def test_a_culture_asked_about_by_its_organism(self):
+        """An organism named where a test would be asks whether an
+        organism is recorded in its own results, by culture."""
+        found = ask("Did any culture grow e coli?", cases.ALL)
+        self.assertEqual(found.response.text, "\n".join((
+            "An organism is recorded in the results of ESCHERICHIA COLI "
+            "within all case visits, including the final admission.",
+            "URINE CULTURE (URINE):",
+            "- ESCHERICHIA COLI, 2 Jun 2151 08:00, in visit 3: resistant to "
+            "AMPICILLIN; intermediate to NITROFURANTOIN; sensitive to "
+            "CEFAZOLIN")))
+
+    def test_a_culture_outside_the_scope_is_not_recorded(self):
+        """A named test the scope lacks is not recorded, as before."""
+        found = ask("Was the urine culture positive?", cases.HISTORY)
+        self.assertEqual(found.response.outcome, "not_recorded")
+        self.assertEqual(kinds_of(found), ["record_absent", "notice"])
 
     def test_doses_of_the_medications(self):
         """A dose question gives each medication's latest dose."""
@@ -254,6 +321,64 @@ class ValueTests(unittest.TestCase):
         self.assertIn("40 mg, route PO", found.response.text)
         self.assertIn("dose not linked", ask(
             "What doses were given?", cases.HISTORY).response.text)
+
+
+class DirectAnswerTests(unittest.TestCase):
+    """Questions that ask yes or no, answered directly
+    (record-questions-v8, record-answer-v6)."""
+
+    def test_a_selected_result_says_whether_it_is_flagged(self):
+        """The latest or first result asked about by its flag says first
+        whether the laboratory flagged it."""
+        found = ask("Was the latest potassium high?", cases.ALL)
+        self.assertEqual(found.response.text.splitlines()[0],
+                         "An abnormal flag is recorded for the latest result "
+                         "of Potassium (Blood, Chemistry) within all case "
+                         "visits, including the final admission:")
+        found = ask("Was the first potassium normal?", cases.ALL)
+        self.assertEqual(found.response.text.splitlines()[:2], [
+            "No abnormal flag is recorded for the first result of "
+            "Potassium (Blood, Chemistry) within all case visits, including "
+            "the final admission:",
+            "- 4.0 mEq/L (reference range 3.3 to 5.1), 5 Jan 2150 00:00, in "
+            "visit 2"])
+        self.assertIn("not_flagged", notices_of(found))
+
+    def test_how_a_result_reads_asks_for_its_flag(self):
+        """Positive, negative or normal asks for the flagged results."""
+        found = ask("Was the troponin positive?", cases.ALL)
+        self.assertEqual((found.response.task, found.response.outcome),
+                         ("record_abnormal", "not_recorded"))
+        self.assertTrue(found.response.text.startswith(
+            "No result of Troponin T within all case visits"))
+
+    def test_surgery_is_not_marked(self):
+        """Procedures asked about as surgery say the record does not mark
+        it; procedures asked about as such do not."""
+        for question in ("Did she have surgery?", "How many operations?"):
+            self.assertIn("surgery_unmarked",
+                          notices_of(ask(question, cases.ALL)))
+        self.assertNotIn("surgery_unmarked", notices_of(
+            ask("Which procedures were done?", cases.ALL)))
+
+    def test_visits_and_the_person_in_other_words(self):
+        """Where she came from, her age and her death, asked otherwise."""
+        lines = ask("Was she admitted through the ED?",
+                    cases.ALL).response.text.splitlines()
+        self.assertIn("- visit 1: admitted from EMERGENCY ROOM", lines)
+        lines = ask("Is she over 65?", cases.ALL).response.text.splitlines()
+        self.assertEqual(lines[:3], ["- At visit 1: age 89",
+                                     "- At visit 2: age 89",
+                                     "- At visit 3: age over 89"])
+        lines = ask("Was she alive at discharge?",
+                    cases.ALL).response.text.splitlines()
+        self.assertIn("- visit 3: died in hospital, 4 Jun 2151 09:00", lines)
+
+    def test_the_prediction_has_its_own_workflow(self):
+        """A question about the prediction is pointed to its workflow."""
+        found = ask("Is the predicted diagnosis recorded?", cases.ALL)
+        self.assertEqual(found.response.reason_codes,
+                         ("prediction_selection_needed",))
 
 
 class MedicationTests(unittest.TestCase):

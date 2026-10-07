@@ -22,6 +22,19 @@ claim_unsupported:
 * a value is the latest, first, highest or lowest of its item's values
   as its selector says; every matching item is answered once; values in
   time order are the latest of their item, the others counted;
+* microbiology values say that an organism is recorded exactly when one
+  of the cultures they show names one, in every culture of the matching
+  tests or in the latest or first of each as the question asks; each
+  test is shown once, headed by its earliest record, or by the first
+  record of the culture its selector picks (the only one when the test
+  has one culture); each culture gives each organism once, in the order
+  of its first record, citing all its records in time order with their
+  antibiotic results, then its records that name no organism; every
+  culture that grew is shown, and of the others the latest, up to 30
+  cultures of a test, the rest counted;
+* a laboratory result a selector picks, asked about by its flag, is the
+  one the selector picks for every matching test, and says whether the
+  laboratory flagged it, as the record does;
 * flagged results are every result of the matching items that the
   laboratory flagged abnormal, or that microbiology reported resistant;
 * visits and the person's details cover every visit of the scope, each
@@ -344,9 +357,174 @@ def value_lines_supported(statements, groups, records, limit=MAX_VALUES):
     return left
 
 
+def cultures_of(entries):
+    """Return records by culture: those taken at one time, in time
+    order, each in time order."""
+    found = collections.OrderedDict()
+    for entry in sorted(entries, key=timed):
+        found.setdefault(entry.start or "", []).append(entry)
+    return list(found.values())
+
+
+def culture_grew(culture):
+    """Return True when a culture's records name an organism."""
+    return any(entry.microbe.organism is not None for entry in culture)
+
+
+def culture_lines_supported(lines, shown):
+    """Return True when the lines of a test's cultures give, culture by
+    culture, each organism once in the order of its first record, citing
+    all its records in time order with their antibiotic results, then the
+    records that name no organism."""
+    expected = []
+    for culture in shown:
+        organisms = collections.OrderedDict()
+        negative = []
+        for entry in culture:
+            if entry.microbe.organism is None:
+                negative.append(entry)
+            else:
+                organisms.setdefault(entry.microbe.organism, []).append(
+                    entry)
+        expected += [("record_growth_item", rows)
+                     for rows in organisms.values()]
+        if negative:
+            expected.append(("record_growth_negative", negative))
+    if len(lines) != len(expected):
+        return False
+    for line, (kind, rows) in zip(lines, expected):
+        refs = tuple(entry.ref for entry in rows)
+        slots = line.slots
+        if (line.kind != kind or line.refs != refs or slots.when != refs[0]
+                or slots.visit != rows[0].visit_ref):
+            return False
+        if kind == "record_growth_item" and (slots.organism != refs[0]
+                                             or slots.results != refs):
+            return False
+    return True
+
+
+def growth_supported(candidate, bundle, check, records):
+    """Return True when microbiology values say whether an organism is
+    recorded in the cultures they show, and show each test's cultures as
+    the question's selector picks them."""
+    matches = [records[ref] for ref in matches_of(check, bundle)]
+    if candidate.outcome == "not_recorded":
+        return not matches and absence_named(candidate, check, bundle)
+    question = check.question
+    selected = question.selector in ("latest", "first")
+    body = [statement for statement in candidate.statements
+            if statement.kind != "notice"]
+    omitted = [statement for statement in candidate.statements
+               if statement.notice == "values_omitted"]
+    groups = groups_of(matches)
+    header_kind = ("record_growth_selected_group" if selected
+                   else "record_growth_group")
+    found, left, seen, index = False, 0, [], 1
+    while index < len(body):
+        header = body[index]
+        index += 1
+        lines = []
+        while index < len(body) and body[index].kind in (
+                "record_growth_item", "record_growth_negative"):
+            lines.append(body[index])
+            index += 1
+        named = header.slots.item.record if header.slots.item else None
+        if header.kind != header_kind or named not in records:
+            return False
+        key = record.item_key(records[named])
+        tests = cultures_of(groups.get(key, ()))
+        if not tests or key in seen:
+            return False
+        seen.append(key)
+        if selected:
+            shown = [tests[-1] if question.selector == "latest"
+                     else tests[0]]
+            wanted = "only" if len(tests) == 1 else question.selector
+            if header.slots.selector != wanted or named != shown[0][0].ref:
+                return False
+        else:
+            positive = [culture for culture in tests if culture_grew(culture)]
+            negative = [culture for culture in tests
+                        if not culture_grew(culture)]
+            room = max(0, MAX_VALUES - len(positive))
+            kept = negative[len(negative) - room:] if room else []
+            shown = [culture for culture in tests if culture_grew(culture)
+                     or any(culture is item for item in kept)]
+            left += sum(len(culture) for culture in tests) - sum(
+                len(culture) for culture in shown)
+            if named != tests[0][0].ref:
+                return False
+        if not culture_lines_supported(lines, shown):
+            return False
+        found = found or any(culture_grew(culture) for culture in shown)
+    if not body or set(seen) != set(groups):
+        return False
+    lead = body[0]
+    if selected:
+        expected = ("record_growth_found_selected" if found
+                    else "record_growth_none_selected")
+        if lead.slots.selector != question.selector:
+            return False
+    else:
+        expected = "record_growth_found" if found else "record_growth_none"
+    return (lead.kind == expected and lead.slots.item is not None
+            and lead.slots.item.terms == expected_terms(check)
+            and bool(omitted) == bool(left)
+            and (not omitted or omitted[0].slots.earlier == left))
+
+
+def flags_supported(candidate, bundle, check, records):
+    """Return True when, for every matching laboratory test, the result
+    the selector picks is stated once, with whether the laboratory
+    flagged it."""
+    matches = [records[ref] for ref in matches_of(check, bundle)
+               if has_value(records[ref])]
+    if candidate.outcome == "not_recorded":
+        return not matches and absence_named(candidate, check, bundle)
+    groups = groups_of(matches)
+    body = [statement for statement in candidate.statements
+            if statement.kind != "notice"]
+    if len(body) != 2 * len(groups):
+        return False
+    wanted = check.question.selector
+    seen = set()
+    for lead, line in zip(body[0::2], body[1::2]):
+        if lead.kind not in ("record_flag_found", "record_flag_none") or (
+                line.kind != "record_value_item"):
+            return False
+        entry = (records.get(lead.slots.item.record) if lead.slots.item
+                 else None)
+        key = record.item_key(entry) if entry else None
+        if entry is None or key in seen or key not in groups:
+            return False
+        # A single record is the only one; the latest stands in for the
+        # highest or lowest only when no value of the test is a number.
+        allowed = {wanted, "only"}
+        if wanted in ("highest", "lowest") and not any(
+                number(item) is not None for item in groups[key]):
+            allowed.add("latest")
+        expected = selected(groups[key], lead.slots.selector)
+        if (expected is None or expected.ref != entry.ref
+                or lead.slots.selector not in allowed
+                or (lead.kind == "record_flag_found") != flagged(entry)
+                or line.refs != (entry.ref,) or line.slots.value != entry.ref
+                or line.slots.when != entry.ref
+                or line.slots.visit != entry.visit_ref):
+            return False
+        seen.add(key)
+    return seen == set(groups)
+
+
 def values_supported(candidate, bundle, check, records):
     """Return True when every matching item's value is the one its
-    selector says, or its values are listed in time order."""
+    selector says, or its values are listed in time order; microbiology's
+    by culture; a selected laboratory result asked about by its flag,
+    with the flag."""
+    if check.question.kind == "microbiology":
+        return growth_supported(candidate, bundle, check, records)
+    if check.question.category == "lab_flag":
+        return flags_supported(candidate, bundle, check, records)
     matches = [records[ref] for ref in matches_of(check, bundle)
                if has_value(records[ref])]
     if candidate.outcome == "not_recorded":
@@ -482,17 +660,22 @@ def expected_notices(candidate, check):
     task, outcome = candidate.task, candidate.outcome
     vital = {"vitals_icu_only"} if question.kind == "vital" else set()
     flag = {"not_flagged"} if question.kind == "lab" else set()
+    surgery = ({"surgery_unmarked"} if question.category == "surgery"
+               else set())
     if outcome == "not_recorded":
         return {"absence"} | (flag if task == "record_abnormal" else vital)
     if task == "record_list":
-        return {"record_list_complete"} | vital
+        return {"record_list_complete"} | vital | surgery
+    if task == "record_count":
+        return surgery
     if task == "record_timing":
         return {"dates_shifted"}
     if task == "record_values":
         return vital | ({"vital_no_flag"} if question.kind == "vital"
                         and question.category == "vital_flag"
                         and question.selector in ("highest", "lowest")
-                        else set())
+                        else set()) | (
+            flag if question.category == "lab_flag" else set())
     if task == "record_abnormal":
         return flag
     if task == "visit_details":

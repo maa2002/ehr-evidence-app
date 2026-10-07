@@ -489,6 +489,19 @@
           "default": null,
           "title": "Options"
         },
+        "organism": {
+          "anyOf": [
+            {
+              "pattern": "^R[1-9][0-9]{0,5}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Organism"
+        },
         "rank": {
           "anyOf": [
             {
@@ -527,6 +540,23 @@
             }
           ],
           "default": null
+        },
+        "results": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^R[1-9][0-9]{0,5}$",
+                "type": "string"
+              },
+              "maxItems": 5000,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Results"
         },
         "scope": {
           "anyOf": [
@@ -706,6 +736,16 @@
             "record_value",
             "record_value_group",
             "record_value_item",
+            "record_growth_found",
+            "record_growth_none",
+            "record_growth_found_selected",
+            "record_growth_none_selected",
+            "record_growth_group",
+            "record_growth_selected_group",
+            "record_growth_item",
+            "record_growth_negative",
+            "record_flag_found",
+            "record_flag_none",
             "record_abnormal_summary",
             "record_abnormal_absent",
             "visit_summary",
@@ -760,6 +800,7 @@
                 "record_list_complete",
                 "values_omitted",
                 "not_flagged",
+                "surgery_unmarked",
                 "vital_no_flag",
                 "vitals_icu_only",
                 "dates_shifted",
@@ -814,9 +855,11 @@
             "names": null,
             "omitted": null,
             "options": null,
+            "organism": null,
             "rank": null,
             "records": null,
             "requested": null,
+            "results": null,
             "scope": null,
             "score": null,
             "selector": null,

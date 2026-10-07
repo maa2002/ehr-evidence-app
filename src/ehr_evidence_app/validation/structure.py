@@ -12,7 +12,8 @@ answers and the bundle bound to that request, before any other check:
   a visit's or the person's field is not one of its statement kind's; the
   statements are not in their
   answer's order (a list's items follow its summary, an explanation's
-  history and context follow their own driver); a statement cites
+  history and context follow their own driver, a culture's lines follow
+  its test after whether an organism is recorded); a statement cites
   evidence its kind does not cite; or the response it renders would break
   the response contract;
 * scope_violated: the candidate, or a scope it states, names another
@@ -75,10 +76,21 @@ COMPOSITION = {
     ("record_timing", "answer"): {"record_presence_summary": (1, 1),
                                   "record_time": (1, 2), "notice": (1, 1)},
     ("record_count", "answer"): {"record_count": (0, 1),
-                                 "record_count_kind": (0, 1)},
+                                 "record_count_kind": (0, 1),
+                                 "notice": (0, 1)},
     ("record_values", "answer"): {"record_value": (0, None),
                                   "record_value_group": (0, None),
                                   "record_value_item": (0, None),
+                                  "record_growth_found": (0, 1),
+                                  "record_growth_none": (0, 1),
+                                  "record_growth_found_selected": (0, 1),
+                                  "record_growth_none_selected": (0, 1),
+                                  "record_growth_group": (0, None),
+                                  "record_growth_selected_group": (0, None),
+                                  "record_growth_item": (0, None),
+                                  "record_growth_negative": (0, None),
+                                  "record_flag_found": (0, None),
+                                  "record_flag_none": (0, None),
                                   "notice": (0, 3)},
     ("record_abnormal", "answer"): {"record_abnormal_summary": (1, 1),
                                     "record_value_group": (1, None),
@@ -140,6 +152,16 @@ for _task in ("record_list", "record_presence", "record_timing",
 # The value lists of a record answer: each group's header, then its
 # values; a selector's values stand alone.
 VALUE_LINES = ("record_value", "record_value_group", "record_value_item")
+# Microbiology values: whether an organism is recorded, for every culture
+# or for the latest or first, then each test's header and its lines.
+GROWTH_LEADS = {"record_growth_found": "record_growth_group",
+                "record_growth_none": "record_growth_group",
+                "record_growth_found_selected": "record_growth_selected_group",
+                "record_growth_none_selected": "record_growth_selected_group"}
+GROWTH_LINES = ("record_growth_item", "record_growth_negative")
+# A selected laboratory result asked about by its flag: whether the
+# laboratory flagged it, then the result, for each test.
+FLAG_LEADS = ("record_flag_found", "record_flag_none")
 # The statements under an explanation's driver, in their order.
 DRIVER_LINES = ("driver_history", "driver_context")
 # The statements that name the condition a presence question asks about.
@@ -281,8 +303,9 @@ def reference_problems(statement, candidate, bundle, concept_name):
         if slots.visits and any(number not in numbers
                                 for number in slots.visits):
             problems.add("reference_unresolved")
-        named = (slots.value, slots.when, slots.item.record
-                 if slots.item is not None else None)
+        named = (slots.value, slots.when, slots.organism, slots.item.record
+                 if slots.item is not None else None) + tuple(
+            slots.results or ())
         if any(ref is not None and ref not in lookup.records
                for ref in named):
             problems.add("reference_unresolved")
@@ -293,9 +316,9 @@ def reference_problems(statement, candidate, bundle, concept_name):
             problems.add("reference_unresolved")
     elif refs or slots.visits or slots.driver is not None or (
             slots.condition is not None
-            and slots.condition.event is not None) or any(
+            and slots.condition.event is not None) or slots.results or any(
             value is not None for value in (
-                slots.value, slots.when, slots.visit,
+                slots.value, slots.when, slots.visit, slots.organism,
                 slots.item.record if slots.item is not None else None)):
         problems.add("reference_unresolved")
     concepts = tuple(slots.names or ()) + (
@@ -353,6 +376,20 @@ def explanation_in_order(statements):
                                       for kind in kinds[index:])
 
 
+def growth_in_order(body):
+    """Return True when microbiology values state first whether an
+    organism is recorded, then each test's header of the lead's kind,
+    each followed by its own lines."""
+    header = GROWTH_LEADS[body[0]]
+    rest = body[1:]
+    if not rest or rest[0] != header or any(
+            kind not in (header,) + GROWTH_LINES for kind in rest):
+        return False
+    heads = [index for index, kind in enumerate(rest) if kind == header]
+    ends = heads[1:] + [len(rest)]
+    return all(end - start > 1 for start, end in zip(heads, ends))
+
+
 def values_in_order(statements):
     """Return True when a record answer's values come first, each group's
     header before its own values, and its notices last."""
@@ -361,6 +398,16 @@ def values_in_order(statements):
     if any(kind == "notice" for kind in kinds[:count]):
         return False
     body = kinds[:count]
+    if body and body[0] in GROWTH_LEADS:
+        return growth_in_order(body)
+    if any(kind.startswith("record_growth") for kind in body):
+        return False
+    if body and body[0] in FLAG_LEADS:
+        return len(body) % 2 == 0 and all(
+            lead in FLAG_LEADS and line == "record_value_item"
+            for lead, line in zip(body[0::2], body[1::2]))
+    if any(kind in FLAG_LEADS for kind in body):
+        return False
     if body and body[0] == "record_abnormal_summary":
         body = body[1:]
     if not body:

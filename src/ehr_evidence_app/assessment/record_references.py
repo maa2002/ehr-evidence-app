@@ -39,8 +39,11 @@ the source records and the vocabularies' tables.
   - Values give, for each matching item, the record its selector picks:
     the latest, first, highest or lowest (the latest when no value is a
     number; a single record is the only one). For all values: the latest
-    30 of a named item or of a microbiology test, and the latest of each
-    item of another whole kind.
+    30 of a named item, and the latest of each item of another whole
+    kind. A microbiology test's values are its cultures, the records
+    taken at one time (from record-answer-v6): the latest or the first
+    culture, or every culture that grew an organism and the latest of
+    the others, 30 cultures in all.
   - Abnormal results are the laboratory results flagged abnormal and the
     microbiology results reported resistant.
   - Visit details give the field for every visit of the scope; person
@@ -512,6 +515,32 @@ def keyed(rows):
     return frozenset(row.key for row in rows)
 
 
+def cultures(rows):
+    """Return a microbiology test's records by culture: those taken at one
+    time, in time order."""
+    found = collections.OrderedDict()
+    for row in sorted(rows, key=lambda row: row.order):
+        found.setdefault(row.time, []).append(row)
+    return list(found.values())
+
+
+def culture_rows(rows, selector):
+    """Return the records an answer shows of a microbiology test's
+    values: those of its latest or first culture, as the selector says;
+    otherwise every culture that grew an organism and the latest of the
+    others, up to MAX_VALUES cultures in all."""
+    tests = cultures(rows)
+    if selector in ("latest", "first"):
+        return tests[-1] if selector == "latest" else tests[0]
+    grew = [index for index, culture in enumerate(tests)
+            if any(row.value for row in culture)]
+    other = [index for index in range(len(tests)) if index not in grew]
+    room = max(0, MAX_VALUES - len(grew))
+    kept = set(grew) | set(other[len(other) - room:] if room else ())
+    return [row for index, culture in enumerate(tests) if index in kept
+            for row in culture]
+
+
 def item_reference(request_id, case, scope, asked, descendants):
     """Return the reference of a question about an item, or a whole kind,
     of the record."""
@@ -543,9 +572,12 @@ def item_reference(request_id, case, scope, asked, descendants):
     elif task == "record_values":
         selector = asked.selector or "latest"
         for item, found in groups.items():
-            picked[item] = (keyed(shown(found, asked.named, asked.kind))
-                            if selector == "all"
-                            else frozenset((pick(found, selector).key,)))
+            if asked.kind == "microbiology":
+                picked[item] = keyed(culture_rows(found, selector))
+            else:
+                picked[item] = (keyed(shown(found, asked.named, asked.kind))
+                                if selector == "all"
+                                else frozenset((pick(found, selector).key,)))
     return RecordReference(request_id, task, asked.kind, "answer", records,
                            picked, visits=visits)
 

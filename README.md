@@ -74,10 +74,12 @@ opening the evidence at the record it cites.
 
 ### The Whole Record
 
-![Two answers: every creatinine value across three visits, flagged against its reference range, and a blood culture's organism with its antibiotic susceptibilities, each line citing its record](docs/images/whole-record.png)
+![Two answers: every creatinine value across three visits, flagged against its reference range, and whether the blood culture grew: the organism with its antibiotic results, and a later culture that grew nothing, each line citing its records](docs/images/whole-record.png)
 
-Laboratory results keep their reference ranges and flags, and a culture lists
-its organism with every susceptibility. Each line cites its record.
+Laboratory results keep their reference ranges and flags. Asked whether a
+culture was positive, the answer first says whether an organism is recorded,
+then gives each organism with its antibiotic results and each culture that
+grew nothing. Each line cites its records.
 
 ### The Predicted Diagnosis
 
@@ -200,7 +202,7 @@ identifiers and machine paths.
 
 Mutation tests break correct answers one fact at a time, and every broken
 answer must be withheld. On the development case sets, all 24,770 mutants of
-condition answers and explanations (65 kinds of error) and all 30,921 mutants
+condition answers and explanations (65 kinds of error) and all 31,035 mutants
 of answers about the whole record are caught. On the invented fixtures, as CI
 runs it:
 

@@ -601,10 +601,13 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v7`, which removes a polite opening as the
-condition rules do, reads a name whole and, by rule 12, reads when a
-visit named by a scope phrase was); so are a dose question, a past
-question about death and a question about a first or last result. A
+(rules `record-questions-v8`, which removes a polite opening as the
+condition rules do, reads a name whole, by rule 12 reads when a visit
+named by a scope phrase was, and by rules 13 to 18 reads questions that
+ask yes or no, see
+[Questions That Ask Yes or No](#questions-that-ask-yes-or-no)); so are
+a dose question, a past question about death and a question about a
+first or last result. A
 request for advice, a question about the future and a ranking of
 conditions keep their refusals: since `qa-answer-v7`, a ranking that
 names conditions in the singular as in the plural ("the most important
@@ -642,7 +645,7 @@ condition, or about a vital sign of the same name.
 | `record_presence` | "Was heparin given?", "Was she on Lasix?", "Any antibiotics?", "Was a chest x-ray done?" | Every Matching Record, Grouped by Item and by How It Matched; or Not Recorded Within the Scope |
 | `record_timing` | "When was heparin first given?", "When was hypertension first recorded?" | The First and the Last Matching Record |
 | `record_count` | "How many potassium results are there?", "How many medications?" | The Number of Matching Records and Their Visits, or of a Kind's Items and Records |
-| `record_values` | "What was the last potassium?", "Highest creatinine?", "Show the hemoglobin trend", "What dose of heparin was given?", "What doses were given?", "What organisms grew?" | Each Matching Item's Latest, First, Highest or Lowest Value, or Its Values in Time Order |
+| `record_values` | "What was the last potassium?", "Highest creatinine?", "Show the hemoglobin trend", "What dose of heparin was given?", "What doses were given?", "What organisms grew?", "Was the blood culture positive?" | Each Matching Item's Latest, First, Highest or Lowest Value, or Its Values in Time Order; for Microbiology, Whether an Organism Is Recorded, Then Each Culture |
 | `record_abnormal` | "Were any labs abnormal?", "Was the potassium high?", "Were any labs low?" | Every Result the Laboratory Flagged Abnormal (for Microbiology, Every Result Reported Resistant) |
 | `visit_details` | "How many visits?", "When was she admitted?", "Where was she discharged to?" | The Field Asked About, for Every Visit of the Scope |
 | `person_details` | "How old was the patient?", "What is her race?", "Did the patient die?" | The Person's Sex or Date of Death, or the Field Recorded with Each Visit of the Scope |
@@ -727,12 +730,16 @@ Values are shown as recorded, every digit and no exponent; a value that
 MIMIC-IV removed says so, without a unit; a single record is the only
 one, and the highest or lowest of values that are not numbers is the
 latest, said as such. A list of values shows the latest 30 of a named
-item, the latest 30 of each microbiology test, and the latest of each item of
-another whole kind, and counts the rest; an item is named by its earliest
-record. A visit whose discharge is recorded before its admission has no
-length. Ages are the anchor age plus the years to the visit, so they may
-be one more than the age on the day, and ages over 89 are not given;
-dates are the shifted dates of MIMIC-IV.
+item and the latest of each item of another whole kind, and counts the
+rest; an item is named by its earliest record. Microbiology is shown by
+culture, after a statement of whether an organism is recorded, and a
+result a selector picks, asked about by its flag, with whether the
+laboratory flagged it (see
+[Questions That Ask Yes or No](#questions-that-ask-yes-or-no)). A visit
+whose discharge is recorded before its admission has no length. Ages are
+the anchor age plus the years to the visit, so they may be one more than
+the age on the day, and ages over 89 are not given; dates are the
+shifted dates of MIMIC-IV.
 
 ### Edge Cases Tested
 
@@ -745,14 +752,20 @@ name inside another, none at all), a brand name, drug classes,
 microbiology with and without growth and every interpretation, an open
 transfer, two ICU stays, an admission without times, one whose discharge
 precedes its admission, a death in hospital and an age that passes 89.
-Every one of 142 questions, including noise, markup, accents,
+Every one of 170 questions, including noise, markup, accents,
 abbreviations, negations, misspellings, words of time, class words in
 the singular and questions about what a medication was given for, is
-asked in
-every scope; none ends in a rejection or an error. The answers' checks
-are tested by breaking correct answers one fact at a time
-(`tests/validation/test_record_mutations.py`): all 1,481 changed answers
-are withheld, and every answer and control is released.
+asked in every scope; none ends in a rejection or an error. The answers'
+checks are tested by breaking correct answers one fact at a time
+(`tests/validation/test_record_mutations.py`): all 1,723 changed answers
+are withheld, and every answer and control is released. Cultures at
+their edges have their own invented record
+(`tests/qa/test_record_cultures.py`): two organisms and a record without
+one taken at one time, an organism tested against no antibiotic, every
+interpretation, an antibiotic tested twice, more cultures than an answer
+shows, a latest culture that differs from the first, and an organism
+asked about by its name; every answer is released and every one of its
+mutants withheld.
 
 The same questions, with the heavy ones of the first development check
 (every result of every test, every culture, every dose), were asked of
@@ -929,6 +942,80 @@ without runtime records:
 | The Record Suite | 7,865 and 3,188 | The Same Counts for Every Question |
 | The Mutation Suite ([validation.md](validation.md#mutation-suite)) | 17,414 and 7,356 Mutants | As Recorded There: Every Original Released Unchanged and Every Mutant Detected |
 | Mutants of the Record Answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 Answers, 30,921 Mutants | All Withheld; Every Original and the 768 Controls Released, the Same Counts as Before |
+
+### Questions That Ask Yes or No
+
+Asked of the README's invented patient, "Was the blood culture
+positive?" was answered with every record of the culture, one to a line
+under "(7 records)", without saying whether anything grew: six of the
+seven were one organism's antibiotic results, and the seventh a later
+culture that grew nothing. Seventy questions that ask yes or no, about
+every kind of record, were then asked of the same invented patient
+through the application. Questions about conditions, about a named
+medication, procedure or test, about ICU stays, death and sex, and "was
+the potassium high", were answered directly; these were not:
+
+| Question | Before | Now |
+| :--- | :---: | :--- |
+| "Was the blood culture positive?", "Did the urine culture grow anything?", "Were any cultures positive?" | Every Record of Every Culture, Without Saying Whether Anything Grew | Whether an Organism Is Recorded, Then Each Culture: Each Organism Once with Its Antibiotic Results, and Each Culture That Grew Nothing |
+| "Was the blood culture negative?" | Asked Back | As for "positive" |
+| "Was the latest blood culture positive?", "What was the latest blood culture result?" | Every Culture, or a Single Antibiotic Result | The Latest Culture |
+| "Was the latest potassium high?" | The Value Alone | Whether the Laboratory Flagged It, Then the Value |
+| "Is the latest creatinine abnormal?" | Every Flagged Result | Whether the Latest Result Is Flagged |
+| "Was the creatinine normal?", "Was the troponin positive?" | Not Understood | The Results the Laboratory Flagged; a Result Without the Flag Is Not Stated to Be Normal |
+| "Was the oxygen saturation normal?" | Not Understood | Asked Back: Vital Signs Carry No Flag |
+| "Did the patient have surgery?" | Every Procedure | Every Procedure, with a Notice That the Record Does Not Mark Which Were Surgery |
+| "Is the predicted diagnosis recorded?" | Asked Which Test "predicted" Names | Pointed to the Prediction's Own Workflow |
+| "Was the patient admitted through the ED?", "Was it an emergency?", "Was the patient readmitted?" | Not Understood | Where Each Visit's Admission Came From, Its Type, or the Visits |
+| "Is the patient over 65?", "Was the patient alive at discharge?" | Asked Back | The Age at Each Visit, Never Compared; the Date of Death and Each Visit's Death in Hospital |
+
+Rules `record-questions-v8` (rules 13 to 18) and `record-answer-v6`
+change these. "Normal", "positive" and "negative" are read this way only
+at the end of a question ("was the creatinine normal"), so that within a
+question they stay part of a name ("normal saline", "gram negative
+rods"). An answer about microbiology results says first that an organism
+is recorded, or that none is, in every culture of the matching tests or
+in the latest or first culture of each; then, test by test, each culture
+(the records of one test taken at one time): each organism once, with
+its antibiotic results grouped by interpretation, and the records that
+name no organism. Every culture that grew is shown; past 30 cultures of a
+test, the earliest of the others are counted, never shown as absent. A
+question that names an organism instead of a test ("did any culture grow
+e coli") is answered the same way from that organism's own records. A
+laboratory result a selector picks, asked about by its flag, says
+whether an abnormal flag is recorded for it, then gives it, with the
+notice that a result without the flag is not stated to be normal; the
+record flags results only as abnormal, so "high" and "low" are answered
+by that flag. The release gate checks each new statement against what it
+cites ([validation.md](validation.md#answers-about-the-whole-record)), and
+the independent references pick the same records
+([assessment.md](assessment.md)).
+
+Still asked back or answered as before: two names at once about a
+culture ("did the blood culture grow E. coli", "was the E. coli
+resistant to ampicillin"), which needs a test and an organism read
+together; whether a medication was stopped ("was vancomycin stopped",
+answered as whether it was given), which the record's prescription times
+do not say; clinical words for vital signs ("tachycardic"), which would
+judge a value; words no dictionary holds ("fluids"); and "positive"
+within a name the dictionary does not hold whole, which is set aside as
+a word of the question, so "gram positive cocci" is looked up as "gram
+cocci".
+
+Before and after, on the development case sets, with aggregate output
+only, through the service as the page asks, without the model and
+without runtime records:
+
+| Check | Requests | Result |
+| :--- | :---: | :--- |
+| The 273 Questions of the Earlier Comparisons, the 70 Above (60 of Them New), 21 More About Cultures, 45 About the Other Rules and 8 That Name an Organism, in Every Scope of Every Case | 78,551 Each | 320 Give the Same Responses Byte for Byte; the 87 That Change Are the Ones the Rules Meant to Change. 34 About Microbiology Are Answered in the Same Scopes, Now Culture by Culture After Whether an Organism Is Recorded. Six That Ask "negative" Are Answered, Where Five Were Asked Back and One Was Answered "not recorded" in Every Scope, and Three About the Latest or First Culture's Resistance Are Answered From That Culture in 42, 81 and 52 Scopes, Where Every Resistant Result Was Given in 3, 10 and 7. Nine About the Result a Selector Picks Say Whether the Laboratory Flagged It, Where One Abstained, Four Gave Every Flagged Result and Four the Value Alone. Eleven That Ask "normal", "positive", "negative" or "within normal limits" Give the Flagged Results, Where Eight Were Asked Back, Two Were Answered "not recorded" in Every Scope and "Was the troponin positive?" Was Read as Whether Troponin Is Recorded. Four About Kinds Without a Flag Are Asked Back, Saying They Carry None; Four About Surgery Carry Their Notice; Three About the Prediction Point to Its Own Workflow; and Thirteen About Visits and the Person, Asked Back Before, Are Answered, One About the Final Admission in Its Own Scope. No Rejection, Error or Exception |
+| The Record Suite | 7,865 and 3,188 | The Same Counts for Every Question |
+| The Mutation Suite ([validation.md](validation.md#mutation-suite)) | 17,414 and 7,356 Mutants | As Recorded There: Every Original Released Unchanged and Every Mutant Detected |
+| Mutants of the Record Answers (as in [validation.md](validation.md#mutants-of-answers-about-the-whole-record)) | 300 Answers, 31,035 Mutants | All Withheld; Every Original and the 768 Controls Released. The 114 More Than Before Come From "What organisms grew?", Now Answered by Culture |
+| Wrong Answers That Agree with Themselves (as in [validation.md](validation.md#wrong-answers-that-agree-with-themselves)) | 300 Record and 576 Condition Answers | All 48,072 Withheld; Every Original Released |
+| Mutants of the Culture Answers: Every Culture, the Latest and the First, and Each Test the Scope Holds by Name, in the History and All Visits of Every Case | 302 Answers, 23,535 Mutants | All Withheld; Every Original Released Unchanged |
+| The Independent References ([assessment.md](assessment.md#references-for-questions-about-the-whole-record)) | 10,599 and 4,201 | Every Answer Agrees with Its Reference, as Before |
+| The Final Evaluation's Questions About the Record, Assessed Again with the Templates | 260 | The Same Verdict at Every Stage for Each; the Evaluated Release's Figures Are Not Changed |
 
 ## Limits
 

@@ -133,6 +133,28 @@ class ValueTests(unittest.TestCase):
             specimen="URINE", organism="E. COLI", antibiotic="AMPICILLIN",
             interpretation="P")), "URINE: E. COLI, AMPICILLIN pending (P)")
 
+    def test_an_organism_and_its_results(self):
+        """An organism's results by interpretation, resistant first, each
+        antibiotic once and in name order; none, said so."""
+        def row(antibiotic=None, reading=None):
+            return entry(kind="microbiology", source="microbiologyevents",
+                         name="URINE CULTURE", detail=None, measure=None,
+                         microbe=record.Microbe(
+                             specimen="URINE", organism="E. COLI",
+                             antibiotic=antibiotic, interpretation=reading))
+        rows = [row(), row("gentamicin", "S"), row("AMPICILLIN", "R"),
+                row("CEFAZOLIN", "S"), row("AMPICILLIN", "R"),
+                row("NITROFURANTOIN", "I"), row("MEROPENEM", "P"),
+                row("TOBRAMYCIN")]
+        self.assertEqual(words.organism_text(rows[0]), "E. COLI")
+        self.assertEqual(words.results_text(rows), (
+            "resistant to AMPICILLIN; intermediate to NITROFURANTOIN; "
+            "sensitive to CEFAZOLIN and gentamicin; pending for MEROPENEM; "
+            "tested without an interpretation against TOBRAMYCIN"))
+        self.assertEqual(words.results_text(rows[:1]),
+                         "no antibiotic results recorded")
+        self.assertEqual(words.joined(["A", "B", "C"]), "A, B and C")
+
     def test_stays(self):
         """Times, an open end, a length rounded to a tenth of a day and
         the transfer's event."""

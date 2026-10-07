@@ -210,6 +210,35 @@ KINDS = {
     "record_value_item": Kind(("value", "when", "visit"), "records", None,
                               ("answer",), depth=1,
                               tasks=("record_values", "record_abnormal")),
+    # Microbiology values: whether an organism is recorded, then each test's
+    # cultures, each organism with its antibiotic results.
+    "record_growth_found": Kind(("item", "scope"), "none", None,
+                                ("answer",), tasks=("record_values",)),
+    "record_growth_none": Kind(("item", "scope"), "none", None,
+                               ("answer",), tasks=("record_values",)),
+    "record_growth_found_selected": Kind(("selector", "item", "scope"),
+                                         "none", None, ("answer",),
+                                         tasks=("record_values",)),
+    "record_growth_none_selected": Kind(("selector", "item", "scope"),
+                                        "none", None, ("answer",),
+                                        tasks=("record_values",)),
+    "record_growth_group": Kind(("item",), "none", None, ("answer",),
+                                tasks=("record_values",)),
+    "record_growth_selected_group": Kind(("selector", "item"), "none", None,
+                                         ("answer",),
+                                         tasks=("record_values",)),
+    "record_growth_item": Kind(("organism", "when", "visit", "results"),
+                               "records", None, ("answer",), depth=1,
+                               tasks=("record_values",)),
+    "record_growth_negative": Kind(("when", "visit"), "records", None,
+                                   ("answer",), depth=1,
+                                   tasks=("record_values",)),
+    # A laboratory result a selector picks, asked about by its flag:
+    # whether the laboratory flagged it, then the result.
+    "record_flag_found": Kind(("selector", "item", "scope"), "none", None,
+                              ("answer",), tasks=("record_values",)),
+    "record_flag_none": Kind(("selector", "item", "scope"), "none", None,
+                             ("answer",), tasks=("record_values",)),
     "record_abnormal_summary": Kind(("item", "scope", "matches"), "none",
                                     None, ("answer",),
                                     tasks=("record_abnormal",)),
@@ -390,7 +419,12 @@ NOTICES = {
                              tasks=("record_values", "record_abnormal")),
     "not_flagged": Notice("A result without the laboratory's abnormal flag "
                           "is not stated to be normal.",
-                          ("answer", "not_recorded"), "record_abnormal"),
+                          ("answer", "not_recorded"),
+                          tasks=("record_abnormal", "record_values")),
+    "surgery_unmarked": Notice("The record does not mark which procedures "
+                               "were surgery, so every procedure is "
+                               "included.", ("answer",),
+                               tasks=("record_list", "record_count")),
     "vital_no_flag": Notice("Vital signs carry no abnormal flag in the "
                             "record, so the highest or lowest value is "
                             "shown instead.", ("answer", "not_recorded"),
@@ -527,6 +561,9 @@ class Slots(Frozen):
     item: Optional[ItemName] = None
     value: Optional[RecordRef] = None
     when: Optional[RecordRef] = None
+    organism: Optional[RecordRef] = None
+    results: Optional[tuple[RecordRef, ...]] = Field(default=None,
+                                                     max_length=5000)
     visit: Optional[VisitRef] = None
     selector: Optional[Selector] = None
     field: Optional[RecordField] = None
@@ -760,7 +797,12 @@ def slot_text(statement, name, lookup):
 
 
 RECORD_SLOTS = ("kind", "items", "item", "value", "when", "visit",
-                "selector", "field", "how", "options", "labels")
+                "selector", "field", "how", "options", "labels", "organism",
+                "results")
+# Statements whose selector stands inside the sentence, in lower case.
+INNER_SELECTOR = ("record_growth_found_selected",
+                  "record_growth_none_selected", "record_flag_found",
+                  "record_flag_none")
 
 
 def record_slot_text(statement, name, value, lookup):
@@ -781,7 +823,18 @@ def record_slot_text(statement, name, value, lookup):
     if name == "visit":
         return words.visit_text(lookup.visit(value))
     if name == "selector":
-        return words.SELECTOR_WORDS[value]
+        text = words.SELECTOR_WORDS[value]
+        return text.lower() if statement.kind in INNER_SELECTOR else text
+    if name in ("organism", "results"):
+        # An organism and its results are microbiology records that name
+        # one; any other record cannot be shown as such.
+        entries = [lookup.record(ref) for ref in (
+            (value,) if name == "organism" else value)]
+        if any(entry.microbe is None or entry.microbe.organism is None
+               for entry in entries):
+            raise CandidateError("not_an_organism")
+        return (words.organism_text(entries[0]) if name == "organism"
+                else words.results_text(entries))
     if name == "how":
         return words.MATCH_WORDS[value]
     if name == "options":

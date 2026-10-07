@@ -150,25 +150,35 @@ them (`validation.record_text`), so no value, time, date or age is typed.
 Its statement kinds, their citations and their order are checked like
 the others, and `validation.record_support` decides whether the right
 records were chosen and none was left out: a list names every item of
-the kind once and cites each record once, ICU stays and transfers in time
-order; a presence answer cites every
-record that matches, each by the match kind the resolver finds; a time
-answer's first and last records are the earliest and latest; a count is
-the number of matching records; a value is the one its selector picks
-for its item, and every matching item is answered; flagged results are
-every flagged result of the matching items; visits' and the person's
-details cover every visit of the scope; and the disclosure of records
-without a standard concept follows the scope. A "not recorded" about a
-named condition, medication or procedure states the scope's records of
-the kind without a standard concept, and their number. A single record
-is stated as the only one; the latest stands in for the highest or
-lowest only when no value of the item is a number. An answer's notices
-are exactly those its question needs: that "not recorded" is not
-clinical absence, that a list is complete, that vital signs are charted
-in ICU stays, that dates are shifted, what an age or a date of death
-means, that an unflagged result is not stated to be normal, and that
-vital signs carry no flag. The words "latest", "highest" and the like
-are slots of a statement, rendered from its selector, never typed.
+the kind once and cites each record once, ICU stays and transfers in
+time order; a presence answer cites every record that matches, each by
+the match kind the resolver finds; a time answer's first and last
+records are the earliest and latest; a count is the number of matching
+records; a value is the one its selector picks for its item, and every
+matching item is answered; microbiology values (`record-answer-v6`) say
+that an organism is recorded exactly when a culture they show names one,
+every culture of the matching tests or the latest or first of each as
+the question asks, and show each test once and each culture's organisms
+once, in the order of their first record, each citing all its records
+with their antibiotic results, then the records that name no organism,
+every culture that grew shown and the others counted past 30; a
+laboratory result a selector picks, asked about by its flag, is the one
+the selector picks for every matching test, and says whether an abnormal
+flag is recorded for it as the record does; flagged results are every
+flagged result of the matching items; visits' and the person's details
+cover every visit of the scope; and the disclosure of records without a
+standard concept follows the scope. A "not recorded" about a named
+condition, medication or procedure states the scope's records of the
+kind without a standard concept, and their number. A single record is
+stated as the only one; the latest stands in for the highest or lowest
+only when no value of the item is a number. An answer's notices are
+exactly those its question needs: that "not recorded" is not clinical
+absence, that a list is complete, that vital signs are charted in ICU
+stays, that dates are shifted, what an age or a date of death means,
+that an unflagged result is not stated to be normal, that vital signs
+carry no flag, and that the record does not mark which procedures were
+surgery. The words "latest", "highest" and the like are slots of a
+statement, rendered from its selector, never typed.
 
 Each notice names the tasks it belongs to. The notices of answers about
 the whole record were first open to every task, so a condition answer
@@ -391,7 +401,9 @@ The answers about the whole record are broken the same way, one fact at
 a time, by `tests/validation/test_record_mutations.py`: a statement left
 out or repeated, a digit typed into a wording, a count, selector, match
 kind, field, kind, visit, value, time or named item changed, a reference
-dropped, added or swapped for a record of another item, a notice
+dropped, added or swapped for a record of another item, an organism or
+an antibiotic result taken from another record or left out, whether an
+organism or an abnormal flag is recorded stated the other way, a notice
 replaced or added, the outcome, the disclosure, the scope, the case or
 the bundle changed, a summary moved after its items, and two ICU stays
 or transfers swapped. A mutant is
@@ -401,8 +413,8 @@ records) must be released.
 
 | Samples | Answers | Mutants Withheld | Controls Released |
 | :--- | :---: | :---: | :--- |
-| Invented Edge Record (Every Task and Outcome) | 38 | 1,481 of 1,481 | All |
-| Development Case Sets (3 Cases of Each, All Visits and the History, 25 Questions) | 300 | 30,921 of 30,921 | 768 of 768 |
+| Invented Edge Record (Every Task and Outcome) | 46 | 1,723 of 1,723 | All |
+| Development Case Sets (3 Cases of Each, All Visits and the History, 25 Questions) | 300 | 31,035 of 31,035 | 768 of 768 |
 
 On their first run the tests found two faults, now refused: a visit's or
 the person's field of another statement kind failed the rendering (an
@@ -414,7 +426,15 @@ counts were then 30,719 mutants and 762 controls; the record rules
 changed after them in release 0.11.0 (drug-class words, medications
 named by their written drug, names read whole) answer some of the
 sampled questions otherwise, and release 1.0.0 gives the counts above,
-as do the rules after it (2026-10-06).
+as do the rules after it (2026-10-06). The answers to questions that
+ask yes or no (`record-answer-v6`) added eight samples (38 before): about
+cultures, a selected laboratory result's flag and procedures asked about
+as surgery, and the mutants of an organism, its results and whether an
+organism or a flag is recorded. Their first run found that an antibiotic
+result taken from a record of another kind failed the rendering (an
+operational error instead of a rejection), now refused as invalid. On
+the development case sets the answer to "What organisms grew?", now by
+culture, gives the 31,035 mutants above (30,921 before).
 
 ### Wrong Answers That Agree with Themselves
 
@@ -444,10 +464,10 @@ not a mistake and is not counted.
 
 | Samples | Two Mistakes at Once | From a Misread Record | Another's Answer |
 | :--- | :---: | :---: | :--- |
-| Invented Edge Record: 38 Answers About the Record | 1,761 of 1,761 Withheld | 688 of 688 | 320 of 320 |
+| Invented Edge Record: 46 Answers About the Record | 2,142 of 2,142 Withheld | 738 of 738 | 508 of 508 |
 | Invented Case Set: 14 Condition Answers | 651 of 651 | 29 of 29 | 62 of 62 |
-| Development Case Sets: 300 Answers About the Record | 13,965 of 13,965 Withheld | 4,012 of 4,012 | 2,230 of 2,230 |
-| Development Case Sets: 576 Condition Answers | 13,643 of 13,643 Withheld | 7,191 of 7,191 | 6,846 of 6,846 |
+| Development Case Sets: 300 Answers About the Record | 13,988 of 13,988 Withheld | 4,152 of 4,152 | 2,230 of 2,230 |
+| Development Case Sets: 576 Condition Answers | 13,659 of 13,659 Withheld | 7,211 of 7,211 | 6,832 of 6,832 |
 
 On their first run the tests found that a list of ICU stays or transfers
 out of time order was released: the check counted every stay but not
@@ -456,6 +476,12 @@ hospital. It is checked now, and a one-fact mutant swaps two stays. On
 the development case sets 6 answers of the first run were released
 that list the groups of flagged results in another order, each group
 with exactly its item's results: the same answer, in another order.
+
+The development rows were 13,965, 4,012 and 2,230 for the record, and
+13,643, 7,191 and 6,846 for conditions, before `record-answer-v6`
+answered "What organisms grew?" by culture. Its answer gives other
+mistakes, and the condition answers' mistakes, drawn after it from the
+same random sequence, are drawn otherwise; no condition answer changed.
 
 ## Commands
 

@@ -46,11 +46,16 @@ summary on invented data. Version 5 reads the statements of answers about
 the whole record with their kinds too: a list, a presence answer, a
 time, a count, a value, flagged results, a visit's or the person's
 details may not be negated, and a kind or an item not recorded must
-negate every "recorded" it holds. Dates, recurrence, frequency and
-recency are never typed into a wording (date_unsupported); an
-explanation states how often and in which visits a driver's concept was
-recorded only through the slots of a statement that cites its linked
-events, as the evidence claim policy allows (validation.explanation).
+negate every "recorded" it holds; the statements of microbiology values
+and of a selected laboratory result's flag (record-answer-v6) are read
+the same way: that an organism or an abnormal flag is recorded, a test's
+cultures and an organism's results may not be negated, and that no
+organism or no abnormal flag is recorded must negate its "recorded".
+Dates, recurrence, frequency and recency are never typed into a wording
+(date_unsupported); an explanation states how often and in which visits
+a driver's concept was recorded only through the slots of a statement
+that cites its linked events, as the evidence claim policy allows
+(validation.explanation).
 
 The rules are patterns: a sentence that says something prohibited in
 words no pattern knows is not caught. Gaps found later become a new rules
@@ -86,9 +91,14 @@ AFFIRMATIVE = ("list_summary", "list_item", "presence_summary",
                "record_presence_item", "record_time", "record_count",
                "record_count_kind", "record_value", "record_value_group",
                "record_value_item", "record_abnormal_summary",
-               "visit_summary", "visit_fact", "person_fact", "person_age")
+               "record_growth_found", "record_growth_found_selected",
+               "record_growth_group", "record_growth_selected_group",
+               "record_growth_item", "record_flag_found", "visit_summary",
+               "visit_fact", "person_fact", "person_age")
 ABSENT = ("list_empty", "presence_absent", "record_list_empty",
-          "record_absent")
+          "record_absent", "record_growth_none",
+          "record_growth_none_selected", "record_growth_negative",
+          "record_flag_none")
 RECORD = re.compile(r"\brecord(?:s|ed)?\b")
 # (rule, pardoned by a negation, pattern, outcomes it applies to; None for
 # every outcome)
