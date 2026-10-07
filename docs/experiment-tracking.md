@@ -14,7 +14,7 @@ lock) and fixes what may reach a tracker. `ehr_evidence_app.tracking.policy`
 checks it read-only, without importing the SDK or contacting a service.
 
 | Permitted Tracker Payloads | Never Sent to a Tracker |
-| :--- | ---: |
+| :--- | :--- |
 | Non-Patient Run Metadata and Version Identifiers | Patient Records and Identifiers |
 | Code, Configuration, Evidence-Schema and Asset Fingerprints | Raw or Derived Clinical Content |
 | Aggregate Evaluation, Validation and Operational Metrics | Prompts, Model Responses and Attribution Text |
@@ -49,7 +49,7 @@ path, account, key or configuration content.
 `ehr_evidence_app.tracking.connection` has four modes:
 
 | Mode | Behaviour |
-| :--- | ---: |
+| :--- | :--- |
 | *(Default)* | Checks the Declaration and the Policy Offline; No SDK Import, No Environment Read, No Network |
 | `--preflight` | Loads the SDK Configuration Named by `CLEARML_CONFIG_FILE`, Compares Its Hosts With the Declaration Before Any Request, Authenticates, Confirms the Workspace and Looks Up the Project; Creates Nothing |
 | `--synthetic-task` | Preflight, Then Creates One Synthetic Metadata-Only Task, Reads It Back to Confirm No Captured Script, Repository, Diff or Package Content, and Archives It |

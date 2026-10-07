@@ -184,7 +184,7 @@ was set aside by renaming it, and a fresh clone from GitHub took its place
 until the check ended:
 
 | Step | Observed |
-| :--- | ---: |
+| :--- | :--- |
 | Environment | The Application Environment Matched Its Hashed Lock; the Import Probe Passed |
 | Storage | The Runtime Root and the Destinations Checked: 177 of 177 Checks. The Bytecode Probe Failed at First Under a Shell That Set `PYTHONDONTWRITEBYTECODE`; Without It, It Passed |
 | Publication Audit | No Secret or Data File in the Tree or Its History |
@@ -198,7 +198,7 @@ until the check ended:
 the same result when run again:
 
 | Step | Seed |
-| :--- | ---: |
+| :--- | :--- |
 | The Inherited GNN's Split of Patients (Recovered, Not Rerun) | 7 |
 | The Draw of `dev-30-v1` | 20260926 |
 | The Draw of `eval-100-v1` | 20260927 |

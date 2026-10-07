@@ -8,7 +8,7 @@ A work item may be split into sub-items such as 0.3.1 and 0.3.2.
 ## Completed
 
 | Phase | Work Items | Outcome |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | 0. Workspace and Source Preparation | 0.1 to 0.4 | Storage Roots and Destinations; Staged Legacy Exports; Bounded Read-Only Source Pilot; Path and Source Checks |
 | 1. Repository and Environments | 1 to 8 | Inherited Baseline Record; Repository Structure and Content Exclusions; GNN Environment Capture; Application Environment |
 | 2. Experiment Tracking | 9 to 14 | Tracker Policy; ClearML Connection Checks; Controlled Metadata Tracking; Inherited Input Registration; Lineage Schema |

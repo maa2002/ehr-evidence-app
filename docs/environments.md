@@ -3,7 +3,7 @@
 The project uses three Python environments that are never mixed:
 
 | Environment | Purpose | Location | Managed by This Project |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Application | Tests, Tooling, Tracking, the Generation Adapter, and Later the API and Interface | `UV_PROJECT_ENVIRONMENT` Under the Runtime Root | Yes, From a Hashed Lock |
 | Model | The Language Model's Worker (`generation.worker`): PyTorch With CUDA, Transformers, the Schema-Constrained Decoders | `environments\uv\ehr-evidence-llm` Under the Runtime Root, With a uv-Managed Interpreter Under `python` | Yes, From a Hashed Lock |
 | GNN (`omopgnn`) | Real-Data Runs That Load the Inherited Graphs or Checkpoint | Existing conda Environment on C: | No: Read-Only, Never Modified |
@@ -28,7 +28,7 @@ Command examples assume the session set-up in
   `pythonpath`); it is not installed into the environment.
 
 | Direct Package | Locked Version |
-| :--- | ---: |
+| :--- | :--- |
 | FastAPI | 0.141.1 |
 | Uvicorn | 0.53.0 |
 | Starlette | 1.7.0 |
@@ -93,7 +93,7 @@ environment ([generation.md](generation.md)):
   with every cache, home and temporary directory under the runtime root.
 
 | Direct Package | Locked Version |
-| :--- | ---: |
+| :--- | :--- |
 | PyTorch (CUDA 13.0) | 2.14.0+cu130 |
 | Transformers | 5.17.0 |
 | Accelerate | 1.15.0 |

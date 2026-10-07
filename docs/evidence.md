@@ -16,7 +16,7 @@ session set-up in [development.md](development.md#session-set-up).
 ## Modules
 
 | Work Item | Module | Role |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | 23 | `evidence.contracts` | Request, Response and Execution-Limit Contracts; Committed JSON Schemas |
 | 24 | `evidence.schema` | Evidence Records and the QA and Explanation Bundle Types |
 | 25 | `evidence.readers` | Pinned Readers for the Source Snapshot and the Closure Record's Cases |
@@ -41,7 +41,7 @@ and the pre-target history scope.
 A response carries exactly one outcome:
 
 | Outcome | Text Released | Reason Codes |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `answer`, `not_recorded` | Yes, With Claims Citing Its Bundle | Optional Disclosure (`unmapped_records_in_scope`) |
 | `explanation` | Yes, With Claims Citing Its Bundle | Optional Disclosure (Restrictions) |
 | `clarification`, `abstention` | Yes | Required, From the Outcome's Own List |
@@ -67,7 +67,7 @@ response cites evidence without exposing native record numbers. The native
 identifiers stay in the records.
 
 | Reference | Record | Content |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `V1`.. | Visit | Graph Position, Visit Number (Position + 1), Role (`pre_target`, `final_admission`), Visit Concept and Dates |
 | `E1`.. | Event | One Recorded Condition, Procedure or Drug Row: Native Identifier, Source Table, Visit, Concept, Dates |
 | `P1` | Prediction | Selected Label, Raw Logit, Uncalibrated Score, Output-Record Digest, Partition, Batch Sensitivity |
@@ -110,7 +110,7 @@ the names in the published outputs.
 ## Scopes and Coverage
 
 | Scope | Visits | Used By |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `pre_target_history` (Default) | Positions 0 to *N*-2 | QA and Explanations |
 | `selected_visit` | One Visit, Numbered From 1 in Graph Order | QA Only |
 | `case_visits` | All Case Visits, Including the Final Admission | QA Only |
@@ -142,7 +142,7 @@ when every edge and driver verifies. It reads the raw graphs through their
 verified handle on the CPU in the GNN environment; no model is loaded.
 
 | Domain | Edges Verified | Drivers Verified | In-Vocabulary Events Without an Edge |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Condition | 324 of 324 | 82 | 0 |
 | Procedure | 30 of 30 | 26 | 0 |
 | Drug | 301 of 301 | 85 | 0 |
@@ -190,7 +190,7 @@ status, race), every record of those visits (`R1`..) and a coverage
 (`C1`) of every kind:
 
 | Kind | Source | Holds |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Condition, Procedure, Medication | OMOP Snapshot | Concept, Source Code and Dates; a Medication's Ingredients and ATC Classes, and Its Prescription's Dose and Route |
 | Lab | Raw Laboratory Results | Test, Fluid and Category, Value, Unit, Reference Range, Flag, Time |
 | Microbiology | Raw Microbiology | Specimen, Test, Organism, Antibiotic, Interpretation, Time |
@@ -216,7 +216,7 @@ drug name. The record types enforce that a record holds the fields of its
 kind only and that the coverage counts agree with the records.
 
 | Measure | `pilot-10-v1` | `dev-30-v1` | `eval-100-v1` |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Record Bundles | 58 | 135 | 519 |
 | Records in Case Visits (All-Visits Scope) | 5,270 | 29,514 | 81,297 |
 | Laboratory Results | 3,531 | 13,390 | 43,002 |
@@ -237,7 +237,7 @@ versioned policy (`evidence-policy-v1`, mirrored in
 `config/evidence_policy.json`); the closure record itself is unchanged.
 
 | Change | Statement |
-| :--- | ---: |
+| :--- | :--- |
 | Added | When, and in How Many Pre-Target Visits, a Driver's Concept Was Recorded, Citing the Linked Events |
 | Added | Repeated Recordings of a Driver's Concept, Citing Each Event |
 | Narrowed | "Dated, frequency or progression claims about events" Becomes "event claims without cited, linked events" |
@@ -254,14 +254,14 @@ checks enforce the policy (see [validation.md](validation.md#explanations)).
 Paths are under `G:\Industry Dataset\ehr-evidence-workspace\protected-data`.
 
 | Record | Directory | Files |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Event Linkage | `evidence\event-linkage-pilot10-v1` | `linkage.json` (Patient-Bearing; Pinned in `evidence.bundles`), `summary.json` (Aggregate) |
 | Evidence Bundles | `evidence-bundles\pilot10-v1` | `qa\*.json`, `explanation\*.json` (Patient-Bearing); `manifest.json` (Identifiers, Digests, Sizes); `summary.json` (Aggregate) |
 
 Bundle-set counts for the development pilot:
 
 | Measure | Result |
-| :--- | ---: |
+| :--- | :--- |
 | QA Bundles (History / Selected Visit / All Visits) | 58 (10 / 38 / 10) |
 | QA Coverage Complete / Complete and Empty | 56 / 2 |
 | Condition Records in the Pre-Target History | 251 |

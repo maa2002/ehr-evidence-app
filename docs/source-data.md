@@ -7,7 +7,7 @@ it never modifies them. Command examples assume the session set-up in
 [development.md](development.md#session-set-up).
 
 | Source | Location | Access |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | OMOP CDM Database | Local PostgreSQL 18, Database `mimiciv_omop`, Schema `omopcdm` | Read-Only Transactions on Loopback |
 | Legacy CSV Exports | `C:\omop_export` | Read-Only Copy Source |
 | Raw MIMIC-IV 3.1 Hospital and ICU Modules | External Archive Disk | Eleven Pinned Files Read Once, Read-Only, for Exactly the Case Sets' Persons ([Raw MIMIC-IV Records](#raw-mimic-iv-records)) |
@@ -98,7 +98,7 @@ and was not chosen for clinical representativeness.
 date or concept filter:
 
 | Table | File | Native Key |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `person` | `persons.csv` | `person_id` (`person_source_value` as `subject_id`) |
 | `visit_occurrence` | `visits.csv` | `visit_occurrence_id` |
 | `condition_occurrence` | `conditions.csv` | `condition_occurrence_id` |
@@ -205,7 +205,7 @@ details. `ehr_evidence_app.sources.mimic` reads, from
 `W:\Industry Dataset\mimic-iv-3.1`:
 
 | Table | Kept | Key |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `hosp\patients` | Sex, Anchor Age and Year, Anchor Year Group, Date of Death | `subject_id` |
 | `hosp\admissions` | Every Column but the Admitting Provider | `hadm_id` |
 | `hosp\transfers` | Every Column | `transfer_id` |
@@ -244,7 +244,7 @@ code (`EXTRACT_PINS`). Console output carries counts only.
 ```
 
 | Case Set | Admissions | Transfers | ICU Stays | Laboratory Results (in Snapshot Visits) | Microbiology Rows | Prescriptions | Vital-Sign Rows | ICU Procedure Events |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | `pilot-10-v1` | 38 | 135 | 1 | 6,698 (3,531) | 208 | 886 | 294 | 6 |
 | `dev-30-v1` | 116 | 461 | 27 | 46,887 (27,971) | 792 | 5,290 | 18,289 | 167 |
 | `eval-100-v1` | 407 | 1,629 | 53 | 104,254 (54,612) | 3,335 | 14,402 | 24,263 | 316 |

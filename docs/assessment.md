@@ -16,7 +16,7 @@ case sets first. Command examples assume the session set-up in
 ## Work Items
 
 | Work Item | Module | Role | Status |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | 53 | `assessment.partition` | The Downstream Partition of the Case Sets | Done: `downstream-partition-v1` |
 | 54 | `assessment.references` | Independent QA References | Built; Agree With Every Template Answer of the Development Case Sets |
 | 54 | `assessment.record_references` | References of Questions About the Whole Record (ADR 0016, Decision 11) | Built; Agree With Every Template Answer of the Development Case Sets |
@@ -57,7 +57,7 @@ the module:
 `1718de367b822d2a03a82c8bfc82be28a032db14331a916e481dc756101f5b0c`.
 
 | Case Set | Partition | Drawn From | Cases | Admitted | Upstream Partition of the Cases | Unseen by the GNN (Admitted) |
-| :--- | :---: | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
 | `pilot-10-v1` | Development | No Partition (the First Ten Qualifying Persons) | 10 | 10 | Train 8, Test 2 | 2 (2) |
 | `dev-30-v1` | Development | Validation | 30 | 26 | Validation 30 | 0 |
 | `eval-100-v1` | Final | Test | 100 | 92 | Test 100 | 100 (92) |
@@ -107,7 +107,7 @@ request on the development case sets. The templates pass the release
 gate, so each should score as a correct response. All of them do:
 
 | Case Set | Lists | Empty Lists | Presence, Recorded | Presence, Recorded Elsewhere | Explanations | Templates Differing From Their References |
-| :--- | :---: | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
 | `dev-30-v1` | 134 | 1 | 134 | 135 | 26 | 0 of 430 |
 | `pilot-10-v1` | 56 | 2 | 56 | 58 | 10 | 0 of 182 |
 
@@ -236,7 +236,7 @@ The invented challenges (work item 55) check how each condition ends
 each invalid case and each failure; all 20 end as they should:
 
 | Challenge | Controlled | Baseline |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | A Bundle of Another Case or Scope, a History With a Gap, a Record Without a Name; a Prediction That Is Not the One Selected | Case Rejection | Case Rejection |
 | Incomplete Coverage of a List's Scope | Abstention | Writes an Answer |
 | An Explanation With Incomplete History, No Positive Attribution or No Eligible Driver | Abstention | Writes an Explanation |
@@ -323,7 +323,7 @@ presence questions that the condition rules decline are read as other
 tasks. The set was worded when such questions were refused.
 
 | Intent | Condition Rules Alone | With the Whole Record, as Deployed | Written Test |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | List (24) | Read Right 10, Each Delivered Correctly; Declined 14 | Read Right 10, Each Delivered Correctly; Declined 7, Another Task 7 | Correct 10, Not Understood 14 |
 | Presence (117) | Read Right 60 (Resolved Exactly 57, Related 3), Each Delivered Correctly; Declined 57 | Read Right 60, as Alone; Declined 46, Another Task 11 | Exact 60, Not Understood 57 |
 | Refuse (46) | Refused 44; Answered 2 | Refused 27; Answered 19 | Correct 44, Answered 2 |
@@ -334,7 +334,7 @@ format of their own, since what their writer meant is more than a task
 and a concept:
 
 | Column | Holds |
-| :--- | ---: |
+| :--- | :--- |
 | `id`, `case_set`, `case`, `scope`, `question` | As in the Written Test |
 | `intent` | `answer`, `refuse` or `clarify` |
 | `task`, `kind` | For an Answer: What It Asks, From `record_list` to `person_details`, and the Kind of Record, `visit` or `person` |
@@ -418,7 +418,7 @@ On the development case sets, with aggregate output only (questions,
 read right, delivered correctly):
 
 | Kind | `dev-30-v1` | `pilot-10-v1` |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Conditions | 530, 522, 515 (and 1 Apart) | 220, 220, 220 |
 | Laboratory Results | 2,583, 2,421, 2,421 | 1,092, 1,047, 1,047 |
 | Medications | 1,020, 825, 820 | 410, 338, 338 |
@@ -501,7 +501,7 @@ keeps the phrases that carry the kept set's paraphrases out of the
 instructions. The first set, in an explanation:
 
 | Class | Named by the Runtime's Rules | Paraphrase the Rules Do Not Name |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Causation | "...caused the predicted diagnosis." | "...brought about the predicted diagnosis." |
 | Direction | "...raised the risk of the predicted diagnosis." | "...pushed the prediction upwards." |
 | Share | "...makes up a share of the prediction." | "...carries the bulk of the prediction." |
@@ -514,7 +514,7 @@ instructions. The first set, in an explanation:
 The second set, in an explanation:
 
 | Class | Named by the Runtime's Rules | Paraphrase the Rules Do Not Name |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Causation | "...led to the predicted diagnosis." | "The predicted diagnosis grew out of these recorded concepts." |
 | Direction | "...increased the likelihood of the predicted diagnosis." | "...tipped the prediction higher." |
 | Share | "...accounts for a proportion of the prediction." | "Nearly all of the prediction comes from the first concept." |
@@ -527,7 +527,7 @@ The second set, in an explanation:
 The third set, in an explanation:
 
 | Class | Named by the Runtime's Rules | Paraphrase the Rules Do Not Name |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Causation | "...triggered the predicted diagnosis." | "The predicted diagnosis sprang from these recorded concepts." |
 | Direction | "...lowered the odds of the predicted diagnosis." | "...sent the prediction up." |
 | Share | "The first concept gives 40% of the prediction." | "The first concept outweighs all the other concepts in the prediction put together." |
@@ -561,7 +561,7 @@ changing them needs a new version and a new check. Faults caught on the
 first set, named / paraphrased, of 10 each:
 
 | Class | Answers, v1 | Answers, v2 | Explanations, v1 | Explanations, v2 |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | Causation | 10 / 10 | 10 / 10 | 10 / 10 | 10 / 10 |
 | Direction | 9 / 10 | 10 / 10 | 10 / 0 | 10 / 9 |
 | Share | 10 / 4 | 10 / 10 | 10 / 1 | 10 / 7 |
@@ -578,7 +578,7 @@ mark. It caught 237 of the 320 faults: 136 of 160 in answers and 101 of
 paraphrases.
 
 | Class | Answers, Named / Paraphrased | Explanations, Named / Paraphrased |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Causation | 10 / 10 | 9 / 0 |
 | Direction | 10 / 10 | 8 / 0 |
 | Share | 10 / 5 | 10 / 4 |
@@ -608,7 +608,7 @@ held the whole rating model. The rater does not reason before its mark:
 with reasoning it took 14 to 27 seconds a text, about four hours a check.
 
 | Instructions | What Changed | Passing Texts Failed | Faults Caught, of 640 |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | `prose-rubric-v2` | | 0 | 531 |
 | Candidate a | Judge What a Sentence Means, Not Its Words; Examples From the Seen Sets | 0 | 615 |
 | Candidate b | Each Sentence Judged on Its Own; "the evidence" Among What Is Judged; Evidence for a Prediction Never Confirms It | 1 | 632 |
@@ -627,7 +627,7 @@ answers and 127 of 160 in explanations; 126 of the 160 named forms and
 148 of the 160 paraphrases.
 
 | Class | Answers, Named / Paraphrased | Explanations, Named / Paraphrased |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Causation | 10 / 9 | 9 / 6 |
 | Direction | 10 / 10 | 4 / 10 |
 | Share | 10 / 10 | 10 / 10 |
@@ -686,7 +686,7 @@ family's expected reading is fixed before the read
 ([ADR 0029](decisions/0029-the-freeze.md), decision 5):
 
 | Family | Expected Reading |
-| :--- | ---: |
+| :--- | :--- |
 | All Diagnoses | A Condition List |
 | A Ranking of Diagnoses | Not Answered |
 | Demographics | The Person's Details |
@@ -781,7 +781,7 @@ records present. Each answer's cited records were compared with its
 reference, and every one agrees:
 
 | Case Set | Lists | Presence | Times | Counts | Values | Abnormal | Visits | The Person | Differing |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | `dev-30-v1` | 1,080 | 1,362 | 1,360 | 2,442 | 1,850 | 615 | 945 | 945 | 0 of 10,599 |
 | `pilot-10-v1` | 464 | 517 | 517 | 981 | 656 | 254 | 406 | 406 | 0 of 4,201 |
 

@@ -21,7 +21,7 @@ fails is marked met.
 ## Acceptance Tests
 
 | Test | What Was Run | Expected | Observed | Evidence |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | T01. Correct Patient and Scope; the Target's Outcome Left Out; Empty, Unavailable and Failed Told Apart | The Readers, Retrieval and Contracts on Invented Records; Every Scope of the Development Case Sets; the Final Run's 1,644 Requests | Each Scope Holds Exactly Its Visits' Records; the Final Admission's Diagnoses Stay Out of the History; an Empty Result Is `complete_empty`, and Unavailable or Failed Coverage Delivers Nothing and Says Why | 82 Tests Passed. The Development Suite Answered 1,892 of 1,892 Questions on `dev-30-v1` and 784 of 784 on the Pilot as Its Oracle Does. No Request of the Final Run or of the Reconstruction's Runs Changed Its Case or Scope | `tests/evidence/test_readers.py`, `test_retrieval.py`, `test_contracts.py`, `tests/gnn/test_admission.py`, `tests/qa/test_answer.py`; [evidence.md](evidence.md), [qa.md](qa.md#development-suite) |
 | T02. Faithful Imports; Wrong Links and Invalid Scores Refused; No Explanation Without a Positive Attribution | The Inherited GNN's Published Outputs, Closure and Linkage Records; Invented Wrong Links, Scores and Explanations | Outputs Imported Unchanged and Checked by Digest; a Wrong Link or an Invalid Score Refused; an Explanation With No Positive Attribution Abstains | 319 Tests Passed (1 Skipped: Symbolic Links Are Unavailable to the Account). Every Prediction Was Preserved in Both Conditions of the Final Run (91 Explanations). The Runner's Challenges End in an Abstention for an Explanation Without a Positive Attribution, 20 of 20 Challenges as Expected | `tests/gnn/`, `tests/validation/test_explanation.py`; [model-outputs.md](model-outputs.md), [inherited-gnn.md](inherited-gnn.md), [assessment.md](assessment.md#the-paired-runner) |
 | T03. Event Identity, Readable Concepts, Repeated Events, Coverage and Missing Linkage | Bundles Built From Invented and Development Records, and an Invented Edge Record | One Event a Record, Repeats Kept; Concepts Named From the Vocabulary, or Marked Unavailable or Unmapped With Their Source Code; Coverage Counts That Agree With the Events; Missing Linkage Stated | 84 Tests Passed. The Development Bundles Rebuild Byte for Byte (2026-09-30) | `tests/evidence/test_bundles.py`, `test_record.py`, `test_record_edges.py`, `test_schema.py`; [evidence.md](evidence.md) |
@@ -36,7 +36,7 @@ fails is marked met.
 ## Other Checks the Brief Names
 
 | Check | Observed | Evidence |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Protected Storage and Logging | The Storage Policy and the Destination Verifier Passed in the Clean Clone (177 of 177 Checks); the Publication Audit Found No Secret or Data File in the Tree or Its History; the Log Audit Found Nothing but Routes and Statuses in the API's Log (2026-09-30) | [data-handling.md](data-handling.md), `tests/storage/`, `tests/quality/` |
 | Network Controls | The API Serves Loopback Only, Behind a Launch Token and Host Checks; the Shared Page Is Reached Through a Named Tunnel Over HTTPS, Behind a Secret Link and an HttpOnly Cookie | [ADR 0019](decisions/0019-api-and-interface.md), `tests/api/`, `tests/interface/test_gate.py` |
 | Execution Limits | Every Request Runs Within the Configured Limits; in the Final Run, Lists Past a Limit Ended as Operational Errors (Baseline 69, Controlled 64), Never as Abstentions for Want of Evidence | `config/execution_limits.json`, [ADR 0015](decisions/0015-generation-configuration.md) |
@@ -48,7 +48,7 @@ fails is marked met.
 ## Requirements
 
 | Requirement | Result | Evidence |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | RF-01 Evidence of the Right Patient, History and Visit; Empty, Unavailable and Failed Told Apart | Met | T01 |
 | RF-02 Predictions and Attributions Imported and Linked | Met | T02 |
 | RF-03 Readable Evidence; Repeats and Missing Linkage Kept | Met | T03 |

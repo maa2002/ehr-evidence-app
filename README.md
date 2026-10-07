@@ -173,7 +173,7 @@ twice: once with no grounding rules, no checks before generation and no
 release gate (the baseline), and once as the application does.
 
 | Measure | Baseline | Application | Difference (95% Interval) |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Unsupported-Claim Rate | 7.1% | 0.0% | -7.1 (-8.2 to -5.9) |
 | Claim Support | 98.0% | 100.0% | +2.0 (+1.5 to +2.6) |
 | Selective Accuracy | 93.4% | 100.0% | +6.6 (+5.3 to +7.8) |
@@ -243,7 +243,7 @@ Then open <http://127.0.0.1:8501/>; Ctrl+C stops it. The tests run with
 ## Documentation
 
 | Document | Contents |
-| :--- | ---: |
+| :--- | :--- |
 | [Architecture](docs/architecture.md) | Purpose, Data Flow, Packages, Configuration, Design Rules |
 | [Data Handling](docs/data-handling.md) | Storage Layout, Destinations, Path Checks, Publication Audit, Secrets |
 | [Source Data](docs/source-data.md) | OMOP Source, Staged Exports, Bounded Pilot Extraction |
@@ -266,7 +266,7 @@ Then open <http://127.0.0.1:8501/>; Ctrl+C stops it. The tests run with
 <summary>Packages In <code>src/ehr_evidence_app</code></summary>
 
 | Package | Responsibility |
-| :--- | ---: |
+| :--- | :--- |
 | `storage` | Fixed Storage Roots, Path Checks, Destination Set-Up, Volume Preflight |
 | `sources` | OMOP Export Staging; Bounded Read-Only Extraction of MIMIC-IV Tables |
 | `gnn` | The Inherited Model's Identity, Validation, Identity Mapping, Parity, Outputs, Provenance, Event Linkage |
@@ -291,7 +291,7 @@ The full system needs credentialed data and a few external pieces. With them,
 order in which a fresh clone was rebuilt and restarted.
 
 | What | Where |
-| :--- | ---: |
+| :--- | :--- |
 | PhysioNet Credentialed Access | [physionet.org](https://physionet.org/) |
 | MIMIC-IV 3.1, Hospital and ICU Modules | [physionet.org/content/mimiciv/3.1](https://physionet.org/content/mimiciv/3.1/) |
 | MIMIC-IV-Ext-Instr 1.0.0, for the Held-Out Reading Test | [physionet.org/content/mimic-iv-ext-instr/1.0.0](https://physionet.org/content/mimic-iv-ext-instr/1.0.0/) |
@@ -300,7 +300,7 @@ order in which a fresh clone was rebuilt and restarted.
 | The Patient-Journey GNN (`standardized-omop-gnn`), Trained on the Same OMOP Data | [anonymous.4open.science/r/standardized-omop-gnn-7B82](https://anonymous.4open.science/r/standardized-omop-gnn-7B82/) |
 | MedGemma 1.5 4B IT | [huggingface.co/google/medgemma-1.5-4b-it](https://huggingface.co/google/medgemma-1.5-4b-it) |
 | Python 3.12.8 | |
-| GPU Minimum 8 GB | |
+| A GPU with Minimum 8 GB VRAM | |
 
 The GNN run this project uses is the knowledge-graph variant of the diagnosis
 task, replicated with a test macro AUROC of 0.906 over 275 diagnosis labels

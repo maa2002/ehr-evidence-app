@@ -38,7 +38,7 @@ a second request meanwhile gets the template's response at once
 ## The Routes
 
 | Route | Returns |
-| :--- | ---: |
+| :--- | :--- |
 | `GET /health` | The Model's State, the Served Case Sets and the Versions; Open Without the Token |
 | `GET /case-sets` | The Served Case Sets and Their Numbers of Admitted Cases |
 | `GET /case-sets/{case_set}/cases` | The Admitted Cases, With Their Numbers of Visits and Whether Each Has a Prepared Prediction |
@@ -232,7 +232,7 @@ frostier, and where a browser cannot blur it is solid. It fits a phone's
 screen.
 
 | Route | Returns |
-| :--- | ---: |
+| :--- | :--- |
 | `GET /api/state` | The Model's State, the Cohorts, the Question Limit and the Version |
 | `GET /api/help` | What Can Be Asked, Shown When `/help` Is Typed: Why Questions Follow Set Patterns, Each Kind of Information With Example Questions, and Notes |
 | `GET /api/case-sets/{case_set}/cases` | The Cohort's Patients, by Pseudonym, With Each Case's Number and Visits |

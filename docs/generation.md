@@ -26,7 +26,7 @@ the session set-up in [development.md](development.md#session-set-up).
 ## Work Items
 
 | Work Item | Module | Role | State |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | 41 | `generation.shape`, `generation.projection`, `generation.prompt`, `generation.adapter` | The Document a Candidate Is Written as and Its Schema; the Model's View of the Evidence; the Prompt; the Adapter Between the Application and a Writer | Done; Structured Evidence and Syntax-Only Decoding Since Milestone 3 |
 | 42 | `generation.runtime`, `generation.worker` | The Pinned Model, the Worker in Its Own Environment on G:, and the Backend That Reaches It | Done; Two Precisions Measured |
 | 43 | `generation.adapter` | Prompt, Output, Time, Attempt and Concurrency Limits; the Fallback and Its Category | Done |
@@ -50,7 +50,7 @@ what is counted from them, and a summary comes after its items, so that
 the model counts what it has already written:
 
 | Answer | Document, in the Order It Is Written |
-| :--- | ---: |
+| :--- | :--- |
 | List | `outcome`, `reason_codes`; `item_wording`; `items`, One Row per Condition, `[condition, refs, visits, count]`, the Condition Named by the Reference of One of Its Records; `summary` (Wording, `groups`, `records`); `unmapped` (Wording and Count, or null); `notices` |
 | Empty List | `outcome`, `reason_codes`, `empty` (Wording), `notices` |
 | Presence Answer | `outcome`, `reason_codes`; `item_wording`; `items`, Rows `[condition, match, refs, visits, count]`; `summary` (Wording, `matches`) |
@@ -76,7 +76,7 @@ projection of it, structured for its task (`generation.projection`,
 serialization redundancy or unrelated fields:
 
 | Task | The Projection Holds |
-| :--- | ---: |
+| :--- | :--- |
 | Lists | The Coverage Status, the Number of Records Without a Standard Concept, the Numbers of Conditions and Records, and the Scope's Records Grouped by Condition (a Standard Concept, or the ICD Source Code of Records Without One), in the Order of Each Condition's First Record, Each Record as `[ref, visit]`, Each Group With Its Number of Records and Visit Numbers |
 | Presence Checks | The Coverage Status, the Number of Records Without a Standard Concept, the Number of Matching Records, and the Records That Match the Condition Asked About, as the Resolver Matches Them (`qa.resolve.match`), Grouped by Condition and Match Kind in the Same Way, With Their Numbers and Visit Numbers; an Empty Set When None Matches |
 | Explanations | The Prediction's Label, Score and Logit; the Case's Restrictions, With the Approved Notice That Discloses Each; One Block per Selected Driver, Highest Score First, With Its Rank, Reference and Attribution Score, Its History (Its Own Linked Records in Pre-Target Visits: Their References, Visit Numbers and Number) and Its Context (Its Records in the Final Admission: Their References and Number), Each null When It Has None, as the Reply States Them; How Many Eligible Drivers Are Not Described |
@@ -101,7 +101,7 @@ derives the correct document from the projection alone, and it equals the
 template's for every request:
 
 | Samples | Requests Answered From Their Projection Alone | Projection Size, of the Bundles' |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Invented Fixtures | 16 of 16 | 11% |
 | `dev-30-v1` | 430 of 430 | 4% |
 | `pilot-10-v1` | 182 of 182 | 4% |
@@ -209,7 +209,7 @@ release:
    and records why, and the reason's category:
 
 | Fallback | Category | When |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `no_model` | `unavailable` | No Writer Is Configured |
 | `busy` | `unavailable` | Another Request Is Being Written |
 | `prompt_over_budget` | `limit_exceeded` | The Prompt Exceeds `max_prompt_tokens` |
@@ -234,7 +234,7 @@ The limits are fixed ceilings in code; `config/execution_limits.json`
 may lower them (see [evidence.md](evidence.md#contracts)):
 
 | Limit | Configured | Ceiling | On the Generation Path |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | `max_prompt_tokens` | 16,384 | 131,072 | A Longer Prompt Falls Back |
 | `max_output_tokens` | 768 | 4,096 | Output Cut Off Here Is Never Read |
 | `max_request_seconds` | 180 | 600 | Later Output Is Not Read |
@@ -257,7 +257,7 @@ released unchanged when a writer returns it, and every failure ends in its
 fallback with exactly the template's response:
 
 | Samples | Requests (Lists, Presence Checks, Explanations) | Released as Written | Fallbacks as Expected |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Invented Fixtures | 16 (5, 9, 2) | 16 of 16 | 192 of 192 |
 | `dev-30-v1` | 430 (135, 269, 26) | 430 of 430 | 5,160 of 5,160 |
 | `pilot-10-v1` | 182 (58, 114, 10) | 182 of 182 | 2,184 of 2,184 |
@@ -278,7 +278,7 @@ one JSON line in and one out on its standard input and output, with no
 network port:
 
 | Request | Reply |
-| :--- | ---: |
+| :--- | :--- |
 | `count` a Prompt (With Its Chat Template) or a Text | Its Tokens |
 | `generate` From a Prompt, a Schema and an Output Limit | The Text, Prompt and Output Tokens, Whether It Finished, Seconds and Peak GPU Memory; or `resource_exhausted` or `backend_failed` |
 | `stop` | The Worker Ends |
@@ -296,7 +296,7 @@ The 4,300,079,472 parameters are loaded in one of two precisions, set by
 `worker.precision` in `config/generation.json`:
 
 | Precision | Placement |
-| :--- | ---: |
+| :--- | :--- |
 | `bf16-mixed` (Configured) | BF16, Full Precision (ADR 0012, Decision 2), With a Mixed GPU/CPU Placement: The Language Layers, Final Norm and Rotary Embeddings, 6,121 MiB, on the GPU; the Image Encoder (801 MiB), Which a Text Request Never Runs, and the Token Embedding Table (1,280 MiB), Which Gemma Also Uses as Its Output Layer, in System Memory, Run on the Processor. The Model Is Not GPU-Resident. |
 | `nf4` | 4-Bit NF4 Weights With BF16 Computation (bitsandbytes), the Whole Model on the GPU |
 
@@ -311,7 +311,7 @@ directory per UTC day, written once and never overwritten. A record
 holds:
 
 | Part | What It Holds |
-| :--- | ---: |
+| :--- | :--- |
 | The Request | Its Identifier, Task, Case, Scope and Question, or the Prediction an Explanation Is Of |
 | The Evidence | The Bundle's Identifier and SHA-256 |
 | The Versions | The Application, Prompt, Shape, Projection, Candidate Contract, Question Interpretation, Condition Resolution, Answer Rules, Explanation Template and Wording Rules, and the SHA-256 of the Execution Limits, the Driver Selection and the Model's Configuration |
@@ -353,7 +353,7 @@ canonical bundle and the candidate a sentence per item (`prompt-v1`,
 `candidate-shape-v1`):
 
 | Measure | Result |
-| :--- | ---: |
+| :--- | :--- |
 | Loading | 12 to 16 s; 6,121 MiB of Weights on the GPU |
 | Invented Requests (5 Lists, 9 Presence Checks, 1 Explanation) | Prompts of 2,749 to 5,604 Tokens; Outputs of 41 to 390 Tokens in 5.9 to 48.9 s, 6.9 to 8.4 Tokens a Second; Peak GPU Memory 6,710 to 7,330 MiB |
 | Their Outcomes | 7 of 15 Released as the Model Wrote Them; 7 Withheld by the Gate for a Fact Their Records Do Not Support (Such as One Condition Listed Twice); 1 Stopped as a String That Ran On |
@@ -376,7 +376,7 @@ output a correct answer needs; medians of an even number of requests are
 rounded up:
 
 | `dev-30-v1` Requests | Prompt Tokens: Median, 90th Percentile, Largest | Template Document Tokens: Median, 90th Percentile, Largest |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Lists (135) | 1,769; 2,434; 5,217 | 292; 652; 1,950 |
 | Presence Checks (269) | 2,111; 2,771; 5,569 | 85; 91; 154 |
 | Explanations (26), K = 3 | 2,039; 2,051; 2,160 | 348; 360; 469 |
@@ -386,7 +386,7 @@ rounded up:
 | K = 15 | 2,438; 2,514; 2,772 | 859; 936; 1,215 |
 
 | `pilot-10-v1` Requests | Prompt Tokens: Median, 90th Percentile, Largest | Template Document Tokens: Median, 90th Percentile, Largest |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Lists (58) | 1,728; 2,527; 3,583 | 266; 608; 1,124 |
 | Presence Checks (114) | 2,075; 3,165; 3,939 | 85; 91; 108 |
 | Explanations (10), K = 3 | 2,043; 2,064; 2,230 | 356; 374; 539 |
@@ -416,7 +416,7 @@ released by the gate as the model wrote it; everything else fell back to
 the template and counts as a failure of the model.
 
 | Version | Precision | Released | Fallbacks | Tokens a Second (Median) | Seconds (Median; Largest) | Peak GPU Memory |
-| :--- | :---: | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
 | `prompt-v2`, `candidate-shape-v2` | BF16, Mixed Placement | 4 of 33 | 13 Cut Off by the Runaway Guard, 15 Withheld by the Gate, 1 Breaking Its Schema | Lists 6.3, Presence Checks 5.3 to 5.4, Explanations 8.4 | Lists 23.9, Presence Checks 22.3 to 24.4, Explanations 73.7; 99.0 | 6,439 to 6,600 MiB |
 | `prompt-v2`, `candidate-shape-v2` | NF4, GPU-Resident | 4 of 33 | 16 Cut Off, 13 Withheld | Lists and Presence Checks 13.3 to 13.5, Explanations 7.5 | Lists 12.6, Presence Checks 12.8, Explanations 73.2; 75.6 | 3,596 to 3,746 MiB |
 | `prompt-v3`, `candidate-shape-v3` | BF16, Mixed Placement | 4 of 33 | 27 Withheld, 2 Breaking Their Schema | 8.0 to 8.4 | Lists 22.2, Presence Checks 18.3 to 21.0, Explanations 76.8; 78.8 | 6,369 to 6,630 MiB |
@@ -425,7 +425,7 @@ the template and counts as a failure of the model.
 By task, the requests released as the model wrote them:
 
 | Version, Precision | Lists (8) | Empty List (1) | Presence, Recorded (8) | Presence, Recorded Elsewhere (8) | Explanations (8) |
-| :--- | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :--- |
 | v2, BF16 | 0 | 1 | 0 | 0 | 3 |
 | v2, NF4 | 0 | 1 | 1 | 0 | 2 |
 | v3, BF16 | 2 | 1 | 0 | 0 | 1 |
@@ -475,7 +475,7 @@ gate as it now stands; the runs shared the processor with other checks,
 so their timings are not used:
 
 | K | Released as the Model Wrote Them | Output Tokens (Median) |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | 3 | 2 of 8 | 349 |
 | 5 | 1 of 8 | 423 |
 | 8 | 1 of 8 | 541 |
@@ -494,7 +494,7 @@ by pair (`--paired`), each version on its committed code and under the
 gate as it now stands:
 
 | Commit | What Changed | BF16 Released | NF4 Released | NF4 Minus BF16, 95% CI; Exact McNemar p |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | `7f14baf` | `projection-v2`: Records Grouped, Matching Sets, Driver Blocks, No Counts; `prompt-v4`; `candidate-shape-v4` | 9 of 33 | 8 of 33 | -3.0 Points, -12.6 to +6.2; 1.000 |
 | `96edab4` | `projection-v3`: Counts and Visits Given; `prompt-v5` | 12 | 11 | -3.0, -11.5 to +5.4; 1.000 |
 | `42c9011` | `prompt-v6`: The Examples Disclose a Record Without a Standard Concept | 21 | 18 | -9.1, -19.9 to +2.2; 0.250 |
@@ -503,7 +503,7 @@ gate as it now stands:
 By task, BF16 and NF4:
 
 | Commit | Lists (8) | Empty List (1) | Presence, Recorded (8) | Presence, Recorded Elsewhere (8) | Explanations (8) |
-| :--- | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :--- |
 | `7f14baf` | 3, 3 | 1, 0 | 2, 2 | 3, 3 | 0, 0 |
 | `96edab4` | 3, 3 | 1, 0 | 2, 2 | 3, 3 | 3, 3 |
 | `42c9011` | 7, 5 | 1, 0 | 7, 7 | 3, 3 | 3, 3 |
@@ -533,7 +533,7 @@ wrong reason codes and answered an empty list with records the bundle
 does not hold. Latency and memory at `20e02a0`:
 
 | Precision | Seconds, Median (Largest): Lists, Presence Checks, Explanations | Peak GPU Memory |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | BF16, Mixed Placement | 42.4 (83.8); 16.4 to 17.1 (18.1); 65.8 (73.6) | 6,489 to 6,642 MiB |
 | NF4, GPU-Resident | 32.4 (64.2); 12.2 to 13.0 (13.9); 48.2 (51.8) | 3,645 to 3,787 MiB |
 
@@ -548,7 +548,7 @@ All 430 requests of `dev-30-v1` were written in both precisions at
 pair by pair, as ADR 0014 (decision 9) set out:
 
 | Requests | BF16 Released | NF4 Released | NF4 Minus BF16, 95% CI; Exact McNemar p |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Lists (134) | 93 | 32 | -45.5 Points, -53.5 to -36.1; Below 0.001 |
 | Empty List (1) | 1 | 0 | -100 Points, -100 to +12.2; 1.000 |
 | Presence, Recorded (134) | 127 | 55 | -53.7, -61.7 to -44.6; Below 0.001 |
@@ -567,7 +567,7 @@ correlation (Newcombe's method 8), which made them slightly narrow; no
 conclusion changes. Latency and memory:
 
 | Precision | Seconds, Median (Largest): Lists, Presence Checks, Explanations | Tokens a Second, Median: Lists, Presence Checks, Explanations | Peak GPU Memory | Whole Run |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | BF16, Mixed Placement | 32.9 (87.4); 10.9 to 11.3 (18.7); 64.8 (111.1, and One Over the 120-Second Limit) | 8.7; 8.0; 5.6 | 6,489 to 6,720 MiB | 9,081 s |
 | NF4, GPU-Resident | 33.0 (104.8); 12.2 to 12.7 (15.0); 50.9 (104.5) | 7.5; 7.1; 7.4 | 3,645 to 3,864 MiB | 10,014 s |
 
@@ -614,7 +614,7 @@ The token distributions measured again at `93762df`, the template
 documents written as the runtime writes JSON:
 
 | Requests | Prompt Tokens: Median, 90th Percentile, Largest | Template Document Tokens: Median, 90th Percentile, Largest |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `dev-30-v1` Lists (135) | 2,095; 2,732; 4,695 | 292; 652; 1,950 |
 | Presence Checks (269) | 2,401; 2,430; 2,541 | 85; 91; 154 |
 | Explanations (26), K = 5 | 2,332; 2,356; 2,499 | 436; 460; 580 |
@@ -638,7 +638,7 @@ same outputs were counted under 768 tokens with 180 and with 120 seconds
 rates are the less optimistic ones:
 
 | Requests | `dev-30-v1`, 2,048 Tokens and 300 s | 768 Tokens and 180 s | `pilot-10-v1`, 2,048 Tokens and 300 s | 768 Tokens and 180 s |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | Lists | 99 of 134 | 98 | 40 of 56 | 39 |
 | Empty Lists | 1 of 1 | 1 | 2 of 2 | 2 |
 | Presence, Recorded | 130 of 134 | 130 | 54 of 56 | 54 |
@@ -725,7 +725,7 @@ not released it names what their rows are. At `prompt-v8`, on
   and 51 conditions were never named.
 
 | Candidate (`dev-30-v1`) | Released | Scores |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Explanations, `prompt-v8` | 13 of 26 | Drivers F1 0.973; History Lines 0.784; Context Lines 0.797 |
 | Explanations, a Driver's History and Context as the Reply States Them, null When It Has None | 21 of 26 | Drivers 1.000; History Lines 0.943; Context Lines 0.911 |
 | Lists, `prompt-v8` | 98 of 134 | Conditions F1 0.783; Records 0.733 |
@@ -753,7 +753,7 @@ that scored them reproduced every count. The configuration's scores,
 summed over each stratum:
 
 | Requests | `dev-30-v1` | `pilot-10-v1` |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Lists: Conditions | F1 0.783 (Precision 0.949, Recall 0.666) | F1 0.753 (0.953, 0.622) |
 | Lists: Records | F1 0.733 (0.964, 0.592) | F1 0.672 (0.933, 0.524) |
 | Lists and Empty Lists: Outcome Right | 121 of 135 | 51 of 58 |

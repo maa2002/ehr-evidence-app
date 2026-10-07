@@ -9,7 +9,7 @@ workspace and are named here only by their place in it.
 ## The Version and the Run
 
 | Item | Value |
-| :--- | ---: |
+| :--- | :--- |
 | Frozen Version | Release 0.11.2, Commit `d1322c1`, Freeze Record `freeze-v3` (SHA-256 `ed84d362…d705`) |
 | Model | MedGemma 1.5 4B IT in bfloat16 (`bf16-mixed` Placement), the Same in Both Conditions; One Attempt a Request |
 | Limits | 16,384 Prompt Tokens, 768 Output Tokens and 180 Seconds a Request |
@@ -35,7 +35,7 @@ requests, and a paired bootstrap over cases for ratios of sums
 **All requests** (1,644)
 
 | Metric | Baseline | Controlled | Difference | 95% Interval |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | Exact Match | 64.5% | 71.5% | +6.9 | +4.4 to +9.5 |
 | Condition Precision | 96.8% | 100.0% | +3.2 | +2.1 to +4.6 |
 | Condition Recall | 57.2% | 53.4% | -3.8 | -7.8 to -0.1 |
@@ -61,7 +61,7 @@ rate counts the answers that do.
 **Condition lists** (515, the four with an empty reference apart)
 
 | Metric | Baseline | Controlled | Difference | 95% Interval |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | Exact Match | 64.5% | 71.3% | +6.8 | +4.2 to +9.4 |
 | Condition Precision | 96.9% | 100.0% | +3.1 | +1.8 to +4.6 |
 | Condition Recall | 54.3% | 50.4% | -3.9 | -8.1 to +0.1 |
@@ -88,7 +88,7 @@ to +69.9.
 **Presence checks of a condition recorded in the scope** (515)
 
 | Metric | Baseline | Controlled | Difference | 95% Interval |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | Condition Precision | 96.1% | 100.0% | +3.9 | +1.2 to +7.1 |
 | Condition Recall | 100.0% | 97.4% | -2.6 | -4.4 to -1.1 |
 | Condition F1 | 98.0% | 98.7% | +0.7 | -0.1 to +1.9 |
@@ -114,7 +114,7 @@ Newcombe's interval of the difference -0.7 to +0.7).
 **Explanations** (91)
 
 | Metric | Baseline | Controlled | Difference | 95% Interval |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | Preservation | 100.0% | 100.0% | +0.0 | +0.0 to +0.0 |
 | Driver Precision | 100.0% | 100.0% | +0.0 | +0.0 to +0.0 |
 | Driver Recall | 100.0% | 80.2% | -19.8 | -28.6 to -12.1 |
@@ -136,7 +136,7 @@ and withheld 18. Explanations consistent with the evidence: 74 against
 ## Outcomes, Failures and Operations
 
 | Task | Outcome | Baseline | Controlled |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Condition List | Answer | 413 | 367 |
 | Condition List | Not Recorded | 3 | 4 |
 | Condition List | Operational Error | 103 | 82 |
@@ -153,7 +153,7 @@ The operational errors are lists whose document ran past a limit
 memory or met a backend failure.
 
 | Task | Measure | Baseline: Median, 90th Percentile, Largest | Controlled: Median, 90th Percentile, Largest |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Condition List | Seconds | 42.8, 88.3, 142.3 | 44.2, 93.8, 137.2 |
 | Condition List | Prompt Tokens | 1,957, 2,405, 2,872 | 2,027, 2,475, 2,942 |
 | Condition List | Output Tokens | 243, 497, 768 | 262, 534, 768 |
@@ -177,7 +177,7 @@ evidence and history by code against the reference, and attribution
 wording by the frozen automatic rater (`prose-rubric-v4`).
 
 | Texts | Condition | Rated | Identity | Evidence | History | Wording | All Four |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | Answers | Baseline | 1,450 | 1,356 | 1,358 | 1,395 | 1,450 | 1,329 (91.7%) |
 | Answers | Controlled | 1,392 | 1,392 | 1,392 | 1,392 | 1,392 | 1,392 (100%) |
 | Explanations | Baseline | 91 | 86 | 74 | 74 | 91 | 74 (81.3%) |
@@ -201,7 +201,7 @@ was read. Each question went through the application as deployed, with
 the whole record, the model writing the condition answers.
 
 | Condition Questions | Questions | Read as Meant | Then |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Lists | 25 | 15 (Declined 6, Read as Another Task 4) | 15 Delivered Correctly |
 | Presence Checks | 119 | 52 (Declined 56, Another Task 11) | Resolved Exactly 49, Related 2, Unrelated 1; 51 Delivered Correctly |
 | To Refuse | 44 | 44 Refused | |
@@ -211,7 +211,7 @@ Of the 66 condition answers delivered, all correct, the model wrote 60
 and a template 6, after the model's candidate was withheld.
 
 | Questions About the Whole Record | Questions | Read as Meant | Delivered Correctly |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Laboratory Results | 62 | 45 | 43 |
 | Medications | 32 | 19 | 16 |
 | Conditions (Times and Counts) | 11 | 8 | 7 |
@@ -238,7 +238,7 @@ before the read ([ADR 0029](decisions/0029-the-freeze.md), decision 5;
 record `instr-held-out-reading-v2`).
 
 | Family | Questions | As Expected | Most Often Instead |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | All Diagnoses | 1,056 | 781 | Asked Back, the Item Named Not Found (179) |
 | A Ranking of Diagnoses | 3,101 | 2,154 | Read as a List of Condition Records (947) |
 | Demographics | 4,199 | 1,595 | Asked Back, the Task Ambiguous (2,482) |
@@ -264,7 +264,7 @@ over cases that ADR 0016 fixes for ratios (10,000 replicates, the same
 seed), beside, not in place of, the intervals above:
 
 | Requests | Metric | Difference | Newcombe | By Patient |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | All | Exact Match | +6.9 | +4.4 to +9.5 | +4.4 to +9.7 |
 | All | Coverage | -3.7 | -5.0 to -2.6 | -5.2 to -2.4 |
 | All | Correct-Answer Yield | +2.4 | +1.5 to +3.3 | +1.5 to +3.3 |

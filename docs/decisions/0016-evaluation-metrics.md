@@ -147,7 +147,7 @@ independent references instead.
     strata instead; the condition strata keep the condition questions.
 
 | Metric | Numerator | Denominator | When the Denominator Is Zero |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Exact Match (Lists) | Exact Lists | List Requests With an Answer Reference | Not Applicable |
 | Condition, Record, Driver and Line Precision | True Positives | True and False Positives | Not Applicable |
 | Condition, Record, Driver and Line Recall | True Positives | True Positives and False Negatives | Not Applicable |

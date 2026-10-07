@@ -69,7 +69,7 @@ the model on one patient graph at a time and writes one record per selected
 patient:
 
 | Field | Meaning |
-| :--- | ---: |
+| :--- | :--- |
 | `patient_index` | Position in the Bridge-Filtered Graph List; Not a Person or Visit Identifier |
 | `predicted_diagnosis.label_index` | Argmax Over the 275 Diagnosis Logits |
 | `predicted_diagnosis.concept_id` | `label_vocab[label_index]` |
@@ -121,7 +121,7 @@ Whether `concept_id` names the diagnosis the model actually scored rests on
 three layers of evidence:
 
 | Layer | Evidence | Result |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | A. Rule | Graph Builder, Trainer, Model and Bridge Share One Label Axis: Output Position *i*, Training Target *i* and `label_vocab[i]` | Established From the Pinned Source |
 | B. Decode | `concept_id == label_vocab[label_index]` for Every Pilot Output | 10 of 10 |
 | C. Run Binding | The Checkpoint's Saved `pos_weight` Reproduces Exactly From the Current Graph Labels in the Current Label Order Under the Replayed Split; a Reversed Order Does Not | 275 of 275 Values; Reversed Order 0 of 105 Exact-Count Values |

@@ -57,7 +57,7 @@ attribution.
 ## Implementation Status
 
 | Layer | Status |
-| :--- | ---: |
+| :--- | :--- |
 | Storage, Data Handling and Repository Quality Gates | Implemented |
 | Source Preparation: Staged Exports, Bounded Read-Only Pilot | Implemented |
 | Experiment Tracking and Lineage Foundations | Implemented |
@@ -79,7 +79,7 @@ All code is in `src/ehr_evidence_app`. Every module with a command-line
 interface runs as `python -m ehr_evidence_app.<package>.<module>`.
 
 | Package | Responsibility | Modules |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `storage` | Fixed Storage Roots, Destination and Path Checks, Process-Local Destination Setup, Runtime-Volume Preflight | `policy`, `destinations`, `runtime` |
 | `sources` | Staging of the Legacy OMOP Exports; Bounded Read-Only Extraction From the OMOP Database; the Case Sets' Raw MIMIC-IV Records | `exports`, `pilot`, `mimic` |
 | `gnn` | Inherited GNN Baseline, Asset Validation, Identity Mapping, Preprocessing Parity, Offline Outputs, Provenance, Split Membership, Run Binding, Phase 3 Closure, Driver-to-Event Linkage | `baseline`, `assets`, `mapping`, `parity`, `outputs`, `provenance`, `split`, `binding`, `admission`, `linkage` |
@@ -104,7 +104,7 @@ Configuration files in `config/` may narrow a policy but never widen it;
 fixed roots and allowlists live in code.
 
 | File | Read By | Contents |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `paths.json` | `storage.*`, `environment.app`, `scripts/setup-destinations.ps1` | Destinations and Process Environment Variables |
 | `publishable_policy.json` | `quality.publication` | Publication Audit Policy |
 | `source_exports.json` | `sources.exports` | Legacy Export Selection and Profiling Rules |
@@ -128,7 +128,7 @@ fixed roots and allowlists live in code.
 ## Locations
 
 | Location | Contents | In Git |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `G:\Industry Dataset\ehr-evidence-app` | This Repository: Code, Configuration, Documentation, Tests | Yes |
 | `G:\Industry Dataset\ehr-evidence-workspace` | Private Workspace: Protected Data, Outputs, Verification Records, Archive | No |
 | `G:\Industry Dataset\ehr-evidence-runtime` | Disposable Environments, Caches and Temporary Files | No |
@@ -169,7 +169,7 @@ work items in the [roadmap](roadmap.md). For example, `step-17-pilot10-v1`
 is the identity mapping produced by work item 17 for the 10-person pilot.
 
 | Work Item | Module | Protected Artefact (Workspace-Relative) |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | 0.3.1 | `sources.exports` | `protected-data\source-exports\legacy-export-20260901-v1` |
 | 0.3.2 | `sources.pilot` | `protected-data\source-pilot\pilot-10-v1` |
 | 1 | `gnn.baseline` | `outputs\baselines\inherited-baseline-v1.json` |

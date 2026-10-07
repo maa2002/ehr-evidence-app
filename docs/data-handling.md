@@ -9,7 +9,7 @@ there. Command examples assume the session set-up in
 ## Data Classes
 
 | Class | Examples | Where It May Live |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Protected | Source Exports and Extracts, the Case Sets' Raw MIMIC-IV Records (`protected-data\source-records`), Identity Mappings, Model Outputs, Provenance and Split Sidecars, Prepared Evidence and Record Bundles, External Question Sets and Their Partitions, Written Test Questions, Runtime Records of the Generation (`protected-data\runtime-records`) | Workspace `protected-data\` Only |
 | Private, Non-Patient | Verification Summaries, Environment Manifests, Lineage Manifests, Asset-Validation Records, Archives | Workspace `outputs\`, `records\`, `archive\` |
 | Disposable | Environments, Package and Bytecode Caches, Temporary Files, Test Temp | Runtime Root |
@@ -36,7 +36,7 @@ agreement; no model trained on the project's data
 All project storage sits under one anchor on an internal NTFS volume:
 
 | Root | Path | Role |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Policy Anchor | `G:\Industry Dataset` | Fixed in Code; Every Configured Destination Must Lie Inside It |
 | Private Workspace | `G:\Industry Dataset\ehr-evidence-workspace` | Authoritative Store for Protected Data, Outputs, Logs, Verification Records and ClearML Configuration |
 | Runtime Root | `G:\Industry Dataset\ehr-evidence-runtime` | Disposable Environments, Caches and Temporary Files Only |
@@ -59,7 +59,7 @@ entry names a key, a root (`workspace` by default, or `runtime` for the keys
 fixed in `RUNTIME_DIRECTORY_KEYS`) and a path inside that root.
 
 | Key | Root | Path | Purpose |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | `prepared_data` | Workspace | `protected-data\prepared` | Prepared Evidence |
 | `outputs` | Workspace | `outputs` | Generated Responses, Evaluation and Audit Artefacts |
 | `logs` | Workspace | `outputs\logs` | Application Run Logs |

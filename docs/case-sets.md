@@ -14,7 +14,7 @@ drawn; `config/case_sets.json` mirrors it exactly and loading refuses a
 mismatch.
 
 | Case Set | Purpose | Upstream Partition | Size | Seed |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | `dev-30-v1` | Development: Building and Tuning the Application | Validation | 30 | 20260926 |
 | `eval-100-v1` | Evaluation: Held for the Final Evaluation, Never Used for Development | Test | 100 | 20260927 |
 
@@ -44,7 +44,7 @@ the pipeline's own outcomes.
 ## Drawn Case Sets
 
 | Case Set | Partition Size | Eligible | Excluded (Pilot) | Selected | Visit Nodes (Min / Median / Max / Total) |
-| :--- | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :--- |
 | `dev-30-v1` | 10,016 | 10,016 | 0 | 30 | 2 / 3 / 14 / 124 |
 | `eval-100-v1` | 15,024 | 15,022 | 2 | 100 | 2 / 3 / 29 / 437 |
 
@@ -59,7 +59,7 @@ overwrites one. After a stage runs, its record's size and SHA-256 are pinned
 in the registry, and the next stage reads the record only through that pin.
 
 | Stage | Module | Runs In | Record (Under `protected-data`) |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Selection | `casesets.selection` | GNN Environment, CPU | `case-sets\<label>` |
 | Source Extraction | `sources.pilot --case-set` | Application Environment, Database Credentials | `source-casesets\<label>` |
 | Preparation: Identity Mapping, Model Outputs, Case Facts, Admission | `casesets.prepare` | GNN Environment, CUDA | `case-preparation\<label>` |
@@ -112,7 +112,7 @@ Every stage record of both case sets is published and pinned in
 concept without metadata.
 
 | Case Set | Persons | Visits | Conditions | Procedures | Drug Exposures |
-| :--- | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :--- |
 | `dev-30-v1` | 30 | 116 | 1,495 | 211 | 5,310 |
 | `eval-100-v1` | 100 | 407 | 4,801 | 624 | 14,437 |
 
@@ -123,7 +123,7 @@ source visit at more than one graph position. The Phase 3 rules do not
 admit such cases, because target and history cannot be kept apart.
 
 | Case Set | Admitted | Quarantined (Repeated Visit Nodes) | Explanation-Eligible | Batch-Sensitive | Target-Outcome Entries Excluded (Cases) |
-| :--- | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :--- |
 | `dev-30-v1` | 26 of 30 | 4 | 26 | 7 | 18 (10) |
 | `eval-100-v1` | 92 of 100 | 8 | 91 | 23 | 95 (38) |
 
@@ -131,7 +131,7 @@ admit such cases, because target and history cannot be kept apart.
 events, every driver links, and no in-vocabulary event lacks an edge.
 
 | Case Set | Condition Edges | Procedure Edges | Drug Edges | Drivers Verified |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | `dev-30-v1` | 867 / 867 | 143 / 143 | 1,132 / 1,132 | 596 |
 | `eval-100-v1` | 3,340 / 3,340 | 511 / 511 | 4,225 / 4,225 | 2,117 |
 
@@ -140,7 +140,7 @@ published outputs (604 and 2,115). The largest bundle is 108 KB, within
 the 1 MB limit.
 
 | Measure | `dev-30-v1` | `eval-100-v1` |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | QA Bundles (History / Selected Visit / All Visits) | 135 (26 / 83 / 26) | 519 (92 / 335 / 92) |
 | QA Coverage Complete / Complete and Empty | 134 / 1 | 515 / 4 |
 | Condition Records in the Pre-Target History | 682 | 2,588 |

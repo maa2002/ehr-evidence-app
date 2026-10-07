@@ -15,7 +15,7 @@ session set-up in [development.md](development.md#session-set-up).
 ## Modules
 
 | Work Item | Module | Role | State |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | 35 | `validation.evidence` | Checks Before Generation | Done |
 | 36 | `validation.candidate`, `validation.structure` | The Candidate Contract; Structure and Reference Checks | Done |
 | 37 | `validation.support` | Support of Every QA Statement by Its Cited Records | Done |
@@ -44,7 +44,7 @@ and holds an ordered list of statements. Each statement has:
 - the bundle **references** that support it.
 
 | Kind | Slots | Cites | Appears In |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | `list_summary` | `groups`, `scope`, `records` | Nothing; It Restates the Items | List Answers |
 | `list_item` | `condition`, `count`, `visits` | The Condition's Records | List Answers |
 | `list_unmapped` | `unmapped` | The Coverage Record | List Answers |
@@ -87,7 +87,7 @@ described and its slot; its JSON Schema is committed as
 The bundle has already been verified against its pinned manifest.
 
 | Finding | Outcome |
-| :--- | ---: |
+| :--- | :--- |
 | The Bundle Is Another Case's | Case Rejection, `identity_inconsistent` |
 | The Bundle Is Another Scope's | Case Rejection, `scope_invalid` |
 | Its Visits Are Not Numbered From Visit 1 Without a Gap, or Are Not the Selected Visit | Case Rejection, `history_inconsistent` |
@@ -98,7 +98,7 @@ An explanation request is checked the same way against its explanation
 bundle, and also:
 
 | Finding | Outcome |
-| :--- | ---: |
+| :--- | :--- |
 | The Bundle's Prediction Is Not the One the Request Selects, by Its Output-Record Digest | Case Rejection, `prediction_link_invalid` |
 | Its Visits Do Not End With the Final Admission | Case Rejection, `history_inconsistent` |
 | The Coverage of the Linked History Is Not Complete | Abstention, `evidence_insufficient` |
@@ -113,7 +113,7 @@ A case rejection releases no text.
 the bundle bound to that request:
 
 | Finding | Reason Code |
-| :--- | ---: |
+| :--- | :--- |
 | A Malformed Document; an Outcome, Reason Codes, Task or Bundle That Do Not Fit Together; a Digit in a Wording (Counts, Visits, Dates and Scores Are Slots); a Statement of a Kind the Answer Cannot Hold, or an Answer Without the Statements It Needs (a List Needs One Summary, at Least One Item and the Completeness Notice); a Wording Whose Placeholders Are Not Exactly Its Kind's Slots; a Changed Notice, a Notice Stated Twice, a Notice of Another Task, or an Answer Without a Notice Its Task and Outcome Require (Every "not recorded" Says That It Is Not Clinical Absence, a List That It Is Complete, a Time That Dates Are Shifted); a Visit's or the Person's Field That Is Not of Its Statement's Kind; Statements Out of Their Answer's Order (a List's Items After Its Summary, the Notice at the End; an Explanation's Prediction First, Then the Notice Introducing the Drivers, Each Driver Followed by Its Own History and Context, Then the Other Notices); a Statement That Cites What Its Kind Does Not Cite; a Response the Renderer Cannot Build Within the Response Limits | `structure_invalid` |
 | Another Request's Case or Scope; a Statement About Another Scope; Another Bundle Than the One Bound to the Request; a Request With a Bound Bundle Answered Without It, Such as a Refusal of an Answerable Request; a Presence Answer About Another Condition Than the One the Question Was Resolved To | `scope_violated` |
 | A Reference, Event, Driver, Visit Number or Concept That the Bundle or the Vocabulary Lacks | `reference_unresolved` |
@@ -130,7 +130,7 @@ records support what a statement says; that is the next check.
 statement of an answer says. Any failure is `claim_unsupported`.
 
 | Statement | Supported When |
-| :--- | ---: |
+| :--- | :--- |
 | A List Item | It Names the Condition of One of the Records It Cites; Every Record It Cites Is of That Condition (the Same Standard Concept, or the Same Source Code for a Record Without One); Its Count and Visits Are Those of the Cited Records |
 | A List | It Names Every Condition of the Scope Once and Cites Every Record of the Scope Once; Its Summary Counts the Scope's Conditions and Records; Its Note on Records Without a Standard Concept Counts Them |
 | An Empty List | Coverage Is Complete and Empty |
@@ -191,7 +191,7 @@ so a condition named "Pneumonia caused by a virus" never trips a rule.
 Rules version `wording-rules-v5`:
 
 | Rule | Examples | Reason Code |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | Causal or Directional Attribution | "caused", "led to", "due to", "raised the risk", "risk factor", "associated with", "secondary to" | `prohibited_wording` |
 | Percentage Contribution | "40%", "percent", "a share of" | `prohibited_wording` |
 | Exclusivity | "the only diagnosis", "solely", "nothing else" | `prohibited_wording` |
@@ -264,7 +264,7 @@ explanation (`explanation-template-v3`):
 Its checks apply to any explanation candidate, whoever wrote it:
 
 | Finding | Reason Code |
-| :--- | ---: |
+| :--- | :--- |
 | The Prediction Is Not Stated Once, With the Bundle's Label, and Its Score and Logit as a Response Shows Them | `prediction_altered` |
 | The Drivers Described Are Not Exactly the Selected Drivers, in Their Order, With Their Ranks, and Their Scores as a Response Shows Them; a Zero-Score Driver, or a Driver Not Selected, Is Described | `attribution_altered` |
 | A History Statement Cites Other Records Than the Driver's Linked Events in Pre-Target Visits, or a Context Statement Other Records Than Its Final-Admission Ones, or Either Miscounts Them or Their Visits; the Restrictions Disclosed, as Reason Codes or Notices, Are Not the Case's; the Drivers Not Described Are Not Stated, or Are Miscounted | `claim_unsupported` |
@@ -292,7 +292,7 @@ with the configured number of drivers, 5, and every one passes all
 checks:
 
 | Case Set | Explanations | Drivers Described | Drivers Not Described | History Statements | Context Statements | Claims | Restrictions Disclosed (Batch-Sensitive, Final-Admission Drivers, Excluded Outcome Entries) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | `dev-30-v1` | 26 of 26 | 130 | 448 | 82 | 59 | 297 | 6, 26, 10 |
 | `pilot-10-v1` | 10 of 10 | 47 | 141 | 36 | 14 | 107 | 2, 9, 3 |
 
@@ -313,7 +313,7 @@ the wording rules for every outcome, and finally the citation check on
 the rendered response. Then:
 
 | Finding | Released |
-| :--- | ---: |
+| :--- | :--- |
 | Every Check Passes | The Response, Rendered From the Candidate's Statements Only |
 | A Check Finds Problems | A Validation Rejection With Their Reason Codes; No Text, No Claims |
 | A Check Fails to Run | An Operational Error, `validator_failed`; No Text |
@@ -339,7 +339,7 @@ version 3 the mistakes of driver selection and of a statement's
 polarity, and version 4 checks scores as a response shows them:
 
 | Item | Error Classes | Expected |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | 35 | Bundle of Another Case, Bundle of Another Scope, History Gap, Record Without a Name, Prediction Not Selected | Case Rejection |
 | 35 | Incomplete Coverage | Abstention |
 | 36 | Malformed Document, Missing Slot, Fact Typed Into a Wording, Changed Notice | `structure_invalid` |
@@ -370,7 +370,7 @@ or context left out, and scores stated to the figures a response shows.
 Results, with the evaluation case set untouched:
 
 | Samples | Originals Released Unchanged | Controls Passed | Mutants Detected | Error Classes |
-| :--- | :---: | :---: | :---: | ---: |
+| :--- | :---: | :---: | :---: | :--- |
 | Invented Fixtures | 18 of 18 | 21 of 21 | 584 of 584 | 64 |
 | `dev-30-v1` | 434 of 434 | 530 of 530 | 17,414 of 17,414 | 65 |
 | `pilot-10-v1` | 186 of 186 | 220 of 220 | 7,356 of 7,356 | 65 |
@@ -400,7 +400,7 @@ and the controls (a list or presence item named by another of its own
 records) must be released.
 
 | Samples | Answers | Mutants Withheld | Controls Released |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Invented Edge Record (Every Task and Outcome) | 38 | 1,481 of 1,481 | All |
 | Development Case Sets (3 Cases of Each, All Visits and the History, 25 Questions) | 300 | 30,921 of 30,921 | 768 of 768 |
 
@@ -443,7 +443,7 @@ no reader relies on it. A misreading that leaves the answer as it was is
 not a mistake and is not counted.
 
 | Samples | Two Mistakes at Once | From a Misread Record | Another's Answer |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Invented Edge Record: 38 Answers About the Record | 1,761 of 1,761 Withheld | 688 of 688 | 320 of 320 |
 | Invented Case Set: 14 Condition Answers | 651 of 651 | 29 of 29 | 62 of 62 |
 | Development Case Sets: 300 Answers About the Record | 13,965 of 13,965 Withheld | 4,012 of 4,012 | 2,230 of 2,230 |

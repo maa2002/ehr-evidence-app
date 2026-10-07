@@ -13,7 +13,7 @@ Command examples assume the session set-up in
 All paths are under `G:\Industry Dataset\ehr-evidence-workspace\protected-data`.
 
 | Record | Directory | Module | State |
-| :--- | :---: | :---: | ---: |
+| :--- | :---: | :---: | :--- |
 | Offline Outputs | `model-outputs\step-20-pilot10-v1` | `gnn.outputs` | Published, Immutable |
 | Executed Wrapper Recovery | `model-provenance\step-20-executed-wrapper-recovery-v1` | Recovery Record | Published, Immutable |
 | Provenance Sidecar | `model-provenance\step-21-pilot10-v1` | `gnn.provenance` | Published, Immutable; Some Flags Superseded |
@@ -127,7 +127,7 @@ supersedes this result: membership is 8 training, 0 validation, 2 test.
 ## Flags in Published Records
 
 | Flag in Published Records | Recorded Value | Current Evidence |
-| :--- | :---: | ---: |
+| :--- | :---: | :--- |
 | `label_index_correspondence` | `not_established` | Established by Label Layers A to C |
 | Executed Wrapper `bytes_available`, `retrievable` | `false` | Recovered Byte-Exact |
 | `upstream_split_membership` | `unknown` / `unavailable` | 8 Training, 0 Validation, 2 Test |
@@ -176,7 +176,7 @@ Published record: `protected-data\model-provenance\phase3-closure-v1`, with
 `closure.json` (patient-bearing) and `summary.json` (aggregate). Its counts:
 
 | Measure | Result |
-| :--- | ---: |
+| :--- | :--- |
 | Cases Admitted | 10 of 10 |
 | Label Layer B / Correspondence Established | 10 / 10 |
 | Explanation-Eligible Cases | 10 |
@@ -191,7 +191,7 @@ Published record: `protected-data\model-provenance\phase3-closure-v1`, with
 ## Claim Policy
 
 | Allowed | Prohibited |
-| :--- | ---: |
+| :--- | :--- |
 | The Selected Label, Described as One Selected Output of a Multi-Label Prediction | Calling the Selected Label the Only Diagnosis, or the Score a Clinical Risk |
 | The Raw Logit and an Uncalibrated Score | Citing the Reported AUROC for Single-Graph Bridge Predictions |
 | Drivers With a Score Above Zero, Described as Unsigned Local Sensitivity | Causal, Directional or Percentage Attribution |
