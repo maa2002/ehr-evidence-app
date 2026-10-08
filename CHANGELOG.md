@@ -133,6 +133,18 @@ change interfaces.
   "gram" or between two of its words (`record-questions-v9`, rule 19);
   "Any positive cultures?" and "Was the troponin positive?" are read as
   before.
+- "Test" named the laboratory alone, so "Did she test positive for
+  MRSA?" and "Was the MRSA test positive?" were read in the laboratory's
+  dictionary only and answered "not recorded" where the MRSA screens,
+  which are microbiology's, are recorded, and "Was the e coli test
+  positive?" was asked back. "Test" or "tests" alone now names a
+  laboratory or a microbiology test, read in the dictionary that holds
+  the name as a name or a synonym (`record-questions-v10`, rule 20);
+  "What tests were done?" still lists the laboratory's. Checked before
+  and after on the development case sets, only the questions meant to
+  change do, and one more of the final evaluation's questions about the
+  record is read right; the evaluated release's figures stand
+  ([qa.md](docs/qa.md#a-name-asked-about-as-a-test)).
 - References on a line holding many of them wrap within the line, where
   they ran past the column's edge and could not be seen or pressed: a
   medication line of a development case cites up to 26 records.

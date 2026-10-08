@@ -6,9 +6,10 @@ replaced by cultures at their edges: two organisms and a record without
 one taken at one time, an organism tested against no antibiotic, every
 interpretation, an antibiotic tested twice, a test with more cultures than
 an answer shows, the latest culture of a test differing from the first,
-an organism asked about by its name, and organisms named by their Gram
-stain. Every answer leaves through the release gate, and every mutant of
-it is withheld. Every record and value here is invented.
+an organism asked about by its name, organisms named by their Gram stain
+and MRSA screens asked about as a test. Every answer leaves through the
+release gate, and every mutant of it is withheld. Every record and value
+here is invented.
 """
 
 import unittest
@@ -27,6 +28,11 @@ BLOOD = ("Blood Culture, Routine", "BLOOD CULTURE", "90201")
 URINE = ("URINE CULTURE", "URINE", "90039")
 GRAM = ("GRAM POSITIVE COCCUS(COCCI)", "GRAM NEGATIVE DIPLOCOCCI",
         "GRAM NEGATIVE ROD(S)", "STAPHYLOCOCCUS, COAGULASE NEGATIVE")
+MRSA = ("MRSA SCREEN", "MRSA SCREEN", "90131")
+MRSA_NAMES = ("MRSA SCREEN", "POSITIVE FOR METHICILLIN RESISTANT STAPH "
+              "AUREUS")
+# A laboratory test of the same organism, in the dictionary only.
+MRSA_PCR = (("59001", "MRSA PCR", "Other Body Fluid", "Microbiology"),)
 
 
 def culture(native, time, test, organism=None, antibiotic=None,
@@ -41,15 +47,16 @@ def culture(native, time, test, organism=None, antibiotic=None,
                                interpretation=reading)))
 
 
-def context_with(rows, micro=()):
+def context_with(rows, micro=(), labs=()):
     """Return the RecordContext of the invented record with its
     microbiology replaced by rows, each (visit position, record), and the
-    microbiology names in micro added to its dictionary."""
+    microbiology names in micro and the laboratory items in labs added to
+    its dictionary."""
     found = {position: [item for item in items if item[0] != "microbiology"]
              for position, items in cases.entries().items()}
     for position, item in rows:
         found[position].append(item)
-    return cases.context(cases.bundles(found), micro)
+    return cases.context(cases.bundles(found), micro, labs)
 
 
 def mixed_culture():
@@ -81,6 +88,12 @@ def gram_cultures():
             (1, culture(9802, "2150-03-02 09:00:00", BLOOD, GRAM[1])),
             (1, culture(9803, "2150-03-02 15:00:00", BLOOD, GRAM[2])),
             (2, culture(9804, "2151-06-02 08:00:00", BLOOD, GRAM[3]))]
+
+
+def mrsa_screens():
+    """MRSA screens of the first two visits, the first positive."""
+    return [(0, culture(9900, "2150-01-11 07:00:00", MRSA, MRSA_NAMES[1])),
+            (1, culture(9901, "2150-03-01 20:00:00", MRSA))]
 
 
 def many_cultures(grown, negative):
@@ -285,6 +298,34 @@ class CultureTests(unittest.TestCase):
             self.assertEqual((result.response.outcome,
                               tuple(result.response.reason_codes)),
                              ("clarification", (reason,)), question)
+
+    def test_a_microbiology_test_asked_about_as_a_test(self):
+        """"Test" alone names a microbiology test too: the MRSA screens
+        answer whether she tested positive, where the laboratory's MRSA
+        PCR, which no record holds, was said not to be recorded; the PCR
+        named is still the laboratory's (record-questions-v10, rule
+        20)."""
+        context = context_with(mrsa_screens(), MRSA_NAMES, MRSA_PCR)
+        found = Answer("Did she test positive for MRSA?", context)
+        self.assertEqual(found.lines(), [
+            "An organism is recorded in the results of MRSA SCREEN within "
+            "all case visits, including the final admission.",
+            "MRSA SCREEN:",
+            "- POSITIVE FOR METHICILLIN RESISTANT STAPH AUREUS, 11 Jan 2150 "
+            "07:00, in visit 1: no antibiotic results recorded",
+            "- No organism recorded, 1 Mar 2150 20:00, in visit 2"])
+        self.assertReleased(found)
+        latest = Answer("Was the latest MRSA test positive?", context)
+        self.assertEqual(latest.lines()[0],
+                         "No organism is recorded in the results of the "
+                         "latest MRSA SCREEN within all case visits, "
+                         "including the final admission.")
+        self.assertReleased(latest)
+        pcr = answer.record_result("Was the MRSA PCR test positive?",
+                                   cases.CASE, cases.ALL, cases.Visits(),
+                                   VOCAB, "q-1", context)
+        self.assertTrue(pcr.response.text.startswith(
+            "No result of MRSA PCR within all case visits"))
 
     def test_a_culture_asked_about_by_its_organism(self):
         """An organism named in the question: its own records, without

@@ -61,7 +61,8 @@ QUESTIONS = (
     "Is the predicted diagnosis recorded?", "Was normal saline given?",
     "Did the culture grow gram negative rods?",
     "Did any culture grow gram positive cocci?",
-    "Was the culture gram negative?",
+    "Was the culture gram negative?", "Did she test positive for MRSA?",
+    "Was the e coli test positive?",
     "Did any culture grow e coli?", "Was the creatinine normal, please?",
     "Was heparin given?", "Was heparin not given?", "Did she never get "
     "heparin?", "Was she on Lasix?", "Was furosemide given?",

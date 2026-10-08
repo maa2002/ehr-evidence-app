@@ -274,6 +274,52 @@ class ReadingTests(unittest.TestCase):
                                            ("microbiology",)),
                          ["gram", "positive"])
 
+    def test_a_name_asked_about_as_a_test(self):
+        """Rule 20: "test" alone names a laboratory or a microbiology test,
+        and the name is read where the dictionary holds it as a name or a
+        synonym, the question asking which when both do; the laboratory's
+        named tests, and questions that name none, are read as before."""
+        drugs = drug_vocabulary()
+        terms = resolving.Terms(
+            labs=[("1", "Potassium", "Blood", "Chemistry"),
+                  ("7", "MRSA PCR", "Other Body Fluid", "Microbiology"),
+                  ("8", "Legionella Antigen", "Urine", "Microbiology")],
+            items=[], micro=["BLOOD CULTURE", "ESCHERICHIA COLI", "URINE",
+                             "MRSA SCREEN", "LEGIONELLA ANTIGEN"],
+            units=[], drugs=drugs, procedures=drugs.procedure_names)
+        for question, expected in (
+                ("Did she test positive for MRSA?",
+                 dict(task="record_values", kind="microbiology",
+                      phrase="mrsa")),
+                ("Was the MRSA test positive?",
+                 dict(task="record_values", kind="microbiology")),
+                ("Was an MRSA test done?",
+                 dict(task="record_presence", kind="microbiology")),
+                ("When was the MRSA test?",
+                 dict(task="record_timing", kind="microbiology")),
+                ("Was the e coli test positive?",
+                 dict(kind="microbiology", phrase="e coli")),
+                ("Was the potassium test done?",
+                 dict(task="record_presence", kind="lab",
+                      phrase="potassium")),
+                ("Was the MRSA PCR test positive?",
+                 dict(task="record_abnormal", kind="lab",
+                      phrase="mrsa pcr")),
+                ("Was a lab test for MRSA done?",
+                 dict(kind="lab", phrase="mrsa")),
+                ("Was a legionella antigen test done?",
+                 dict(status="clarify", category="several_kinds")),
+                ("What tests were done?",
+                 dict(task="record_list", kind="lab", phrase=None)),
+                ("Were any tests abnormal?",
+                 dict(task="record_abnormal", kind="lab"))):
+            found = reader.interpret(question, terms)
+            for name, value in expected.items():
+                self.assertEqual(getattr(found, name), value, question)
+        self.assertTrue(reader.tested_only("did she test positive for mrsa"))
+        self.assertFalse(reader.tested_only("which blood tests were done"))
+        self.assertFalse(reader.tested_only("was a lab test for mrsa done"))
+
     def test_a_selected_result_and_its_flag(self):
         """Rule 15: a result a selector picks, asked about by its flag,
         keeps its selector; a vital sign and a plain selector do not ask

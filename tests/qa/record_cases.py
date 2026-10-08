@@ -60,9 +60,10 @@ def drug_vocabulary():
                            for concept, found in CLASS_INGREDIENTS.items()})
 
 
-def terms(micro=()):
+def terms(micro=(), labs=()):
     """Return Terms over the invented dictionaries and vocabularies, with
-    the microbiology names in micro added."""
+    the microbiology names in micro and the laboratory items in labs
+    added."""
     drugs = drug_vocabulary()
     return record_resolve.Terms(
         labs=[("50971", "Potassium", "Blood", "Chemistry"),
@@ -70,7 +71,7 @@ def terms(micro=()):
               ("50931", "Glucose", "Blood", "Chemistry"),
               ("51003", "Troponin T", "Blood", "Chemistry"),
               ("51222", "Hemoglobin", "Blood", "Hematology"),
-              ("50983", "Sodium", "Blood", "Chemistry")],
+              ("50983", "Sodium", "Blood", "Chemistry")] + list(labs),
         items=[("220045", "Heart Rate"),
                ("220179", "Non Invasive Blood Pressure systolic"),
                ("223761", "Temperature Fahrenheit"),
@@ -335,10 +336,12 @@ def record_set(built=None):
         bundles={bundle.bundle_id: bundle for bundle in built})
 
 
-def context(built=None, micro=()):
+def context(built=None, micro=(), labs=()):
     """Return the RecordContext of the invented record, its dictionary
-    holding the microbiology names in micro too."""
-    return record_answer.RecordContext(record_set(built), terms(micro))
+    holding the microbiology names in micro and the laboratory items in
+    labs too."""
+    return record_answer.RecordContext(record_set(built),
+                                       terms(micro, labs))
 
 
 class Visits:

@@ -125,21 +125,32 @@ record-questions-v3), by fixed rules and without a model:
     "Positive", a word of the question elsewhere ("any positive
     cultures", "was the patient positive for MRSA"), stays in a name
     after "gram" or between two of its words.
+20. "Test" or "tests" alone names a laboratory test or a microbiology
+    test ("was the MRSA test positive", "did she test positive for
+    MRSA"): the name is read in the dictionary that holds it as a name or
+    a synonym, the question asking which when both do and nothing breaks
+    the tie, else in the first, the laboratory's, then microbiology's,
+    that holds its words. Without a name, "what tests were done" asks
+    about the laboratory, as before.
 
 Version 2 adds rules 6 to 8; version 3 removes the polite opening
 (rule 1); version 4 adds rule 9, version 5 rule 10, version 6 rule 11,
-version 7 rule 12, version 8 rules 13 to 18 and version 9 rule 19.
+version 7 rule 12, version 8 rules 13 to 18, version 9 rule 19 and
+version 10 rule 20. Before version 10 "test" named the laboratory
+alone, so "did she test positive for MRSA" was read in the
+laboratory's dictionary only and missed microbiology's MRSA screens.
 Before version 9 "positive" was left out of every name ("gram positive
-cocci" was looked up as "gram cocci"), and version 8 read "gram negative"
-at the end of a question as how a result reads. Before version 8 a
-question about what grew asked about all of a test's results whatever
-its selector; "negative" or "normal" at the end of a question, a
-prediction, arriving through the ED, an emergency, readmission, an age
-over a number and death at discharge were asked back or not understood;
-and a selected laboratory result asked about as abnormal lost its
-selector. Version 6 also reads "all ... values" around a name of up to
-eight words, digits included ("all the hemoglobin a1c values"), where
-four words of letters alone were read before.
+cocci" was looked up as "gram cocci"), and version 8 read "gram
+negative" at the end of a question as how a result reads. Before
+version 8 a question about what grew asked about all of a test's
+results whatever its selector; "negative" or "normal" at the end of a
+question, a prediction, arriving through the ED, an emergency,
+readmission, an age over a number and death at discharge were asked
+back or not understood; and a selected laboratory result asked about
+as abnormal lost its selector. Version 6 also reads "all ... values"
+around a name of up to eight words, digits included ("all the
+hemoglobin a1c values"), where four words of letters alone were read
+before.
 """
 
 from __future__ import annotations
@@ -151,7 +162,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v9"
+RULES_VERSION = "record-questions-v10"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -197,6 +208,10 @@ HINTS = {
     "lab": re.compile(r"\b(?:measured|checked|drawn|tested|sent)\b"),
     "microbiology": re.compile(r"\b(?:grew|grown|isolated|cultured)\b"),
 }
+# Rule 20: "test" alone names a laboratory test or a microbiology test
+# ("was the MRSA test positive", "did she test positive for MRSA").
+GENERIC_TESTS = ("test", "tests")
+TESTED = ("lab", "microbiology")
 PERSON = (
     ("sex", re.compile(r"\b(?:sex|gender)\b|\b(?:is|was) (?:the patient|he|"
                        r"she|they|patient|this patient) (?:a )?(?:male|"
@@ -571,7 +586,7 @@ def negated(body):
     return any(word in NEGATIONS for word in body.split())
 
 
-def two_items(terms, body, kinds, hints, prefer):
+def two_items(terms, body, kinds, hints, prefer, tested=False):
     """Return True when a question names two items joined by "and" or
     "or", each of which resolves."""
     words = left_words(body, kinds, keep=CONJUNCTIONS)
@@ -588,7 +603,7 @@ def two_items(terms, body, kinds, hints, prefer):
         return False
     for part in parts:
         kind, resolution = resolve_phrase(terms, " ".join(part), kinds,
-                                          hints, prefer)
+                                          hints, prefer, tested)
         if isinstance(resolution, dict):
             continue
         if kind is None or resolution is None or (
@@ -679,18 +694,56 @@ def hints_of(body):
     return [kind for kind, pattern in HINTS.items() if pattern.search(body)]
 
 
-def resolve_phrase(terms, phrase, kinds, hints=(), prefer=()):
+def tested_only(body):
+    """Return True when a question names the laboratory only by "test" or
+    "tests", which may name a microbiology test too (rule 20)."""
+    named = [match.group() for match in KIND_PATTERNS["lab"].finditer(body)]
+    return bool(named) and all(word in GENERIC_TESTS for word in named)
+
+
+def resolve_tested(terms, phrase, hints=(), prefer=()):
+    """Return (kind, resolution) of a phrase asked about as a test (rule
+    20): in the laboratory or microbiology dictionary that holds it by a
+    name or a synonym, the hints, then the kinds the task prefers,
+    breaking a tie; else in the first that holds it by its words. Return
+    (None, resolutions) when both hold it by a name and nothing breaks
+    the tie, and the laboratory's resolution when neither holds it."""
+    found = {kind: terms.resolve(kind, phrase) for kind in TESTED}
+    resolved = {kind: item for kind, item in found.items()
+                if item.status == "resolved"}
+    named = {kind: item for kind, item in resolved.items()
+             if item.rule in ("name", "synonym")}
+    for narrower in (hints, prefer):
+        kept = {kind: item for kind, item in named.items()
+                if kind in narrower}
+        if len(named) > 1 and kept:
+            named = kept
+    if len(named) == 1:
+        kind = next(iter(named))
+        return kind, named[kind]
+    if len(named) > 1:
+        return None, named
+    for kind in TESTED:
+        if kind in resolved:
+            return kind, resolved[kind]
+    return "lab", found["lab"]
+
+
+def resolve_phrase(terms, phrase, kinds, hints=(), prefer=(), tested=False):
     """Return (kind, resolution) of a phrase: in the kind the question
     names, or the one kind of ORDER it resolves in by a name or a
     synonym, else by its words in a kind its verbs (hints) or its task
     (prefer) point to; the hints, then the kinds the task prefers, break
     a tie. Return (None, resolutions) when several remain, and (None,
-    None) when none resolves it.
+    None) when none resolves it. A question that names the laboratory
+    only by "test" is read by resolve_tested (rule 20).
 
     Words alone never take a question that names no kind: "is diabetes
     recorded" is a condition question the condition rules could not
     resolve, and the words of the procedure names hold "diabetes", which
     would answer it as a procedure."""
+    if tested:
+        return resolve_tested(terms, phrase, hints, prefer)
     if kinds:
         kind = kinds[0]
         return kind, terms.resolve(kind, phrase)
@@ -822,11 +875,15 @@ def item_question(body, found, terms):
     selector = selector_of(body)
     task = task_of(body, selector)
     kinds = kinds_named(body)
+    # Rule 20: a name asked about as a test is a laboratory test or a
+    # microbiology test.
+    tested = kinds == ["lab"] and tested_only(body)
     hints = hints_of(body)
     prefer = ("lab", "vital") if task in (
         "record_values", "record_abnormal") or RESULTS.search(body) or (
         quality) else ()
-    whole = whole_name(terms, body, kinds, hints, prefer)
+    whole = whole_name(terms, body, list(TESTED) if tested else kinds,
+                       hints, prefer)
     if whole is not None:
         kind, _, phrase = whole
         return item_reading(body, found, task, selector, kind, phrase,
@@ -886,10 +943,11 @@ def item_question(body, found, terms):
     if condition is not None:
         return clarify("task_ambiguous", "indication", found,
                        phrase=condition)
-    kind, resolution = resolve_phrase(terms, phrase, kinds, hints, prefer)
+    kind, resolution = resolve_phrase(terms, phrase, kinds, hints, prefer,
+                                      tested)
     unresolved = (kind is None and resolution is None) or (
         kind is not None and resolution.status != "resolved")
-    if unresolved and two_items(terms, body, kinds, hints, prefer):
+    if unresolved and two_items(terms, body, kinds, hints, prefer, tested):
         return clarify("task_ambiguous", "two_items", found)
     if kind is None and resolution is None and (kinds or hints):
         return clarify("concept_unknown", "unknown_item", found,

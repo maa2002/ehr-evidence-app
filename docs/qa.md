@@ -601,14 +601,17 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v9`, which removes a polite opening as the
+(rules `record-questions-v10`, which removes a polite opening as the
 condition rules do, reads a name whole, by rule 12 reads when a visit
 named by a scope phrase was, by rules 13 to 18 reads questions that ask
 yes or no, see
-[Questions That Ask Yes or No](#questions-that-ask-yes-or-no), and by
-rule 19 keeps the Gram stain in a name, see
-[The Gram Stain](#the-gram-stain)); so are a dose question, a past
-question about death and a question about a first or last result. A
+[Questions That Ask Yes or No](#questions-that-ask-yes-or-no), by rule
+19 keeps the Gram stain in a name, see
+[The Gram Stain](#the-gram-stain), and by rule 20 reads a test as the
+laboratory's or microbiology's, see
+[A Name Asked About as a Test](#a-name-asked-about-as-a-test)); so are a
+dose question, a past question about death and a question about a first
+or last result. A
 request for advice, a question about the future and a ranking of
 conditions keep their refusals: since `qa-answer-v7`, a ranking that
 names conditions in the singular as in the plural ("the most important
@@ -753,7 +756,7 @@ name inside another, none at all), a brand name, drug classes,
 microbiology with and without growth and every interpretation, an open
 transfer, two ICU stays, an admission without times, one whose discharge
 precedes its admission, a death in hospital and an age that passes 89.
-Every one of 172 questions, including noise, markup, accents,
+Every one of 174 questions, including noise, markup, accents,
 abbreviations, negations, misspellings, words of time, class words in
 the singular and questions about what a medication was given for, is
 asked in every scope; none ends in a rejection or an error. The answers'
@@ -765,8 +768,9 @@ their edges have their own invented record
 one taken at one time, an organism tested against no antibiotic, every
 interpretation, an antibiotic tested twice, more cultures than an answer
 shows, a latest culture that differs from the first, an organism asked
-about by its name, and organisms named by their Gram stain; every answer
-is released and every one of its mutants withheld.
+about by its name, organisms named by their Gram stain, and MRSA screens
+asked about as a test; every answer is released and every one of its
+mutants withheld.
 
 The same questions, with the heavy ones of the first development check
 (every result of every test, every culture, every dose), were asked of
@@ -1048,6 +1052,39 @@ Before and after, on the development case sets, as above:
 The questions of the record answers' mutants and of the wrong answers
 that agree with themselves hold neither "positive" nor "gram", so their
 readings, and their counts above, are unchanged.
+
+### A Name Asked About as a Test
+
+"Test" was one of the laboratory's words, so a question that called a
+microbiology test a test was read in the laboratory's dictionary alone.
+"Did she test positive for MRSA?" and "Was the MRSA test positive?" were
+answered "not recorded" in every scope, from a laboratory test of that
+name no record of these cases holds, where the MRSA screens, which are
+microbiology's, are recorded in 23 scopes; and "Was the e coli test
+positive?" was asked back. Rule 20 (`record-questions-v10`) reads a name
+asked about with "test" or "tests" alone in the laboratory's or
+microbiology's dictionary: the one that holds it as a name or a synonym,
+the question asking which when both do and nothing breaks the tie, else
+the first that holds its words, the laboratory's first, as before. "What
+tests were done?", which names none, asks about the laboratory as
+before, and so do the laboratory's own words ("blood tests", "lab
+tests") and its named tests ("Was the potassium test done?").
+`tests/qa/test_record_cultures.py` asks about invented MRSA screens with
+a laboratory MRSA test in the dictionary but in no record.
+
+Before and after, on the development case sets, as above:
+
+| Check | Requests | Result |
+| :--- | :---: | :--- |
+| The 427 Questions Above and 26 That Name a Test, in Every Scope of Every Case | 87,429 Each | 441 Give the Same Responses Byte for Byte, the Laboratory's Tests and Questions That Name None Among Them. The 12 That Change Are the Ones Meant To: Six About MRSA, Two About "c diff" and One About Stool, Answered "not recorded" in Every Scope, Are Answered From Microbiology in 23, 17 and 17 Scopes; and Three That Were Asked Back, About E. Coli, Legionella and Sputum, Are Answered in 3, 3 and 14. No Rejection, Error or Exception |
+| The Record Suite | 7,865 and 3,188 | The Same Counts for Every Question |
+| Mutants of the Culture Answers, as Above | 302 Answers, 23,535 Mutants | All Withheld; Every Original Released Unchanged |
+| The Independent References ([assessment.md](assessment.md#references-for-questions-about-the-whole-record)) | 10,599 and 4,201 | Every Answer Agrees with Its Reference |
+| The Final Evaluation's Questions About the Record, Assessed Again with the Templates | 260 | 259 Get the Same Verdict at Every Stage; One About When a Microbiology Record Was Taken, Read Before as Another Kind's, Is Now Read Right and Delivered Correctly. The Evaluated Release's Figures Are Not Changed |
+
+The questions of the record answers' mutants and of the wrong answers
+that agree with themselves hold no "test", so their counts above are
+unchanged.
 
 ## Limits
 
