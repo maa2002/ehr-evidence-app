@@ -601,13 +601,14 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v8`, which removes a polite opening as the
+(rules `record-questions-v9`, which removes a polite opening as the
 condition rules do, reads a name whole, by rule 12 reads when a visit
-named by a scope phrase was, and by rules 13 to 18 reads questions that
-ask yes or no, see
-[Questions That Ask Yes or No](#questions-that-ask-yes-or-no)); so are
-a dose question, a past question about death and a question about a
-first or last result. A
+named by a scope phrase was, by rules 13 to 18 reads questions that ask
+yes or no, see
+[Questions That Ask Yes or No](#questions-that-ask-yes-or-no), and by
+rule 19 keeps the Gram stain in a name, see
+[The Gram Stain](#the-gram-stain)); so are a dose question, a past
+question about death and a question about a first or last result. A
 request for advice, a question about the future and a ranking of
 conditions keep their refusals: since `qa-answer-v7`, a ranking that
 names conditions in the singular as in the plural ("the most important
@@ -752,7 +753,7 @@ name inside another, none at all), a brand name, drug classes,
 microbiology with and without growth and every interpretation, an open
 transfer, two ICU stays, an admission without times, one whose discharge
 precedes its admission, a death in hospital and an age that passes 89.
-Every one of 170 questions, including noise, markup, accents,
+Every one of 172 questions, including noise, markup, accents,
 abbreviations, negations, misspellings, words of time, class words in
 the singular and questions about what a medication was given for, is
 asked in every scope; none ends in a rejection or an error. The answers'
@@ -763,9 +764,9 @@ their edges have their own invented record
 (`tests/qa/test_record_cultures.py`): two organisms and a record without
 one taken at one time, an organism tested against no antibiotic, every
 interpretation, an antibiotic tested twice, more cultures than an answer
-shows, a latest culture that differs from the first, and an organism
-asked about by its name; every answer is released and every one of its
-mutants withheld.
+shows, a latest culture that differs from the first, an organism asked
+about by its name, and organisms named by their Gram stain; every answer
+is released and every one of its mutants withheld.
 
 The same questions, with the heavy ones of the first development check
 (every result of every test, every culture, every dose), were asked of
@@ -997,10 +998,8 @@ resistant to ampicillin"), which needs a test and an organism read
 together; whether a medication was stopped ("was vancomycin stopped",
 answered as whether it was given), which the record's prescription times
 do not say; clinical words for vital signs ("tachycardic"), which would
-judge a value; words no dictionary holds ("fluids"); and "positive"
-within a name the dictionary does not hold whole, which is set aside as
-a word of the question, so "gram positive cocci" is looked up as "gram
-cocci".
+judge a value; and words no dictionary holds ("fluids"). "Positive"
+within a name is read since rule 19 ([The Gram Stain](#the-gram-stain)).
 
 Before and after, on the development case sets, with aggregate output
 only, through the service as the page asks, without the model and
@@ -1016,6 +1015,39 @@ without runtime records:
 | Mutants of the Culture Answers: Every Culture, the Latest and the First, and Each Test the Scope Holds by Name, in the History and All Visits of Every Case | 302 Answers, 23,535 Mutants | All Withheld; Every Original Released Unchanged |
 | The Independent References ([assessment.md](assessment.md#references-for-questions-about-the-whole-record)) | 10,599 and 4,201 | Every Answer Agrees with Its Reference, as Before |
 | The Final Evaluation's Questions About the Record, Assessed Again with the Templates | 260 | The Same Verdict at Every Stage for Each; the Evaluated Release's Figures Are Not Changed |
+
+### The Gram Stain
+
+"Positive" was a word of the question everywhere, so it was left out of
+every name: "Did any culture grow gram positive cocci?" was looked up as
+"gram cocci", which also names gram negative diplococci, and "Did any
+culture grow coagulase positive staph?" as "coagulase staph", which names
+the coagulase negative staphylococci. And since `record-questions-v8`
+read "negative" at the end of a question as how a result reads, "Was the
+culture gram negative?" asked about every name holding "gram". Rule 19
+(`record-questions-v9`) keeps "positive" in a name after "gram" or
+between two of its words, and reads the Gram stain at the end of a
+question as a name, which asks neither how a result reads nor whether
+anything grew. "Any positive cultures?", "Was the troponin positive?"
+and "Was the patient positive for MRSA?" are read as before.
+`tests/qa/test_record_cultures.py` asks these of invented cultures of
+gram positive cocci, gram negative diplococci and rods and coagulase
+negative staphylococci; each answer passes the release gate and every
+mutant of it is withheld.
+
+Before and after, on the development case sets, as above:
+
+| Check | Requests | Result |
+| :--- | :---: | :--- |
+| The 407 Questions Above and 20 About the Gram Stain and "positive", in Every Scope of Every Case | 82,411 Each | 418 Give the Same Responses Byte for Byte, Every Other Use of "positive" Among Them. Of the 9 That Change, Four That Name a Gram Stain Gave the Records of Every Name Holding "gram" in 30 Scopes and Now Ask for the Stain Named, Which No Record of These Cases Names; "Was the culture gram positive or negative?", Answered the Same Way Before, Asks About One at a Time; "Did any culture grow coagulase positive staph?", a Name the Dictionary Lacks, Is Asked Back, Where It Was Looked Up as "coagulase staph"; and Three Keep Their Outcome, Their Responses Now Naming the Stain Asked About. No Rejection, Error or Exception |
+| The Record Suite | 7,865 and 3,188 | The Same Counts for Every Question |
+| Mutants of the Culture Answers, as Above | 302 Answers, 23,535 Mutants | All Withheld; Every Original Released Unchanged |
+| The Independent References ([assessment.md](assessment.md#references-for-questions-about-the-whole-record)) | 10,599 and 4,201 | Every Answer Agrees with Its Reference |
+| The Final Evaluation's Questions About the Record, Assessed Again with the Templates | 260 | The Same Verdict at Every Stage for Each |
+
+The questions of the record answers' mutants and of the wrong answers
+that agree with themselves hold neither "positive" nor "gram", so their
+readings, and their counts above, are unchanged.
 
 ## Limits
 

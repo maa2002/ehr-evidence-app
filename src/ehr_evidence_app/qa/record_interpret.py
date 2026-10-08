@@ -119,10 +119,19 @@ record-questions-v3), by fixed rules and without a model:
     "readmitted"; the age as "over 65" or "older than 80", answered with
     the ages and never compared; and death as "alive at discharge" or
     "died in hospital", with each visit's death in hospital.
+19. The Gram stain is part of a name ("did any culture grow gram
+    positive cocci", "was it gram negative"), at the end of a question
+    too, and asks neither how a result reads nor whether anything grew.
+    "Positive", a word of the question elsewhere ("any positive
+    cultures", "was the patient positive for MRSA"), stays in a name
+    after "gram" or between two of its words.
 
 Version 2 adds rules 6 to 8; version 3 removes the polite opening
 (rule 1); version 4 adds rule 9, version 5 rule 10, version 6 rule 11,
-version 7 rule 12 and version 8 rules 13 to 18. Before version 8 a
+version 7 rule 12, version 8 rules 13 to 18 and version 9 rule 19.
+Before version 9 "positive" was left out of every name ("gram positive
+cocci" was looked up as "gram cocci"), and version 8 read "gram negative"
+at the end of a question as how a result reads. Before version 8 a
 question about what grew asked about all of a test's results whatever
 its selector; "negative" or "normal" at the end of a question, a
 prediction, arriving through the ED, an emergency, readmission, an age
@@ -142,7 +151,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v8"
+RULES_VERSION = "record-questions-v9"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -316,6 +325,15 @@ QUALITY = re.compile(
     r"(?:\b(?:normal|positive|negatives?)(?: or (?:not|normal|abnormal|"
     r"positive|negatives?))?|\b(?:within|in) (?:the )?(?:normal|reference) "
     r"(?:limits|range))" + COURTESY_END)
+# Rule 19: the Gram stain is a name ("gram positive cocci", "was it gram
+# negative"), at the end of a question too, and asks neither how a result
+# reads nor whether anything grew; "positive", a word of the question
+# elsewhere ("any positive cultures", "was the patient positive for
+# MRSA"), is part of a name after "gram" or between two of its words.
+GRAM_STAIN = re.compile(r"\bgram (?:positive|negative)\b")
+GRAM_END = re.compile(r"\bgram (?:positive|negative)(?: or (?:positive|"
+                      r"negative))?" + COURTESY_END)
+NAMED_POSITIVE = "positive"
 # Selectors that pick one result of an item.
 SINGLE = ("latest", "first", "highest", "lowest")
 # Procedures asked about as surgery, which the record does not mark (rule
@@ -455,15 +473,24 @@ def blank(pattern, text):
 def left_words(text, kinds=(), keep=frozenset()):
     """Return the words of text that are not harmless, a negation, a
     kind's words, a selector or a frame, in order; harmless words in keep
-    are kept."""
+    are kept, and "positive" within a name (rule 19)."""
     for kind in kinds:
         text = blank(KIND_PATTERNS[kind], text)
     text = blank(SELECTOR_WORDS, text)
     for pattern in (COUNT, TIMING, ABNORMAL, HIGH, LOW, DOSE, re.compile(
             r"\bout of range\b|\bhow many\b|\bnumber of\b|\bover time\b")):
         text = blank(pattern, text)
-    return [word for word in text.split() if word in keep or (
-        word not in HARMLESS and word not in NEGATIONS)]
+    tokens = text.split()
+    named = [word not in HARMLESS and word not in NEGATIONS
+             for word in tokens]
+    for index, word in enumerate(tokens):
+        if word == NAMED_POSITIVE and 0 < index and (
+                tokens[index - 1] == "gram"
+                or (named[index - 1] and index + 1 < len(tokens)
+                    and named[index + 1])):
+            named[index] = True
+    return [word for word, kept in zip(tokens, named)
+            if kept or word in keep]
 
 
 def set_aside(word):
@@ -787,7 +814,7 @@ def default_selector(task, kind, selector):
 
 def item_question(body, found, terms):
     """Read a question about records of one kind."""
-    quality = QUALITY.search(body)
+    quality = None if GRAM_END.search(body) else QUALITY.search(body)
     if quality:
         # Rules 13 and 14: how a result reads, asked at the end, is set
         # aside from the phrase.
@@ -888,10 +915,11 @@ def read_flags(kind, task, selector, body, quality):
     how a result reads (rules 13 to 15), or None when it is neither:
     microbiology's values, by culture; one laboratory result a selector
     picks, with whether it is flagged; or the results the laboratory
-    flagged."""
+    flagged. The Gram stain does not ask whether anything grew (rule
+    19)."""
     if kind == "microbiology" and (
             (task in (None, "record_values")
-             and (quality or GROWTH.search(body)))
+             and (quality or GROWTH.search(blank(GRAM_STAIN, body))))
             or (task == "record_abnormal" and selector in ("latest",
                                                            "first"))):
         return "record_values", growth_selector(selector), None

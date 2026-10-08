@@ -84,7 +84,8 @@ change interfaces.
   limits", ask for the results the laboratory flagged, as "abnormal"
   does, and are asked back of vital signs, which carry no flag; within a
   question "normal" and "negative" stay part of a name ("normal saline")
-  (rules 14 and 15).
+  (rules 14 and 15), and so does the Gram stain at its end ("Was the
+  culture gram negative?", `record-questions-v9`, rule 19).
 - Procedures asked about as surgery ("Did the patient have surgery?",
   "How many operations?") are listed or counted with a notice that the
   record does not mark which were surgery, and a question about the
@@ -124,6 +125,14 @@ change interfaces.
   creatinine result, the latest left out, and "Was the latest potassium
   high?" with the value alone, without whether the laboratory flagged it
   (above).
+- "Positive" was left out of every name as a word of the question, so
+  "Did any culture grow gram positive cocci?" was looked up as "gram
+  cocci", which also names gram negative diplococci, and "Did any culture
+  grow coagulase positive staph?" as "coagulase staph", answered with the
+  coagulase negative staphylococci. "Positive" now stays in a name after
+  "gram" or between two of its words (`record-questions-v9`, rule 19);
+  "Any positive cultures?" and "Was the troponin positive?" are read as
+  before.
 - References on a line holding many of them wrap within the line, where
   they ran past the column's edge and could not be seen or pressed: a
   medication line of a development case cites up to 26 records.

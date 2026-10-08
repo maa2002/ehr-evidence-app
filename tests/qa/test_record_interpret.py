@@ -225,6 +225,55 @@ class ReadingTests(unittest.TestCase):
                          ["normal", "heparin"])
         self.assertEqual(reader.QUALITY.search("gram negative rods"), None)
 
+    def test_the_gram_stain_and_positive_within_a_name(self):
+        """Rule 19: "positive" stays in a name after "gram" or between two
+        of its words, and the Gram stain at the end of a question is a
+        name; elsewhere "positive" is a word of the question, as before."""
+        drugs = drug_vocabulary()
+        terms = resolving.Terms(
+            labs=[("6", "Troponin T", "Blood", "Chemistry")], items=[],
+            micro=["BLOOD CULTURE", "MRSA SCREEN",
+                   "GRAM POSITIVE COCCUS(COCCI)", "GRAM POSITIVE RODS",
+                   "GRAM NEGATIVE DIPLOCOCCI", "GRAM NEGATIVE ROD(S)",
+                   "STAPHYLOCOCCUS, COAGULASE NEGATIVE"],
+            units=[], drugs=drugs, procedures=drugs.procedure_names)
+        positive = ["GRAM POSITIVE COCCUS(COCCI)", "GRAM POSITIVE RODS"]
+        for question, task, phrase, names in (
+                ("Did any culture grow gram positive cocci?",
+                 "record_values", "gram positive cocci", positive[:1]),
+                ("Any gram positive organisms?", "record_values",
+                 "gram positive", positive),
+                ("Was the culture gram positive?", "record_presence",
+                 "gram positive", positive),
+                ("Was the culture gram negative?", "record_presence",
+                 "gram negative", ["GRAM NEGATIVE DIPLOCOCCI",
+                                   "GRAM NEGATIVE ROD(S)"]),
+                ("Did any culture grow coagulase positive staph?",
+                 "record_values", "coagulase positive staph", [])):
+            found = reader.interpret(question, terms)
+            self.assertEqual((found.task, found.kind, found.phrase),
+                             (task, "microbiology", phrase), question)
+            resolution = terms.resolve("microbiology", phrase)
+            self.assertEqual(sorted(resolution.names), names, question)
+        for question, expected in (
+                ("Any positive cultures?", dict(task="record_values",
+                                                phrase=None)),
+                ("Was the blood culture positive?",
+                 dict(task="record_values", phrase="blood culture")),
+                ("Was the MRSA screen positive?", dict(phrase="mrsa screen")),
+                ("Was the troponin positive?", dict(task="record_abnormal",
+                                                    phrase="troponin")),
+                ("Was the culture gram positive or negative?",
+                 dict(status="clarify", category="two_items"))):
+            found = reader.interpret(question, terms)
+            for name, value in expected.items():
+                self.assertEqual(getattr(found, name), value, question)
+        self.assertNotIn("positive", reader.left_words(
+            "did she test positive for mrsa"))
+        self.assertEqual(reader.left_words("any gram positive organisms",
+                                           ("microbiology",)),
+                         ["gram", "positive"])
+
     def test_a_selected_result_and_its_flag(self):
         """Rule 15: a result a selector picks, asked about by its flag,
         keeps its selector; a vital sign and a plain selector do not ask

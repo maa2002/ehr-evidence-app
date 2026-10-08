@@ -6,9 +6,9 @@ replaced by cultures at their edges: two organisms and a record without
 one taken at one time, an organism tested against no antibiotic, every
 interpretation, an antibiotic tested twice, a test with more cultures than
 an answer shows, the latest culture of a test differing from the first,
-and an organism asked about by its name. Every answer leaves through the
-release gate, and every mutant of it is withheld. Every record and value
-here is invented.
+an organism asked about by its name, and organisms named by their Gram
+stain. Every answer leaves through the release gate, and every mutant of
+it is withheld. Every record and value here is invented.
 """
 
 import unittest
@@ -25,6 +25,8 @@ from tests.validation import test_record_mutations as mutations
 VOCAB = suite.synthetic_vocabulary()
 BLOOD = ("Blood Culture, Routine", "BLOOD CULTURE", "90201")
 URINE = ("URINE CULTURE", "URINE", "90039")
+GRAM = ("GRAM POSITIVE COCCUS(COCCI)", "GRAM NEGATIVE DIPLOCOCCI",
+        "GRAM NEGATIVE ROD(S)", "STAPHYLOCOCCUS, COAGULASE NEGATIVE")
 
 
 def culture(native, time, test, organism=None, antibiotic=None,
@@ -39,14 +41,15 @@ def culture(native, time, test, organism=None, antibiotic=None,
                                interpretation=reading)))
 
 
-def context_with(rows):
+def context_with(rows, micro=()):
     """Return the RecordContext of the invented record with its
-    microbiology replaced by rows, each (visit position, record)."""
+    microbiology replaced by rows, each (visit position, record), and the
+    microbiology names in micro added to its dictionary."""
     found = {position: [item for item in items if item[0] != "microbiology"]
              for position, items in cases.entries().items()}
     for position, item in rows:
         found[position].append(item)
-    return cases.context(cases.bundles(found))
+    return cases.context(cases.bundles(found), micro)
 
 
 def mixed_culture():
@@ -65,6 +68,19 @@ def mixed_culture():
                         "STAPHYLOCOCCUS, COAGULASE NEGATIVE"))
     rows.append(culture(9511, time, BLOOD))
     return [(0, row) for row in rows]
+
+
+def gram_cultures():
+    """Blood cultures of organisms named by their Gram stain or their
+    coagulase, each in a dictionary that holds them: gram positive cocci
+    tested against an antibiotic, gram negative diplococci and rods, and
+    coagulase negative staphylococci."""
+    return [(0, culture(9800, "2150-01-10 10:00:00", BLOOD, GRAM[0])),
+            (0, culture(9801, "2150-01-10 10:00:00", BLOOD, GRAM[0],
+                        "VANCOMYCIN", "S")),
+            (1, culture(9802, "2150-03-02 09:00:00", BLOOD, GRAM[1])),
+            (1, culture(9803, "2150-03-02 15:00:00", BLOOD, GRAM[2])),
+            (2, culture(9804, "2151-06-02 08:00:00", BLOOD, GRAM[3]))]
 
 
 def many_cultures(grown, negative):
@@ -227,6 +243,48 @@ class CultureTests(unittest.TestCase):
                          "microbiology tests within all case visits, "
                          "including the final admission.")
         self.assertReleased(found)
+
+    def test_the_gram_stain_is_part_of_the_name(self):
+        """"Positive" stays in a name, so gram positive cocci are not the
+        gram negative diplococci "gram cocci" also names, and the Gram
+        stain at the end of a question names organisms rather than asking
+        how a result reads (record-questions-v9, rule 19)."""
+        context = context_with(gram_cultures(), GRAM)
+        cocci = Answer("Did any culture grow gram positive cocci?", context)
+        self.assertEqual(cocci.lines(), [
+            "An organism is recorded in the results of GRAM POSITIVE "
+            "COCCUS(COCCI) within all case visits, including the final "
+            "admission.",
+            "Blood Culture, Routine (BLOOD CULTURE):",
+            "- GRAM POSITIVE COCCUS(COCCI), 10 Jan 2150 10:00, in visit 1: "
+            "sensitive to VANCOMYCIN"])
+        self.assertReleased(cocci)
+        negative = Answer("Was the culture gram negative?", context)
+        self.assertEqual(negative.lines(), [
+            "GRAM NEGATIVE DIPLOCOCCI; GRAM NEGATIVE ROD(S) is recorded "
+            "within all case visits, including the final admission: 2 "
+            "matching records.",
+            "- Blood Culture, Routine (BLOOD CULTURE) (2 records in visit "
+            "2; matched by the words of its name)"])
+        self.assertReleased(negative)
+
+    def test_positive_within_a_name_is_never_left_out(self):
+        """A name holding "positive" that the dictionary lacks is asked
+        back, never answered as the name without it (coagulase negative
+        staphylococci), and two Gram stains at once are asked one at a
+        time."""
+        context = context_with(gram_cultures(), GRAM)
+        for question, reason in (
+                ("Did any culture grow coagulase positive staph?",
+                 "concept_unknown"),
+                ("Was the culture gram positive or negative?",
+                 "task_ambiguous")):
+            result = answer.record_result(question, cases.CASE, cases.ALL,
+                                          cases.Visits(), VOCAB, "q-1",
+                                          context)
+            self.assertEqual((result.response.outcome,
+                              tuple(result.response.reason_codes)),
+                             ("clarification", (reason,)), question)
 
     def test_a_culture_asked_about_by_its_organism(self):
         """An organism named in the question: its own records, without
