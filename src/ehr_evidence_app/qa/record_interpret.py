@@ -131,26 +131,32 @@ record-questions-v3), by fixed rules and without a model:
     a synonym, the question asking which when both do and nothing breaks
     the tie, else in the first, the laboratory's, then microbiology's,
     that holds its words. Without a name, "what tests were done" asks
-    about the laboratory, as before.
+    about the laboratory, as before. A whole name of another kind that
+    holds "test" (rule 11) gives way to the rest of it when that is a
+    test's name or synonym ("was the urine test positive", where "urine
+    test" names a medication too); otherwise it stands ("was a stress
+    test done").
 
 Version 2 adds rules 6 to 8; version 3 removes the polite opening
 (rule 1); version 4 adds rule 9, version 5 rule 10, version 6 rule 11,
-version 7 rule 12, version 8 rules 13 to 18, version 9 rule 19 and
-version 10 rule 20. Before version 10 "test" named the laboratory
-alone, so "did she test positive for MRSA" was read in the
-laboratory's dictionary only and missed microbiology's MRSA screens.
-Before version 9 "positive" was left out of every name ("gram positive
-cocci" was looked up as "gram cocci"), and version 8 read "gram
-negative" at the end of a question as how a result reads. Before
-version 8 a question about what grew asked about all of a test's
-results whatever its selector; "negative" or "normal" at the end of a
-question, a prediction, arriving through the ED, an emergency,
-readmission, an age over a number and death at discharge were asked
-back or not understood; and a selected laboratory result asked about
-as abnormal lost its selector. Version 6 also reads "all ... values"
-around a name of up to eight words, digits included ("all the
-hemoglobin a1c values"), where four words of letters alone were read
-before.
+version 7 rule 12, version 8 rules 13 to 18, version 9 rule 19,
+version 10 rule 20 and version 11 its last sentence. Before version 11
+a whole name of another kind that holds "test" took the question ("was
+the urine test positive" was asked back as a medication's flag), and
+before version 10 "test" named the laboratory alone, so "did she test
+positive for MRSA" was read in the laboratory's dictionary only and
+missed microbiology's MRSA screens. Before version 9 "positive" was
+left out of every name ("gram positive cocci" was looked up as "gram
+cocci"), and version 8 read "gram negative" at the end of a question
+as how a result reads. Before version 8 a question about what grew
+asked about all of a test's results whatever its selector; "negative"
+or "normal" at the end of a question, a prediction, arriving through
+the ED, an emergency, readmission, an age over a number and death at
+discharge were asked back or not understood; and a selected laboratory
+result asked about as abnormal lost its selector. Version 6 also reads
+"all ... values" around a name of up to eight words, digits included
+("all the hemoglobin a1c values"), where four words of letters alone
+were read before.
 """
 
 from __future__ import annotations
@@ -162,7 +168,7 @@ from ehr_evidence_app.qa import interpret as conditions
 from ehr_evidence_app.qa import record_resolve as resolving
 from ehr_evidence_app.qa import scope as scopes
 
-RULES_VERSION = "record-questions-v10"
+RULES_VERSION = "record-questions-v11"
 RECORD_TASKS = ("record_list", "record_presence", "record_timing",
                 "record_count", "record_values", "record_abnormal",
                 "visit_details", "person_details")
@@ -729,6 +735,18 @@ def resolve_tested(terms, phrase, hints=(), prefer=()):
     return "lab", found["lab"]
 
 
+def held_as_test(terms, phrase, hints=(), prefer=()):
+    """Return True when the laboratory or microbiology dictionary holds a
+    phrase as a name or a synonym (rule 20)."""
+    if not phrase:
+        return False
+    kind, resolution = resolve_tested(terms, phrase, hints, prefer)
+    if kind is None:
+        return True
+    return resolution.status == "resolved" and resolution.rule in (
+        "name", "synonym")
+
+
 def resolve_phrase(terms, phrase, kinds, hints=(), prefer=(), tested=False):
     """Return (kind, resolution) of a phrase: in the kind the question
     names, or the one kind of ORDER it resolves in by a name or a
@@ -884,6 +902,13 @@ def item_question(body, found, terms):
         quality) else ()
     whole = whole_name(terms, body, list(TESTED) if tested else kinds,
                        hints, prefer)
+    if whole is not None and tested and whole[0] not in TESTED and (
+            held_as_test(terms, " ".join(left_words(body, kinds)), hints,
+                         prefer)):
+        # Rule 20: a whole name of another kind that holds "test" gives
+        # way to the rest of it, a test's name ("was the urine test
+        # positive").
+        whole = None
     if whole is not None:
         kind, _, phrase = whole
         return item_reading(body, found, task, selector, kind, phrase,

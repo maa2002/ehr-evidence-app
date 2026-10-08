@@ -5,6 +5,7 @@ organism and unit names, as a dictionary would hold them; no patient
 record is read.
 """
 
+import dataclasses
 import unittest
 
 from ehr_evidence_app.qa import interpret as conditions
@@ -319,6 +320,37 @@ class ReadingTests(unittest.TestCase):
         self.assertTrue(reader.tested_only("did she test positive for mrsa"))
         self.assertFalse(reader.tested_only("which blood tests were done"))
         self.assertFalse(reader.tested_only("was a lab test for mrsa done"))
+
+    def test_a_test_inside_another_kinds_name(self):
+        """Rule 20: a whole name of another kind that holds "test" gives
+        way to the rest of it when that is a test's name ("urine test",
+        a medication's name here too); otherwise it stands ("stress
+        test", a procedure's)."""
+        drugs = drug_vocabulary()
+        strip = record_vocabulary.DrugConcept(9, "ingredient", "RxNorm",
+                                              "Ingredient", "C9",
+                                              "Urine test")
+        drugs = dataclasses.replace(
+            drugs, drugs={**drugs.drugs, 9: strip},
+            drug_names={**drugs.drug_names, "urine test": {9}},
+            procedure_names=drugs.procedure_names + ("stress test",))
+        terms = resolving.Terms(
+            labs=[("1", "Potassium", "Blood", "Chemistry")], items=[],
+            micro=["BLOOD CULTURE", "URINE"], units=[], drugs=drugs,
+            procedures=drugs.procedure_names)
+        for question, expected in (
+                ("Was the urine test positive?",
+                 dict(task="record_values", kind="microbiology",
+                      phrase="urine")),
+                ("Was the urine test done?",
+                 dict(task="record_presence", kind="microbiology",
+                      phrase="urine")),
+                ("Was a stress test done?",
+                 dict(task="record_presence", kind="procedure",
+                      phrase="stress test"))):
+            found = reader.interpret(question, terms)
+            for name, value in expected.items():
+                self.assertEqual(getattr(found, name), value, question)
 
     def test_a_selected_result_and_its_flag(self):
         """Rule 15: a result a selector picks, asked about by its flag,

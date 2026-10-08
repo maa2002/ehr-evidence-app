@@ -140,10 +140,14 @@ change interfaces.
   positive?" was asked back. "Test" or "tests" alone now names a
   laboratory or a microbiology test, read in the dictionary that holds
   the name as a name or a synonym (`record-questions-v10`, rule 20);
-  "What tests were done?" still lists the laboratory's. Checked before
-  and after on the development case sets, only the questions meant to
-  change do, and one more of the final evaluation's questions about the
-  record is read right; the evaluated release's figures stand
+  "What tests were done?" still lists the laboratory's. A whole name of
+  another kind that holds "test" gives way to the rest of it when that is
+  a test's name, so "Was the urine test positive?", where "urine test"
+  names a medication too, is answered from the urine cultures rather than
+  asked back as a medication's flag (`record-questions-v11`). Checked
+  before and after on the development case sets, only the questions
+  meant to change do, and one more of the final evaluation's questions
+  about the record is read right; the evaluated release's figures stand
   ([qa.md](docs/qa.md#a-name-asked-about-as-a-test)).
 - References on a line holding many of them wrap within the line, where
   they ran past the column's edge and could not be seen or pressed: a

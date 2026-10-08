@@ -36,11 +36,14 @@ CLASSES = {11: ("B01AB", "HEPARIN GROUP"), 12: ("C03", "DIURETICS"),
 CLASS_INGREDIENTS = {11: {1}, 12: {2}, 13: {7}, 14: {8}, 15: {5}}
 
 
-def drug_vocabulary():
-    """Return the invented medication vocabulary."""
+def drug_vocabulary(medications=()):
+    """Return the invented medication vocabulary, with the medications
+    named in medications added as ingredients."""
+    named = dict(INGREDIENTS)
+    named.update((90 + index, name) for index, name in enumerate(medications))
     drugs = {concept: record_vocabulary.DrugConcept(
         concept, "ingredient", "RxNorm", "Ingredient", "I%d" % concept, name)
-        for concept, name in INGREDIENTS.items()}
+        for concept, name in named.items()}
     drugs.update({concept: record_vocabulary.DrugConcept(
         concept, "atc", "ATC", "ATC 3rd", code, name)
         for concept, (code, name) in CLASSES.items()})
@@ -60,11 +63,11 @@ def drug_vocabulary():
                            for concept, found in CLASS_INGREDIENTS.items()})
 
 
-def terms(micro=(), labs=()):
+def terms(micro=(), labs=(), medications=()):
     """Return Terms over the invented dictionaries and vocabularies, with
-    the microbiology names in micro and the laboratory items in labs
-    added."""
-    drugs = drug_vocabulary()
+    the microbiology names in micro, the laboratory items in labs and the
+    medications named in medications added."""
+    drugs = drug_vocabulary(medications)
     return record_resolve.Terms(
         labs=[("50971", "Potassium", "Blood", "Chemistry"),
               ("50912", "Creatinine", "Blood", "Chemistry"),
@@ -336,12 +339,12 @@ def record_set(built=None):
         bundles={bundle.bundle_id: bundle for bundle in built})
 
 
-def context(built=None, micro=(), labs=()):
+def context(built=None, micro=(), labs=(), medications=()):
     """Return the RecordContext of the invented record, its dictionary
-    holding the microbiology names in micro and the laboratory items in
-    labs too."""
+    holding the microbiology names in micro, the laboratory items in labs
+    and the medications named in medications too."""
     return record_answer.RecordContext(record_set(built),
-                                       terms(micro, labs))
+                                       terms(micro, labs, medications))
 
 
 class Visits:

@@ -6,10 +6,11 @@ replaced by cultures at their edges: two organisms and a record without
 one taken at one time, an organism tested against no antibiotic, every
 interpretation, an antibiotic tested twice, a test with more cultures than
 an answer shows, the latest culture of a test differing from the first,
-an organism asked about by its name, organisms named by their Gram stain
-and MRSA screens asked about as a test. Every answer leaves through the
-release gate, and every mutant of it is withheld. Every record and value
-here is invented.
+an organism asked about by its name, organisms named by their Gram stain,
+MRSA screens asked about as a test, and a urine culture asked about as a
+urine test that a medication's name holds too. Every answer leaves
+through the release gate, and every mutant of it is withheld. Every
+record and value here is invented.
 """
 
 import unittest
@@ -47,16 +48,16 @@ def culture(native, time, test, organism=None, antibiotic=None,
                                interpretation=reading)))
 
 
-def context_with(rows, micro=(), labs=()):
+def context_with(rows, micro=(), labs=(), medications=()):
     """Return the RecordContext of the invented record with its
     microbiology replaced by rows, each (visit position, record), and the
-    microbiology names in micro and the laboratory items in labs added to
-    its dictionary."""
+    microbiology names in micro, the laboratory items in labs and the
+    medications named in medications added to its dictionary."""
     found = {position: [item for item in items if item[0] != "microbiology"]
              for position, items in cases.entries().items()}
     for position, item in rows:
         found[position].append(item)
-    return cases.context(cases.bundles(found), micro, labs)
+    return cases.context(cases.bundles(found), micro, labs, medications)
 
 
 def mixed_culture():
@@ -326,6 +327,22 @@ class CultureTests(unittest.TestCase):
                                    VOCAB, "q-1", context)
         self.assertTrue(pcr.response.text.startswith(
             "No result of MRSA PCR within all case visits"))
+
+    def test_a_test_named_inside_a_medication_name(self):
+        """A medication named "Urine test" does not take "Was the urine
+        test positive?": the urine culture answers it (record-questions-v11,
+        rule 20)."""
+        context = context_with(
+            [(2, culture(9950, "2151-06-02 08:00:00", URINE,
+                         "ESCHERICHIA COLI"))], medications=("Urine test",))
+        found = Answer("Was the urine test positive?", context)
+        self.assertEqual(found.lines(), [
+            "An organism is recorded in the results of URINE within all "
+            "case visits, including the final admission.",
+            "URINE CULTURE (URINE):",
+            "- ESCHERICHIA COLI, 2 Jun 2151 08:00, in visit 3: no "
+            "antibiotic results recorded"])
+        self.assertReleased(found)
 
     def test_a_culture_asked_about_by_its_organism(self):
         """An organism named in the question: its own records, without

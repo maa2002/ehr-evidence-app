@@ -601,7 +601,7 @@ question first, unchanged, so a condition question gets exactly the
 response it got before. A question they refuse as being about other
 data, times or counts, or holding words they cannot place, and one whose
 condition phrase names no condition, is read by `qa.record_interpret`
-(rules `record-questions-v10`, which removes a polite opening as the
+(rules `record-questions-v11`, which removes a polite opening as the
 condition rules do, reads a name whole, by rule 12 reads when a visit
 named by a scope phrase was, by rules 13 to 18 reads questions that ask
 yes or no, see
@@ -756,7 +756,7 @@ name inside another, none at all), a brand name, drug classes,
 microbiology with and without growth and every interpretation, an open
 transfer, two ICU stays, an admission without times, one whose discharge
 precedes its admission, a death in hospital and an age that passes 89.
-Every one of 174 questions, including noise, markup, accents,
+Every one of 175 questions, including noise, markup, accents,
 abbreviations, negations, misspellings, words of time, class words in
 the singular and questions about what a medication was given for, is
 asked in every scope; none ends in a rejection or an error. The answers'
@@ -768,9 +768,10 @@ their edges have their own invented record
 one taken at one time, an organism tested against no antibiotic, every
 interpretation, an antibiotic tested twice, more cultures than an answer
 shows, a latest culture that differs from the first, an organism asked
-about by its name, organisms named by their Gram stain, and MRSA screens
-asked about as a test; every answer is released and every one of its
-mutants withheld.
+about by its name, organisms named by their Gram stain, MRSA screens
+asked about as a test, and a urine culture asked about as a urine test
+that a medication's name holds too; every answer is released and every
+one of its mutants withheld.
 
 The same questions, with the heavy ones of the first development check
 (every result of every test, every culture, every dose), were asked of
@@ -1085,6 +1086,23 @@ Before and after, on the development case sets, as above:
 The questions of the record answers' mutants and of the wrong answers
 that agree with themselves hold no "test", so their counts above are
 unchanged.
+
+A whole name of another kind that holds "test" still took such a
+question first (rule 11): "urine test" names a medication too, so "Was
+the urine test positive?" was asked back as a medication's flag, and
+"Was the urine test done?" answered that the medication was not
+recorded. Since `record-questions-v11` the whole name gives way to the
+rest of it when that is a test's name or synonym, so both are answered
+from the urine cultures; otherwise the whole name stands ("Was a stress
+test done?", where "stress" names no test). Before and after, as above:
+
+| Check | Requests | Result |
+| :--- | :---: | :--- |
+| The 453 Questions Above and 15 More with "test" in a Name, in Every Scope of Every Case | 90,324 Each | 464 Give the Same Responses Byte for Byte. The 4 That Change Ask About a Urine Test, Asked Back or Answered "not recorded" in Every Scope Before, and Are Answered From the Urine Cultures in 52 Scopes. No Rejection, Error or Exception |
+| The Record Suite | 7,865 and 3,188 | The Same Counts for Every Question |
+| Mutants of the Culture Answers, as Above | 302 Answers, 23,535 Mutants | All Withheld; Every Original Released Unchanged |
+| The Independent References ([assessment.md](assessment.md#references-for-questions-about-the-whole-record)) | 10,599 and 4,201 | Every Answer Agrees with Its Reference |
+| The Final Evaluation's Questions About the Record, Assessed Again with the Templates | 260 | The Same Verdict at Every Stage for Each |
 
 ## Limits
 
