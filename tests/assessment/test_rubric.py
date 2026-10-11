@@ -264,7 +264,7 @@ class RaterTests(unittest.TestCase):
 
 
 class OwnerTests(unittest.TestCase):
-    """The owner's check."""
+    """My check."""
 
     def test_sample(self):
         """Up to 15 texts the rater failed and the rest passed, 30 in all;
@@ -277,7 +277,7 @@ class OwnerTests(unittest.TestCase):
         self.assertEqual(sample, rubric.owner_sample(marks))
 
     def test_agreement(self):
-        """Agreement counts the owner's marks under each rater mark."""
+        """Agreement counts my marks under each rater mark."""
         marks = {"a": "fail", "b": "fail", "c": "pass"}
         self.assertEqual(rubric.agreement(marks, {"a": "fail", "b": "pass",
                                                   "c": "pass"}),
@@ -304,7 +304,7 @@ def invented_rating():
 
 
 class RunRatingTests(unittest.TestCase):
-    """Rating a finished run, and the owner's sheet."""
+    """Rating a finished run, and my sheet."""
 
     def test_every_text_marked_and_sampled(self):
         """Each text of each condition is marked under its own key, and
@@ -320,7 +320,7 @@ class RunRatingTests(unittest.TestCase):
         self.assertEqual(set(document), {item.kind for item in rated})
 
     def test_sheet_shows_texts_only(self):
-        """The owner's sheet holds the sampled texts in the sample's order,
+        """My sheet holds the sampled texts in the sample's order,
         numbered, with an empty mark: neither the rater's mark nor the
         condition."""
         rated, marks, _, sample = invented_rating()
@@ -376,9 +376,9 @@ class RunRatingTests(unittest.TestCase):
         named.assert_called_once_with({"rater": {}}, rater)
 
     def test_owners_marks_read_back_once(self):
-        """The ratings and the sheet are written once; the owner's marks
-        are read back against the rater's, by kind and in all, into an
-        agreement written once; a changed sheet is refused."""
+        """The ratings and the sheet are written once; my marks are read
+        back against the rater's, by kind and in all, into an agreement
+        written once; a changed sheet is refused."""
         root = configured_test_temp()
         if not os.path.isdir(root):
             self.skipTest("configured test temp is missing; run "
@@ -396,8 +396,8 @@ class RunRatingTests(unittest.TestCase):
             path = os.path.join(directory, rubric.SHEET_NAME)
             with open(path, encoding="utf-8-sig", newline="") as handle:
                 rows = list(csv.reader(handle))
-            # The owner agrees with the rater but on the first text, and
-            # leaves the last unmarked.
+            # The marks by hand agree with the rater's but on the first
+            # text, and the last is left unmarked.
             for number, row in enumerate(rows[1:], 1):
                 mark = marks[sample[number - 1]]
                 row[2] = ("" if number == len(sample) else mark

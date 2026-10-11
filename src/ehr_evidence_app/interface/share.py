@@ -1,18 +1,18 @@
 """The secret link and the tunnel (Phase 8, work item 48; decision D2).
 
-The interface is shared through a Cloudflare tunnel that the project
-owner creates in Cloudflare's dashboard: its public hostname, on the
-owner's domain, forwards to http://127.0.0.1:8501 and leaves the request's
-Host header as it is. cloudflared, the tunnel's connector, runs on this
-laptop with the tunnel's token, which the owner saves in the workspace
+The interface is shared through a Cloudflare tunnel set up by hand in
+Cloudflare's dashboard: its public hostname, on my domain, forwards to
+http://127.0.0.1:8501 and leaves the request's Host header as it is.
+cloudflared, the tunnel's connector, runs on this laptop with the
+tunnel's token, saved by hand in the workspace
 (sharing\\tunnel-token.txt): cloudflared reads it (--token-file); this
 project only checks, with lstat, that it is there, and never reads,
 prints or copies it.
 
 --new-link HOST makes a new secret link: a long random key, of which only
 the SHA-256 is kept, with the host and the date (sharing\\share-link.json
-in the workspace). The link, https://HOST/?k=KEY, is printed once, in the
-owner's console, to be put in an issue of the private repository for the
+in the workspace). The link, https://HOST/?k=KEY, is printed once, on
+the console, to be put in an issue of the private repository for the
 supervisor; nothing else prints or stores it. A new link retires the one
 before it. --check checks the sharing's parts and prints the host and
 findings only.
@@ -61,7 +61,7 @@ def link_path(directory=SHARING_DIR):
 
 
 def token_path(directory=SHARING_DIR):
-    """Return where the owner saves the tunnel's token."""
+    """Return where the tunnel's token is saved."""
     return os.path.join(directory, TOKEN_NAME)
 
 

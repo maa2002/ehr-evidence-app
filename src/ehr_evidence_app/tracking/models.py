@@ -13,9 +13,8 @@ SHA-256 in config/generation.json, then writes a staging directory in the
 workspace, outputs\\model-staging\\<repository>\\<revision>, holding:
 
 * NOTICE: the notice the licence requires, and that no file was modified;
-* the copy of the licence agreement (one of AGREEMENT_NAMES), which the
-  project owner saves there first; without it nothing is staged or
-  uploaded;
+* the copy of the licence agreement (one of AGREEMENT_NAMES), saved there
+  by hand first; without it nothing is staged or uploaded;
 * MANIFEST.json: the model's repository, revision and licence, and for
   each file its name, kind, size, SHA-256 and provenance, and the
   confirmation that it holds nothing patient-derived or secret.
@@ -60,7 +59,7 @@ TERMS_URL = ("https://developers.google.com/health-ai-developer-foundations/"
              "terms")
 NOTICE_NAME = "NOTICE"
 MANIFEST_NAME = "MANIFEST.json"
-# The names the project owner may save the licence agreement under.
+# The names the licence agreement may be saved under.
 AGREEMENT_NAMES = ("HAI-DEF-terms-of-use.pdf", "HAI-DEF-terms-of-use.html",
                    "HAI-DEF-terms-of-use.txt")
 MAX_AGREEMENT_BYTES = 8 * 1024 * 1024

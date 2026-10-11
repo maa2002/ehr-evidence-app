@@ -5,7 +5,7 @@ The figures are read from the final evaluation's protected aggregate
 records (ADR 0029): the report of the final run (each metric of ADR 0016
 by stratum, in both conditions, with the paired difference and its
 interval), the intervals by patient added after the figures, the prose
-rubric's aggregates and the owner's agreement, and the figures of the
+rubric's aggregates and my agreement with its rater, and the figures of the
 questions typed end to end and of the held-out read. Of the ratings,
 only their aggregates are read: never a mark, a text, or the rating
 model, which only the protected records name. The freeze record and the
@@ -273,7 +273,7 @@ def comparison_scalars(scalars, report, by_patient):
 
 def rubric_scalars(scalars, ratings, agreement):
     """Add the rubric's shares by kind and condition, its paired
-    difference, and the owner's agreement with the rater."""
+    difference, and my agreement with the rater."""
     document = ratings.get("document") or {}
     for kind, group in KINDS.items():
         entry = document.get(kind)
@@ -744,7 +744,7 @@ def run_synthetic():
     if "empty lists: conditions: controlled" in scalars["precision"]:
         problems.append("a figure that is not applicable is sent")
     if scalars["owner agreement"] != {"answers": 0.75}:
-        problems.append("the owner's agreement is wrong")
+        problems.append("the agreement with the rater is wrong")
     if scalars["questions"]["record questions: answer"] != 3:
         problems.append("the questions about the record are miscounted")
     text = json.dumps([manifest, payload])

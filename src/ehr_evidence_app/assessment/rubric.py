@@ -34,16 +34,15 @@ their digest; the reported check of the frozen rater uses the set kept
 for it, worded apart from the others and from the instructions, and runs
 once for each frozen version.
 
-The owner's check: 30 texts drawn with a fixed seed, up to 15 that the
-rater failed and the rest from those it passed. They are shuffled and
-written to a protected sheet without the rater's marks or the
-conditions; the owner's marks are read back and reported beside the
-rater's, per stratum.
+My check: 30 texts drawn with a fixed seed, up to 15 that the rater
+failed and the rest from those it passed. They are shuffled and written
+to a protected sheet without the rater's marks or the conditions; my
+marks are read back and reported beside the rater's, per stratum.
 
 A finished run is rated by the operator with the frozen instructions
-only: its marks, the rubric's aggregates and the owner's sheet are
-written once, beside each other, in a new protected directory, and the
-owner's filled sheet is read back into an agreement record there.
+only: its marks, the rubric's aggregates and my sheet are written once,
+beside each other, in a new protected directory, and my filled sheet is
+read back into an agreement record there.
 
 The default mode checks the code items, the planted faults and the
 reading of marks on invented data, with a stand-in rater.
@@ -495,11 +494,11 @@ def check_rater(texts, rater, wordings=("first",)):
     return {key: tuple(value) for key, value in sorted(counts.items())}
 
 
-# The Owner's Check
+# My Check
 
 def owner_sample(marks, seed=SEED, size=SAMPLE, failed=SAMPLE_FAILED):
-    """Return the keys of the owner's sample: up to `failed` that the rater
-    failed, the rest from those it passed, shuffled together."""
+    """Return the keys of the sample for my check: up to `failed` that the
+    rater failed, the rest from those it passed, shuffled together."""
     generator = random.Random(seed)
     fails = sorted(key for key, mark in marks.items() if mark == "fail")
     passes = sorted(key for key, mark in marks.items() if mark == "pass")
@@ -510,8 +509,8 @@ def owner_sample(marks, seed=SEED, size=SAMPLE, failed=SAMPLE_FAILED):
 
 
 def agreement(marks, owners):
-    """Return {rater's mark: {owner's mark: count}} over the owner's
-    marked sample."""
+    """Return {rater's mark: {my mark: count}} over the sample I
+    marked."""
     found = collections.defaultdict(collections.Counter)
     for key, owner in owners.items():
         found[marks[key]][owner] += 1
@@ -604,7 +603,7 @@ def rubric_document(rated, marks):
     return found
 
 
-# Rating a Run, and the Owner's Check (ADR 0027, Decisions 5 and 6)
+# Rating a Run, and My Check (ADR 0027, Decisions 5 and 6)
 
 RATINGS_ROOT = "\\assessment\\ratings"
 RATINGS_NAME = "ratings.json"
@@ -627,8 +626,8 @@ def frozen():
 
 
 def rate_records(records, sources, bundles, limit, rater):
-    """Return (rated texts, marks by key, rubric document, the owner's
-    sample) of a run's records rated by the rater."""
+    """Return (rated texts, marks by key, rubric document, the sample for
+    my check) of a run's records rated by the rater."""
     rated = run_texts(records, sources, bundles, limit)
     marks = rate_all([(text_key(item), item.text) for item in rated], rater)
     document = rubric_document(rated, {
@@ -638,8 +637,8 @@ def rate_records(records, sources, bundles, limit, rater):
 
 
 def sheet_bytes(rated, sample):
-    """Return the owner's sheet: the sampled texts, numbered in the
-    sample's order, without the rater's marks or the conditions."""
+    """Return my sheet: the sampled texts, numbered in the sample's
+    order, without the rater's marks or the conditions."""
     texts = {text_key(item): item.text for item in rated}
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer, lineterminator="\r\n")
@@ -671,7 +670,7 @@ def ratings_directory(run_id, protected):
 
 def write_ratings(directory, run_id, described, rated, marks, document,
                   sample):
-    """Write a run's ratings and the owner's sheet in a new directory."""
+    """Write a run's ratings and my sheet in a new directory."""
     if os.path.lexists(directory):
         raise RubricError("ratings_exist")
     os.makedirs(directory)
@@ -694,8 +693,8 @@ def frozen_rater(record, rater):
 
 def rate_run(run_id, rater, protected=None):
     """Rate every text of a finished run with the frozen instructions;
-    write the marks, the rubric's aggregates and the owner's sheet in a
-    new protected directory; return (document, number of texts on the
+    write the marks, the rubric's aggregates and my sheet in a new
+    protected directory; return (document, number of texts on the
     sheet). A run of the final case set is rated only under the freeze it
     was written under, with the rater it names."""
     from ehr_evidence_app.assessment import freeze, references, report
@@ -728,8 +727,8 @@ def rate_run(run_id, rater, protected=None):
 
 
 def owner_marks(data, sample):
-    """Return ({key: the owner's mark}, unmarked) of a filled sheet: its
-    items in the sample's order, each marked pass or fail."""
+    """Return ({key: my mark}, unmarked) of a filled sheet: its items in
+    the sample's order, each marked pass or fail."""
     try:
         reader = csv.DictReader(io.StringIO(data.decode("utf-8-sig"),
                                             newline=""))
@@ -752,9 +751,8 @@ def owner_marks(data, sample):
 
 
 def read_owner(run_id, protected=None):
-    """Read the owner's marks from a run's sheet; write the agreement
-    with the rater, by kind and in all, once beside the ratings; return
-    it."""
+    """Read my marks from a run's sheet; write their agreement with the
+    rater, by kind and in all, once beside the ratings; return it."""
     from ehr_evidence_app.storage import policy as guard
     protected = protected or guard.PRIVATE_ROOT + "\\protected-data"
     directory = ratings_directory(run_id, protected)
@@ -795,7 +793,7 @@ def report_rubric(document, sheet):
                                          compared["lower"],
                                          compared["upper"]),
                   entry["rated_in_one_condition_only"]))
-    print("owner's sheet: %d texts" % sheet)
+    print("sheet to mark by hand: %d texts" % sheet)
 
 
 # Default Mode: Invented Data and a Stand-In Rater
@@ -839,9 +837,10 @@ def run_synthetic():
     sample = owner_sample(marks)
     if len(sample) != SAMPLE or sum(marks[key] == "fail"
                                     for key in sample) != SAMPLE_FAILED:
-        problems.append("the owner's sample is not drawn as set out")
+        problems.append("the sample to mark by hand is not drawn as set "
+                        "out")
     if sample != owner_sample(marks):
-        problems.append("the owner's sample is not repeatable")
+        problems.append("the sample to mark by hand is not repeatable")
     return problems
 
 
@@ -978,10 +977,10 @@ def main(argv=None):
                              "set kept for it, once")
     parser.add_argument("--operator-rate", metavar="RUN", default=None,
                         help="rate a finished development run's texts with "
-                             "the frozen instructions and write the "
-                             "owner's sheet; prints counts only")
+                             "the frozen instructions and write the sheet "
+                             "to mark by hand; prints counts only")
     parser.add_argument("--operator-owner", metavar="RUN", default=None,
-                        help="read the owner's marks from a run's sheet; "
+                        help="read the marks made by hand on a run's sheet; "
                              "prints counts only")
     args = parser.parse_args(argv)
     try:
@@ -996,11 +995,11 @@ def main(argv=None):
             return 0
         if args.operator_owner:
             found = read_owner(args.operator_owner)
-            print("owner's marks: %d, unmarked %d" % (found["marked"],
+            print("marks by hand: %d, unmarked %d" % (found["marked"],
                                                        found["unmarked"]))
             for kind in sorted(key for key in found
                                if key not in ("marked", "unmarked")):
-                print("%-12s rater's mark against the owner's: %s" % (
+                print("%-12s rater's mark against the mark by hand: %s" % (
                     kind, json.dumps(found[kind], sort_keys=True)))
             print("RESULT: PASS")
             return 0
