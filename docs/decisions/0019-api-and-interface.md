@@ -22,8 +22,8 @@ status, and facts, predictions and unsigned attribution kept apart
 the case or the scope by a conversational reference and clearing earlier
 responses when the case changes. The model writes on the development
 laptop's GPU, and the project's supervisor, who marks it, must be able
-to open the application through a link. The project owner decided each
-point on 2026-09-29.
+to open the application through a link. I decided each point on
+2026-09-29.
 
 ## Decision
 
@@ -40,7 +40,7 @@ point on 2026-09-29.
    environment; a request must name the loopback host, cross-origin
    requests are refused, no response is cached, and Streamlit's usage
    statistics are switched off. To share the interface, a Cloudflare
-   named tunnel gives it an address on the owner's domain; the API is
+   named tunnel gives it an address on my domain; the API is
    never reachable through it. Access checks inside the interface's
    process then admit a browser only with a secret link's key, a long
    random value kept only as its digest, or the session cookie set on the

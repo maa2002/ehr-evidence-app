@@ -12,9 +12,9 @@ the runtime aggregates. Each was archived once read back, both carried the
 generic name of their kind, and each carried its lineage as tags only: no
 configuration field and no scalar. None of the Phase 7 measurements, which
 chose the precision, K, the limits and the prompt, was in the tracker, and
-neither was the model. The project owner reviewed the project in the web
-application, found nothing new in view, and asked that the tracker be used
-as the project's experiment record for its members (two or three people),
+neither was the model. Reviewing the project in the web application, I
+found nothing new in view, and decided to use the tracker as the
+project's experiment record for its members (two or three people),
 with the model uploaded to it, the model still run on the development
 laptop, and no data uploaded.
 
@@ -57,7 +57,7 @@ laptop, and no data uploaded.
    revision, every file checked first against its size and SHA-256 in
    `config/generation.json`, with the notice its licence (the Health AI
    Developer Foundations terms) requires, a copy of the licence agreement
-   that the project owner saves in the staging directory, and a manifest
+   saved by hand in the staging directory, and a manifest
    naming each file's kind, size, SHA-256 and provenance; it is
    registered once per revision in the project's model registry. It is
    published pretrained by its developer and was never trained on the

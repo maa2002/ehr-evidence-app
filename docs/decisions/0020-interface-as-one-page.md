@@ -19,8 +19,8 @@ a view other than the questions was opened, for two reasons:
   thread per session, so a question the model takes 20 to 80 seconds
   over held the page until it was answered.
 
-The page also looked like a form rather than a conversation. The owner
-asked for a conversation layout: the patients in a sidebar, questions and
+The page also looked like a form rather than a conversation, and I
+wanted a conversation layout: the patients in a sidebar, questions and
 answers as a thread, and the evidence beside them. A page shared through
 the tunnel cannot wait on the model through one request either: the
 tunnel's edge ends a request that has not been answered in 100 seconds.

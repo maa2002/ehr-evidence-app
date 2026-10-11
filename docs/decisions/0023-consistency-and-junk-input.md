@@ -7,8 +7,8 @@ order); the condition rules become `question-interpretation-v5`.
 
 ## Context
 
-The project owner asked for three more kinds of test: tests that need no
-answer key, answers wrong in more than one fact at once, and junk input.
+I wanted three more kinds of test: tests that need no answer key,
+answers wrong in more than one fact at once, and junk input.
 They were run on invented data, then with aggregate output only on the
 development case sets, and found:
 

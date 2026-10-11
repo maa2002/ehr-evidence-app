@@ -12,9 +12,9 @@ listed in time order.
 ## Context
 
 Questions were answered about recorded conditions only; any other
-question was refused. The project owner asked that everything relevant
-in a patient's record be questionable and answerable, laboratory results
-and vital signs included, and decided on 2026-09-29: the templates write
+question was refused. Everything relevant in a patient's record should
+be questionable and answerable, laboratory results and vital signs
+included, and I decided on 2026-09-29: the templates write
 the new answers first, and the model takes them over only once its
 answers have been measured; the final evaluation reports the new
 questions as categories of their own, the condition results unchanged;

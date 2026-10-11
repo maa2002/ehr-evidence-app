@@ -1,9 +1,8 @@
 # 0029. The Freeze and the Final Evaluation's Execution
 
 Status: accepted (2026-10-04), within the design of
-[ADR 0028](0028-final-evaluation-design.md); the project owner asked for
-the recommended plan to be carried out. Amended twice the same day: the
-second and the third freeze (below). Work item 64.
+[ADR 0028](0028-final-evaluation-design.md). Amended twice the same day:
+the second and the third freeze (below). Work item 64.
 
 ## Context
 
@@ -65,8 +64,8 @@ before the freeze is made.
    protected record named by the freeze.
 6. **Order.** Release 0.11.0; the freeze record; the question sets
    worded and registered; the final run of every request of the final
-   case set in both conditions; then its scoring, its rating and the
-   owner's sheet, the end-to-end assessment and the held-out read; and
+   case set in both conditions; then its scoring, its rating and my
+   sheet, the end-to-end assessment and the held-out read; and
    the report.
 
 ## Consequences

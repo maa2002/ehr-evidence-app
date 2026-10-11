@@ -8,8 +8,8 @@ removed before a question is read (`record-questions-v3`).
 
 ## Context
 
-The project owner asked for the answers about the whole record to be
-tested at their edges. The review read every new module and tested each
+I wanted the answers about the whole record tested at their edges. The
+review read every new module and tested each
 at its edges, on invented records built for them and, with aggregate
 output only, on the development case sets. It found:
 

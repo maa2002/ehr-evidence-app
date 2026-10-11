@@ -145,9 +145,9 @@ Described in [interface.md](interface.md) and decided in
 [ADR 0020](decisions/0020-interface-as-one-page.md). Done (release
 0.10.0): the API, its boundary, the interface, the launcher and sharing
 through the tunnel are in place, closed by an operator run on
-`dev-30-v1` with the model. On 2026-10-03 the tunnel was set up on the
-owner's domain, checked end to end through Cloudflare on the invented
-case set, and its link made
+`dev-30-v1` with the model. On 2026-10-03 the tunnel was set up on my
+domain, checked end to end through Cloudflare on the invented case set,
+and its link made
 ([interface.md](interface.md#sharing-through-the-tunnel)).
 
 - 47 Add FastAPI operations (done: `api.service` and `api.app`)
@@ -161,7 +161,7 @@ case set, and its link made
 - 51 Add the explanation panel (done: the explanation in the
   conversation)
 - 52 Add the evidence viewer (done: the evidence panel)
-- 52.1 to 52.7 Make the whole record answerable, at the owner's request
+- 52.1 to 52.7 Make the whole record answerable
   ([ADR 0021](decisions/0021-the-whole-record.md); done): the case sets'
   raw MIMIC-IV records (`sources.mimic`), the medication and procedure
   vocabulary (`qa.record_vocabulary`), record bundles
@@ -194,9 +194,9 @@ The model is evaluated as pinned, without fine-tuning
 ([ADR 0024](decisions/0024-no-fine-tuning.md)).
 The metrics, their denominators and empty-set conventions, the prose
 rubric and the paired comparison are fixed in
-[ADR 0016](decisions/0016-evaluation-metrics.md), agreed by the project
-owner before any request of `eval-100-v1` is written. The prose rubric is
-rated by code and an automatic rater, which the owner checks on a sample
+[ADR 0016](decisions/0016-evaluation-metrics.md) before any request of
+`eval-100-v1` is written. The prose rubric is rated by code and an
+automatic rater, which I check on a sample
 ([ADR 0027](decisions/0027-automatic-prose-rating.md)). The design is in
 [ADR 0028](decisions/0028-final-evaluation-design.md) and the work in
 [assessment.md](assessment.md). Done (release 0.11.2): the evaluation's
@@ -225,7 +225,7 @@ run (work item 64) is done, and its figures are in
 - 59 Calculate explanation and evidence metrics
   ([assessment.md](assessment.md#the-metrics); built, with the prose
   rubric: the rater frozen as `prose-rubric-v4` and a run's rating and
-  the owner's sheet built)
+  my sheet built)
 - 60 Assess end-to-end QA
   ([assessment.md](assessment.md#end-to-end-assessment); built for
   condition questions and questions about the whole record, with the

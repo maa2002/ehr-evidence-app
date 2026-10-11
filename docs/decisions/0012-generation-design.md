@@ -46,7 +46,7 @@ installs, downloads or writes stays on G:.
    (1,280 MiB, tied to the output layer and run on the processor) stay in
    system memory, and 6,121 MiB of layers go on the GPU. Memory and speed
    are measured before anything depends on them; a change of precision is
-   decided with the project owner.
+   decided separately, on those measurements.
 3. **A separate worker.** The model runs in its own environment on G:,
    loaded once and answering one request at a time over its standard
    input and output, without a network port. The application reaches it

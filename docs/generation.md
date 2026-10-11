@@ -361,9 +361,9 @@ canonical bundle and the candidate a sentence per item (`prompt-v1`,
 | `dev-30-v1` Prompt Tokens | Lists and Presence Checks: Median 6,079, 90th Percentile 12,192, Largest 37,418; Explanations: Median 16,518, 90th Percentile 22,642, Largest 38,798 |
 
 Under the configured limits most explanations, and lists of many
-conditions, would have fallen back. The project owner directed that this
-be treated as a finding about the prompt and runtime design, not as a
-reason to raise the limits (ADR 0013).
+conditions, would have fallen back. I treated this as a finding about
+the prompt and runtime design, not as a reason to raise the limits
+(ADR 0013).
 
 ### Milestone 3: The Compact Representation
 

@@ -18,9 +18,9 @@ costs and no security benefit:
   condition could never be met, and the external disk was not encrypted
   either.
 
-The project owner confirmed that no data-use or institutional requirement
-for encryption at rest applies to this academic project, and that
-permission-restricted storage is sufficient.
+I confirmed that no data-use or institutional requirement for encryption
+at rest applies to this academic project, and that permission-restricted
+storage is sufficient.
 
 ## Decision
 

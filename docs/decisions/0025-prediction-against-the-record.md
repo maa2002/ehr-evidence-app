@@ -1,14 +1,14 @@
 # 0025. The Predicted Diagnosis Against the Record
 
-Status: accepted (2026-09-30), at the project owner's request. Adds to
+Status: accepted (2026-09-30). Adds to
 [ADR 0019](0019-api-and-interface.md) (decision 5: the prediction, the
 drivers and the diagnoses apart).
 
 ## Context
 
 The explanation shows the diagnosis the GNN model predicted for the
-final admission and what its score was sensitive to. The project owner
-found it hard to say what the prediction means to a reader. A reader can
+final admission and what its score was sensitive to. I found it hard to
+say what the prediction means to a reader. A reader can
 tell at once when the page also says whether that diagnosis is recorded
 for the final admission: the record holds the answer, and the evidence
 of the final admission's scope already shows it to anyone who asks.

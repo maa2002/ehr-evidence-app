@@ -136,7 +136,7 @@ anything of `eval-100-v1` is read.
    - `assessment.rubric` assembles ADR 0027's rubric: the items judged by
      code, the marks of the rater (reached at a local address the
      operator names, its identity, version and settings recorded with its
-     marks), and the owner's sample.
+     marks), and the sample for my check.
    - The report gives every metric by stratum and condition with its
      paired difference; the failures by category; latency, tokens and
      peak GPU memory; and the frozen version. Its totals reconcile, so

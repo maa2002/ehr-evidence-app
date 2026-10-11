@@ -204,7 +204,7 @@ the same result when run again:
 | The Draw of `eval-100-v1` | 20260927 |
 | The Model's Decoding (`config/generation.json`) | 20260927 |
 | The Paired Bootstrap of the Statistics (10,000 Replicates) | 20260928 |
-| The Rating Model's Settings, the Order of the Texts It Reads, and the Owner's Sample | 20261003 |
+| The Rating Model's Settings, the Order of the Texts It Reads, and the Sample for My Check | 20261003 |
 
 ## Version Control and Releases
 

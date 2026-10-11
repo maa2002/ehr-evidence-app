@@ -1,7 +1,7 @@
 # 0027. Automatic Rating of the Prose Rubric
 
-Status: accepted (2026-10-03), by the project owner, before any request
-of `eval-100-v1` is written. Amends decision 9 of
+Status: accepted (2026-10-03), before any request of `eval-100-v1` is
+written. Amends decision 9 of
 [ADR 0016](0016-evaluation-metrics.md) (the prose rubric).
 
 ## Context
@@ -11,8 +11,8 @@ conditions, and a sample of 50 answers per condition, and mark each pass
 or fail on four items without seeing which condition wrote it:
 prediction and concept identity, evidence, history, and attribution
 wording. With 91 explanation-eligible cases in `eval-100-v1`
-([case-sets.md](../case-sets.md)) that is up to 282 texts, more reading
-than the owner, who was to rate them, has time for.
+([case-sets.md](../case-sets.md)) that is up to 282 texts, more than I
+have time to read and rate myself.
 
 Three of the four items need no reader. A writer never types a fact
 ([ADR 0011](0011-validation-design.md), decision 1): the prediction,
@@ -63,8 +63,8 @@ are patterns, which miss what is said in words no pattern knows
    fails are reported. Its instructions may be revised on development
    data until they are frozen; the check of the frozen rater is the one
    reported.
-5. **The owner's check.** After the rating, and before the conditions
-   are unsealed, the owner rates attribution wording, blind, on 30 texts
+5. **My check.** After the rating, and before the conditions are
+   unsealed, I rate attribution wording, blind, on 30 texts
    drawn with a fixed seed: up to 15 that the rater failed and the rest
    from those it passed, shuffled together, shown without the rater's
    marks or the conditions. Both sets of marks are reported, per
@@ -84,7 +84,7 @@ are patterns, which miss what is said in words no pattern knows
   explanation and evidence metrics, and runs the rater and its check,
   each with hand-worked examples, before the final evaluation runs.
 - The wording marks are an automatic rater's, with a measured catch
-  rate and the owner's check of 30 texts, not a clinician's reading of
+  rate and my check of 30 texts, not a clinician's reading of
   every text; the report says so.
 - The runtime is unchanged: no judge releases or withholds anything
   (ADR 0011, decision 2). The rater only measures.

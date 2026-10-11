@@ -104,8 +104,8 @@ touch credentials.
   `micro_f1`, `coverage`, `macro_auroc`, `macro_auprc`,
   `model_written_rate` or `fallback_rate` (bounded to 0..1), `best_epoch`,
   `history_length` or `requests` (whole numbers) or `latency_ms`
-  (bounded). The runtime aggregates' three names were added with the
-  project owner's approval (2026-09-28).
+  (bounded). The runtime aggregates' three names were added on
+  2026-09-28.
 - **Protected references:** canonical absolute paths inside the workspace;
   traversal, alternate streams, device syntax, ambiguous or content-bearing
   components and over-long paths are rejected. References are never opened.
@@ -251,8 +251,8 @@ and `commit`) and the last value of any scalar (such as `release rate` /
 figures ([final-figures.md](final-figures.md)) in the tracker
 ([ADR 0030](decisions/0030-final-figures-in-the-tracker.md)). It reads the
 final evaluation's protected aggregate records: the report of the run,
-the intervals by patient, the ratings' aggregates and the owner's
-agreement, the end-to-end figures and the held-out read, each of which
+the intervals by patient, the ratings' aggregates and my agreement with
+the rater, the end-to-end figures and the held-out read, each of which
 must name the same freeze and run. It never reads the ratings' marks or
 the rating model. The figures are written once as a manifest,
 `outputs\lineage\final-figures-<digest>.json`, named by a digest of its
@@ -264,7 +264,7 @@ limit as frozen, the freeze, the question set, the rubric and the
 baseline), lineage tags naming the manifest's path and checksum, and its
 scalars: each metric of ADR 0016 by stratum in both conditions, with its
 paired difference, interval and interval by patient; the prose rubric
-and the owner's agreement; the questions typed end to end; and the
+and my agreement with its rater; the questions typed end to end; and the
 held-out read by family. An index beside the manifest,
 `final-figures-tasks.json`, keeps the task, so it is sent once.
 `--operator-real` writes the manifest and checks the task offline;
@@ -292,8 +292,8 @@ SHA-256 in `config/generation.json` and writes the staging directory
 `NOTICE` with the licence's notice and that no file was modified, and a
 `MANIFEST.json` naming the model's repository, revision and licence and
 each file's name, kind, size, SHA-256 and provenance, with the
-confirmation that it holds nothing patient-derived or secret. The project
-owner first saves a copy of the agreement there, as one of
+confirmation that it holds nothing patient-derived or secret. A copy of
+the agreement must be saved there first, as one of
 `HAI-DEF-terms-of-use.pdf`, `.html` or `.txt`; without it nothing is
 staged. `--operator-remote` then uploads the model's files, the notice,
 the agreement and, last, the manifest to the files server under

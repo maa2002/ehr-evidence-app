@@ -294,7 +294,7 @@ repository:
   the SHA-256 of the link's key and the date. `--new-link HOST` makes a new
   key, keeps its digest only, and prints the link,
   `https://HOST/?k=<key>`, once; a new link retires the one before it;
-- the tunnel's token, `sharing\tunnel-token.txt`, saved by the owner and
+- the tunnel's token, `sharing\tunnel-token.txt`, saved there by hand and
   read by cloudflared alone (`--token-file`); this project checks it with
   `lstat` only and never reads, prints or copies it;
 - cloudflared, the tunnel's connector, version 2025.4.0 or later, at
@@ -308,7 +308,7 @@ token; it then checks that the public address answers as the gate
 answers a visit without the key. The tunnel stops first when the launcher
 stops.
 
-Setting the tunnel up is the owner's, once, in Cloudflare's dashboard:
+The tunnel is set up once, by hand, in Cloudflare's dashboard:
 
 1. Put a domain on Cloudflare: Domains, Onboard a domain, the Free plan,
    and the registrar's nameservers replaced by the two that Cloudflare

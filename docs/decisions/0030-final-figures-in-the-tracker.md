@@ -1,8 +1,7 @@
 # 0030. The Final Evaluation's Figures in the Tracker
 
-Status: accepted (2026-10-05). The project owner approved the names
-below. Extends the allowlist of controlled tracking
-([ADR 0018](0018-tracker-as-experiment-record.md)).
+Status: accepted (2026-10-05). Extends the allowlist of controlled
+tracking ([ADR 0018](0018-tracker-as-experiment-record.md)).
 
 ## Context
 
@@ -29,8 +28,8 @@ that can be negative, and at most 400 scalars a task.
      recall and F1 of conditions, records and drivers;
    - the prose rubric by kind of text (answers, explanations) and
      condition: its pass rate and its four items (identity, evidence,
-     history, wording), its paired difference, and the owner's agreement
-     with the rater;
+     history, wording), its paired difference, and my agreement with
+     the rater;
    - the questions typed end to end: questions, read right and delivered
      correctly, for condition questions by intent (lists, presence,
      refuse, clarify) and for questions about the record by intent
@@ -49,15 +48,16 @@ that can be negative, and at most 400 scalars a task.
    question set, the rubric and the baseline, each in one form.
 5. **Up to 1,000 scalars** for this kind; every other kind keeps 400.
 6. **Where the figures come from.** `tracking.final_figures` reads the
-   final evaluation's protected aggregate records: the report of the run,
-   the intervals by patient, the ratings' aggregates and the owner's
-   agreement, the end-to-end figures and the held-out read. Each must name
-   the same freeze and run. The ratings' marks and texts, and the rating
-   model, which only the protected records name, are never read. The
-   driver limit is taken from the configuration only when its digest is
-   the one the freeze names. The figures are written once as a manifest
-   under the workspace's `outputs\lineage`, which the task names with its
-   checksum, and an index keeps the task, so it is sent once.
+   final evaluation's protected aggregate records: the report of the
+   run, the intervals by patient, the ratings' aggregates and my
+   agreement with the rater, the end-to-end figures and the held-out
+   read. Each must name the same freeze and run. The ratings' marks and
+   texts, and the rating model, which only the protected records name,
+   are never read. The driver limit is taken from the configuration only
+   when its digest is the one the freeze names. The figures are written
+   once as a manifest under the workspace's `outputs\lineage`, which the
+   task names with its checksum, and an index keeps the task, so it is
+   sent once.
 7. **Two records kept for it.** The end-to-end final mode and the check
    of the intervals by patient printed their figures. They are kept as
    structured records beside the report (2026-10-05): the end-to-end

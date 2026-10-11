@@ -596,8 +596,8 @@ texts were the same and only the wordings differed, so the catch rate
 depends on the wording, which is why the reported check holds its
 wordings out.
 
-**The second freeze.** The owner chose to revise the instructions again
-and report them on a fresh set. The second set joined the first as
+**The second freeze.** I chose to revise the instructions again and
+report them on a fresh set. The second set joined the first as
 material to revise on, and the third set was written and committed
 before any revision was tried. During a timing probe, before the first
 revision, one sentence of the third set (a share paraphrase) was rated
@@ -654,20 +654,20 @@ answers and 127 of 160 in explanations; 126 of the 160 named forms and
   that its wording rules pass, so the named forms reach the rater only
   from the baseline. The paraphrase rates bear on both conditions.
 
-**The owner's check.** After the rating, 30 texts are drawn with a fixed
-seed: up to 15 that the rater failed and the rest from those it passed.
-They are shuffled and shown without the rater's marks or the
-conditions. The owner's marks are reported beside the rater's for each
-stratum, and the rater's marks are the ones scored.
+**My check.** After the rating, 30 texts are drawn with a fixed seed:
+up to 15 that the rater failed and the rest from those it passed. They
+are shuffled and shown without the rater's marks or the conditions. My
+marks are reported beside the rater's for each stratum, and the rater's
+marks are the ones scored.
 
 **Rating a run.** The operator rates a finished run with the frozen
 instructions only. Every text of both conditions is rated once, under its
 record's key and its condition, in an order shuffled with the fixed
-seed. The marks, the rubric's aggregates and the owner's sheet are
-written once, beside each other, in a new protected directory: the sheet
-holds the sampled texts, numbered, with an empty mark, and neither the
-rater's marks nor the conditions. The owner fills in pass or fail for
-each text, and a second step reads the sheet back into an agreement
+seed. The marks, the rubric's aggregates and my sheet are written once,
+beside each other, in a new protected directory: the sheet holds the
+sampled texts, numbered, with an empty mark, and neither the rater's
+marks nor the conditions. I fill in pass or fail for each text, and a
+second step reads the sheet back into an agreement
 record, by kind and in all; a sheet whose items were changed is refused.
 On the development trial's run the rater marked 15 texts in under a
 minute on the workstation's GPU: the answers passed all four items in
@@ -932,8 +932,8 @@ once it has been run for them:
 ```
 
 Its operator rating of a finished development run writes the marks, the
-aggregates and the owner's sheet, and prints counts only; the owner's
-step reads the filled sheet back:
+aggregates and my sheet, and prints counts only; the second step reads
+the filled sheet back:
 
 ```powershell
 & $AppPython -m ehr_evidence_app.assessment.rubric --operator-rate <run identifier> --model <rating model>

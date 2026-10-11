@@ -16,7 +16,7 @@ workspace and are named here only by their place in it.
 | Case Set | `eval-100-v1`: 100 Persons, None in a Development Case Set, All of the GNN's Upstream Test Partition and so Unseen by It; 92 Admitted, with 519 Scopes |
 | Run | `eval-100-v1-20261004T082135Z`, From 2026-10-04 19:21 to 2026-10-05 21:03 (92,552 Seconds), Every Request in Both Conditions |
 | Requests | 519 Condition Lists (4 of Them with an Empty Reference), 1,034 Presence Checks (515 of a Condition Recorded in the Scope, 519 of a Condition Recorded Elsewhere in the Case Set Only) and 91 Explanations: 1,644 |
-| Protected Records | `protected-data\assessment\paired\<run>` (One Record a Request), the Report `protected-data\assessment\reports\<run>.json`, the Ratings and the Owner's Agreement in `protected-data\assessment\ratings\<run>` |
+| Protected Records | `protected-data\assessment\paired\<run>` (One Record a Request), the Report `protected-data\assessment\reports\<run>.json`, the Ratings and My Agreement with the Rater in `protected-data\assessment\ratings\<run>` |
 
 ## The Paired Comparison
 
@@ -189,9 +189,8 @@ items differs by +3.6 points for answers (95% interval +2.7 to +4.8;
 explanations (-3.8 to +7.4; 18 in one condition only). The rater failed
 no text on wording in either condition. Before the run it caught 274 of
 320 planted faults on wordings it was not revised on and failed none of
-40 passing texts. The owner rated 30 texts drawn with a fixed seed,
-blind: all 30 were answers the rater had passed, and the owner passed
-all 30.
+40 passing texts. I rated 30 texts drawn with a fixed seed, blind: all
+30 were answers the rater had passed, and I passed all 30.
 
 ## Questions Typed End to End
 
@@ -257,8 +256,8 @@ about transfers are mostly read as questions about medications.
 
 ## An Added Check: Intervals by Patient
 
-Added after the figures, at the owner's request. The intervals of
-proportions above treat the requests as independent pairs, but they come
+Added after the figures. The intervals of proportions above treat the
+requests as independent pairs, but they come
 from 92 cases whose scopes nest. Recomputed with the paired bootstrap
 over cases that ADR 0016 fixes for ratios (10,000 replicates, the same
 seed), beside, not in place of, the intervals above:
@@ -298,8 +297,8 @@ above is the one to read.
   decision 10).
 - One run of one model with fixed decoding: the intervals describe the
   requests and cases, not variation between runs.
-- The rubric compares the requests rated in both conditions. The owner's
-  check covered 30 answers and no explanation; with none of the 30
+- The rubric compares the requests rated in both conditions. My check
+  covered 30 answers and no explanation; with none of the 30
   failed, the share of wording faults that the rater misses among the
   answers it passes may still be up to about 12% (95%).
 - The typed questions stand in for the wording of the application's

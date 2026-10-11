@@ -19,9 +19,9 @@ had a median of 6,079 tokens for lists and 16,518 for explanations, and a
 complete candidate wrote a sentence for every diagnosis and a paragraph
 for every driver. Under the configured limits (16,384 prompt tokens, 768
 output tokens, 120 seconds) most explanations and long lists would have
-fallen back. The project owner directed that this be treated as a finding
-about the prompt and runtime design, not as a reason to raise the limits
-for a verbose representation.
+fallen back. I treated this as a finding about the prompt and runtime
+design, not as a reason to raise the limits for a verbose
+representation.
 
 ## Decision
 
@@ -57,7 +57,7 @@ for a verbose representation.
    configured precision, is benchmarked against 4-bit NF4, which is
    GPU-resident, on a deterministic, stratified sample of development
    requests: GPU memory, latency, tokens a second and the gate's pass
-   rate. The precision changes only by the project owner's decision.
+   rate. The precision changes only by a decision of its own.
 6. **The order and style the model writes in.** The first benchmark of
    the compact representation (`candidate-shape-v2`, `prompt-v2`)
    released 4 of 33 sampled development requests in either precision.
@@ -122,5 +122,4 @@ for a verbose representation.
   every condition recorded elsewhere. The gate withheld all of them. NF4 writes lists and presence checks
   about 1.7 times as fast, in a little over half the GPU memory;
   explanations run at 7 to 8 tokens a second in either precision. The
-  precision, K and the limits stay as configured until the project owner
-  decides.
+  precision, K and the limits stay as configured until I decide.

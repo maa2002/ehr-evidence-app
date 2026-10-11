@@ -204,8 +204,8 @@ this release adds documentation and code of the tracker only.
 - The final evaluation's figures
   ([docs/final-figures.md](docs/final-figures.md)): the version assessed
   and the run, the paired comparison by stratum with every metric of
-  ADR 0016, outcomes, failures and operations, the prose rubric and the
-  owner's check, the questions typed end to end, the held-out read of
+  ADR 0016, outcomes, failures and operations, the prose rubric and my
+  check of its rater, the questions typed end to end, the held-out read of
   MIMIC-IV-Ext-Instr, intervals recomputed by patient as a check added
   after the figures, how to read them, and the record of the protocol.
 - The final evaluation's figures in the tracker
@@ -345,7 +345,7 @@ record read an item's name whole (rules `record-questions-v6`).
   - the prose rubric of ADR 0027: identity, evidence and history judged
     by code; attribution wording marked by a rating model on the
     workstation, checked on planted faults in two forms per class; and
-    the owner's blind check of 30 texts. The rater's instructions were
+    my blind check of 30 texts. The rater's instructions were
     revised on development texts and frozen twice, their digest pinned.
     `prose-rubric-v2`, on wordings held out from its revision, failed
     none of 40 passing texts and caught 237 of 320 planted faults,
@@ -353,7 +353,7 @@ record read an item's name whole (rules `record-questions-v6`).
     on both seen sets and checked once on a third, fresh set, failed none
     of 40 passing texts and caught 274 of 320, 148 of the 160
     paraphrases. The operator rates a finished run with the frozen
-    instructions and writes the owner's blind sheet, whose marks a
+    instructions and writes my blind sheet, whose marks a
     second step reads back into an agreement record;
   - the references of questions about the whole record (ADR 0016,
     decision 11), from the raw extract and the snapshot. They agree with
@@ -374,8 +374,8 @@ record read an item's name whole (rules `record-questions-v6`).
   decision 9 of ADR 0016) is rated without a person reading every text:
   identity, evidence and history by code against the references, and
   attribution wording by an automatic rater that is not the evaluated
-  model, checked on planted faults in development texts and by the owner
-  on 30 texts. Every explanation and every answer to a condition question
+  model, checked on planted faults in development texts and by me on 30
+  texts. Every explanation and every answer to a condition question
   is rated, instead of a sample of answers.
 - A response no longer names its writer, the model or a template, on the
   page; its runtime record still does
@@ -465,7 +465,7 @@ model is evaluated as pinned, without fine-tuning
 the project's experiment record
 ([ADR 0018](docs/decisions/0018-tracker-as-experiment-record.md)); no data
 is uploaded. Sharing through the tunnel is in place; the link waits for
-the owner's Cloudflare parts.
+the domain and the tunnel to be set up in Cloudflare.
 
 ### Added
 
@@ -600,8 +600,8 @@ the owner's Cloudflare parts.
 - `tracking.models`
   ([docs/experiment-tracking.md](docs/experiment-tracking.md#the-model)):
   checks the pinned MedGemma 1.5 4B IT files against
-  `config/generation.json`, stages the licence's notice, the owner's copy
-  of the agreement and a manifest of every file, uploads them to the
+  `config/generation.json`, stages the licence's notice, my copy of the
+  agreement and a manifest of every file, uploads them to the
   tracker's files server and registers the revision once in the model
   registry, with its tags and metadata.
 - The controlled wrapper's task kinds, names from checked configuration

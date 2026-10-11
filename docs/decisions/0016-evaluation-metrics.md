@@ -1,13 +1,12 @@
 # 0016. Evaluation Metrics, Fixed Before the Final Evaluation (Phase 9)
 
-Status: accepted (2026-09-28), agreed by the project owner before any
-request of `eval-100-v1` is written. These definitions are frozen with
-the settings, prompts, evidence selection and validators; changing any of
-them afterwards makes a new evaluated version. Decision 11 was added by
+Status: accepted (2026-09-28), before any request of `eval-100-v1` is
+written. These definitions are frozen with the settings, prompts,
+evidence selection and validators; changing any of them afterwards makes
+a new evaluated version. Decision 11 was added by
 [ADR 0021](0021-the-whole-record.md) on 2026-09-29, and decision 9
 amended by [ADR 0027](0027-automatic-prose-rating.md) on 2026-10-03, each
-with the owner's agreement, before any request of `eval-100-v1` was
-written.
+before any request of `eval-100-v1` was written.
 
 ## Context
 
@@ -107,8 +106,7 @@ independent references instead.
    concept identity, evidence and history by code against the reference,
    and attribution wording by an automatic rater that is not the
    evaluated model, checked on planted faults in development texts and
-   by the owner on 30 texts. No rater sees which condition wrote a
-   response.
+   by me on 30 texts. No rater sees which condition wrote a response.
 10. **Comparison.** For each metric the paired difference, controlled
     minus baseline, is reported with a 95% interval: Newcombe's method 10
     for proportions over the same requests, with the exact McNemar test;

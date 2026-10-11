@@ -10,8 +10,8 @@ unchanged.
 With the configuration of ADR 0015 the model's candidates were released
 for 377 of the 430 requests of `dev-30-v1` and 157 of the 182 of
 `pilot-10-v1`. Lists (36 of the 53 development failures) and explanations
-(13, half of them) were what remained. The project owner asked for one
-bounded pass on the prompt before the final lock, with the development
+(13, half of them) were what remained. I allowed one bounded pass on the
+prompt before the final lock, with the development
 benchmark scoring documents by precision, recall and F1 and naming what
 the rows of a withheld document are.
 

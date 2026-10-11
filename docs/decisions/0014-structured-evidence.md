@@ -18,8 +18,8 @@ question-answering rules of Phase 5 decide what the evidence says, and
 generation decides how it is said. The model should not fail at
 bookkeeping the rest of the application does, but it must still write
 the complete candidate and be able to be wrong, and the unchanged
-validator must catch what it gets wrong. The project owner decided the
-points below after a review of the measurements.
+validator must catch what it gets wrong. I decided the points below
+after reviewing the measurements.
 
 ## Decision
 
