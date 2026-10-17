@@ -104,6 +104,11 @@ change interfaces.
   about the record give the same results, and every mutant of the
   answers, real ones about cultures included, is withheld
   ([qa.md](docs/qa.md#questions-that-ask-yes-or-no)).
+- The link to the shared application goes to the supervisor by direct
+  message only: in the public repository an issue or a committed file can
+  be read by anyone. The sharing steps, ADR 0019 and the message
+  `interface.share` prints with a new link say so
+  ([interface.md](docs/interface.md#sharing-through-the-tunnel)).
 
 ### Fixed
 

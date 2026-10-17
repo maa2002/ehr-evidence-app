@@ -340,11 +340,11 @@ The tunnel is set up once, by hand, in Cloudflare's dashboard:
    & $AppPython -m ehr_evidence_app.api.launch --operator-real --share
    ```
 
-7. Give the link to the supervisor privately, in an issue of the
-   private repository or a direct message, never in a committed file, and
-   make a new link once the marking is over. The link stays the same from
-   one launch to the next until then. The supervisor must hold MIMIC-IV
-   credentialed access.
+7. Give the link to the supervisor privately, in a direct message, never
+   in an issue or a committed file (both are public), and make a new link
+   once the marking is over. The link stays the same from one launch to
+   the next until then. The supervisor must hold MIMIC-IV credentialed
+   access.
 
 ## Starting the Application
 

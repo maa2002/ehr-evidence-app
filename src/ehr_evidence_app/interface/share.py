@@ -12,10 +12,10 @@ prints or copies it.
 --new-link HOST makes a new secret link: a long random key, of which only
 the SHA-256 is kept, with the host and the date (sharing\\share-link.json
 in the workspace). The link, https://HOST/?k=KEY, is printed once, on
-the console, to be put in an issue of the private repository for the
-supervisor; nothing else prints or stores it. A new link retires the one
-before it. --check checks the sharing's parts and prints the host and
-findings only.
+the console, to be given to the supervisor by direct message, never in
+an issue or a committed file; nothing else prints or stores it. A new
+link retires the one before it. --check checks the sharing's parts and
+prints the host and findings only.
 
 The launcher shares the interface with --share (api.launch): it starts
 cloudflared with the token file and gives the interface the host and the
@@ -168,8 +168,9 @@ def main(argv=None):
         except ShareError as error:
             print("FAILED: %s" % error)
             return 1
-        print("The secret link, shown this once; put it in an issue of the "
-              "private repository for your supervisor:")
+        print("The secret link, shown this once; send it to your "
+              "supervisor by direct message, never in an issue or a "
+              "committed file:")
         print(link)
         print("Only its digest is kept. A new link retires this one.")
         return 0
