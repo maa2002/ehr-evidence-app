@@ -41,7 +41,8 @@ before the freeze is made.
    rated only by the rater the record names. A development case set
    needs no freeze; any other set is refused.
 3. **Release 0.11.0 is the frozen version.** The freeze record names its
-   commit, and is written after the release, before anything else.
+   commit, and is written after the release, before anything else. (The
+   amendments below freeze 0.11.1 and then 0.11.2, the version evaluated.)
 4. **The final question sets.** Worded after the freeze, as the written
    sets were, by a writer who has not read the rules, into the set
    `final-v1`: `questions.csv` (condition questions, in the written
@@ -62,11 +63,11 @@ before the freeze is made.
    procedures, laboratory results, prescriptions and microbiology a
    question about that kind of record. The result is written once to a
    protected record named by the freeze.
-6. **Order.** Release 0.11.0; the freeze record; the question sets
-   worded and registered; the final run of every request of the final
-   case set in both conditions; then its scoring, its rating and my
-   sheet, the end-to-end assessment and the held-out read; and
-   the report.
+6. **Order.** Release 0.11.0 (0.11.2 after the amendments); the freeze
+   record; the question sets worded and registered; the final run of
+   every request of the final case set in both conditions; then its
+   scoring, its rating and my sheet, the end-to-end assessment and the
+   held-out read; and the report.
 
 ## Consequences
 

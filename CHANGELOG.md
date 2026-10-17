@@ -158,6 +158,24 @@ change interfaces.
 - Before a patient has opened, the suggestions and New Conversation are
   disabled, as the other controls are, where they looked usable and did
   nothing.
+- The documentation agrees with the code and the records again. The
+  GNN's split seed is 42 (`docs/development.md` had 7); the answer rules
+  are `qa-answer-v7` (`docs/validation.md` had v5); a request's tasks
+  include the eight of questions about the whole record
+  (`docs/evidence.md`); the bundle sets of the pilot and of the case sets
+  name version 2 (schema 1.1), the one the application reads, beside
+  version 1; the raw MIMIC-IV directory is listed among the read-only
+  sources, and the access boundary is no longer called planned work
+  (`docs/data-handling.md`); the lineage section says where the lineage
+  of the evaluated version is kept (`docs/experiment-tracking.md`).
+- ADR 0020 notes that a response no longer shows its writer; ADRs 0028
+  and 0029 point from release 0.11.0 to 0.11.2, the version frozen and
+  evaluated; T02 of the acceptance matrix says how many explanations each
+  condition gave; the roadmap dates the tunnel to 2 October and its link
+  to 3 October, and says which items followed their phase's release. The
+  versioning note, the environments table, the comments of
+  `pyproject.toml`, the rule versions in three docstrings and a heading
+  repeated in release 0.10.0 here are corrected too.
 
 ## [1.0.0] - 2026-10-06
 
@@ -607,9 +625,6 @@ the domain and the tunnel to be set up in Cloudflare.
 - The controlled wrapper's task kinds, names from checked configuration
   fields, configuration fields and scalar metrics, each from a fixed
   allowlist (`tracking.controlled`).
-
-### Added
-
 - The predicted diagnosis against the record
   ([ADR 0025](docs/decisions/0025-prediction-against-the-record.md)):
   the page says whether the predicted diagnosis is recorded for the final

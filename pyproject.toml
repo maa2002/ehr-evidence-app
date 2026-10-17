@@ -2,13 +2,13 @@
 #
 # Direct dependencies only, with compatible lower bounds. The exact resolved
 # versions (with hashes) are in requirements/app.lock.txt, produced with
-# `uv pip compile` (see docs/development.md). The application environment
+# `uv pip compile` (see docs/environments.md). The application environment
 # lives outside Git, at the configured UV_PROJECT_ENVIRONMENT under the
 # runtime root.
 #
 # Deliberately excluded: PyTorch, PyG, CUDA/NVIDIA packages, model weights
 # and LLM runtimes. GNN execution uses the existing GNN environment; the LLM
-# runtime is added with the generation layer.
+# runtime has an environment of its own (requirements/llm.txt).
 
 [build-system]
 requires = ["setuptools>=77"]

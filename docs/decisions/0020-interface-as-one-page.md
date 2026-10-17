@@ -1,7 +1,9 @@
 # 0020. The Interface as One Page Over the API (Phase 8)
 
 Status: accepted (2026-09-29). Amends points 1 and 7 of
-[ADR 0019](0019-api-and-interface.md).
+[ADR 0019](0019-api-and-interface.md). From release 0.11.0 a response no
+longer shows who wrote it (decision 4); its runtime record still names
+the writer ([interface.md](../interface.md#the-interface)).
 
 ## Context
 

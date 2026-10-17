@@ -184,12 +184,12 @@ is the identity mapping produced by work item 17 for the 10-person pilot.
 | Phase 3 Closure | `gnn.binding` | `protected-data\verification\inherited-run-binding-v1` |
 | Phase 3 Closure | `gnn.admission` | `protected-data\model-provenance\phase3-closure-v1` |
 | 28 | `gnn.linkage` | `protected-data\evidence\event-linkage-pilot10-v1` |
-| 29, 30 | `evidence.bundles` | `protected-data\evidence-bundles\pilot10-v1` |
+| 29, 30 | `evidence.bundles` | `protected-data\evidence-bundles\pilot10-v1`; Version 2 (Schema 1.1, Release 0.6.0) `protected-data\evidence-bundles\pilot10-v2` |
 | 30.1 | `casesets.selection` | `protected-data\case-sets\<case set>` |
 | 30.1 | `sources.pilot --case-set` | `protected-data\source-casesets\<case set>` |
 | 30.1 | `casesets.prepare` | `protected-data\case-preparation\<case set>` |
 | 30.1 | `gnn.linkage --case-set` | `protected-data\evidence\event-linkage-<case set>` |
-| 30.1 | `evidence.bundles --case-set` | `protected-data\evidence-bundles\<case set>` |
+| 30.1 | `evidence.bundles --case-set` | `protected-data\evidence-bundles\<case set>`; Version 2 (Schema 1.1) `protected-data\evidence-bundles\<case set>-bundles-v2` |
 | 32.1 | `qa.vocabulary` | `protected-data\vocabularies\condition-vocabulary-athena-20260831-v1` |
 | 34.2 | Copied Unchanged | `protected-data\question-sets\mimic-iv-ext-instr` |
 | 34.2 | `qa.heldout` | `protected-data\question-sets\mimic-iv-ext-instr-partitions-v1` |

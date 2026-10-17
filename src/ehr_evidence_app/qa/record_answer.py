@@ -1,4 +1,4 @@
-"""Answers about the whole record (rules record-answer-v4).
+"""Answers about the whole record (rules record-answer-v6).
 
 A question read as a question about the record (qa.record_interpret) is
 answered from the case's record bundle for the bound scope

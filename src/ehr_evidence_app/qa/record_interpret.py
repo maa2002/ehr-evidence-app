@@ -3,7 +3,7 @@
 Questions about conditions are read by the condition rules
 (qa.interpret) exactly as before. A question those rules refuse, or
 whose condition phrase names no condition, is read here (rules
-record-questions-v3), by fixed rules and without a model:
+record-questions-v11), by fixed rules and without a model:
 
 1. The question is normalised as condition questions are, its polite
    opening is removed as theirs is, "ICU" and "intensive care" are

@@ -64,7 +64,7 @@ in the registry, and the next stage reads the record only through that pin.
 | Source Extraction | `sources.pilot --case-set` | Application Environment, Database Credentials | `source-casesets\<label>` |
 | Preparation: Identity Mapping, Model Outputs, Case Facts, Admission | `casesets.prepare` | GNN Environment, CUDA | `case-preparation\<label>` |
 | Event Linkage | `gnn.linkage --case-set` | GNN Environment, CPU | `evidence\event-linkage-<label>` |
-| Evidence Bundles | `evidence.bundles --case-set` | Application Environment | `evidence-bundles\<label>` |
+| Evidence Bundles | `evidence.bundles --case-set` | Application Environment | `evidence-bundles\<label>` (Version 1, Schema 1.0); `evidence-bundles\<label>-bundles-v2` (Version 2, Schema 1.1, the One the Application Reads) |
 | Raw Records | `sources.mimic` (Every Case Set at Once) | Application Environment | `source-records\<label>` |
 | Record Bundles | `evidence.record_bundles --case-set` | Application Environment | `evidence-bundles\<label>-records-v1` |
 

@@ -151,7 +151,9 @@ anything of `eval-100-v1` is read.
    5. The end-to-end assessment, the rubric and the report.
 
    Then Phase 10's freeze (work item 64): release 0.11.0, the question
-   set worded after it, and the one final run.
+   set worded after it, and the one final run. (The freeze was made
+   again twice; release 0.11.2 is the version frozen and evaluated: see
+   the amendments of [ADR 0029](0029-the-freeze.md).)
 
 ## Consequences
 

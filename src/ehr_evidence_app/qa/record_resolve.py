@@ -4,7 +4,7 @@ A question about the record names what it asks about in words: a
 laboratory test, a vital sign, a medication or a class of medications, a
 procedure, a microbiology specimen or organism, a care unit, or a
 condition. The phrase is resolved within one kind of record by fixed
-rules (rules record-resolution-v2), in order:
+rules (rules record-resolution-v3), in order:
 
 1. the phrase is a name the kind's dictionary holds (the laboratory and
    ICU item dictionaries, the medication vocabulary's ingredients,

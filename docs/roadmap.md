@@ -96,11 +96,11 @@ Described in [generation.md](generation.md) and decided in
 [ADR 0013](decisions/0013-compact-generation.md),
 [ADR 0014](decisions/0014-structured-evidence.md) and
 [ADR 0015](decisions/0015-generation-configuration.md). Complete in
-release 0.9.0: the language model writes the complete candidate of every
-response from evidence, from a deterministic view of the evidence
-structured for its task, and the templates are its fallback. In
-milestone 3, on
-the whole development set BF16 with the mixed placement released 314 of
+release 0.9.0, but for item 46.2, which followed in release 0.10.0: the
+language model writes the complete candidate of every response from
+evidence, from a deterministic view of the evidence structured for its
+task, and the templates are its fallback. In milestone 3, on the whole
+development set BF16 with the mixed placement released 314 of
 430 requests and NF4 172, so the precision stays BF16; K = 5 and the
 limits (16,384 prompt tokens, 768 output tokens, 180 seconds) are frozen
 (ADR 0015); and after one bounded pass on the prompt (ADR 0017) the
@@ -143,12 +143,12 @@ metrics of Phase 9.
 Described in [interface.md](interface.md) and decided in
 [ADR 0019](decisions/0019-api-and-interface.md) and
 [ADR 0020](decisions/0020-interface-as-one-page.md). Done (release
-0.10.0): the API, its boundary, the interface, the launcher and sharing
-through the tunnel are in place, closed by an operator run on
-`dev-30-v1` with the model. On 2026-10-03 the tunnel was set up on my
-domain, checked end to end through Cloudflare on the invented case set,
-and its link made
-([interface.md](interface.md#sharing-through-the-tunnel)).
+0.10.0, but for item 52.10, which followed in release 0.11.0): the API,
+its boundary, the interface, the launcher and sharing through the tunnel
+are in place, closed by an operator run on `dev-30-v1` with the model.
+On 2026-10-02 the tunnel was set up on my domain and checked end to end
+through Cloudflare on the invented case set, and on 2026-10-03 its link
+was made ([interface.md](interface.md#sharing-through-the-tunnel)).
 
 - 47 Add FastAPI operations (done: `api.service` and `api.app`)
 - 48 Configure the access boundary (done: `api.boundary`,

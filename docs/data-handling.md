@@ -147,7 +147,11 @@ Permitted read-only sources:
 - the Athena vocabulary directory on the archive disk
   (`W:\Industry Dataset\Athena`), exactly that directory, for the four
   pinned vocabulary files that `qa.vocabulary` reads
-  ([ADR 0006](decisions/0006-condition-vocabulary.md)).
+  ([ADR 0006](decisions/0006-condition-vocabulary.md));
+- the raw MIMIC-IV 3.1 directory on the archive disk
+  (`W:\Industry Dataset\mimic-iv-3.1`), exactly that directory, for the
+  pinned hospital and ICU files that `sources.mimic` reads
+  ([source-data.md](source-data.md#raw-mimic-iv-records)).
 
 Any other source must lie under the policy anchor.
 
@@ -254,7 +258,8 @@ weakened; a weakened policy is an operational failure.
 
 - Path checks run at one moment. A concurrent external change between a
   check and a write is not prevented; the checks are a path policy, not an
-  access control. The access boundary for the application is planned work.
+  access control. The application's own access checks are described in
+  [interface.md](interface.md#the-boundary).
 - Python writes some files during interpreter start-up (for example bytecode
   for imported modules). They are routed only when setup ran before the
   interpreter started.

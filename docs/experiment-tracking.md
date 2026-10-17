@@ -336,5 +336,7 @@ predecessors, cycles and bad references.
 & $AppPython -m ehr_evidence_app.tracking.lineage --record <lineage-record.json>
 ```
 
-Real lineage records are produced once evidence preparation, generation and
-evaluation exist.
+The lineage of the evaluated version is kept by the tracker's tasks
+instead: each names its manifest under `outputs\lineage` (the inherited
+inputs' registration, the runtime aggregates and the final figures) and
+the manifest's checksum ([acceptance.md](acceptance.md), T10).

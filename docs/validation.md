@@ -314,7 +314,7 @@ drivers on `dev-30-v1` and 188 on `pilot-10-v1`; with 10 drivers, version
 
 Every response with text leaves the application through
 `validation.gate.release`, for QA answers (`qa.answer`, rules
-`qa-answer-v5`) and explanations alike, whoever wrote them. The gate is
+`qa-answer-v7`) and explanations alike, whoever wrote them. The gate is
 given the request, the bundle bound to it and, for a presence check, the
 condition the question was resolved to. It runs every check the
 candidate's answer requires: structure and references always, then

@@ -199,7 +199,7 @@ the same result when run again:
 
 | Step | Seed |
 | :--- | :--- |
-| The Inherited GNN's Split of Patients (Recovered, Not Rerun) | 7 |
+| The Inherited GNN's Split of Patients (Recovered, Not Rerun) | 42 |
 | The Draw of `dev-30-v1` | 20260926 |
 | The Draw of `eval-100-v1` | 20260927 |
 | The Model's Decoding (`config/generation.json`) | 20260927 |
@@ -211,8 +211,9 @@ the same result when run again:
 - Commit with the repository-local author identity; do not change global Git
   configuration.
 - Keep `main` releasable: all quality gates pass on every commit.
-- Versions follow semantic versioning (0.y.z while interfaces are still
-  changing). Record changes under `Unreleased` in
+- Versions follow semantic versioning: 0.y.z while interfaces were still
+  changing, and 1.0.0 from the version that was evaluated and accepted.
+  Record changes under `Unreleased` in
   [CHANGELOG.md](../CHANGELOG.md) as they land.
 - To release, rename the `Unreleased` section to `[X.Y.Z] - YYYY-MM-DD` and
   add its link reference, set `version` in `pyproject.toml` and

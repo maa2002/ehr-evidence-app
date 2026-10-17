@@ -22,7 +22,8 @@ All paths are under `G:\Industry Dataset\ehr-evidence-workspace\protected-data`.
 | Run Binding | `verification\inherited-run-binding-v1` | `gnn.binding` | Published, Immutable |
 | Phase 3 Closure | `model-provenance\phase3-closure-v1` | `gnn.admission` | Published, Immutable; Current Authority for Phase 4 |
 | Driver-to-Event Linkage | `evidence\event-linkage-pilot10-v1` | `gnn.linkage` | Published, Immutable ([evidence.md](evidence.md#event-linkage)) |
-| Evidence Bundles | `evidence-bundles\pilot10-v1` | `evidence.bundles` | Published, Immutable ([evidence.md](evidence.md#published-records)) |
+| Evidence Bundles, Version 1 | `evidence-bundles\pilot10-v1` | `evidence.bundles` | Published, Immutable ([evidence.md](evidence.md#published-records)) |
+| Evidence Bundles, Version 2 | `evidence-bundles\pilot10-v2` | `evidence.bundles` | Published, Immutable; Schema 1.1, the One the Application Reads ([evidence.md](evidence.md#published-records)) |
 
 Published records are never edited. A correction is a new version or a new
 record that references the old one.

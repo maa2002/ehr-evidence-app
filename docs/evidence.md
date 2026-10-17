@@ -32,11 +32,15 @@ visit roles, attachment classes, link states) are fixed in
 
 ## Contracts
 
-A request binds one task to one case and one explicit scope. Tasks are
-`condition_list` and `condition_presence` (QA) and `prediction_explanation`.
-QA requests carry a question and no prediction reference; an explanation
-request carries the selected prediction's output-record digest, no question,
-and the pre-target history scope.
+A request binds one task to one case and one explicit scope. The tasks
+are `condition_list` and `condition_presence` (questions about
+conditions); the eight tasks of questions about the whole record,
+`record_list`, `record_presence`, `record_timing`, `record_count`,
+`record_values`, `record_abnormal`, `visit_details` and `person_details`
+([qa.md](qa.md#questions-about-the-whole-record)); and
+`prediction_explanation`. QA requests carry a question and no prediction
+reference; an explanation request carries the selected prediction's
+output-record digest, no question, and the pre-target history scope.
 
 A response carries exactly one outcome:
 
@@ -256,7 +260,13 @@ Paths are under `G:\Industry Dataset\ehr-evidence-workspace\protected-data`.
 | Record | Directory | Files |
 | :--- | :---: | :--- |
 | Event Linkage | `evidence\event-linkage-pilot10-v1` | `linkage.json` (Patient-Bearing; Pinned in `evidence.bundles`), `summary.json` (Aggregate) |
-| Evidence Bundles | `evidence-bundles\pilot10-v1` | `qa\*.json`, `explanation\*.json` (Patient-Bearing); `manifest.json` (Identifiers, Digests, Sizes); `summary.json` (Aggregate) |
+| Evidence Bundles, Version 1 (Schema 1.0) | `evidence-bundles\pilot10-v1` | `qa\*.json`, `explanation\*.json` (Patient-Bearing); `manifest.json` (Identifiers, Digests, Sizes); `summary.json` (Aggregate) |
+| Evidence Bundles, Version 2 (Schema 1.1) | `evidence-bundles\pilot10-v2` | The Same Files; Each Record Also Carries Its Source Concept (Vocabulary, Code and Description) |
+
+Version 2, built in release 0.6.0, is the bundle set the application
+reads and pins; version 1 stays valid and unchanged. The case sets'
+bundle sets follow the same versions
+([case-sets.md](case-sets.md#stages)).
 
 Bundle-set counts for the development pilot:
 
